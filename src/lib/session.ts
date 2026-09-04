@@ -10,7 +10,12 @@ export interface KrokSession {
   tenantId: string;
   tenantName: string;
   role: "owner" | "admin" | "designer" | "operator";
+  roleKey: string;
+  roleName: string;
+  canManageWs: boolean;
   displayName: string;
+  platformRole: "platform_admin" | "developer" | "user";
+  isPlatformAdmin: boolean;
 }
 
 export interface WorkspaceItem {
@@ -21,6 +26,7 @@ export interface WorkspaceItem {
 
 interface MembershipRow {
   role: KrokSession["role"];
+  role_key: string | null;
   tenant_id: string;
   created_at: string;
   tenants: { name: string } | { name: string }[] | null;
@@ -46,7 +52,7 @@ export async function getSession(): Promise<KrokSession | null> {
 
   const { data: rows } = await supabase
     .from("memberships")
-    .select("role, tenant_id, created_at, tenants(name)")
+    .select("role, role_key, tenant_id, created_at, tenants(name)")
     .eq("user_id", user.id)
     .order("created_at", { ascending: true });
 
@@ -56,6 +62,21 @@ export async function getSession(): Promise<KrokSession | null> {
   const store = await cookies();
   const wanted = store.get(WS_COOKIE)?.value;
   const active = (wanted && list.find((m) => m.tenant_id === wanted)) || list[0];
+  const roleKey = active.role_key || (active.role === "operator" ? "user" : active.role);
+
+  const [{ data: prof }, { data: roleRow }] = await Promise.all([
+    supabase.from("profiles").select("platform_role").eq("user_id", user.id).maybeSingle(),
+    supabase
+      .from("tenant_roles")
+      .select("name, can_manage")
+      .eq("tenant_id", active.tenant_id)
+      .eq("key", roleKey)
+      .maybeSingle(),
+  ]);
+
+  const platformRole = ((prof?.platform_role as string) ?? "user") as KrokSession["platformRole"];
+  const canManageWs =
+    roleKey === "owner" || (roleRow ? (roleRow.can_manage as boolean) : active.role !== "operator");
 
   return {
     userId: user.id,
@@ -63,10 +84,33 @@ export async function getSession(): Promise<KrokSession | null> {
     tenantId: active.tenant_id,
     tenantName: nameOf(active),
     role: active.role,
+    roleKey,
+    roleName: (roleRow?.name as string) || roleKey,
+    canManageWs,
     displayName:
       (user.user_metadata?.display_name as string) ||
       (user.email ? user.email.split("@")[0] : "ผู้ใช้"),
+    platformRole,
+    isPlatformAdmin: platformRole === "platform_admin",
   };
+}
+
+/** สิทธิ์เมนูของ role ปัจจุบันใน workspace (จาก tenant_roles.menus; owner = ทุกเมนู) */
+export async function getAllowedMenus(
+  tenantId: string,
+  roleKey: string
+): Promise<import("@/lib/menus").MenuKey[]> {
+  const { ALL_MENU_KEYS, cleanMenus } = await import("@/lib/menus");
+  if (roleKey === "owner") return ALL_MENU_KEYS;
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tenant_roles")
+    .select("menus")
+    .eq("tenant_id", tenantId)
+    .eq("key", roleKey)
+    .maybeSingle();
+  if (!data) return ["forms", "dashboard"];
+  return cleanMenus(data.menus);
 }
 
 /** รายชื่อ workspace ทั้งหมดที่ผู้ใช้ปัจจุบันเป็นสมาชิก (เรียงตามเวลาที่เข้าร่วม) */

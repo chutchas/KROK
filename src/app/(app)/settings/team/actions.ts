@@ -57,6 +57,46 @@ export async function cancelInvite(id: string): Promise<{ ok: true } | { error: 
   return { ok: true };
 }
 
+// กำหนด role ให้สมาชิกด้วย role_key (รองรับ role ที่สร้างเอง)
+export async function changeRoleKey(userId: string, roleKey: string): Promise<{ ok: true } | { error: string }> {
+  const a = await requireAdmin();
+  if (!a.ok) return { error: a.error };
+  const { session } = a;
+  const supabase = await createClient();
+
+  const { data: roleDef } = await supabase
+    .from("tenant_roles").select("key, can_manage").eq("tenant_id", session.tenantId).eq("key", roleKey).maybeSingle();
+  if (!roleDef) return { error: "ไม่พบ role นี้" };
+
+  const isOwnerRole = roleKey === "owner";
+  if (isOwnerRole && session.role !== "owner") return { error: "เฉพาะ owner ตั้ง owner ได้" };
+
+  // กัน owner คนสุดท้ายหลุด
+  if (!isOwnerRole) {
+    const { data: target } = await supabase
+      .from("memberships").select("role").eq("tenant_id", session.tenantId).eq("user_id", userId).maybeSingle();
+    if (target?.role === "owner") {
+      const { count } = await supabase
+        .from("memberships").select("id", { count: "exact", head: true })
+        .eq("tenant_id", session.tenantId).eq("role", "owner");
+      if ((count ?? 0) <= 1) return { error: "ต้องมี owner อย่างน้อย 1 คน" };
+    }
+  }
+
+  // sync enum role (ชั้นความปลอดภัย) ตาม can_manage
+  const enumRole: Role = isOwnerRole ? "owner" : roleDef.can_manage ? "admin" : "operator";
+  const { error } = await supabase
+    .from("memberships").update({ role: enumRole, role_key: roleKey })
+    .eq("tenant_id", session.tenantId).eq("user_id", userId);
+  if (error) return { error: error.message };
+  await supabase.from("audit_log").insert({
+    tenant_id: session.tenantId, actor_id: session.userId,
+    action: "member.role_change", target_type: "user", target_id: userId, meta: { role_key: roleKey },
+  });
+  revalidatePath("/settings/team");
+  return { ok: true };
+}
+
 export async function changeRole(userId: string, role: Role): Promise<{ ok: true } | { error: string }> {
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };

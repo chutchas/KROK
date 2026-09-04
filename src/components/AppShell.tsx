@@ -11,24 +11,27 @@ import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu } from "lucide-react";
+import type { MenuKey, Role } from "@/lib/menus";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound } from "lucide-react";
 
-type NavEntry = { href: string; key: MessageKey; icon: IconType; manage: boolean };
+type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" };
 
-// เมนูหลัก — เห็นบน navbar ตลอด (งานที่ใช้ประจำ)
+// เมนูหลัก — เห็นบน navbar ตลอด (งานที่ใช้ประจำ) กรองตามสิทธิ์เมนูของ role
 const PRIMARY: NavEntry[] = [
-  { href: "/studio", key: "nav.studio", icon: PenSquare, manage: true },
-  { href: "/forms", key: "nav.fill", icon: Smartphone, manage: false },
-  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, manage: false },
+  { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
+  { href: "/forms", key: "nav.fill", icon: Smartphone, menu: "forms" },
+  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
 ];
 
 // เมนูรอง — อยู่ในเมนู hamburger; ตัวที่กำลังเปิดจะโผล่มาเป็นแท็บ active บน navbar
 const SECONDARY: NavEntry[] = [
-  { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, manage: true },
-  { href: "/settings/team", key: "nav.team", icon: Users, manage: true },
-  { href: "/settings/billing", key: "nav.billing", icon: CreditCard, manage: true },
-  { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, manage: true },
-  { href: "/settings/ai", key: "nav.ai", icon: Bot, manage: true },
+  { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
+  { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
+  { href: "/settings/billing", key: "nav.billing", icon: CreditCard, menu: "billing" },
+  { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
+  { href: "/settings/ai", key: "nav.ai", icon: Bot, menu: "ai" },
+  { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
+  { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
 ];
 
 export default function AppShell({
@@ -36,6 +39,9 @@ export default function AppShell({
   displayName,
   tenantName,
   canManage,
+  role,
+  isPlatformAdmin,
+  allowedMenus,
   userId,
   workspaces,
   activeTenantId,
@@ -44,6 +50,9 @@ export default function AppShell({
   displayName: string;
   tenantName: string;
   canManage: boolean;
+  role: Role;
+  isPlatformAdmin: boolean;
+  allowedMenus: MenuKey[];
   userId: string;
   workspaces: WorkspaceItem[];
   activeTenantId: string;
@@ -73,7 +82,14 @@ export default function AppShell({
     router.refresh();
   }
 
-  const visible = (n: NavEntry) => !n.manage || canManage;
+  const allowed = new Set(allowedMenus);
+  const isWsAdmin = role === "owner" || role === "admin";
+  const visible = (n: NavEntry) => {
+    if (n.gate === "platform") return isPlatformAdmin;
+    if (n.gate === "wsadmin") return isWsAdmin;
+    if (n.menu) return allowed.has(n.menu);
+    return true;
+  };
   const primary = PRIMARY.filter(visible);
   const secondary = SECONDARY.filter(visible);
   const activeSecondary = secondary.find((n) => path.startsWith(n.href));

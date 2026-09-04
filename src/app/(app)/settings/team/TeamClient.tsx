@@ -4,13 +4,15 @@ import { useRouter } from "next/navigation";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { HardHat, Tag } from "lucide-react";
-import { inviteMember, cancelInvite, changeRole, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
+import { inviteMember, cancelInvite, changeRoleKey, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 
 type Role = "owner" | "admin" | "designer" | "operator";
+export interface RoleOption { key: string; name: string; canManage: boolean }
 export interface Member {
   user_id: string;
   role: Role;
+  role_key: string | null;
   email: string | null;
   name: string | null;
   created_at: string;
@@ -48,6 +50,7 @@ export default function TeamClient({
   members,
   invites,
   teams,
+  roleOptions,
 }: {
   me: string;
   myRole: Role;
@@ -55,6 +58,7 @@ export default function TeamClient({
   members: Member[];
   invites: Invite[];
   teams: Team[];
+  roleOptions: RoleOption[];
 }) {
   const router = useRouter();
   const { t, tt } = useT();
@@ -131,7 +135,10 @@ export default function TeamClient({
         <div style={{ display: "grid", gap: 4 }}>
           {members.map((m) => {
             const isMe = m.user_id === me;
-            const canEditThis = m.role === "owner" ? canOwner : true;
+            const curKey = m.role_key || (m.role === "operator" ? "user" : m.role);
+            const canEditThis = curKey === "owner" ? canOwner : true;
+            const roleName = roleOptions.find((r) => r.key === curKey)?.name || curKey;
+            const options = canOwner ? roleOptions : roleOptions.filter((r) => r.key !== "owner");
             return (
               <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
                 <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}><Icon icon={HardHat} className="h-[18px] w-[18px]" /></div>
@@ -141,21 +148,20 @@ export default function TeamClient({
                 </div>
                 {canEditThis && !isMe ? (
                   <select
-                    defaultValue={m.role}
+                    defaultValue={curKey}
                     onChange={async (e) => {
-                      const r = e.target.value as Role;
-                      const res = await changeRole(m.user_id, r);
-                      if ("error" in res) { alert(res.error); router.refresh(); }
-                      else router.refresh();
+                      const res = await changeRoleKey(m.user_id, e.target.value);
+                      if ("error" in res) alert(res.error);
+                      router.refresh();
                     }}
                     style={selstyle}
                   >
-                    {(canOwner ? (["owner", "admin", "designer", "operator"] as Role[]) : ASSIGNABLE).map((r) => (
-                      <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+                    {options.map((r) => (
+                      <option key={r.key} value={r.key}>{r.name}</option>
                     ))}
                   </select>
                 ) : (
-                  <span style={{ fontSize: ".82rem", color: "var(--ink-2)", padding: "6px 12px", border: "1px solid var(--line)", borderRadius: 20 }}>{ROLE_LABEL[m.role]}</span>
+                  <span style={{ fontSize: ".82rem", color: "var(--ink-2)", padding: "6px 12px", border: "1px solid var(--line)", borderRadius: 20 }}>{roleName}</span>
                 )}
                 {!isMe && canEditThis && (
                   <Button variant="danger" onClick={async () => {
