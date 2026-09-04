@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import PrintButton from "./PrintButton";
+import { LogoMark } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -74,7 +75,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--ink)", paddingBottom: 14, marginBottom: 6, gap: 12 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
+              <LogoMark size={24} variant="compact" />
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
             </div>
             <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}>{sub.form_icon} {sub.form_title}</h1>

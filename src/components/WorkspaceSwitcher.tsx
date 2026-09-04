@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { switchWorkspace, createWorkspace } from "@/lib/workspace-actions";
 import { useT } from "@/i18n/LanguageProvider";
+import { LogoMark } from "@/components/Logo";
 
 export interface WorkspaceItem {
   tenantId: string;
@@ -86,7 +87,7 @@ export default function WorkspaceSwitcher({
         }}
         title={t("ws.switch")}
       >
-        <div className="hazard" style={{ width: 26, height: 26, borderRadius: 6, flex: "0 0 auto" }} />
+        <LogoMark size={28} />
         <div>
           <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
           <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}>

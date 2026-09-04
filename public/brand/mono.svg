@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" role="img" aria-label="KROK">
+  <defs>
+    <mask id="km" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <g fill="#000" transform="rotate(45 32 32)">
+        <rect x="29.5" y="-6" width="5" height="76"/>
+        <rect x="-6" y="29.5" width="76" height="5"/>
+      </g>
+    </mask>
+  </defs>
+  <path mask="url(#km)" fill="currentColor" fill-rule="evenodd" d="M20 5H44A15 15 0 0 1 59 20V44A15 15 0 0 1 44 59H20A15 15 0 0 1 5 44V20A15 15 0 0 1 20 5ZM26 18H38A8 8 0 0 1 46 26V38A8 8 0 0 1 38 46H26A8 8 0 0 1 18 38V26A8 8 0 0 1 26 18Z"/>
+  <path d="M25.5 32.5L30.5 37.5L39 26.5" fill="none" stroke="currentColor" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

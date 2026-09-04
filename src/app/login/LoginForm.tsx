@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
+import { LogoMark } from "@/components/Logo";
 
 export default function LoginForm() {
   const router = useRouter();
@@ -49,7 +50,7 @@ export default function LoginForm() {
   return (
     <div style={{ maxWidth: 400, margin: "0 auto", padding: "56px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
-        <div className="hazard" style={{ width: 40, height: 40, borderRadius: 9 }} />
+        <LogoMark size={46} title="KROK" />
         <div style={{ flex: 1 }}>
           <div className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.6rem" }}>KROK</div>
           <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("login.tagline")}</div>

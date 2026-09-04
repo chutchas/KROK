@@ -8,6 +8,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
+import { LogoMark } from "@/components/Logo";
 
 const NAV: { href: string; key: MessageKey; icon: string; manage: boolean }[] = [
   { href: "/studio", key: "nav.studio", icon: "🛠️", manage: true },
@@ -76,7 +77,7 @@ export default function AppShell({
             <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
           ) : (
             <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-              <div className="hazard" style={{ width: 26, height: 26, borderRadius: 6 }} />
+              <LogoMark size={28} />
               <div>
                 <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
                 <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>

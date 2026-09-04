@@ -1,0 +1,15 @@
+# ของที่ไม่ต้องยกเข้า image (ทำให้ build เร็วขึ้นและกันคีย์หลุด)
+node_modules
+.next
+.git
+.gitignore
+
+# ⚠️ สำคัญ: กันไม่ให้ .env.local ที่มี service role key ติดเข้าไปใน image
+.env
+.env.*
+!.env.example
+
+npm-debug.log*
+.DS_Store
+Dockerfile
+.dockerignore
