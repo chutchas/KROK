@@ -51,7 +51,7 @@ export default function LoginForm() {
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
         <div className="hazard" style={{ width: 40, height: 40, borderRadius: 9 }} />
         <div style={{ flex: 1 }}>
-          <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.6rem" }}>KROK</div>
+          <div className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.6rem" }}>KROK</div>
           <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("login.tagline")}</div>
         </div>
         <LanguageToggle />

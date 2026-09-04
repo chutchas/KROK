@@ -88,7 +88,7 @@ export default function WorkspaceSwitcher({
       >
         <div className="hazard" style={{ width: 26, height: 26, borderRadius: 6, flex: "0 0 auto" }} />
         <div>
-          <b style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", color: "var(--ink)", letterSpacing: ".02em" }}>KROK</b>
+          <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
           <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}>
             {active?.tenantName ?? ""} <span aria-hidden style={{ fontSize: ".6rem" }}>▾</span>
           </small>

@@ -1,51 +1,109 @@
 @import "tailwindcss";
 
+/* ============================================================
+   KROK · design tokens
+   แกนแบรนด์เดียว: มินต์ → ฟ้าใส → น้ำเงิน (mint → cyan → blue)
+   Light เป็นค่าเริ่มต้นบน :root — Dark มาจากทั้ง
+   prefers-color-scheme และปุ่มสลับธีม ([data-theme])
+   ============================================================ */
 :root {
-  --ground: #f5f6f5;
+  /* ---- brand ramp (ไม่เปลี่ยนตามธีม ยกเว้นค่าที่ contrast บังคับ) ---- */
+  --brand-stop-1: #6ee7b7; /* มินต์ */
+  --brand-stop-2: #18c8e8; /* ฟ้าใส */
+  --brand-stop-3: #3a7ff0; /* น้ำเงิน */
+  --brand-gradient: linear-gradient(95deg, var(--brand-stop-1) 0%, var(--brand-stop-2) 45%, var(--brand-stop-3) 100%);
+  --brand-primary: #2f6fe0; /* สีทึบสำหรับปุ่ม/คอนโทรลเล็ก */
+  --brand-ink: #1c5fd0;     /* แบรนด์ในรูปตัวอักษร */
+  --brand-tint: #e9f1fe;
+  --brand-mint: #eafaf3;
+
+  /* ---- surfaces (light) — แยกชั้นด้วยเส้นขอบเป็นหลัก ---- */
+  --ground: #f8fafc;
   --surface: #ffffff;
-  --surface-2: #fafbfa;
-  --ink: #242b32;
-  --ink-2: #5a6570;
-  --ink-3: #8b949d;
-  --line: #e2e5e4;
-  --accent: #b26a00;
+  --surface-2: #f8fafc;
+  --surface-3: #ffffff;
+  --surface-4: #f1f5f9;
+
+  /* ---- text ---- */
+  --ink: #0f172a;
+  --ink-2: #475569;
+  --ink-3: #94a3b8;
+
+  /* ---- lines / accents ---- */
+  --line: #cbd5e1;
+  --border-soft: rgba(148, 163, 184, 0.35);
+  --accent: var(--brand-primary);
   --accent-ink: #ffffff;
-  --accent-soft: #fff3e0;
-  --amber: #e9a13b;
-  --pass: #2e7d4f;
-  --pass-soft: #e6f2eb;
-  --fail: #b3372b;
-  --fail-soft: #f9e9e7;
-  --code-bg: #f0f1f0;
-  --stripe-a: #e9a13b;
-  --stripe-b: #2b3138;
-  --shadow: 0 2px 10px rgba(20, 25, 30, 0.07);
+  --accent-soft: var(--brand-tint);
+  --amber: var(--brand-primary); /* info highlight = แบรนด์ */
+
+  /* ---- semantic ---- */
+  --pass: #15803d;
+  --pass-soft: #e7f6ec;
+  --fail: #dc2626;
+  --fail-soft: #fdeaea;
+  --code-bg: #f1f5f9;
+
+  /* ---- logo mark stripes (fallback ให้ .hazard เดิม) ---- */
+  --stripe-a: var(--brand-stop-2);
+  --stripe-b: var(--brand-stop-3);
+
+  --shadow: 0 12px 32px rgba(15, 23, 42, 0.08);
   --radius: 12px;
   --font-anuphan: "Anuphan", system-ui, sans-serif;
   --font-sarabun: "Sarabun", system-ui, sans-serif;
 }
+
+/* ---- dark: ผ่าน OS (ยกเว้นผู้ใช้บังคับ light) ---- */
 @media (prefers-color-scheme: dark) {
-  :root {
-    --ground: #14181c;
-    --surface: #1c2228;
-    --surface-2: #20272e;
-    --ink: #e6e9ea;
-    --ink-2: #a6afb6;
-    --ink-3: #78828a;
-    --line: #2c343b;
-    --accent: #f0a63c;
-    --accent-ink: #1a1206;
-    --accent-soft: #2a2118;
-    --amber: #f0a63c;
-    --pass: #5cba85;
-    --pass-soft: #1b2b22;
-    --fail: #e07b6e;
-    --fail-soft: #33201d;
-    --code-bg: #20262c;
-    --stripe-a: #f0a63c;
-    --stripe-b: #0e1114;
-    --shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  :root:not([data-theme="light"]) {
+    --brand-ink: #8ba4ff;
+    --ground: #0f172a;      /* navy เข้ม จงใจไม่ใช่ดำ */
+    --surface: #182335;
+    --surface-2: #1e2b3f;
+    --surface-3: #232f45;
+    --surface-4: #2b3a53;
+    --ink: #f8fafc;
+    --ink-2: #cbd5e1;
+    --ink-3: #7c8aa0;
+    --line: #2b3a53;
+    --border-soft: rgba(148, 163, 184, 0.22);
+    --accent: var(--brand-primary);
+    --accent-ink: #ffffff;
+    --accent-soft: rgba(139, 164, 255, 0.14);
+    --amber: #8ba4ff;
+    --pass: #4ade80;
+    --pass-soft: #16261d;
+    --fail: #f87171;
+    --fail-soft: #2c1a1a;
+    --code-bg: #232f45;
+    --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   }
+}
+
+/* ---- dark: ผ่านปุ่มสลับ (ชนะทุกกรณี) ---- */
+:root[data-theme="dark"] {
+  --brand-ink: #8ba4ff;
+  --ground: #0f172a;
+  --surface: #182335;
+  --surface-2: #1e2b3f;
+  --surface-3: #232f45;
+  --surface-4: #2b3a53;
+  --ink: #f8fafc;
+  --ink-2: #cbd5e1;
+  --ink-3: #7c8aa0;
+  --line: #2b3a53;
+  --border-soft: rgba(148, 163, 184, 0.22);
+  --accent: var(--brand-primary);
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(139, 164, 255, 0.14);
+  --amber: #8ba4ff;
+  --pass: #4ade80;
+  --pass-soft: #16261d;
+  --fail: #f87171;
+  --fail-soft: #2c1a1a;
+  --code-bg: #232f45;
+  --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
 
 * {
@@ -69,14 +127,21 @@ h1, h2, h3, h4 {
   margin: 0;
 }
 a {
-  color: var(--accent);
+  color: var(--brand-ink);
 }
 :focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
 }
+/* โลโก้มาร์ค — แถบไล่สีแบรนด์ (แทนลายเตือน amber เดิม) */
 .hazard {
-  background: repeating-linear-gradient(45deg, var(--stripe-a) 0 10px, var(--stripe-b) 10px 20px);
+  background: var(--brand-gradient);
+}
+.brand-text {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 .tabnum {
   font-variant-numeric: tabular-nums;

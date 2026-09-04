@@ -219,6 +219,7 @@ function Tile({ v, label, color }: { v: number | string; label: string; color?: 
 }
 
 function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string; onClose: () => void }) {
+  const { t, tt } = useT();
   const [photos, setPhotos] = useState<Record<string, string>>({});
 
   useEffect(() => {
@@ -253,10 +254,10 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <h2 style={{ fontSize: "1.1rem" }}>{sub.form_icon} {sub.form_title}</h2>
-          {sub.result === "fail" ? <Pill kind="fail">✗ พบปัญหา</Pill> : <Pill kind="pass">✓ ผ่าน</Pill>}
+          {sub.result === "fail" ? <Pill kind="fail">✗ {t("dash.issues")}</Pill> : <Pill kind="pass">✓ {t("dash.passed")}</Pill>}
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
-          โดย {sub.user_name || "—"} · {fmt(sub.submitted_at)} · ใช้เวลา {sub.duration_s ?? "–"} วินาที
+          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
         </p>
         {sub.answers.map((a, i) => (
           <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 14px", padding: "9px 0", borderBottom: "1px solid var(--line)", fontSize: ".9rem" }}>
@@ -267,9 +268,9 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
             <div style={{ fontWeight: 600, textAlign: "right", overflowWrap: "anywhere", color: a.fail ? "var(--fail)" : a.type === "pass_fail" ? "var(--pass)" : "var(--ink)" }}>
               {a.photoField ? (
                 photos[a.photoField] ? (
-                  <img src={photos[a.photoField]} alt="รูปแนบ" style={{ maxHeight: 110, borderRadius: 6 }} />
+                  <img src={photos[a.photoField]} alt={t("dash.photoAlt")} style={{ maxHeight: 110, borderRadius: 6 }} />
                 ) : (
-                  <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>กำลังโหลดรูป...</span>
+                  <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
                 )
               ) : (
                 a.display ?? "—"
@@ -278,8 +279,8 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
           </div>
         ))}
         <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-          <a href={`/submission/${sub.id}`} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, textDecoration: "none", fontSize: ".9rem" }}>เปิดเอกสาร / พิมพ์ PDF</a>
-          <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>ปิด</button>
+          <a href={`/submission/${sub.id}`} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, textDecoration: "none", fontSize: ".9rem" }}>{t("dash.openDoc")}</a>
+          <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>{t("common.close")}</button>
         </div>
       </div>
     </div>

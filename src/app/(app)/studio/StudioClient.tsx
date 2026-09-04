@@ -16,7 +16,7 @@ interface Team { id: string; name: string }
 type VisMode = "all" | "teams" | "users";
 
 export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
-  const { t } = useT();
+  const { t, tt } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<FormSchema | null>(null);
@@ -42,10 +42,10 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "AI ผิดพลาด");
+      if (!res.ok) throw new Error(json.error || t("studio.errAiFail"));
       setDraft(sanitizeSchema(json.schema));
     } catch (e) {
-      setStatus({ t: e instanceof Error ? e.message : "AI ผิดพลาด", err: true });
+      setStatus({ t: e instanceof Error ? e.message : t("studio.errAiFail"), err: true });
     } finally {
       setBusy(null);
     }
@@ -53,32 +53,32 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
   function generate() {
     if (!prompt.trim()) {
-      setStatus({ t: "พิมพ์อธิบายฟอร์มที่ต้องการก่อน", err: true });
+      setStatus({ t: t("studio.errPrompt"), err: true });
       return;
     }
-    callGenerate({ prompt }, "กำลังออกแบบฟอร์ม");
+    callGenerate({ prompt }, t("studio.busyGenerate"));
   }
 
   function refineDraft() {
     if (!refine.trim() || !draft) return;
-    callGenerate({ schema: draft, instruction: refine }, "กำลังแก้ไขฟอร์ม");
+    callGenerate({ schema: draft, instruction: refine }, t("studio.busyRefine"));
     setRefine("");
   }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBusy("กำลังอ่านฟอร์มเดิมและแปลงเป็นดิจิทัล");
+    setBusy(t("studio.busyImage"));
     setStatus(null);
     try {
       const fd = new FormData();
       fd.append("file", file);
       const res = await fetch("/api/ai/from-image", { method: "POST", body: fd });
       const json = await res.json();
-      if (!res.ok) throw new Error(json.error || "อ่านฟอร์มไม่สำเร็จ");
+      if (!res.ok) throw new Error(json.error || t("studio.errReadFail"));
       setDraft(sanitizeSchema(json.schema));
     } catch (err) {
-      setStatus({ t: err instanceof Error ? err.message : "อ่านฟอร์มไม่สำเร็จ", err: true });
+      setStatus({ t: err instanceof Error ? err.message : t("studio.errReadFail"), err: true });
     } finally {
       setBusy(null);
       if (fileRef.current) fileRef.current.value = "";
@@ -88,7 +88,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   async function publish() {
     if (!draft) return;
     if (requiresApproval && chain.length > 0 && chain.some((s) => !s.user_id)) {
-      setStatus({ t: "มีขั้นอนุมัติที่ยังไม่ได้เลือกผู้อนุมัติ", err: true });
+      setStatus({ t: t("studio.errNoApprover"), err: true });
       return;
     }
     if (visMode === "teams" && visTeams.length === 0) {
@@ -99,7 +99,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       setStatus({ t: t("studio.visPickUser"), err: true });
       return;
     }
-    setBusy("กำลังเผยแพร่");
+    setBusy(t("studio.busyPublish"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
     const res = editingId
       ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility)
@@ -142,7 +142,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   }
 
   async function onDelete(id: string, title: string) {
-    if (!confirm(`ลบฟอร์ม "${title}"? (ข้อมูลที่เคยกรอกยังอยู่ใน dashboard)`)) return;
+    if (!confirm(tt("studio.deleteConfirm", { title }))) return;
     const res = await deleteForm(id);
     if ("error" in res) alert(res.error);
     else router.refresh();
@@ -158,7 +158,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         <TextArea
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
-          placeholder="เช่น ใบตรวจสภาพ forklift ก่อนใช้งานประจำวัน ต้องสแกน QR ประจำรถ ตรวจงา ยาง เบรก ไฟเตือน และถ่ายรูปยางหน้า"
+          placeholder={t("studio.promptPlaceholder")}
         />
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0" }}>
           {CHIP_PROMPTS.map((p) => (
@@ -185,7 +185,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         </div>
         {busy && (
           <Notice>
-            <Spinner /> {busy} — AI ใช้เวลาราว 15–60 วินาที
+            <Spinner /> {busy} — {t("studio.aiWait")}
           </Notice>
         )}
         {status && <Notice kind={status.err ? "error" : "info"}>{status.t}</Notice>}
@@ -199,7 +199,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                 {editingId ? "✏️ " : ""}{draft.icon} {draft.title}
               </h2>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
-                {editingId ? t("studio.editingForm") + " · " : ""}{draft.steps.length} ขั้นตอน · {countFields(draft)} ฟิลด์
+                {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
             </div>
             <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
@@ -230,13 +230,13 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           )}
 
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
-            <b style={{ fontFamily: "var(--font-anuphan)" }}>ปรับแก้ด้วย AI</b>
+            <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.refineTitle")}</b>
             <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 8px" }}>
-              บอกสิ่งที่อยากเปลี่ยน เช่น “เพิ่มช่องวัดแรงดันลมยาง หน่วย psi ช่วง 90–110” หรือ “แยกขั้นตรวจเบรกเป็น step ใหม่”
+              {t("studio.refineSub")}
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder="อยากแก้อะไร..." style={{ flex: 1, minWidth: 200 }} />
-              <Button onClick={refineDraft} disabled={!!busy}>แก้ไข</Button>
+              <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} style={{ flex: 1, minWidth: 200 }} />
+              <Button onClick={refineDraft} disabled={!!busy}>{t("studio.refineBtn")}</Button>
             </div>
           </div>
 
@@ -244,24 +244,22 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
               <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
               <span>
-                <b style={{ fontFamily: "var(--font-anuphan)" }}>ต้องผ่านการอนุมัติ</b>
+                <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.approvalTitle")}</b>
                 <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
-                  เมื่อคนหน้างานส่งฟอร์มนี้ จะเข้าคิวรออนุมัติ ผู้อนุมัติจะได้รับแจ้งเตือนให้อนุมัติหรือตีกลับ
+                  {t("studio.approvalSub")}
                 </span>
               </span>
             </label>
 
             {requiresApproval && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
-                <div style={{ fontSize: ".88rem", fontWeight: 600, marginBottom: 4 }}>ลำดับผู้อนุมัติ</div>
+                <div style={{ fontSize: ".88rem", fontWeight: 600, marginBottom: 4 }}>{t("studio.approverOrder")}</div>
                 <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "0 0 8px" }}>
-                  {chain.length === 0
-                    ? "ยังไม่กำหนด — ผู้จัดการคนใดก็ได้อนุมัติได้ 1 ขั้น (กด “เพิ่มขั้น” เพื่อกำหนดเฉพาะราย เช่น หัวหน้ากะ → QA → ผู้จัดการ)"
-                    : "งานจะไหลตามลำดับนี้ ทีละขั้น"}
+                  {chain.length === 0 ? t("studio.approverHintEmpty") : t("studio.approverHintSet")}
                 </p>
                 {chain.map((s, i) => (
                   <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px" }}>ขั้น {i + 1}</span>
+                    <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px" }}>{t("editor.step")} {i + 1}</span>
                     <select
                       value={s.user_id}
                       onChange={(e) => {
@@ -270,15 +268,15 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                       }}
                       style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", flex: 1, minWidth: 140 }}
                     >
-                      <option value="">— เลือกผู้อนุมัติ —</option>
+                      <option value="">{t("studio.pickApprover")}</option>
                       {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
                     </select>
-                    <Field value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder="บทบาท เช่น QA" style={{ width: 120, flex: "0 0 auto" }} />
-                    <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px" }}>ลบ</Button>
+                    <Field value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder={t("studio.rolePlaceholder")} style={{ width: 120, flex: "0 0 auto" }} />
+                    <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px" }}>{t("common.delete")}</Button>
                   </div>
                 ))}
                 {chain.length < 6 && (
-                  <Button onClick={() => setChain((c) => [...c, { user_id: "", name: "", label: "" }])} style={{ padding: "8px 14px", fontSize: ".88rem" }}>+ เพิ่มขั้น</Button>
+                  <Button onClick={() => setChain((c) => [...c, { user_id: "", name: "", label: "" }])} style={{ padding: "8px 14px", fontSize: ".88rem" }}>+ {t("studio.addApprovalStep")}</Button>
                 )}
               </div>
             )}
@@ -354,14 +352,14 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           {t("studio.publishedSub")}
         </p>
         <div style={{ display: "grid", gap: 10 }}>
-          {initialForms.length === 0 && <span style={{ color: "var(--ink-3)" }}>ยังไม่มีฟอร์ม — สร้างด้านบนได้เลย</span>}
+          {initialForms.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("studio.emptyForms")}</span>}
           {initialForms.map((f) => (
             <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--surface)" }}>
               <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>{f.icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
-                  {f.schema.steps.length} ขั้นตอน · {countFields(f.schema)} ฟิลด์
+                  {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
                 </small>
               </div>
               <Button onClick={() => editExisting(f)}>✏️ {t("common.edit")}</Button>

@@ -4,6 +4,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
 import LanguageToggle from "@/components/LanguageToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
@@ -77,7 +78,7 @@ export default function AppShell({
             <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
               <div className="hazard" style={{ width: 26, height: 26, borderRadius: 6 }} />
               <div>
-                <b style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", color: "var(--ink)", letterSpacing: ".02em" }}>KROK</b>
+                <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
                 <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>
                   {tenantName}
                 </small>
@@ -109,6 +110,7 @@ export default function AppShell({
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <ThemeToggle />
             <LanguageToggle />
             <NotificationBell userId={userId} />
             <Link
