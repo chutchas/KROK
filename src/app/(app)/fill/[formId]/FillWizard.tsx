@@ -61,17 +61,22 @@ export default function FillWizard(props: Props) {
   const supabase = createClient();
   const [idx, setIdx] = useState(0);
   const answers = useRef<Record<string, Answer>>({});
-  const photos = useRef<Record<string, string>>({}); // fieldId -> dataUrl
-  const sigs = useRef<Record<string, string>>({});
+  const [photos, setPhotos] = useState<Record<string, string>>({}); // fieldId -> dataUrl
+  const [sigs, setSigs] = useState<Record<string, string>>({});
   const [, force] = useState(0);
-  const rerender = () => force((n) => n + 1);
-  const startedAt = useRef(Date.now());
+  const rerender = useCallback(() => force((n) => n + 1), []);
+  const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number } | null>(null);
 
   const step = schema.steps[idx];
-  const ans = (id: string) => (answers.current[id] ||= {});
+
+  // merge a patch into an answer (ref-owned by this component)
+  const patchAnswer = useCallback((id: string, patch: Partial<Answer>, render = false) => {
+    answers.current[id] = { ...answers.current[id], ...patch };
+    if (render) rerender();
+  }, [rerender]);
 
   function validate(): boolean {
     const errs: Record<string, string> = {};
@@ -79,8 +84,8 @@ export default function FillWizard(props: Props) {
       if (!f.required) continue;
       const a = answers.current[f.id] || {};
       let miss = false;
-      if (f.type === "photo") miss = !photos.current[f.id];
-      else if (f.type === "signature") miss = !sigs.current[f.id];
+      if (f.type === "photo") miss = !photos[f.id];
+      else if (f.type === "signature") miss = !sigs[f.id];
       else if (f.type === "checkbox") miss = !(Array.isArray(a.value) && a.value.length);
       else miss = a.value == null || a.value === "";
       if (miss) {
@@ -117,14 +122,14 @@ export default function FillWizard(props: Props) {
           const a = answers.current[f.id] || {};
           const item: Record<string, unknown> = { label: f.label, type: f.type };
           if (f.type === "photo") {
-            if (photos.current[f.id]) {
-              photoUploads.push({ fieldId: f.id, dataUrl: photos.current[f.id], ai: a.ai });
+            if (photos[f.id]) {
+              photoUploads.push({ fieldId: f.id, dataUrl: photos[f.id], ai: a.ai });
               item.photoField = f.id;
             }
             if (a.ai) item.display = a.ai;
           } else if (f.type === "signature") {
-            if (sigs.current[f.id]) {
-              photoUploads.push({ fieldId: f.id, dataUrl: sigs.current[f.id] });
+            if (sigs[f.id]) {
+              photoUploads.push({ fieldId: f.id, dataUrl: sigs[f.id] });
               item.photoField = f.id;
               item.display = "เซ็นแล้ว";
             }
@@ -152,7 +157,7 @@ export default function FillWizard(props: Props) {
         }
 
       const result = fails.length ? "fail" : "pass";
-      const dur = Math.round((Date.now() - startedAt.current) / 1000);
+      const dur = Math.round((Date.now() - startedAt) / 1000);
 
       const { error: subErr } = await supabase.from("submissions").insert({
         id: subId,
@@ -188,17 +193,14 @@ export default function FillWizard(props: Props) {
         }
       }
       // audit (best-effort)
-      supabase
-        .from("audit_log")
-        .insert({
-          tenant_id: props.tenantId,
-          actor_id: props.userId,
-          action: "submission.create",
-          target_type: "submission",
-          target_id: subId,
-          meta: { form_id: props.formId, result, fails: fails.length },
-        })
-        .then(() => {});
+      void supabase.from("audit_log").insert({
+        tenant_id: props.tenantId,
+        actor_id: props.userId,
+        action: "submission.create",
+        target_type: "submission",
+        target_id: subId,
+        meta: { form_id: props.formId, result, fails: fails.length },
+      });
 
       setDone({ result, fails, dur });
       window.scrollTo(0, 0);
@@ -257,14 +259,28 @@ export default function FillWizard(props: Props) {
         <FieldControl
           key={f.id}
           field={f}
-          answer={ans(f.id)}
-          photo={photos.current[f.id]}
-          hasSig={!!sigs.current[f.id]}
+          getInitial={() => answers.current[f.id] || {}}
+          photo={photos[f.id]}
+          hasSig={!!sigs[f.id]}
           error={errors[f.id]}
-          canAiPhoto
-          onChange={rerender}
-          setPhoto={(d) => { if (d) photos.current[f.id] = d; else delete photos.current[f.id]; delete ans(f.id).ai; rerender(); }}
-          setSig={(d) => { if (d) sigs.current[f.id] = d; else delete sigs.current[f.id]; rerender(); }}
+          onPatch={(patch, render) => patchAnswer(f.id, patch, render)}
+          setPhoto={(d) => {
+            setPhotos((prev) => {
+              const nextP = { ...prev };
+              if (d) nextP[f.id] = d;
+              else delete nextP[f.id];
+              return nextP;
+            });
+            patchAnswer(f.id, { ai: undefined });
+          }}
+          setSig={(d) => {
+            setSigs((prev) => {
+              const nextS = { ...prev };
+              if (d) nextS[f.id] = d;
+              else delete nextS[f.id];
+              return nextS;
+            });
+          }}
         />
       ))}
 
@@ -284,27 +300,28 @@ export default function FillWizard(props: Props) {
 // ============ single field control ============
 function FieldControl({
   field: f,
-  answer,
+  getInitial,
   photo,
   hasSig,
   error,
-  canAiPhoto,
-  onChange,
+  onPatch,
   setPhoto,
   setSig,
 }: {
   field: FormField;
-  answer: Answer;
+  getInitial: () => Answer;
   photo?: string;
   hasSig: boolean;
   error?: string;
-  canAiPhoto: boolean;
-  onChange: () => void;
+  onPatch: (patch: Partial<Answer>, render?: boolean) => void;
   setPhoto: (d: string | null) => void;
   setSig: (d: string | null) => void;
 }) {
+  const [initial] = useState(getInitial);
   const [aiBusy, setAiBusy] = useState(false);
+  const [aiResult, setAiResult] = useState(initial.ai || "");
   const [scanMsg, setScanMsg] = useState("");
+  const [scanValue, setScanValue] = useState<string>(typeof initial.value === "string" ? initial.value : "");
   const photoRef = useRef<HTMLInputElement>(null);
   const scanRef = useRef<HTMLInputElement>(null);
 
@@ -313,6 +330,7 @@ function FieldControl({
     if (!file) return;
     try {
       setPhoto(await shrinkImage(file));
+      setAiResult("");
     } catch {
       /* ignore */
     }
@@ -328,12 +346,13 @@ function FieldControl({
       fd.append("label", f.label);
       const res = await fetch("/api/ai/check-photo", { method: "POST", body: fd });
       const j = await res.json();
-      answer.ai = res.ok ? (j.ok ? "✅ " : "⚠️ ") + (j.reason || "") : j.error || "ตรวจไม่ได้";
+      const txt = res.ok ? (j.ok ? "✅ " : "⚠️ ") + (j.reason || "") : j.error || "ตรวจไม่ได้";
+      setAiResult(txt);
+      onPatch({ ai: txt });
     } catch {
-      answer.ai = "ตรวจรูปไม่ได้";
+      setAiResult("ตรวจรูปไม่ได้");
     } finally {
       setAiBusy(false);
-      onChange();
     }
   }
   async function onScan(e: React.ChangeEvent<HTMLInputElement>) {
@@ -342,15 +361,28 @@ function FieldControl({
     setScanMsg("กำลังอ่านโค้ด...");
     const code = await detectBarcode(file);
     if (code) {
-      answer.value = code;
+      onPatch({ value: code });
+      setScanValue(code);
       setScanMsg("✅ อ่านได้: " + code);
     } else setScanMsg("อ่านโค้ดจากรูปไม่ได้ — พิมพ์รหัสแทนได้เลย");
-    onChange();
     e.target.value = "";
   }
 
   const box: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 10, padding: 14, margin: "10px 0", background: "var(--surface)" };
   const input: React.CSSProperties = { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
+  const [numValue, setNumValue] = useState(String(initial.value ?? ""));
+  const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
+  const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) ? initial.value : []);
+  const [dtDefault] = useState(() =>
+    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+  );
+  // seed datetime default so an untouched required field still submits
+  useEffect(() => {
+    if (f.type === "datetime" && (initial.value == null || initial.value === "")) {
+      onPatch({ value: dtDefault });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   return (
     <div style={{ ...box, borderColor: error ? "var(--fail)" : "var(--line)" }}>
@@ -375,24 +407,24 @@ function FieldControl({
 
       <div style={{ marginTop: 8 }}>
         {f.type === "text" && (
-          <textarea style={{ ...input, minHeight: 60, resize: "vertical" }} rows={2} defaultValue={String(answer.value ?? "")} placeholder={f.example ? "เช่น " + f.example : "พิมพ์คำตอบ..."} onChange={(e) => { answer.value = e.target.value; }} />
+          <textarea style={{ ...input, minHeight: 60, resize: "vertical" }} rows={2} defaultValue={String(initial.value ?? "")} placeholder={f.example ? "เช่น " + f.example : "พิมพ์คำตอบ..."} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
         {f.type === "number" && (
           <>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="number" inputMode="decimal" style={{ ...input, flex: 1 }} defaultValue={String(answer.value ?? "")} placeholder={f.example || "0"} onChange={(e) => { answer.value = e.target.value; onChange(); }} />
+              <input type="number" inputMode="decimal" style={{ ...input, flex: 1 }} value={numValue} placeholder={f.example || "0"} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
               {f.unit && <span style={{ color: "var(--ink-2)" }}>{f.unit}</span>}
             </div>
-            {(f.min != null || f.max != null) && <NumHint field={f} value={answer.value} />}
+            {(f.min != null || f.max != null) && <NumHint field={f} value={numValue} />}
           </>
         )}
         {f.type === "datetime" && (
-          <input type="datetime-local" style={input} defaultValue={String(answer.value ?? new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16))} onChange={(e) => { answer.value = e.target.value; }} />
+          <input type="datetime-local" style={input} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
         {f.type === "select" &&
           (f.options || []).map((o) => (
             <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
-              <input type="radio" name={"r_" + f.id} value={o} defaultChecked={answer.value === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => { answer.value = o; }} />
+              <input type="radio" name={"r_" + f.id} value={o} defaultChecked={initial.value === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => onPatch({ value: o })} />
               {o}
             </label>
           ))}
@@ -402,11 +434,12 @@ function FieldControl({
               <input
                 type="checkbox"
                 value={o}
-                defaultChecked={Array.isArray(answer.value) && answer.value.includes(o)}
+                checked={cbVals.includes(o)}
                 style={{ width: 20, height: 20, accentColor: "var(--accent)" }}
                 onChange={(e) => {
-                  const cur = Array.isArray(answer.value) ? [...answer.value] : [];
-                  answer.value = e.target.checked ? [...cur, o] : cur.filter((x) => x !== o);
+                  const nextVals = e.target.checked ? [...new Set([...cbVals, o])] : cbVals.filter((x) => x !== o);
+                  setCbVals(nextVals);
+                  onPatch({ value: nextVals });
                 }}
               />
               {o}
@@ -415,11 +448,11 @@ function FieldControl({
         {f.type === "pass_fail" && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <PfBtn active={answer.value === "pass"} kind="pass" onClick={() => { answer.value = "pass"; onChange(); }}>✓ ผ่าน</PfBtn>
-              <PfBtn active={answer.value === "fail"} kind="fail" onClick={() => { answer.value = "fail"; onChange(); }}>✗ ไม่ผ่าน</PfBtn>
+              <PfBtn active={pf === "pass"} kind="pass" onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}>✓ ผ่าน</PfBtn>
+              <PfBtn active={pf === "fail"} kind="fail" onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}>✗ ไม่ผ่าน</PfBtn>
             </div>
-            {answer.value === "fail" && (
-              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={answer.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => { answer.note = e.target.value; }} />
+            {pf === "fail" && (
+              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => onPatch({ note: e.target.value })} />
             )}
           </>
         )}
@@ -430,10 +463,10 @@ function FieldControl({
               <div>{photo ? "แตะเพื่อถ่ายใหม่" : "📷 แตะเพื่อถ่ายรูป / เลือกรูป"}</div>
             </div>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
-            {photo && canAiPhoto && (
+            {photo && (
               <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <Button onClick={aiCheck} disabled={aiBusy}>{aiBusy ? "AI กำลังดูรูป..." : "🔍 ให้ AI ตรวจรูป"}</Button>
-                {answer.ai && <span style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{answer.ai}</span>}
+                {aiResult && <span style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{aiResult}</span>}
               </div>
             )}
           </>
@@ -441,7 +474,7 @@ function FieldControl({
         {f.type === "barcode" && (
           <>
             <div style={{ display: "flex", gap: 10 }}>
-              <input type="text" style={{ ...input, flex: 1 }} defaultValue={String(answer.value ?? "")} placeholder="รหัส เช่น FL-03" onChange={(e) => { answer.value = e.target.value; }} key={String(answer.value ?? "")} />
+              <input type="text" style={{ ...input, flex: 1 }} value={scanValue} placeholder="รหัส เช่น FL-03" onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
               <Button onClick={() => scanRef.current?.click()}>📷 สแกน</Button>
             </div>
             <input ref={scanRef} type="file" accept="image/*" capture="environment" hidden onChange={onScan} />
@@ -456,7 +489,7 @@ function FieldControl({
   );
 }
 
-function NumHint({ field: f, value }: { field: FormField; value?: string | string[] }) {
+function NumHint({ field: f, value }: { field: FormField; value?: string }) {
   const v = parseFloat(String(value));
   const out = Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max));
   return (
