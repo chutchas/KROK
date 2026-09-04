@@ -7,7 +7,7 @@ import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import Icon, { type IconType } from "@/components/Icon";
-import BrandMark from "@/components/BrandMark";
+import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut } from "lucide-react";
@@ -79,7 +79,7 @@ export default function AppShell({
             <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
           ) : (
             <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-              <BrandMark size={26} />
+              <LogoMark size={26} variant="compact" title="KROK" />
               <div>
                 <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
                 <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>

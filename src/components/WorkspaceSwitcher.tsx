@@ -5,7 +5,7 @@ import { switchWorkspace, createWorkspace } from "@/lib/workspace-actions";
 import { useT } from "@/i18n/LanguageProvider";
 import { ChevronDown, Check, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
-import BrandMark from "@/components/BrandMark";
+import { LogoMark } from "@/components/Logo";
 
 export interface WorkspaceItem {
   tenantId: string;
@@ -89,7 +89,7 @@ export default function WorkspaceSwitcher({
         }}
         title={t("ws.switch")}
       >
-        <BrandMark size={26} />
+        <LogoMark size={26} variant="compact" />
         <div>
           <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
           <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}>
