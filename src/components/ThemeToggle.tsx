@@ -1,38 +1,34 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Monitor, SunMedium, MoonStar } from "lucide-react";
-import Icon, { type IconType } from "@/components/Icon";
+import { SunMedium, MoonStar } from "lucide-react";
+import Icon from "@/components/Icon";
 
-type Theme = "system" | "light" | "dark";
+type Theme = "light" | "dark";
 const KEY = "krok_theme";
-const ORDER: Theme[] = ["system", "light", "dark"];
-const ICON: Record<Theme, IconType> = { system: Monitor, light: SunMedium, dark: MoonStar };
-const TINT: Record<Theme, string> = { system: "text-slate-500", light: "text-amber-500", dark: "text-indigo-400" };
 
 function apply(theme: Theme) {
-  const el = document.documentElement;
-  if (theme === "system") el.removeAttribute("data-theme");
-  else el.setAttribute("data-theme", theme);
+  document.documentElement.setAttribute("data-theme", theme);
 }
 
 export default function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>("system");
+  const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
+    let initial: Theme = "light";
     try {
-      const saved = localStorage.getItem(KEY) as Theme | null;
-      if (saved && ORDER.includes(saved)) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setTheme(saved);
-        apply(saved);
-      }
+      const saved = localStorage.getItem(KEY);
+      if (saved === "light" || saved === "dark") initial = saved;
+      else if (window.matchMedia?.("(prefers-color-scheme: dark)").matches) initial = "dark";
     } catch {
       /* ignore */
     }
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setTheme(initial);
+    apply(initial);
   }, []);
 
-  function cycle() {
-    const next = ORDER[(ORDER.indexOf(theme) + 1) % ORDER.length];
+  function toggle() {
+    const next: Theme = theme === "dark" ? "light" : "dark";
     setTheme(next);
     apply(next);
     try {
@@ -42,17 +38,16 @@ export default function ThemeToggle() {
     }
   }
 
-  const label = theme === "system" ? "อัตโนมัติ" : theme === "light" ? "สว่าง" : "มืด";
-
+  const isDark = theme === "dark";
   return (
     <button
-      onClick={cycle}
-      title={`ธีม: ${label}`}
-      aria-label={`ธีม: ${label}`}
-      className={`inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm ${TINT[theme]}`}
+      onClick={toggle}
+      title={isDark ? "โหมดมืด (แตะเพื่อเป็นสว่าง)" : "โหมดสว่าง (แตะเพื่อเป็นมืด)"}
+      aria-label={isDark ? "สลับเป็นโหมดสว่าง" : "สลับเป็นโหมดมืด"}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm ${isDark ? "text-indigo-400" : "text-amber-500"}`}
       style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
     >
-      <Icon icon={ICON[theme]} className="h-4 w-4" />
+      <Icon icon={isDark ? MoonStar : SunMedium} className="h-4 w-4" />
     </button>
   );
 }
