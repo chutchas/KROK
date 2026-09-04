@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("submissions")
-    .select("id, form_title, form_icon, user_name, result, fails, answers, duration_s, submitted_at")
+    .select("id, form_title, form_icon, user_name, result, fails, answers, duration_s, submitted_at, approval_status")
     .order("submitted_at", { ascending: false })
     .limit(100);
 

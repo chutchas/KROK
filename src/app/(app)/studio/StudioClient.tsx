@@ -12,6 +12,7 @@ export default function StudioClient({ initialForms }: { initialForms: FormRow[]
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<FormSchema | null>(null);
+  const [requiresApproval, setRequiresApproval] = useState(false);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
@@ -73,7 +74,7 @@ export default function StudioClient({ initialForms }: { initialForms: FormRow[]
   async function publish() {
     if (!draft) return;
     setBusy("กำลังเผยแพร่");
-    const res = await saveForm(draft);
+    const res = await saveForm(draft, requiresApproval);
     setBusy(null);
     if ("error" in res) {
       setStatus({ t: res.error, err: true });
@@ -156,6 +157,15 @@ export default function StudioClient({ initialForms }: { initialForms: FormRow[]
             </div>
           </div>
 
+          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10, cursor: "pointer" }}>
+            <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
+            <span>
+              <b style={{ fontFamily: "var(--font-anuphan)" }}>ต้องผ่านการอนุมัติ</b>
+              <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
+                เมื่อคนหน้างานส่งฟอร์มนี้ จะเข้าคิวรออนุมัติ หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติหรือตีกลับ
+              </span>
+            </span>
+          </label>
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <Button variant="primary" onClick={publish} disabled={!!busy}>✅ เผยแพร่ฟอร์มนี้</Button>
             <Button onClick={() => setDraft(null)} disabled={!!busy}>ทิ้งร่างนี้</Button>

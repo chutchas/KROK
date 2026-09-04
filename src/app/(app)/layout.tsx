@@ -11,6 +11,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       displayName={session.displayName}
       tenantName={session.tenantName}
       canManage={canManage(session.role)}
+      userId={session.userId}
     >
       {children}
     </AppShell>

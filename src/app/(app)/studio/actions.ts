@@ -22,7 +22,10 @@ async function audit(
   });
 }
 
-export async function saveForm(rawSchema: unknown): Promise<{ id: string } | { error: string }> {
+export async function saveForm(
+  rawSchema: unknown,
+  requiresApproval = false
+): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์สร้างฟอร์ม" };
@@ -44,6 +47,7 @@ export async function saveForm(rawSchema: unknown): Promise<{ id: string } | { e
       description: schema.description,
       schema,
       status: "published",
+      requires_approval: requiresApproval,
       created_by: session.userId,
     })
     .select("id")
@@ -53,6 +57,7 @@ export async function saveForm(rawSchema: unknown): Promise<{ id: string } | { e
   await audit(session.tenantId, session.userId, "form.publish", data.id, {
     title: schema.title,
     fields: countFields(schema),
+    requires_approval: requiresApproval,
   });
   revalidatePath("/forms");
   revalidatePath("/studio");

@@ -21,6 +21,7 @@ export interface SubRow {
   answers: AnswerItem[];
   duration_s: number | null;
   submitted_at: string;
+  approval_status?: "none" | "pending" | "approved" | "rejected";
 }
 
 function fmt(ts: string) {
@@ -92,7 +93,12 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
                 <b style={{ fontSize: ".93rem" }}>{s.form_title}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at)}</small>
               </div>
-              {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length} ปัญหา</Pill> : s.result === "pass" ? <Pill kind="pass">✓ ผ่าน</Pill> : <Pill kind="na">ส่งแล้ว</Pill>}
+              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                {s.approval_status === "pending" && <Pill kind="na">🕒 รออนุมัติ</Pill>}
+                {s.approval_status === "approved" && <Pill kind="pass">อนุมัติแล้ว</Pill>}
+                {s.approval_status === "rejected" && <Pill kind="fail">ตีกลับ</Pill>}
+                {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length} ปัญหา</Pill> : s.result === "pass" ? <Pill kind="pass">✓ ผ่าน</Pill> : <Pill kind="na">ส่งแล้ว</Pill>}
+              </div>
             </div>
           ))}
         </div>
@@ -173,7 +179,8 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
             </div>
           </div>
         ))}
-        <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+        <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+          <a href={`/submission/${sub.id}`} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, textDecoration: "none", fontSize: ".9rem" }}>เปิดเอกสาร / พิมพ์ PDF</a>
           <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>ปิด</button>
         </div>
       </div>

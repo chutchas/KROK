@@ -2,11 +2,14 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import NotificationBell from "@/components/NotificationBell";
 
 const NAV = [
   { href: "/studio", label: "สร้างฟอร์ม", icon: "🛠️", manage: true },
   { href: "/forms", label: "กรอกฟอร์ม", icon: "📱", manage: false },
+  { href: "/approvals", label: "อนุมัติ", icon: "✅", manage: true },
   { href: "/dashboard", label: "Dashboard", icon: "📊", manage: false },
+  { href: "/settings/team", label: "ทีม", icon: "👥", manage: true },
 ];
 
 export default function AppShell({
@@ -14,11 +17,13 @@ export default function AppShell({
   displayName,
   tenantName,
   canManage,
+  userId,
 }: {
   children: React.ReactNode;
   displayName: string;
   tenantName: string;
   canManage: boolean;
+  userId: string;
 }) {
   const path = usePathname();
   const router = useRouter();
@@ -87,22 +92,25 @@ export default function AppShell({
             })}
           </nav>
 
-          <button
-            onClick={signOut}
-            title="ออกจากระบบ"
-            style={{
-              fontSize: ".8rem",
-              color: "var(--ink-3)",
-              border: "1px dashed var(--line)",
-              borderRadius: 20,
-              padding: "4px 12px",
-              background: "none",
-              cursor: "pointer",
-              fontFamily: "inherit",
-            }}
-          >
-            👷 {displayName} · ออก
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <NotificationBell userId={userId} />
+            <button
+              onClick={signOut}
+              title="ออกจากระบบ"
+              style={{
+                fontSize: ".8rem",
+                color: "var(--ink-3)",
+                border: "1px dashed var(--line)",
+                borderRadius: 20,
+                padding: "4px 12px",
+                background: "none",
+                cursor: "pointer",
+                fontFamily: "inherit",
+              }}
+            >
+              👷 {displayName} · ออก
+            </button>
+          </div>
         </div>
       </header>
       <main style={{ maxWidth: 1000, margin: "0 auto", padding: "20px 16px 90px" }}>{children}</main>

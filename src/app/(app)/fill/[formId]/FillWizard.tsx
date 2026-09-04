@@ -11,6 +11,7 @@ type Props = {
   title: string;
   icon: string;
   version: number;
+  requiresApproval: boolean;
   schema: FormSchema;
   tenantId: string;
   userId: string;
@@ -68,7 +69,7 @@ export default function FillWizard(props: Props) {
   const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number } | null>(null);
+  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean } | null>(null);
 
   const step = schema.steps[idx];
 
@@ -172,6 +173,7 @@ export default function FillWizard(props: Props) {
         fails,
         answers: list,
         duration_s: dur,
+        approval_status: props.requiresApproval ? "pending" : "none",
       });
       if (subErr) throw subErr;
 
@@ -202,7 +204,7 @@ export default function FillWizard(props: Props) {
         meta: { form_id: props.formId, result, fails: fails.length },
       });
 
-      setDone({ result, fails, dur });
+      setDone({ result, fails, dur, pending: props.requiresApproval });
       window.scrollTo(0, 0);
     } catch (e) {
       setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
@@ -213,12 +215,16 @@ export default function FillWizard(props: Props) {
   if (done) {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ fontSize: "3rem" }}>{done.result === "pass" ? "✅" : "⚠️"}</div>
+        <div style={{ fontSize: "3rem" }}>{done.pending ? "🕒" : done.result === "pass" ? "✅" : "⚠️"}</div>
         <h2 style={{ margin: "10px 0 4px" }}>
-          {done.result === "pass" ? "ส่งข้อมูลเรียบร้อย" : `ส่งแล้ว — พบปัญหา ${done.fails.length} รายการ`}
+          {done.pending
+            ? "ส่งแล้ว — รอการอนุมัติ"
+            : done.result === "pass"
+            ? "ส่งข้อมูลเรียบร้อย"
+            : `ส่งแล้ว — พบปัญหา ${done.fails.length} รายการ`}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>
-          {props.title} · ใช้เวลา {done.dur} วินาที · ขึ้น dashboard แล้ว
+          {props.title} · ใช้เวลา {done.dur} วินาที · {done.pending ? "หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติ" : "ขึ้น dashboard แล้ว"}
         </p>
         {done.fails.length > 0 && (
           <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>

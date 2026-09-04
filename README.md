@@ -18,6 +18,15 @@ Stack: **Next.js (App Router, TS) + Supabase (Postgres/Auth/Storage/Realtime) + 
 
 ฟิลด์ที่รองรับ: text, number (มี min/max/unit), select, checkbox, pass/fail, photo, barcode/QR, signature, datetime
 
+## สิ่งที่เพิ่มใน Phase 2
+
+- **Workflow อนุมัติ** — ติ๊ก “ต้องผ่านการอนุมัติ” ตอนสร้างฟอร์ม → submission เข้าคิวที่หน้า **อนุมัติ** ให้ owner/admin/designer อนุมัติหรือตีกลับพร้อมเหตุผล
+- **ศูนย์แจ้งเตือน (🔔)** — realtime: แจ้งผู้อนุมัติเมื่อมีงานรอ/พบปัญหา และแจ้งผู้ส่งเมื่อถูกอนุมัติ/ตีกลับ
+- **เชิญสมาชิก + จัดการ role** — หน้า **ทีม**: เชิญด้วยอีเมล (สมัครด้วยอีเมลนั้นแล้วเข้าองค์กรอัตโนมัติ), เปลี่ยน role, นำออก (กัน owner คนสุดท้าย)
+- **Paper view + PDF** — หน้า `/submission/[id]` แสดง submission เป็นเอกสารพร้อมรูป/ลายเซ็น/สถานะอนุมัติ กดพิมพ์หรือบันทึกเป็น PDF ได้
+
+> **สำคัญ:** ถ้าเคยตั้ง Supabase ตาม Phase 1 แล้ว ให้รัน migration เพิ่ม **`0004_workflow_invites_notifications.sql`** ใน SQL Editor
+
 ---
 
 ## ตั้งค่าให้รันได้ (ครั้งแรก ~15 นาที)
@@ -92,8 +101,8 @@ src/app/
 - **owner** (คนสมัคร) / **admin** / **designer** — สร้างและจัดการฟอร์มได้
 - **operator** — กรอกฟอร์มและดู dashboard (การเชิญสมาชิก + เปลี่ยน role เป็นงาน Phase 2)
 
-## ยังไม่มีใน Phase 1 (ดู roadmap ในเอกสาร concept)
-Offline sync, workflow อนุมัติหลายขั้น, เชิญ/จัดการสมาชิกใน UI, export PDF, billing SaaS, ถาม dashboard ด้วยภาษาคน
+## ยังไม่ทำ (roadmap ถัดไป)
+Offline sync, workflow อนุมัติหลายขั้น/กำหนดผู้อนุมัติเฉพาะราย, ส่งอีเมลเชิญจริง (ตอนนี้เชิญแล้วให้สมัครเอง), billing SaaS, ถาม dashboard ด้วยภาษาคน
 
 ---
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
