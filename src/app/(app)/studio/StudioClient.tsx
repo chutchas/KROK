@@ -7,12 +7,16 @@ import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema"
 import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
 import { saveForm, deleteForm } from "./actions";
 import type { FormRow } from "./page";
+import type { ApprovalStep } from "@/lib/approval";
 
-export default function StudioClient({ initialForms }: { initialForms: FormRow[] }) {
+interface Member { user_id: string; name: string; role: string }
+
+export default function StudioClient({ initialForms, members }: { initialForms: FormRow[]; members: Member[] }) {
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<FormSchema | null>(null);
   const [requiresApproval, setRequiresApproval] = useState(false);
+  const [chain, setChain] = useState<ApprovalStep[]>([]);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
@@ -73,8 +77,12 @@ export default function StudioClient({ initialForms }: { initialForms: FormRow[]
 
   async function publish() {
     if (!draft) return;
+    if (requiresApproval && chain.length > 0 && chain.some((s) => !s.user_id)) {
+      setStatus({ t: "มีขั้นอนุมัติที่ยังไม่ได้เลือกผู้อนุมัติ", err: true });
+      return;
+    }
     setBusy("กำลังเผยแพร่");
-    const res = await saveForm(draft, requiresApproval);
+    const res = await saveForm(draft, requiresApproval, requiresApproval ? chain : []);
     setBusy(null);
     if ("error" in res) {
       setStatus({ t: res.error, err: true });
@@ -157,15 +165,49 @@ export default function StudioClient({ initialForms }: { initialForms: FormRow[]
             </div>
           </div>
 
-          <label style={{ display: "flex", gap: 10, alignItems: "flex-start", marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10, cursor: "pointer" }}>
-            <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
-            <span>
-              <b style={{ fontFamily: "var(--font-anuphan)" }}>ต้องผ่านการอนุมัติ</b>
-              <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
-                เมื่อคนหน้างานส่งฟอร์มนี้ จะเข้าคิวรออนุมัติ หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติหรือตีกลับ
+          <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10 }}>
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+              <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
+              <span>
+                <b style={{ fontFamily: "var(--font-anuphan)" }}>ต้องผ่านการอนุมัติ</b>
+                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
+                  เมื่อคนหน้างานส่งฟอร์มนี้ จะเข้าคิวรออนุมัติ ผู้อนุมัติจะได้รับแจ้งเตือนให้อนุมัติหรือตีกลับ
+                </span>
               </span>
-            </span>
-          </label>
+            </label>
+
+            {requiresApproval && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                <div style={{ fontSize: ".88rem", fontWeight: 600, marginBottom: 4 }}>ลำดับผู้อนุมัติ</div>
+                <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "0 0 8px" }}>
+                  {chain.length === 0
+                    ? "ยังไม่กำหนด — ผู้จัดการคนใดก็ได้อนุมัติได้ 1 ขั้น (กด “เพิ่มขั้น” เพื่อกำหนดเฉพาะราย เช่น หัวหน้ากะ → QA → ผู้จัดการ)"
+                    : "งานจะไหลตามลำดับนี้ ทีละขั้น"}
+                </p>
+                {chain.map((s, i) => (
+                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px" }}>ขั้น {i + 1}</span>
+                    <select
+                      value={s.user_id}
+                      onChange={(e) => {
+                        const m = members.find((x) => x.user_id === e.target.value);
+                        setChain((c) => c.map((x, xi) => (xi === i ? { ...x, user_id: e.target.value, name: m?.name || "" } : x)));
+                      }}
+                      style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", flex: 1, minWidth: 140 }}
+                    >
+                      <option value="">— เลือกผู้อนุมัติ —</option>
+                      {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
+                    </select>
+                    <Field value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder="บทบาท เช่น QA" style={{ width: 120, flex: "0 0 auto" }} />
+                    <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px" }}>ลบ</Button>
+                  </div>
+                ))}
+                {chain.length < 6 && (
+                  <Button onClick={() => setChain((c) => [...c, { user_id: "", name: "", label: "" }])} style={{ padding: "8px 14px", fontSize: ".88rem" }}>+ เพิ่มขั้น</Button>
+                )}
+              </div>
+            )}
+          </div>
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <Button variant="primary" onClick={publish} disabled={!!busy}>✅ เผยแพร่ฟอร์มนี้</Button>
             <Button onClick={() => setDraft(null)} disabled={!!busy}>ทิ้งร่างนี้</Button>

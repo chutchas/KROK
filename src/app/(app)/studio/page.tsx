@@ -25,11 +25,17 @@ export default async function StudioPage() {
     );
 
   const supabase = await createClient();
-  const { data } = await supabase
-    .from("forms")
-    .select("id, title, icon, schema")
-    .is("deleted_at", null)
-    .order("created_at", { ascending: false });
+  const [{ data }, { data: memberRows }] = await Promise.all([
+    supabase
+      .from("forms")
+      .select("id, title, icon, schema")
+      .is("deleted_at", null)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("memberships")
+      .select("user_id, name, email, role")
+      .order("created_at", { ascending: true }),
+  ]);
 
   const forms: FormRow[] = (data || []).map((f) => ({
     id: f.id as string,
@@ -39,5 +45,11 @@ export default async function StudioPage() {
     created_by_name: "",
   }));
 
-  return <StudioClient initialForms={forms} />;
+  const members = (memberRows || []).map((m) => ({
+    user_id: m.user_id as string,
+    name: (m.name as string) || (m.email as string) || "สมาชิก",
+    role: m.role as string,
+  }));
+
+  return <StudioClient initialForms={forms} members={members} />;
 }

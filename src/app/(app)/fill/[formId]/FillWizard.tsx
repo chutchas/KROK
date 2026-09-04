@@ -12,6 +12,7 @@ type Props = {
   icon: string;
   version: number;
   requiresApproval: boolean;
+  approvalChain: unknown[];
   schema: FormSchema;
   tenantId: string;
   userId: string;
@@ -174,6 +175,9 @@ export default function FillWizard(props: Props) {
         answers: list,
         duration_s: dur,
         approval_status: props.requiresApproval ? "pending" : "none",
+        approval_chain: props.requiresApproval ? props.approvalChain : [],
+        approval_step: 0,
+        approval_history: [],
       });
       if (subErr) throw subErr;
 

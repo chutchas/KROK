@@ -5,6 +5,8 @@ import Link from "next/link";
 import { Button, Card, Pill, TextArea } from "@/components/ui";
 import { reviewSubmission } from "./actions";
 
+import type { ApprovalStep } from "@/lib/approval";
+
 export interface PendingSub {
   id: string;
   form_title: string;
@@ -14,6 +16,8 @@ export interface PendingSub {
   fails: string[];
   answers: { label: string; display?: string; note?: string; fail?: boolean; type: string }[];
   submitted_at: string;
+  approval_step: number;
+  approval_chain: ApprovalStep[] | unknown[];
 }
 
 function fmt(ts: string) {
@@ -24,7 +28,7 @@ function fmt(ts: string) {
   }
 }
 
-export default function ApprovalsClient({ initial }: { tenantId: string; initial: PendingSub[] }) {
+export default function ApprovalsClient({ initial, isOwner }: { initial: PendingSub[]; myId: string; isOwner: boolean }) {
   const router = useRouter();
   const [subs, setSubs] = useState(initial);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -44,6 +48,12 @@ export default function ApprovalsClient({ initial }: { tenantId: string; initial
     }
     setSubs((prev) => prev.filter((s) => s.id !== id));
     router.refresh();
+  }
+
+  function chainOf(s: PendingSub): ApprovalStep[] {
+    return (Array.isArray(s.approval_chain) ? s.approval_chain : []).filter(
+      (x): x is ApprovalStep => !!x && typeof x === "object" && "user_id" in x
+    );
   }
 
   return (
@@ -72,6 +82,31 @@ export default function ApprovalsClient({ initial }: { tenantId: string; initial
             {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length} ปัญหา</Pill> : <Pill kind="pass">✓ ครบ</Pill>}
           </div>
 
+          {chainOf(s).length > 0 && (
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>
+              {chainOf(s).map((st, i) => {
+                const done = i < (s.approval_step ?? 0);
+                const current = i === (s.approval_step ?? 0);
+                return (
+                  <span key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span style={{
+                      fontSize: ".76rem", padding: "3px 10px", borderRadius: 20,
+                      background: done ? "var(--pass-soft)" : current ? "var(--accent-soft)" : "var(--code-bg)",
+                      color: done ? "var(--pass)" : current ? "var(--accent)" : "var(--ink-3)",
+                      fontWeight: current ? 700 : 500, border: current ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    }}>
+                      {done ? "✓ " : current ? "▶ " : ""}{st.label || `ขั้น ${i + 1}`}: {st.name}
+                    </span>
+                    {i < chainOf(s).length - 1 && <span style={{ color: "var(--ink-3)" }}>→</span>}
+                  </span>
+                );
+              })}
+              {isOwner && chainOf(s)[s.approval_step ?? 0]?.user_id !== undefined && (
+                <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>· owner override ได้</span>
+              )}
+            </div>
+          )}
+
           {s.fails?.length > 0 && (
             <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "8px 12px", margin: "12px 0 0", fontSize: ".85rem", color: "var(--ink-2)" }}>
               {s.fails.map((f, i) => <div key={i}>• {f}</div>)}
@@ -99,7 +134,7 @@ export default function ApprovalsClient({ initial }: { tenantId: string; initial
           />
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <Button variant="primary" onClick={() => act(s.id, "approved")} disabled={!!busy} style={{ flex: 1, background: "var(--pass)", borderColor: "var(--pass)" }}>
-              {busy === s.id + "approved" ? "..." : "✓ อนุมัติ"}
+              {busy === s.id + "approved" ? "..." : chainOf(s).length > 1 && (s.approval_step ?? 0) < chainOf(s).length - 1 ? "✓ อนุมัติ → ส่งต่อขั้นถัดไป" : "✓ อนุมัติ"}
             </Button>
             <Button variant="danger" onClick={() => act(s.id, "rejected")} disabled={!!busy} style={{ flex: 1 }}>
               {busy === s.id + "rejected" ? "..." : "✗ ตีกลับ"}

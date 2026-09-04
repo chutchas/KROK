@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema, countFields, type FormSchema } from "@/lib/form-schema";
+import { sanitizeChain } from "@/lib/approval";
 
 async function audit(
   tenantId: string,
@@ -24,7 +25,8 @@ async function audit(
 
 export async function saveForm(
   rawSchema: unknown,
-  requiresApproval = false
+  requiresApproval = false,
+  rawChain: unknown = []
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -36,6 +38,7 @@ export async function saveForm(
   } catch (e) {
     return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
   }
+  const chain = requiresApproval ? sanitizeChain(rawChain) : [];
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -48,6 +51,7 @@ export async function saveForm(
       schema,
       status: "published",
       requires_approval: requiresApproval,
+      approval_chain: chain,
       created_by: session.userId,
     })
     .select("id")
@@ -58,6 +62,7 @@ export async function saveForm(
     title: schema.title,
     fields: countFields(schema),
     requires_approval: requiresApproval,
+    approval_steps: chain.length,
   });
   revalidatePath("/forms");
   revalidatePath("/studio");

@@ -119,6 +119,33 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           ))}
         </div>
 
+        {/* approval history timeline */}
+        {Array.isArray(sub.approval_history) && sub.approval_history.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 8 }}>ประวัติการอนุมัติ</div>
+            {(sub.approval_history as { step: number; label: string; reviewer_name: string; decision: string; note: string; at: string }[]).map((h, i) => (
+              <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--line)", fontSize: ".86rem" }}>
+                <span aria-hidden>{h.decision === "approved" ? "✓" : "↩"}</span>
+                <div style={{ flex: 1 }}>
+                  <b style={{ color: h.decision === "approved" ? "var(--pass)" : "var(--fail)" }}>
+                    {h.label} — {h.decision === "approved" ? "อนุมัติ" : "ตีกลับ"}
+                  </b>
+                  <span style={{ color: "var(--ink-2)" }}> โดย {h.reviewer_name}</span>
+                  {h.note && <div style={{ color: "var(--ink-2)" }}>“{h.note}”</div>}
+                </div>
+                <span style={{ color: "var(--ink-3)", fontSize: ".76rem", whiteSpace: "nowrap" }}>{fmt(h.at)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* current step (still pending) */}
+        {sub.approval_status === "pending" && Array.isArray(sub.approval_chain) && (sub.approval_chain as unknown[]).length > 0 && (
+          <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "var(--accent-soft)", color: "var(--ink-2)", fontSize: ".86rem" }}>
+            🕒 กำลังรออนุมัติขั้นที่ {(sub.approval_step as number) + 1} จาก {(sub.approval_chain as unknown[]).length}
+          </div>
+        )}
+
         {/* review block */}
         {(sub.approval_status === "approved" || sub.approval_status === "rejected") && (
           <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 10, background: sub.approval_status === "approved" ? "var(--pass-soft)" : "var(--fail-soft)" }}>

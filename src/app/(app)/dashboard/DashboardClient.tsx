@@ -65,6 +65,15 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
 
   return (
     <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>Dashboard</h1>
+        <a
+          href="/api/export/submissions"
+          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none", fontSize: ".9rem", fontWeight: 500 }}
+        >
+          ⬇️ Export CSV (เปิดใน Excel)
+        </a>
+      </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }} className="krok-tiles">
         <Tile v={stats.today} label="ส่งวันนี้" />
         <Tile v={stats.pass} label="ผ่าน" color="var(--pass)" />

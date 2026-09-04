@@ -14,7 +14,7 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
   const supabase = await createClient();
   const { data } = await supabase
     .from("forms")
-    .select("id, title, icon, schema, version, requires_approval")
+    .select("id, title, icon, schema, version, requires_approval, approval_chain")
     .eq("id", formId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -28,6 +28,7 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
       icon={data.icon as string}
       version={(data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
+      approvalChain={(data.approval_chain as unknown[]) || []}
       schema={data.schema as FormSchema}
       tenantId={session.tenantId}
       userId={session.userId}
