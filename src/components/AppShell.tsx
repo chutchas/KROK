@@ -12,15 +12,15 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" };
 
 // เมนูหลัก — เห็นบน navbar ตลอด (งานที่ใช้ประจำ) กรองตามสิทธิ์เมนูของ role
 const PRIMARY: NavEntry[] = [
+  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
   { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
   { href: "/forms", key: "nav.fill", icon: Smartphone, menu: "forms" },
-  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
 ];
 
 // เมนูรอง — อยู่ในเมนู hamburger; ตัวที่กำลังเปิดจะโผล่มาเป็นแท็บ active บน navbar
@@ -61,11 +61,14 @@ export default function AppShell({
   const router = useRouter();
   const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+      if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
@@ -74,6 +77,7 @@ export default function AppShell({
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setMenuOpen(false);
+    setProfileOpen(false);
   }, [path]);
 
   async function signOut() {
@@ -189,7 +193,7 @@ export default function AppShell({
             </Link>
           )}
 
-          <nav style={{ display: "flex", gap: 2, marginLeft: "auto", flexWrap: "wrap" }}>
+          <nav style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
             {navItems.map((n) => {
               const on = path.startsWith(n.href);
               return (
@@ -213,42 +217,66 @@ export default function AppShell({
             })}
           </nav>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
             <ThemeToggle />
             <LanguageToggle />
             <NotificationBell userId={userId} />
-            <Link
-              href="/settings/profile"
-              title={t("nav.profile")}
-              className="inline-flex items-center gap-1.5"
-              style={{
-                fontSize: ".8rem",
-                color: "var(--ink-2)",
-                border: "1px solid var(--line)",
-                borderRadius: 20,
-                padding: "5px 12px",
-                textDecoration: "none",
-              }}
-            >
-              <Icon icon={HardHat} className="h-4 w-4" /> {displayName}
-            </Link>
-            <button
-              onClick={signOut}
-              title={t("nav.signout")}
-              className="inline-flex items-center gap-1.5"
-              style={{
-                fontSize: ".8rem",
-                color: "var(--ink-3)",
-                border: "1px solid var(--line)",
-                borderRadius: 20,
-                padding: "5px 12px",
-                background: "none",
-                cursor: "pointer",
-                fontFamily: "inherit",
-              }}
-            >
-              <Icon icon={LogOut} className="h-4 w-4" /> {t("nav.signout")}
-            </button>
+            <div ref={profileRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setProfileOpen((v) => !v)}
+                title={t("nav.profile")}
+                className="inline-flex items-center gap-1.5"
+                style={{
+                  fontSize: ".8rem",
+                  color: "var(--ink-2)",
+                  border: "1px solid var(--line)",
+                  borderRadius: 20,
+                  padding: "5px 12px",
+                  background: profileOpen ? "var(--accent-soft)" : "var(--surface)",
+                  cursor: "pointer",
+                  fontFamily: "inherit",
+                }}
+              >
+                <Icon icon={HardHat} className="h-4 w-4" /> {displayName}
+                <Icon icon={ChevronDown} className="h-3.5 w-3.5" />
+              </button>
+              {profileOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    right: 0,
+                    minWidth: 200,
+                    background: "var(--surface)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 12,
+                    boxShadow: "var(--shadow)",
+                    padding: 6,
+                    zIndex: 40,
+                  }}
+                >
+                  <div style={{ padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4 }}>
+                    <b style={{ fontSize: ".88rem", display: "block" }}>{displayName}</b>
+                    <small style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tenantName}</small>
+                  </div>
+                  <Link
+                    href="/settings/profile"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex items-center gap-2.5"
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", textDecoration: "none", color: "var(--ink)" }}
+                  >
+                    <Icon icon={HardHat} className="h-[18px] w-[18px]" /> {t("nav.profile")}
+                  </Link>
+                  <button
+                    onClick={signOut}
+                    className="inline-flex items-center gap-2.5"
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", textAlign: "left", border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    <Icon icon={LogOut} className="h-[18px] w-[18px]" /> {t("nav.signout")}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

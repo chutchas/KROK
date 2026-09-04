@@ -150,6 +150,72 @@ export async function updateForm(
   return { id: data.id as string };
 }
 
+export async function saveDraft(
+  rawSchema: unknown,
+  requiresApproval = false,
+  rawChain: unknown = [],
+  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] }
+): Promise<{ id: string } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์สร้างฟอร์ม" };
+
+  let schema: FormSchema;
+  try {
+    schema = sanitizeSchema(rawSchema);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
+  }
+  const chain = requiresApproval ? sanitizeChain(rawChain) : [];
+  const vis = sanitizeVisibility(rawVisibility);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forms")
+    .insert({
+      tenant_id: session.tenantId,
+      title: schema.title,
+      icon: schema.icon,
+      description: schema.description,
+      schema,
+      status: "draft",
+      requires_approval: requiresApproval,
+      approval_chain: chain,
+      visibility: vis.mode,
+      visible_teams: vis.teamIds,
+      visible_users: vis.userIds,
+      created_by: session.userId,
+    })
+    .select("id")
+    .single();
+  if (error) return { error: error.message };
+  await audit(session.tenantId, session.userId, "form.draft", data.id, { title: schema.title });
+  revalidatePath("/studio");
+  return { id: data.id as string };
+}
+
+export async function setFormStatus(
+  id: string,
+  status: "draft" | "published" | "archived"
+): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!["draft", "published", "archived"].includes(status)) return { error: "สถานะไม่ถูกต้อง" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("forms")
+    .update({ status, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("tenant_id", session.tenantId);
+  if (error) return { error: error.message };
+  await audit(session.tenantId, session.userId, "form.status", id, { status });
+  revalidatePath("/studio");
+  revalidatePath("/forms");
+  return { ok: true };
+}
+
 export async function deleteForm(id: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };

@@ -1,38 +1,61 @@
 "use client";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, TextArea, Field, Notice, Spinner } from "@/components/ui";
+import { Button, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Eye, Pencil, Save, CheckCircle2, Tag, HardHat } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
+import FormPaperView from "@/components/FormPaperView";
 import FormEditor from "@/components/FormEditor";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
-import { saveForm, updateForm, deleteForm } from "./actions";
+import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 
 interface Member { user_id: string; name: string; role: string }
 interface Team { id: string; name: string }
 type VisMode = "all" | "teams" | "users";
+type ViewMode = "mobile" | "paper" | "edit";
 
 export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
   const { t, tt } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
+  const [createMode, setCreateMode] = useState<"prompt" | "file">("prompt");
   const [draft, setDraft] = useState<FormSchema | null>(null);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [chain, setChain] = useState<ApprovalStep[]>([]);
   const [visMode, setVisMode] = useState<VisMode>("all");
   const [visTeams, setVisTeams] = useState<string[]>([]);
   const [visUsers, setVisUsers] = useState<string[]>([]);
-  const [editMode, setEditMode] = useState(false);
+  const [view, setView] = useState<ViewMode>("mobile");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
+  const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  async function saveAsDraft() {
+    if (!draft) return;
+    setBusy(t("studio.busyPublish"));
+    const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
+    const res = editingId
+      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility)
+      : await saveDraft(draft, requiresApproval, requiresApproval ? chain : [], visibility);
+    setBusy(null);
+    if ("error" in res) { setStatus({ t: res.error, err: true }); return; }
+    resetDraft();
+    router.refresh();
+  }
+
+  async function changeStatus(id: string, s: "published" | "archived" | "draft") {
+    const res = await setFormStatus(id, s);
+    if ("error" in res) alert(res.error);
+    else router.refresh();
+  }
 
   async function callGenerate(payload: Record<string, unknown>, busyMsg: string) {
     setBusy(busyMsg);
@@ -121,7 +144,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setDraft(null);
     setPrompt("");
     setEditingId(null);
-    setEditMode(false);
+    setView("mobile");
     setRequiresApproval(false);
     setChain([]);
     setVisMode("all");
@@ -133,7 +156,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   function editExisting(f: FormRow) {
     setDraft(f.schema);
     setEditingId(f.id);
-    setEditMode(true);
+    setView("edit");
     setRequiresApproval(f.requires_approval);
     setChain(f.approval_chain || []);
     setVisMode(f.visibility || "all");
@@ -153,38 +176,69 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <Card>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h2>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>
-          {t("studio.subtitle")}
-        </p>
-        <TextArea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder={t("studio.promptPlaceholder")}
-        />
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0" }}>
-          {CHIP_PROMPTS.map((p) => (
-            <button
-              key={p}
-              onClick={() => setPrompt(p)}
-              style={{ fontSize: ".8rem", padding: "5px 12px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}
-            >
-              {p}
-            </button>
-          ))}
-        </div>
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Button variant="primary" onClick={generate} disabled={!!busy}>
-            <Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.generate")}
-          </Button>
-          <Button onClick={() => fileRef.current?.click()} disabled={!!busy}>
-            <Icon icon={FileUp} className="h-4 w-4" /> {t("studio.upload")}
-          </Button>
-          <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
-          <Button onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setStatus(null); }} disabled={!!busy}> 
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h2>
+            <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.subtitle")}</p>
+          </div>
+          <button
+            onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setStatus(null); setView("mobile"); }}
+            disabled={!!busy}
+            style={{ background: "none", border: "none", color: "var(--brand-ink)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", flex: "0 0 auto" }}
+          >
             {t("studio.sample")}
-          </Button>
+          </button>
         </div>
+
+        {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
+        <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
+          {(["prompt", "file"] as const).map((m) => {
+            const on = createMode === m;
+            return (
+              <button
+                key={m}
+                onClick={() => setCreateMode(m)}
+                className="inline-flex items-center gap-1.5"
+                style={{ padding: "9px 16px", border: "none", borderLeft: m === "file" ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}
+              >
+                <Icon icon={m === "prompt" ? Sparkles : FileUp} className="h-4 w-4" /> {m === "prompt" ? t("studio.modePrompt") : t("studio.modeFile")}
+              </button>
+            );
+          })}
+        </div>
+
+        {createMode === "prompt" ? (
+          <div>
+            <TextArea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")} />
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0" }}>
+              {CHIP_PROMPTS.map((p) => (
+                <button key={p} onClick={() => setPrompt(p)} style={{ fontSize: ".8rem", padding: "5px 12px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}>
+                  {p}
+                </button>
+              ))}
+            </div>
+            <Button variant="primary" onClick={generate} disabled={!!busy}>
+              <Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.generate")}
+            </Button>
+          </div>
+        ) : (
+          <div>
+            <button
+              onClick={() => fileRef.current?.click()}
+              disabled={!!busy}
+              style={{ width: "100%", border: "2px dashed var(--line)", borderRadius: 12, background: "var(--surface-2)", padding: "28px 16px", cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--ink-2)" }}
+            >
+              <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon icon={FileUp} className="h-6 w-6" />
+              </span>
+              <b style={{ fontFamily: "var(--font-anuphan)", color: "var(--ink)" }}>{t("studio.fileDrop")}</b>
+              <span style={{ fontSize: ".82rem" }}>{t("studio.fileHint")}</span>
+            </button>
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
+            <p style={{ color: "var(--ink-3)", fontSize: ".78rem", marginTop: 8 }}>{t("studio.pdfNote")}</p>
+          </div>
+        )}
+
         {busy && (
           <Notice>
             <Spinner /> {busy} — {t("studio.aiWait")}
@@ -204,33 +258,40 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
             </div>
-            <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
-              <button
-                onClick={() => setEditMode(false)}
-                className="inline-flex items-center gap-1.5"
-                style={{ padding: "7px 14px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: editMode ? "var(--surface)" : "var(--accent-soft)", color: editMode ? "var(--ink-2)" : "var(--accent)", fontWeight: editMode ? 400 : 600 }}
-              >
-                <Icon icon={Eye} className="h-4 w-4" /> {t("studio.preview")}
-              </button>
-              <button
-                onClick={() => setEditMode(true)}
-                className="inline-flex items-center gap-1.5"
-                style={{ padding: "7px 14px", border: "none", borderLeft: "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: editMode ? "var(--accent-soft)" : "var(--surface)", color: editMode ? "var(--accent)" : "var(--ink-2)", fontWeight: editMode ? 600 : 400 }}
-              >
-                <Icon icon={Pencil} className="h-4 w-4" /> {t("studio.editFields")}
-              </button>
+            <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto", flexWrap: "wrap" }}>
+              {([
+                { m: "mobile" as ViewMode, icon: Smartphone, label: t("studio.viewMobile") },
+                { m: "paper" as ViewMode, icon: FileText, label: t("studio.viewPaper") },
+                { m: "edit" as ViewMode, icon: Pencil, label: t("studio.editFields") },
+              ]).map((v, i) => {
+                const on = view === v.m;
+                return (
+                  <button
+                    key={v.m}
+                    onClick={() => setView(v.m)}
+                    className="inline-flex items-center gap-1.5"
+                    style={{ padding: "7px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
+                  >
+                    <Icon icon={v.icon} className="h-4 w-4" /> {v.label}
+                  </button>
+                );
+              })}
             </div>
           </div>
 
-          {editMode ? (
+          {view === "edit" ? (
             <div style={{ marginTop: 12 }}>
-              <FormEditor
-                value={draft}
-                onChange={(s) => setDraft(s)}
-              />
+              <FormEditor value={draft} onChange={(s) => setDraft(s)} />
             </div>
+          ) : view === "paper" ? (
+            <FormPaperView schema={draft} />
           ) : (
-            <FormPreview schema={draft} />
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+              <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
+                <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
+                <FormPreview schema={draft} />
+              </div>
+            </div>
           )}
 
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
@@ -345,29 +406,51 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <Button variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</Button>
+            {!editingId && <Button onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</Button>}
             <Button onClick={resetDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.publishedTitle")}</h2>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>
-          {t("studio.publishedSub")}
-        </p>
+        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "10px 0 14px" }}>
+          {(["all", "published", "draft", "archived"] as const).map((k) => {
+            const on = listFilter === k;
+            const n = k === "all" ? initialForms.length : initialForms.filter((f) => f.status === k).length;
+            const label = k === "all" ? t("studio.stAll") : k === "published" ? t("studio.stPublished") : k === "draft" ? t("studio.stDraft") : t("studio.stArchived");
+            return (
+              <button key={k} onClick={() => setListFilter(k)}
+                style={{ padding: "6px 13px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                {label} ({n})
+              </button>
+            );
+          })}
+        </div>
+
         <div style={{ display: "grid", gap: 10 }}>
           {initialForms.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("studio.emptyForms")}</span>}
-          {initialForms.map((f) => (
-            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--surface)" }}>
+          {initialForms.filter((f) => listFilter === "all" || f.status === listFilter).map((f) => (
+            <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--surface)", flexWrap: "wrap" }}>
               <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>{f.icon}</div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>
+              <div style={{ flex: 1, minWidth: 140 }}>
+                <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>{" "}
+                {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="fail">{t("studio.stArchived")}</Pill>}
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
                   {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
                 </small>
               </div>
               <Button onClick={() => editExisting(f)}><Icon icon={Pencil} className="h-4 w-4" /> {t("common.edit")}</Button>
-              <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
+              {f.status === "published" ? (
+                <>
+                  <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
+                  <Button onClick={() => changeStatus(f.id, "archived")}>{t("studio.cancelForm")}</Button>
+                </>
+              ) : (
+                <Button variant="primary" onClick={() => changeStatus(f.id, "published")}><Icon icon={CheckCircle2} className="h-4 w-4" /> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</Button>
+              )}
               <Button variant="danger" onClick={() => onDelete(f.id, f.title)}>{t("common.delete")}</Button>
             </div>
           ))}

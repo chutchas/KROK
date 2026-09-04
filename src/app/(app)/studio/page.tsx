@@ -17,6 +17,7 @@ export interface FormRow {
   visibility: "all" | "teams" | "users";
   visible_teams: string[];
   visible_users: string[];
+  status: "draft" | "published" | "archived";
 }
 
 export default async function StudioPage() {
@@ -33,7 +34,7 @@ export default async function StudioPage() {
   const [{ data }, { data: memberRows }, { data: teamRows }] = await Promise.all([
     supabase
       .from("forms")
-      .select("id, title, icon, schema, requires_approval, approval_chain, visibility, visible_teams, visible_users")
+      .select("id, title, icon, schema, requires_approval, approval_chain, visibility, visible_teams, visible_users, status")
       .eq("tenant_id", session.tenantId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -60,6 +61,7 @@ export default async function StudioPage() {
     visibility: (f.visibility as FormRow["visibility"]) ?? "all",
     visible_teams: (f.visible_teams as string[]) ?? [],
     visible_users: (f.visible_users as string[]) ?? [],
+    status: (f.status as FormRow["status"]) ?? "published",
   }));
 
   const members = (memberRows || []).map((m) => ({
