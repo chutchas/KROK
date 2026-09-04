@@ -22,7 +22,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 8MB" }, { status: 400 });
 
     const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const schema = await formFromImage(b64, file.type);
+    const schema = await formFromImage(session.tenantId, b64, file.type);
     return NextResponse.json({ schema });
   } catch (e) {
     console.error("ai/from-image", e);

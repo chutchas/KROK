@@ -20,7 +20,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
 
     const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const result = await checkPhoto(b64, file.type, hint, label);
+    const result = await checkPhoto(session.tenantId, b64, file.type, hint, label);
     return NextResponse.json(result);
   } catch (e) {
     console.error("ai/check-photo", e);

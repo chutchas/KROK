@@ -10,6 +10,7 @@ const NAV = [
   { href: "/approvals", label: "อนุมัติ", icon: "✅", manage: true },
   { href: "/dashboard", label: "Dashboard", icon: "📊", manage: false },
   { href: "/settings/team", label: "ทีม", icon: "👥", manage: true },
+  { href: "/settings/ai", label: "AI", icon: "🤖", manage: true },
 ];
 
 export default function AppShell({

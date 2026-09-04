@@ -59,7 +59,11 @@ cp .env.example .env.local
 ```
 แก้ค่าใน `.env.local`:
 - `NEXT_PUBLIC_SUPABASE_URL` และ `NEXT_PUBLIC_SUPABASE_ANON_KEY` → เอาจาก Supabase **Project Settings → API**
-- `ANTHROPIC_API_KEY` → เอาจาก https://console.anthropic.com/settings/keys
+- `SUPABASE_SERVICE_ROLE_KEY` → เอาจาก Supabase **Project Settings → API → service_role** (ฝั่ง server เท่านั้น จำเป็นสำหรับตั้งค่า AI จากหน้าเว็บ)
+
+**LLM (AI):** ไม่ต้องใส่คีย์ AI ใน env แล้ว — หลังล็อกอินเป็น owner/admin ไปที่ **Settings → AI** เลือก provider (Qwen / OpenAI / Azure / Anthropic) ใส่คีย์ แล้วกดบันทึก มีผลทันทีไม่ต้อง redeploy (ตั้งค่าแยกต่อองค์กร คีย์เก็บฝั่ง server ปลอดภัย)
+> ⚠️ ต้องเลือกรุ่นที่ **ดูรูปได้ (vision)** เช่น `qwen-vl-max`, `gpt-4o` — ไม่งั้นฟีเจอร์อ่านฟอร์มจากรูป/ตรวจรูปจะใช้ไม่ได้
+> (ถ้าอยากตั้ง default กลางผ่าน env ก็ยังทำได้ ดู `.env.example`)
 
 ### 5) รัน
 ```bash
@@ -73,7 +77,7 @@ npm run dev
 
 ## Deploy ขึ้น Vercel
 1. เข้า https://vercel.com → **Add New → Project** → เลือก repo `chutchas/KROK`
-2. ใส่ Environment Variables 3 ตัวเดียวกับ `.env.local` (URL, ANON_KEY, ANTHROPIC_API_KEY)
+2. ใส่ Environment Variables: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (ทั้งสองตั้งเป็น Config ได้), และ `SUPABASE_SERVICE_ROLE_KEY` (Secret) — ส่วนคีย์ LLM ตั้งจากหน้า Settings → AI ในเว็บ
 3. Deploy — Vercel จะ build และให้ URL มา
 4. กลับไปที่ Supabase → **Authentication → URL Configuration** ใส่ Vercel URL ใน Site URL / Redirect URLs
 
