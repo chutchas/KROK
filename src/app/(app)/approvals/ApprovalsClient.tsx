@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Pill, TextArea } from "@/components/ui";
 import { reviewSubmission } from "./actions";
+import { useT } from "@/i18n/LanguageProvider";
 
 import type { ApprovalStep } from "@/lib/approval";
 
@@ -29,6 +30,7 @@ function fmt(ts: string) {
 }
 
 export default function ApprovalsClient({ initial, isOwner }: { initial: PendingSub[]; myId: string; isOwner: boolean }) {
+  const { t, tt } = useT();
   const router = useRouter();
   const [subs, setSubs] = useState(initial);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -59,9 +61,9 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>รออนุมัติ</h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("appr.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-          {subs.length ? `มี ${subs.length} รายการรอการอนุมัติ` : "ไม่มีรายการค้างอนุมัติ"}
+          {subs.length ? tt("appr.count", { n: subs.length }) : t("appr.none")}
         </p>
       </div>
 

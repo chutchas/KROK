@@ -3,10 +3,13 @@ import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
+import { useT } from "@/i18n/LanguageProvider";
+import LanguageToggle from "@/components/LanguageToggle";
 
 export default function LoginForm() {
   const router = useRouter();
   const params = useSearchParams();
+  const { t } = useT();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -28,7 +31,7 @@ export default function LoginForm() {
           options: { data: { org_name: org, display_name: name } },
         });
         if (error) throw error;
-        setMsg({ t: "สมัครสำเร็จ! ถ้าระบบตั้งค่าให้ยืนยันอีเมล กรุณาเช็คกล่องจดหมาย แล้วกลับมาเข้าสู่ระบบ" });
+        setMsg({ t: t("login.signupOk") });
         setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -46,33 +49,32 @@ export default function LoginForm() {
   return (
     <div style={{ maxWidth: 400, margin: "0 auto", padding: "56px 20px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
-        <div className="hazard" style={{ width: 40, height: 40, borderRadius: 8 }} />
-        <div>
+        <div className="hazard" style={{ width: 40, height: 40, borderRadius: 9 }} />
+        <div style={{ flex: 1 }}>
           <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.6rem" }}>KROK</div>
-          <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>ฟอร์มดิจิทัลหน้างาน</div>
+          <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("login.tagline")}</div>
         </div>
+        <LanguageToggle />
       </div>
 
       <Card>
         <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>
-          {mode === "signin" ? "เข้าสู่ระบบ" : "สร้างองค์กรใหม่"}
+          {mode === "signin" ? t("login.signin") : t("login.signupTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>
-          {mode === "signin"
-            ? "เข้าใช้งานด้วยอีเมลของคุณ"
-            : "สมัครแล้วระบบจะสร้าง workspace ให้อัตโนมัติ คุณเป็นเจ้าของ"}
+          {mode === "signin" ? t("login.signinHint") : t("login.signupHint")}
         </p>
 
         <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
           {mode === "signup" && (
             <>
-              <Field placeholder="ชื่อองค์กร / บริษัท" value={org} onChange={(e) => setOrg(e.target.value)} required />
-              <Field placeholder="ชื่อของคุณ" value={name} onChange={(e) => setName(e.target.value)} required />
+              <Field placeholder={t("login.org")} value={org} onChange={(e) => setOrg(e.target.value)} required />
+              <Field placeholder={t("login.name")} value={name} onChange={(e) => setName(e.target.value)} required />
             </>
           )}
           <Field
             type="email"
-            placeholder="อีเมล"
+            placeholder={t("login.email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
@@ -80,7 +82,7 @@ export default function LoginForm() {
           />
           <Field
             type="password"
-            placeholder="รหัสผ่าน (อย่างน้อย 6 ตัว)"
+            placeholder={t("login.password")}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
@@ -88,7 +90,7 @@ export default function LoginForm() {
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
           />
           <Button variant="primary" type="submit" disabled={busy} style={{ padding: 13 }}>
-            {busy ? "กำลังดำเนินการ..." : mode === "signin" ? "เข้าสู่ระบบ" : "สมัครและสร้างองค์กร"}
+            {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : t("login.doSignup")}
           </Button>
         </form>
 
@@ -109,7 +111,7 @@ export default function LoginForm() {
             fontSize: ".88rem",
           }}
         >
-          {mode === "signin" ? "ยังไม่มีบัญชี? สร้างองค์กรใหม่" : "มีบัญชีอยู่แล้ว? เข้าสู่ระบบ"}
+          {mode === "signin" ? t("login.toSignup") : t("login.toSignin")}
         </button>
       </Card>
     </div>

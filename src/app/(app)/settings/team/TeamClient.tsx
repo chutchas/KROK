@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { inviteMember, cancelInvite, changeRole, removeMember } from "./actions";
+import { useT } from "@/i18n/LanguageProvider";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 export interface Member {
@@ -47,6 +48,7 @@ export default function TeamClient({
   invites: Invite[];
 }) {
   const router = useRouter();
+  const { tt } = useT();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("operator");
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
@@ -76,7 +78,7 @@ export default function TeamClient({
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ทีมของ {tenantName}</h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{tt("team.title", { name: tenantName })}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>จัดการสมาชิกและสิทธิ์การใช้งาน</p>
       </div>
 

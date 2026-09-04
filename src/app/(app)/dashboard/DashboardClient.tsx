@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, Pill } from "@/components/ui";
+import { useT } from "@/i18n/LanguageProvider";
 
 export interface AnswerItem {
   label: string;
@@ -34,6 +35,7 @@ function fmt(ts: string) {
 const todayKey = () => new Date().toLocaleDateString("sv");
 
 export default function DashboardClient({ tenantId, initial }: { tenantId: string; initial: SubRow[] }) {
+  const { t } = useT();
   const [subs, setSubs] = useState<SubRow[]>(initial);
   const [open, setOpen] = useState<SubRow | null>(null);
 
@@ -66,31 +68,29 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>Dashboard</h1>
+        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
         <a
           href="/api/export/submissions"
           style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none", fontSize: ".9rem", fontWeight: 500 }}
         >
-          ⬇️ Export CSV (เปิดใน Excel)
+          ⬇️ {t("dash.export")}
         </a>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }} className="krok-tiles">
-        <Tile v={stats.today} label="ส่งวันนี้" />
-        <Tile v={stats.pass} label="ผ่าน" color="var(--pass)" />
-        <Tile v={stats.fail} label="ไม่ผ่าน / พบปัญหา" color="var(--fail)" />
-        <Tile v={stats.rate == null ? "–" : stats.rate + "%"} label="อัตราผ่าน" />
+        <Tile v={stats.today} label={t("dash.today")} />
+        <Tile v={stats.pass} label={t("dash.pass")} color="var(--pass)" />
+        <Tile v={stats.fail} label={t("dash.fail")} color="var(--fail)" />
+        <Tile v={stats.rate == null ? "–" : stats.rate + "%"} label={t("dash.rate")} />
       </div>
 
       <Card>
         <h2 style={{ fontSize: "1.15rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--pass)" }} />
-          รายการล่าสุด (realtime)
+          {t("dash.latest")}
         </h2>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>
-          อัปเดตทันทีเมื่อมีคน submit จากหน้างาน
-        </p>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("dash.latestSub")}</p>
         <div>
-          {subs.length === 0 && <span style={{ color: "var(--ink-3)" }}>ยังไม่มีข้อมูล — ลองกรอกฟอร์มดู</span>}
+          {subs.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("dash.empty")}</span>}
           {subs.map((s) => (
             <div
               key={s.id}
@@ -103,10 +103,10 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at)}</small>
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {s.approval_status === "pending" && <Pill kind="na">🕒 รออนุมัติ</Pill>}
-                {s.approval_status === "approved" && <Pill kind="pass">อนุมัติแล้ว</Pill>}
-                {s.approval_status === "rejected" && <Pill kind="fail">ตีกลับ</Pill>}
-                {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length} ปัญหา</Pill> : s.result === "pass" ? <Pill kind="pass">✓ ผ่าน</Pill> : <Pill kind="na">ส่งแล้ว</Pill>}
+                {s.approval_status === "pending" && <Pill kind="na">🕒 {t("dash.pending")}</Pill>}
+                {s.approval_status === "approved" && <Pill kind="pass">{t("dash.approved")}</Pill>}
+                {s.approval_status === "rejected" && <Pill kind="fail">{t("dash.rejected")}</Pill>}
+                {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length}</Pill> : s.result === "pass" ? <Pill kind="pass">✓ {t("dash.passed")}</Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
               </div>
             </div>
           ))}

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
+import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 
 type Answer = { value?: string | string[]; note?: string; ai?: string };
@@ -59,6 +60,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 
 export default function FillWizard(props: Props) {
   const { schema } = props;
+  const { t } = useT();
   const router = useRouter();
   const supabase = createClient();
   const [idx, setIdx] = useState(0);
@@ -91,7 +93,7 @@ export default function FillWizard(props: Props) {
       else if (f.type === "checkbox") miss = !(Array.isArray(a.value) && a.value.length);
       else miss = a.value == null || a.value === "";
       if (miss) {
-        errs[f.id] = "จำเป็นต้องกรอกข้อนี้";
+        errs[f.id] = t("fill.required");
         continue;
       }
       if (f.type === "pass_fail" && a.value === "fail" && f.on_fail_require_note && !a.note?.trim())
@@ -222,9 +224,9 @@ export default function FillWizard(props: Props) {
         <div style={{ fontSize: "3rem" }}>{done.pending ? "🕒" : done.result === "pass" ? "✅" : "⚠️"}</div>
         <h2 style={{ margin: "10px 0 4px" }}>
           {done.pending
-            ? "ส่งแล้ว — รอการอนุมัติ"
+            ? t("fill.donePending")
             : done.result === "pass"
-            ? "ส่งข้อมูลเรียบร้อย"
+            ? t("fill.doneOk")
             : `ส่งแล้ว — พบปัญหา ${done.fails.length} รายการ`}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>
@@ -238,8 +240,8 @@ export default function FillWizard(props: Props) {
           </div>
         )}
         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
-          <Button variant="primary" onClick={() => router.push("/forms")}>กลับหน้ารายการ</Button>
-          <Button onClick={() => router.push("/dashboard")}>ดู Dashboard</Button>
+          <Button variant="primary" onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
+          <Button onClick={() => router.push("/dashboard")}>{t("fill.viewDash")}</Button>
         </div>
       </div>
     );
@@ -249,7 +251,7 @@ export default function FillWizard(props: Props) {
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
         <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
-        <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>ออก</Button>
+        <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>
       </div>
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>
@@ -295,13 +297,13 @@ export default function FillWizard(props: Props) {
       ))}
 
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-        {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>← ก่อนหน้า</Button>}
+        {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>{t("fill.prev")}</Button>}
         <Button variant="primary" onClick={next} disabled={submitting} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
-          {submitting ? "กำลังส่ง..." : idx === schema.steps.length - 1 ? "✅ ส่งข้อมูล" : "ถัดไป →"}
+          {submitting ? t("fill.submitting") : idx === schema.steps.length - 1 ? t("fill.submit") : t("fill.next")}
         </Button>
       </div>
       <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
-        🔒 ล็อคลำดับขั้นตอน — ต้องกรอก step นี้ครบก่อนไปต่อ
+        {t("fill.locked")}
       </div>
     </div>
   );

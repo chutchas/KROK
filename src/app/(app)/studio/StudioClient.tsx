@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner } from "@/components/ui";
+import { useT } from "@/i18n/LanguageProvider";
 import FormPreview from "@/components/FormPreview";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
@@ -12,6 +13,7 @@ import type { ApprovalStep } from "@/lib/approval";
 interface Member { user_id: string; name: string; role: string }
 
 export default function StudioClient({ initialForms, members }: { initialForms: FormRow[]; members: Member[] }) {
+  const { t } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<FormSchema | null>(null);
@@ -104,9 +106,9 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <Card>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>สร้างฟอร์มใหม่ด้วย AI</h2>
+        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>
-          พิมพ์บอกว่าอยากได้ฟอร์มตรวจอะไร — AI จะร่างขั้นตอน ฟิลด์ tooltip และตัวอย่างให้ครบ แล้วคุณปรับแก้ก่อนเผยแพร่
+          {t("studio.subtitle")}
         </p>
         <TextArea
           value={prompt}
@@ -126,14 +128,14 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Button variant="primary" onClick={generate} disabled={!!busy}>
-            ✨ สร้างด้วย AI
+            {t("studio.generate")}
           </Button>
           <Button onClick={() => fileRef.current?.click()} disabled={!!busy}>
-            📄 อัพโหลดฟอร์มเดิม (รูป/สแกน)
+            {t("studio.upload")}
           </Button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
-          <Button onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setStatus(null); }} disabled={!!busy}>
-            ใช้ฟอร์มตัวอย่าง
+          <Button onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setStatus(null); }} disabled={!!busy}> 
+            {t("studio.sample")}
           </Button>
         </div>
         {busy && (
@@ -209,16 +211,16 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
             )}
           </div>
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <Button variant="primary" onClick={publish} disabled={!!busy}>✅ เผยแพร่ฟอร์มนี้</Button>
-            <Button onClick={() => setDraft(null)} disabled={!!busy}>ทิ้งร่างนี้</Button>
+            <Button variant="primary" onClick={publish} disabled={!!busy}>{t("studio.publish")}</Button>
+            <Button onClick={() => setDraft(null)} disabled={!!busy}>{t("studio.discard")}</Button>
           </div>
         </Card>
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>ฟอร์มที่เผยแพร่แล้ว</h2>
+        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.publishedTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>
-          คนหน้างานเห็นฟอร์มเหล่านี้ในแท็บ “กรอกฟอร์ม”
+          {t("studio.publishedSub")}
         </p>
         <div style={{ display: "grid", gap: 10 }}>
           {initialForms.length === 0 && <span style={{ color: "var(--ink-3)" }}>ยังไม่มีฟอร์ม — สร้างด้านบนได้เลย</span>}
@@ -231,7 +233,7 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
                   {f.schema.steps.length} ขั้นตอน · {countFields(f.schema)} ฟิลด์
                 </small>
               </div>
-              <Button onClick={() => router.push(`/fill/${f.id}`)}>เปิดกรอก</Button>
+              <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
               <Button variant="danger" onClick={() => onDelete(f.id, f.title)}>ลบ</Button>
             </div>
           ))}
