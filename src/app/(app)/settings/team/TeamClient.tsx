@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Notice } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { HardHat, Tag } from "lucide-react";
 import { inviteMember, cancelInvite, changeRole, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -132,7 +134,7 @@ export default function TeamClient({
             const canEditThis = m.role === "owner" ? canOwner : true;
             return (
               <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
-                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>👷</div>
+                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}><Icon icon={HardHat} className="h-[18px] w-[18px]" /></div>
                 <div style={{ flex: 1, minWidth: 140 }}>
                   <b style={{ fontSize: ".92rem" }}>{m.name || m.email || "สมาชิก"} {isMe && <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(คุณ)</span>}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{m.email}</small>
@@ -236,7 +238,7 @@ function TeamsSection({
         {teams.map((team) => (
           <div key={team.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>🏷️</div>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}><Icon icon={Tag} className="h-4 w-4" /></div>
               <div style={{ flex: 1, minWidth: 120 }}>
                 <b style={{ fontSize: ".95rem" }}>{team.name}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{tt2(t("team.memberCount"), team.memberIds.length)}</small>

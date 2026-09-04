@@ -1,4 +1,6 @@
 "use client";
+import { Lightbulb, Lock } from "lucide-react";
+import Icon from "@/components/Icon";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 
 function FieldCard({ f }: { f: FormField }) {
@@ -23,8 +25,8 @@ function FieldCard({ f }: { f: FormField }) {
         </span>
       </div>
       {f.tooltip && (
-        <div style={{ fontSize: ".83rem", color: "var(--ink-2)", background: "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0 4px", display: "flex", gap: 7 }}>
-          <span aria-hidden>💡</span>
+        <div style={{ fontSize: ".83rem", color: "var(--ink-2)", background: "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0 4px", display: "flex", gap: 7, alignItems: "flex-start" }}>
+          <span aria-hidden style={{ color: "var(--amber)", marginTop: 1 }}><Icon icon={Lightbulb} className="h-4 w-4" /></span>
           <span>{f.tooltip}</span>
         </div>
       )}
@@ -71,7 +73,7 @@ export default function FormPreview({ schema }: { schema: FormSchema }) {
         </div>
       ))}
       <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
-        🔒 โหมดกรอกจริงจะล็อคลำดับ — ต้องทำ step ก่อนหน้าให้ครบจึงไปต่อได้
+        <Icon icon={Lock} className="h-3.5 w-3.5" /> โหมดกรอกจริงจะล็อคลำดับ — ต้องทำ step ก่อนหน้าให้ครบจึงไปต่อได้
       </div>
     </div>
   );

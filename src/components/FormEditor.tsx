@@ -1,6 +1,8 @@
 "use client";
 import { useState } from "react";
 import { Field } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { ArrowUp, ArrowDown, Trash2, Settings2, ChevronUp, Plus, X } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import {
   FIELD_TYPES,
@@ -50,7 +52,8 @@ export default function FormEditor({
 
   const iconBtn: React.CSSProperties = {
     width: 30, height: 30, borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)",
-    color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", padding: 0, lineHeight: 1,
+    color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", padding: 0, lineHeight: 1,
+    display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto",
   };
   const sel: React.CSSProperties = {
     padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
@@ -81,8 +84,8 @@ export default function FormEditor({
               {t("editor.step")} {si + 1}
             </span>
             <Field value={step.title} onChange={(e) => patchStep(si, { title: e.target.value })} style={{ flex: 1 }} placeholder={t("editor.stepTitle")} />
-            <button style={iconBtn} title={t("editor.moveUp")} disabled={si === 0} onClick={() => setSteps(move(value.steps, si, -1))}>↑</button>
-            <button style={iconBtn} title={t("editor.moveDown")} disabled={si === value.steps.length - 1} onClick={() => setSteps(move(value.steps, si, 1))}>↓</button>
+            <button style={iconBtn} title={t("editor.moveUp")} disabled={si === 0} onClick={() => setSteps(move(value.steps, si, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
+            <button style={iconBtn} title={t("editor.moveDown")} disabled={si === value.steps.length - 1} onClick={() => setSteps(move(value.steps, si, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
             <button
               style={{ ...iconBtn, color: "var(--fail)" }}
               title={t("editor.deleteStep")}
@@ -92,7 +95,7 @@ export default function FormEditor({
                 setSteps(value.steps.filter((_, i) => i !== si));
               }}
             >
-              🗑
+              <Icon icon={Trash2} className="h-4 w-4" />
             </button>
           </div>
 
@@ -112,10 +115,10 @@ export default function FormEditor({
                       <input type="checkbox" checked={field.required} onChange={(e) => patchField(si, fi, { required: e.target.checked })} style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
                       {t("editor.required")}
                     </label>
-                    <button style={iconBtn} title={t("editor.more")} onClick={() => setOpenField(isOpen ? null : field.id)}>{isOpen ? "▲" : "⚙"}</button>
-                    <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStep(si, { fields: move(step.fields, fi, -1) })}>↑</button>
-                    <button style={iconBtn} title={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStep(si, { fields: move(step.fields, fi, 1) })}>↓</button>
-                    <button style={{ ...iconBtn, color: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => patchStep(si, { fields: step.fields.filter((_, i) => i !== fi) })}>🗑</button>
+                    <button style={iconBtn} title={t("editor.more")} onClick={() => setOpenField(isOpen ? null : field.id)}><Icon icon={isOpen ? ChevronUp : Settings2} className="h-4 w-4" /></button>
+                    <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStep(si, { fields: move(step.fields, fi, -1) })}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
+                    <button style={iconBtn} title={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStep(si, { fields: move(step.fields, fi, 1) })}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
+                    <button style={{ ...iconBtn, color: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => patchStep(si, { fields: step.fields.filter((_, i) => i !== fi) })}><Icon icon={Trash2} className="h-4 w-4" /></button>
                   </div>
 
                   {isOpen && (
@@ -162,9 +165,10 @@ export default function FormEditor({
                   fields: [...step.fields, { id: newId("f"), type: "text", label: "", required: true }],
                 })
               }
+              className="inline-flex items-center gap-1.5"
               style={{ ...iconBtn, width: "auto", padding: "8px 14px", color: "var(--accent)", borderColor: "var(--accent)", fontSize: ".85rem", fontWeight: 600 }}
             >
-              ＋ {t("editor.addField")}
+              <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
             </button>
           </div>
         </div>
@@ -172,9 +176,10 @@ export default function FormEditor({
 
       <button
         onClick={() => setSteps([...value.steps, { id: newId("s"), title: "", fields: [{ id: newId("f"), type: "text", label: "", required: true }] }])}
+        className="inline-flex items-center gap-1.5"
         style={{ padding: "10px 16px", borderRadius: 9, border: "1px dashed var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: ".9rem" }}
       >
-        ＋ {t("editor.addStep")}
+        <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
       </button>
     </div>
   );
@@ -198,18 +203,20 @@ function OptionsEditor({
           <Field value={op} onChange={(e) => onChange(options.map((x, xi) => (xi === i ? e.target.value : x)))} placeholder={placeholder} style={{ flex: 1 }} />
           <button
             onClick={() => onChange(options.filter((_, xi) => xi !== i))}
+            className="inline-flex items-center justify-center"
             style={{ width: 34, borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--fail)", cursor: "pointer" }}
           >
-            ✕
+            <Icon icon={X} className="h-4 w-4" />
           </button>
         </div>
       ))}
       {options.length < 12 && (
         <button
           onClick={() => onChange([...options, ""])}
+          className="inline-flex items-center gap-1.5"
           style={{ justifySelf: "start", padding: "6px 12px", borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}
         >
-          ＋ {addLabel}
+          <Icon icon={Plus} className="h-3.5 w-3.5" /> {addLabel}
         </button>
       )}
     </div>

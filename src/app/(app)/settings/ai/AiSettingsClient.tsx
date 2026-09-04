@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { Lock, Plug, TriangleAlert } from "lucide-react";
 
 type Provider = "qwen" | "openai" | "azure" | "anthropic";
 export interface AiSettings {
@@ -77,7 +79,7 @@ export default function AiSettingsClient({ current }: { current: AiSettings }) {
     try {
       const res = await fetch("/api/ai/test", { method: "POST" });
       const j = await res.json();
-      setTest(j.ok ? { t: `เชื่อมต่อสำเร็จ ✓ (ลองสร้างฟอร์ม “${j.title}” ได้)` } : { t: j.error || "เรียกไม่สำเร็จ", err: true });
+      setTest(j.ok ? { t: `เชื่อมต่อสำเร็จ (ลองสร้างฟอร์ม “${j.title}” ได้)` } : { t: j.error || "เรียกไม่สำเร็จ", err: true });
     } catch (e) {
       setTest({ t: e instanceof Error ? e.message : "เรียกไม่สำเร็จ", err: true });
     } finally {
@@ -117,8 +119,8 @@ export default function AiSettingsClient({ current }: { current: AiSettings }) {
           <div>
             <label style={{ fontWeight: 600, fontSize: ".88rem", display: "block", marginBottom: 4 }}>รุ่นโมเดล (model)</label>
             <Field value={model} onChange={(e) => setModel(e.target.value)} placeholder={meta.modelHint} />
-            <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "4px 0 0" }}>
-              เว้นว่างเพื่อใช้ค่าเริ่มต้น ({meta.modelHint}) · ⚠️ ต้องเป็นรุ่นที่ดูรูปได้ (vision) จึงจะอ่านฟอร์มจากรูป/ตรวจรูปได้
+            <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "4px 0 0", display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+              เว้นว่างเพื่อใช้ค่าเริ่มต้น ({meta.modelHint}) · <Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> ต้องเป็นรุ่นที่ดูรูปได้ (vision) จึงจะอ่านฟอร์มจากรูป/ตรวจรูปได้
             </p>
           </div>
 
@@ -152,8 +154,8 @@ export default function AiSettingsClient({ current }: { current: AiSettings }) {
               placeholder={current.has_key ? `ตั้งค่าไว้แล้ว ••••${current.key_last4} (เว้นว่างเพื่อคงเดิม)` : "วางคีย์ที่นี่"}
               autoComplete="off"
             />
-            <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "4px 0 0" }}>
-              🔒 คีย์ถูกเก็บฝั่ง server เท่านั้น browser และสมาชิกคนอื่นอ่านไม่ได้ (เห็นได้แค่ 4 ตัวท้าย)
+            <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "4px 0 0", display: "inline-flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+              <Icon icon={Lock} className="h-3.5 w-3.5" /> คีย์ถูกเก็บฝั่ง server เท่านั้น browser และสมาชิกคนอื่นอ่านไม่ได้ (เห็นได้แค่ 4 ตัวท้าย)
             </p>
           </div>
         </div>
@@ -162,7 +164,7 @@ export default function AiSettingsClient({ current }: { current: AiSettings }) {
 
         <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
           <Button variant="primary" onClick={save} disabled={busy}>{busy ? "กำลังบันทึก..." : "บันทึก"}</Button>
-          <Button onClick={runTest} disabled={busy || (!current.has_key && !apiKey)}>🔌 ทดสอบการเชื่อมต่อ</Button>
+          <Button onClick={runTest} disabled={busy || (!current.has_key && !apiKey)}><Icon icon={Plug} className="h-4 w-4" /> ทดสอบการเชื่อมต่อ</Button>
         </div>
         {test && <Notice kind={test.err ? "error" : "info"}>{test.t}</Notice>}
       </Card>

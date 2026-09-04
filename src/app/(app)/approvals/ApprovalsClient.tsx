@@ -3,6 +3,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 import { Button, Card, Pill, TextArea } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { PartyPopper, Check, X, Play, ArrowRight, Paperclip } from "lucide-react";
 import { reviewSubmission } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -69,7 +71,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
 
       {subs.length === 0 && (
         <Card>
-          <div style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px 0" }}>🎉 เคลียร์หมดแล้ว</div>
+          <div style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Icon icon={PartyPopper} className="h-5 w-5" /> {t("appr.cleared")}</div>
         </Card>
       )}
 
@@ -81,7 +83,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
               <b style={{ fontFamily: "var(--font-anuphan)" }}>{s.form_title}</b>
               <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at)}</small>
             </div>
-            {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length} ปัญหา</Pill> : <Pill kind="pass">✓ ครบ</Pill>}
+            {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("appr.problems", { n: s.fails.length })}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("appr.complete")}</span></Pill>}
           </div>
 
           {chainOf(s).length > 0 && (
@@ -96,10 +98,11 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
                       background: done ? "var(--pass-soft)" : current ? "var(--accent-soft)" : "var(--code-bg)",
                       color: done ? "var(--pass)" : current ? "var(--accent)" : "var(--ink-3)",
                       fontWeight: current ? 700 : 500, border: current ? "1px solid var(--accent)" : "1px solid var(--line)",
+                      display: "inline-flex", alignItems: "center", gap: 4,
                     }}>
-                      {done ? "✓ " : current ? "▶ " : ""}{st.label || `ขั้น ${i + 1}`}: {st.name}
+                      {done && <Icon icon={Check} className="h-3 w-3" />}{current && <Icon icon={Play} className="h-3 w-3" />}{st.label || `ขั้น ${i + 1}`}: {st.name}
                     </span>
-                    {i < chainOf(s).length - 1 && <span style={{ color: "var(--ink-3)" }}>→</span>}
+                    {i < chainOf(s).length - 1 && <span style={{ color: "var(--ink-3)", display: "inline-flex" }}><Icon icon={ArrowRight} className="h-3.5 w-3.5" /></span>}
                   </span>
                 );
               })}
@@ -121,11 +124,11 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
               {s.answers.map((a, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 14px", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: ".88rem" }}>
                   <div style={{ color: "var(--ink-2)" }}>{a.label}{a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}</div>
-                  <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? "📎 มีไฟล์แนบ" : a.display ?? "—"}</div>
+                  <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Icon icon={Paperclip} className="h-3.5 w-3.5" /> มีไฟล์แนบ</span> : a.display ?? "—"}</div>
                 </div>
               ))}
             </div>
-            <Link href={`/submission/${s.id}`} style={{ fontSize: ".85rem", display: "inline-block", marginTop: 8 }}>เปิดมุมมองเอกสาร (พร้อมรูป) →</Link>
+            <Link href={`/submission/${s.id}`} style={{ fontSize: ".85rem", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8 }}>{t("appr.openDoc").replace(/[→\s]*$/, "")} <Icon icon={ArrowRight} className="h-3.5 w-3.5" /></Link>
           </details>
 
           <TextArea
@@ -136,10 +139,10 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
           />
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
             <Button variant="primary" onClick={() => act(s.id, "approved")} disabled={!!busy} style={{ flex: 1, background: "var(--pass)", borderColor: "var(--pass)" }}>
-              {busy === s.id + "approved" ? "..." : chainOf(s).length > 1 && (s.approval_step ?? 0) < chainOf(s).length - 1 ? "✓ อนุมัติ → ส่งต่อขั้นถัดไป" : "✓ อนุมัติ"}
+              {busy === s.id + "approved" ? "..." : <><Icon icon={Check} className="h-4 w-4" /> {chainOf(s).length > 1 && (s.approval_step ?? 0) < chainOf(s).length - 1 ? t("appr.approveNext") : t("appr.approve")}</>}
             </Button>
             <Button variant="danger" onClick={() => act(s.id, "rejected")} disabled={!!busy} style={{ flex: 1 }}>
-              {busy === s.id + "rejected" ? "..." : "✗ ตีกลับ"}
+              {busy === s.id + "rejected" ? "..." : <><Icon icon={X} className="h-4 w-4" /> {t("appr.reject")}</>}
             </Button>
           </div>
         </Card>

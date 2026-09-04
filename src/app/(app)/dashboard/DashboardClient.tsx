@@ -2,6 +2,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, Pill } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { Settings2, Check, Download, Eye, EyeOff, GripVertical, Clock, X } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 
 export interface AnswerItem {
@@ -120,15 +122,17 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             onClick={() => setCustomize((v) => !v)}
+            className="inline-flex items-center gap-1.5"
             style={{ padding: "9px 16px", borderRadius: 8, border: customize ? "1px solid var(--accent)" : "1px solid var(--line)", background: customize ? "var(--accent-soft)" : "var(--surface)", color: customize ? "var(--accent)" : "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500 }}
           >
-            {customize ? "✓ " + t("dash.done") : "⚙ " + t("dash.customize")}
+            <Icon icon={customize ? Check : Settings2} className="h-4 w-4" /> {customize ? t("dash.done") : t("dash.customize")}
           </button>
           <a
             href="/api/export/submissions"
+            className="inline-flex items-center gap-1.5"
             style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none", fontSize: ".9rem", fontWeight: 500 }}
           >
-            ⬇️ {t("dash.export")}
+            <Icon icon={Download} className="h-4 w-4" /> {t("dash.export")}
           </a>
         </div>
       </div>
@@ -160,11 +164,12 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
                   <button
                     onClick={() => toggleHidden(k)}
                     title={isHidden ? t("dash.show") : t("dash.hide")}
-                    style={{ border: "1px solid var(--line)", background: "var(--surface)", borderRadius: 6, cursor: "pointer", fontSize: ".72rem", padding: "1px 6px", color: "var(--ink-2)" }}
+                    className="inline-flex items-center justify-center"
+                    style={{ border: "1px solid var(--line)", background: "var(--surface)", borderRadius: 6, cursor: "pointer", padding: "3px", color: "var(--ink-2)" }}
                   >
-                    {isHidden ? "👁" : "🚫"}
+                    <Icon icon={isHidden ? Eye : EyeOff} className="h-3.5 w-3.5" />
                   </button>
-                  <span aria-hidden style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>⠿</span>
+                  <span aria-hidden style={{ color: "var(--ink-3)", display: "inline-flex", cursor: "grab" }}><Icon icon={GripVertical} className="h-4 w-4" /></span>
                 </div>
               )}
             </div>
@@ -192,10 +197,10 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at)}</small>
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                {s.approval_status === "pending" && <Pill kind="na">🕒 {t("dash.pending")}</Pill>}
+                {s.approval_status === "pending" && <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Clock} className="h-3 w-3" /> {t("dash.pending")}</span></Pill>}
                 {s.approval_status === "approved" && <Pill kind="pass">{t("dash.approved")}</Pill>}
                 {s.approval_status === "rejected" && <Pill kind="fail">{t("dash.rejected")}</Pill>}
-                {s.fails?.length ? <Pill kind="fail">✗ {s.fails.length}</Pill> : s.result === "pass" ? <Pill kind="pass">✓ {t("dash.passed")}</Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
+                {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {s.fails.length}</span></Pill> : s.result === "pass" ? <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
               </div>
             </div>
           ))}
@@ -254,7 +259,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <h2 style={{ fontSize: "1.1rem" }}>{sub.form_icon} {sub.form_title}</h2>
-          {sub.result === "fail" ? <Pill kind="fail">✗ {t("dash.issues")}</Pill> : <Pill kind="pass">✓ {t("dash.passed")}</Pill>}
+          {sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
           {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}

@@ -6,19 +6,20 @@ import NotificationBell from "@/components/NotificationBell";
 import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { type WorkspaceItem } from "@/components/WorkspaceSwitcher";
+import Icon, { type IconType } from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
-import { LogoMark } from "@/components/Logo";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut } from "lucide-react";
 
-const NAV: { href: string; key: MessageKey; icon: string; manage: boolean }[] = [
-  { href: "/studio", key: "nav.studio", icon: "🛠️", manage: true },
-  { href: "/forms", key: "nav.fill", icon: "📱", manage: false },
-  { href: "/approvals", key: "nav.approvals", icon: "✅", manage: true },
-  { href: "/dashboard", key: "nav.dashboard", icon: "📊", manage: false },
-  { href: "/settings/team", key: "nav.team", icon: "👥", manage: true },
-  { href: "/settings/billing", key: "nav.billing", icon: "💳", manage: true },
-  { href: "/settings/integrations", key: "nav.integrations", icon: "🔗", manage: true },
-  { href: "/settings/ai", key: "nav.ai", icon: "🤖", manage: true },
+const NAV: { href: string; key: MessageKey; icon: IconType; manage: boolean }[] = [
+  { href: "/studio", key: "nav.studio", icon: PenSquare, manage: true },
+  { href: "/forms", key: "nav.fill", icon: Smartphone, manage: false },
+  { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, manage: true },
+  { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, manage: false },
+  { href: "/settings/team", key: "nav.team", icon: Users, manage: true },
+  { href: "/settings/billing", key: "nav.billing", icon: CreditCard, manage: true },
+  { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, manage: true },
+  { href: "/settings/ai", key: "nav.ai", icon: Bot, manage: true },
 ];
 
 export default function AppShell({
@@ -77,7 +78,7 @@ export default function AppShell({
             <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
           ) : (
             <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-              <LogoMark size={28} />
+              <div className="hazard" style={{ width: 26, height: 26, borderRadius: 6 }} />
               <div>
                 <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
                 <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>
@@ -94,6 +95,7 @@ export default function AppShell({
                 <Link
                   key={n.href}
                   href={n.href}
+                  className="inline-flex items-center gap-1.5"
                   style={{
                     padding: "8px 12px",
                     borderRadius: 8,
@@ -104,7 +106,7 @@ export default function AppShell({
                     background: on ? "var(--accent-soft)" : "transparent",
                   }}
                 >
-                  <span aria-hidden>{n.icon}</span> {t(n.key)}
+                  <Icon icon={n.icon} className="h-[18px] w-[18px]" /> {t(n.key)}
                 </Link>
               );
             })}
@@ -117,6 +119,7 @@ export default function AppShell({
             <Link
               href="/settings/profile"
               title={t("nav.profile")}
+              className="inline-flex items-center gap-1.5"
               style={{
                 fontSize: ".8rem",
                 color: "var(--ink-2)",
@@ -124,16 +127,14 @@ export default function AppShell({
                 borderRadius: 20,
                 padding: "5px 12px",
                 textDecoration: "none",
-                display: "inline-flex",
-                alignItems: "center",
-                gap: 6,
               }}
             >
-              <span aria-hidden>👷</span> {displayName}
+              <Icon icon={HardHat} className="h-4 w-4" /> {displayName}
             </Link>
             <button
               onClick={signOut}
               title={t("nav.signout")}
+              className="inline-flex items-center gap-1.5"
               style={{
                 fontSize: ".8rem",
                 color: "var(--ink-3)",
@@ -145,7 +146,7 @@ export default function AppShell({
                 fontFamily: "inherit",
               }}
             >
-              {t("nav.signout")}
+              <Icon icon={LogOut} className="h-4 w-4" /> {t("nav.signout")}
             </button>
           </div>
         </div>

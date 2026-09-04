@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Notice } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { Check } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey } from "@/lib/plans";
 import { setPlan } from "./actions";
@@ -86,11 +88,11 @@ export default function BillingClient({
                 <div style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.25rem", fontWeight: 700 }}>{en ? p.nameEn : p.name}</div>
                 <div style={{ color: "var(--accent)", fontWeight: 600, fontSize: "1rem" }}>{en ? p.priceLabelEn : p.priceLabel}</div>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 6, fontSize: ".88rem", color: "var(--ink-2)" }}>
-                <li>✓ {t("plan.forms")}: <b>{fmtLimit(p.maxForms)}</b></li>
-                <li>✓ {t("plan.aiCredits")}: <b>{fmtLimit(p.aiCreditsPerMonth)}</b>/{t("plan.perMonth")}</li>
-                <li>✓ {t("plan.members")}: <b>{fmtLimit(p.maxMembers)}</b></li>
-                <li>✓ Workspace: <b>{fmtLimit(p.maxWorkspaces)}</b></li>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8, fontSize: ".88rem", color: "var(--ink-2)" }}>
+                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.forms")}: <b>{fmtLimit(p.maxForms)}</b></li>
+                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.aiCredits")}: <b>{fmtLimit(p.aiCreditsPerMonth)}</b>/{t("plan.perMonth")}</li>
+                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.members")}: <b>{fmtLimit(p.maxMembers)}</b></li>
+                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> Workspace: <b>{fmtLimit(p.maxWorkspaces)}</b></li>
               </ul>
               <div style={{ marginTop: "auto" }}>
                 {isCurrent ? (

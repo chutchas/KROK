@@ -3,6 +3,8 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
+import Icon from "@/components/Icon";
+import { Sparkles, FileUp, Eye, Pencil, Save, CheckCircle2, Tag, HardHat } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormEditor from "@/components/FormEditor";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
@@ -173,10 +175,10 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         </div>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Button variant="primary" onClick={generate} disabled={!!busy}>
-            {t("studio.generate")}
+            <Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.generate")}
           </Button>
           <Button onClick={() => fileRef.current?.click()} disabled={!!busy}>
-            {t("studio.upload")}
+            <Icon icon={FileUp} className="h-4 w-4" /> {t("studio.upload")}
           </Button>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
           <Button onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setStatus(null); }} disabled={!!busy}> 
@@ -195,8 +197,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
             <div>
-              <h2 style={{ fontSize: "1.15rem", margin: 0 }}>
-                {editingId ? "✏️ " : ""}{draft.icon} {draft.title}
+              <h2 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+                {editingId && <Icon icon={Pencil} className="h-4 w-4" />}{draft.icon} {draft.title}
               </h2>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
@@ -205,15 +207,17 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
               <button
                 onClick={() => setEditMode(false)}
+                className="inline-flex items-center gap-1.5"
                 style={{ padding: "7px 14px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: editMode ? "var(--surface)" : "var(--accent-soft)", color: editMode ? "var(--ink-2)" : "var(--accent)", fontWeight: editMode ? 400 : 600 }}
               >
-                👁 {t("studio.preview")}
+                <Icon icon={Eye} className="h-4 w-4" /> {t("studio.preview")}
               </button>
               <button
                 onClick={() => setEditMode(true)}
+                className="inline-flex items-center gap-1.5"
                 style={{ padding: "7px 14px", border: "none", borderLeft: "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: editMode ? "var(--accent-soft)" : "var(--surface)", color: editMode ? "var(--accent)" : "var(--ink-2)", fontWeight: editMode ? 600 : 400 }}
               >
-                ✏️ {t("studio.editFields")}
+                <Icon icon={Pencil} className="h-4 w-4" /> {t("studio.editFields")}
               </button>
             </div>
           </div>
@@ -316,7 +320,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                     return (
                       <label key={tm.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
                         <input type="checkbox" checked={on} onChange={(e) => setVisTeams((ids) => (e.target.checked ? [...ids, tm.id] : ids.filter((x) => x !== tm.id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
-                        🏷️ {tm.name}
+                        <Icon icon={Tag} className="h-4 w-4" /> {tm.name}
                       </label>
                     );
                   })}
@@ -331,7 +335,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   return (
                     <label key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
                       <input type="checkbox" checked={on} onChange={(e) => setVisUsers((ids) => (e.target.checked ? [...ids, m.user_id] : ids.filter((x) => x !== m.user_id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
-                      👷 {m.name}
+                      <Icon icon={HardHat} className="h-4 w-4" /> {m.name}
                     </label>
                   );
                 })}
@@ -340,7 +344,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <Button variant="primary" onClick={publish} disabled={!!busy}>{editingId ? t("studio.saveChanges") : t("studio.publish")}</Button>
+            <Button variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</Button>
             <Button onClick={resetDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
@@ -362,7 +366,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
                 </small>
               </div>
-              <Button onClick={() => editExisting(f)}>✏️ {t("common.edit")}</Button>
+              <Button onClick={() => editExisting(f)}><Icon icon={Pencil} className="h-4 w-4" /> {t("common.edit")}</Button>
               <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
               <Button variant="danger" onClick={() => onDelete(f.id, f.title)}>{t("common.delete")}</Button>
             </div>

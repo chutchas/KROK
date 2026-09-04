@@ -3,6 +3,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 import { notifySubmission } from "./actions";
@@ -225,7 +227,7 @@ export default function FillWizard(props: Props) {
   if (done) {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ fontSize: "3rem" }}>{done.pending ? "🕒" : done.result === "pass" ? "✅" : "⚠️"}</div>
+        <div style={{ display: "flex", justifyContent: "center", color: done.pending ? "var(--amber)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
         <h2 style={{ margin: "10px 0 4px" }}>
           {done.pending
             ? t("fill.donePending")
@@ -303,11 +305,11 @@ export default function FillWizard(props: Props) {
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>{t("fill.prev")}</Button>}
         <Button variant="primary" onClick={next} disabled={submitting} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
-          {submitting ? t("fill.submitting") : idx === schema.steps.length - 1 ? t("fill.submit") : t("fill.next")}
+          {submitting ? t("fill.submitting") : idx === schema.steps.length - 1 ? <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</> : t("fill.next")}
         </Button>
       </div>
       <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
-        {t("fill.locked")}
+        <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("fill.locked")}
       </div>
     </div>
   );
@@ -362,7 +364,7 @@ function FieldControl({
       fd.append("label", f.label);
       const res = await fetch("/api/ai/check-photo", { method: "POST", body: fd });
       const j = await res.json();
-      const txt = res.ok ? (j.ok ? "✅ " : "⚠️ ") + (j.reason || "") : j.error || "ตรวจไม่ได้";
+      const txt = res.ok ? (j.reason || (j.ok ? "ผ่าน" : "ควรตรวจสอบ")) : j.error || "ตรวจไม่ได้";
       setAiResult(txt);
       onPatch({ ai: txt });
     } catch {
@@ -379,7 +381,7 @@ function FieldControl({
     if (code) {
       onPatch({ value: code });
       setScanValue(code);
-      setScanMsg("✅ อ่านได้: " + code);
+      setScanMsg("อ่านได้: " + code);
     } else setScanMsg("อ่านโค้ดจากรูปไม่ได้ — พิมพ์รหัสแทนได้เลย");
     e.target.value = "";
   }
@@ -410,8 +412,8 @@ function FieldControl({
         </span>
       </div>
       {f.tooltip && (
-        <div style={{ fontSize: ".83rem", color: "var(--ink-2)", background: "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0", display: "flex", gap: 7 }}>
-          <span aria-hidden>💡</span>
+        <div style={{ fontSize: ".83rem", color: "var(--ink-2)", background: "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0", display: "flex", gap: 7, alignItems: "flex-start" }}>
+          <span aria-hidden style={{ color: "var(--amber)", marginTop: 1 }}><Icon icon={Lightbulb} className="h-4 w-4" /></span>
           <span>{f.tooltip}</span>
         </div>
       )}
@@ -464,8 +466,8 @@ function FieldControl({
         {f.type === "pass_fail" && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <PfBtn active={pf === "pass"} kind="pass" onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}>✓ ผ่าน</PfBtn>
-              <PfBtn active={pf === "fail"} kind="fail" onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}>✗ ไม่ผ่าน</PfBtn>
+              <PfBtn active={pf === "pass"} kind="pass" onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> ผ่าน</span></PfBtn>
+              <PfBtn active={pf === "fail"} kind="fail" onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> ไม่ผ่าน</span></PfBtn>
             </div>
             {pf === "fail" && (
               <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => onPatch({ note: e.target.value })} />
@@ -476,12 +478,12 @@ function FieldControl({
           <>
             <div onClick={() => photoRef.current?.click()} style={{ border: "2px dashed var(--line)", borderRadius: 10, padding: 18, textAlign: "center", color: "var(--ink-3)", fontSize: ".9rem", cursor: "pointer" }}>
               {photo && <img src={photo} alt="รูปที่ถ่าย" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "0 auto 8px" }} />}
-              <div>{photo ? "แตะเพื่อถ่ายใหม่" : "📷 แตะเพื่อถ่ายรูป / เลือกรูป"}</div>
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? "แตะเพื่อถ่ายใหม่" : <><Icon icon={Camera} className="h-4 w-4" /> แตะเพื่อถ่ายรูป / เลือกรูป</>}</div>
             </div>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
             {photo && (
               <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <Button onClick={aiCheck} disabled={aiBusy}>{aiBusy ? "AI กำลังดูรูป..." : "🔍 ให้ AI ตรวจรูป"}</Button>
+                <Button onClick={aiCheck} disabled={aiBusy}>{aiBusy ? "AI กำลังดูรูป..." : <><Icon icon={Sparkles} className="h-4 w-4" /> ให้ AI ตรวจรูป</>}</Button>
                 {aiResult && <span style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{aiResult}</span>}
               </div>
             )}
@@ -491,7 +493,7 @@ function FieldControl({
           <>
             <div style={{ display: "flex", gap: 10 }}>
               <input type="text" style={{ ...input, flex: 1 }} value={scanValue} placeholder="รหัส เช่น FL-03" onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
-              <Button onClick={() => scanRef.current?.click()}>📷 สแกน</Button>
+              <Button onClick={() => scanRef.current?.click()}><Icon icon={ScanLine} className="h-4 w-4" /> สแกน</Button>
             </div>
             <input ref={scanRef} type="file" accept="image/*" capture="environment" hidden onChange={onScan} />
             {scanMsg && <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>{scanMsg}</div>}
@@ -511,7 +513,7 @@ function NumHint({ field: f, value }: { field: FormField; value?: string }) {
   return (
     <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
       ช่วงที่ยอมรับ: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.min ?? "–"} ถึง {f.max ?? "–"} {f.unit || ""}</code>
-      {out && <span style={{ color: "var(--fail)", fontWeight: 700 }}> ← ค่านอกช่วง! จะถูกแจ้งเป็นปัญหา</span>}
+      {out && <span style={{ color: "var(--fail)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 4 }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> ค่านอกช่วง! จะถูกแจ้งเป็นปัญหา</span>}
     </div>
   );
 }
@@ -572,7 +574,7 @@ function SignaturePad({ hasSig, onSave }: { hasSig: boolean; onSave: (d: string 
       />
       <div style={{ marginTop: 6 }}>
         <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); onSave(null); }}>ล้างลายเซ็น</Button>
-        {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem" }}>✓ เซ็นแล้ว</span>}
+        {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={Check} className="h-3.5 w-3.5" /> เซ็นแล้ว</span>}
       </div>
     </>
   );

@@ -2,6 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2 } from "lucide-react";
+import Icon, { type IconType } from "@/components/Icon";
 
 interface Notif {
   id: string;
@@ -20,7 +22,7 @@ function fmt(ts: string) {
     return "";
   }
 }
-const ICON: Record<string, string> = { approval_request: "🕒", fail_alert: "⚠️", approved: "✅", rejected: "↩️" };
+const ICON: Record<string, IconType> = { approval_request: Clock, fail_alert: AlertTriangle, approved: CheckCircle2, rejected: Undo2 };
 
 export default function NotificationBell({ userId }: { userId: string }) {
   const router = useRouter();
@@ -86,12 +88,13 @@ export default function NotificationBell({ userId }: { userId: string }) {
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="การแจ้งเตือน"
-        style={{ position: "relative", background: "none", border: "1px solid var(--line)", borderRadius: 20, width: 38, height: 34, cursor: "pointer", fontSize: "1rem" }}
+        className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border text-rose-400 shadow-sm"
+        style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
       >
-        🔔
+        <Icon icon={Bell} className="h-4 w-4" />
         {unread > 0 && (
-          <span style={{ position: "absolute", top: -6, right: -6, background: "var(--fail)", color: "#fff", fontSize: ".65rem", fontWeight: 700, borderRadius: 20, minWidth: 18, height: 18, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
-            {unread > 9 ? "9+" : unread}
+          <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full bg-rose-500 font-bold text-white" style={{ fontSize: ".62rem", minWidth: 16, height: 16, padding: "0 4px" }}>
+            {unread > 99 ? "99+" : unread}
           </span>
         )}
       </button>
@@ -114,7 +117,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                 onClick={() => clickItem(n)}
                 style={{ display: "flex", gap: 10, width: "100%", textAlign: "left", padding: "11px 14px", border: "none", borderBottom: "1px solid var(--line)", background: n.read_at ? "transparent" : "var(--accent-soft)", cursor: "pointer", fontFamily: "inherit" }}
               >
-                <span aria-hidden style={{ fontSize: "1.1rem" }}>{ICON[n.type] || "🔔"}</span>
+                <span aria-hidden style={{ color: "var(--ink-2)", marginTop: 1 }}><Icon icon={ICON[n.type] || Bell} className="h-[18px] w-[18px]" /></span>
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontWeight: 600, fontSize: ".86rem", color: "var(--ink)" }}>{n.title}</span>
                   <span style={{ display: "block", fontSize: ".8rem", color: "var(--ink-2)" }}>{n.body}</span>

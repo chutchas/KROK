@@ -15,6 +15,10 @@ export function Button({ variant = "default", style, ...rest }: BtnProps) {
     background: "var(--surface)",
     color: "var(--ink)",
     transition: "opacity .15s",
+    display: "inline-flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   };
   const v: Record<string, React.CSSProperties> = {
     primary: { background: "var(--accent)", color: "var(--accent-ink)", borderColor: "var(--accent)", fontWeight: 600 },

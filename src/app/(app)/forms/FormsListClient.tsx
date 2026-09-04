@@ -1,6 +1,8 @@
 "use client";
 import Link from "next/link";
 import { Card } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { ArrowRight } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 
 export interface FormListItem {
@@ -44,7 +46,7 @@ export default function FormsListClient({ forms }: { forms: FormListItem[] }) {
                 {tt("forms.stepsFields", { steps: f.steps, fields: f.fields })}
               </small>
             </div>
-            <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: ".9rem" }}>{t("forms.start")} →</span>
+            <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}>{t("forms.start")} <Icon icon={ArrowRight} className="h-4 w-4" /></span>
           </Link>
         ))}
       </div>

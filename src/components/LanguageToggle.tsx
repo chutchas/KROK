@@ -3,36 +3,16 @@ import { useT } from "@/i18n/LanguageProvider";
 
 export default function LanguageToggle() {
   const { lang, setLang } = useT();
+  const other = lang === "th" ? "en" : "th";
   return (
-    <div
-      role="group"
+    <button
+      onClick={() => setLang(other)}
       aria-label="language"
-      style={{
-        display: "inline-flex",
-        border: "1px solid var(--line)",
-        borderRadius: 20,
-        overflow: "hidden",
-        fontSize: ".78rem",
-      }}
+      title={lang === "th" ? "เปลี่ยนเป็นภาษาอังกฤษ" : "Switch to Thai"}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full border text-[10px] font-semibold shadow-sm"
+      style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}
     >
-      {(["th", "en"] as const).map((l) => (
-        <button
-          key={l}
-          onClick={() => setLang(l)}
-          aria-pressed={lang === l}
-          style={{
-            padding: "5px 11px",
-            border: "none",
-            cursor: "pointer",
-            fontFamily: "inherit",
-            fontWeight: lang === l ? 700 : 500,
-            background: lang === l ? "var(--accent)" : "transparent",
-            color: lang === l ? "var(--accent-ink)" : "var(--ink-2)",
-          }}
-        >
-          {l === "th" ? "ไทย" : "EN"}
-        </button>
-      ))}
-    </div>
+      {lang === "th" ? "TH" : "EN"}
+    </button>
   );
 }

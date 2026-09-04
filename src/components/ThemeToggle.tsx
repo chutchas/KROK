@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useState } from "react";
+import { Monitor, SunMedium, MoonStar } from "lucide-react";
+import Icon, { type IconType } from "@/components/Icon";
 
 type Theme = "system" | "light" | "dark";
 const KEY = "krok_theme";
 const ORDER: Theme[] = ["system", "light", "dark"];
-const ICON: Record<Theme, string> = { system: "🖥️", light: "☀️", dark: "🌙" };
+const ICON: Record<Theme, IconType> = { system: Monitor, light: SunMedium, dark: MoonStar };
+const TINT: Record<Theme, string> = { system: "text-slate-500", light: "text-amber-500", dark: "text-indigo-400" };
 
 function apply(theme: Theme) {
   const el = document.documentElement;
@@ -46,19 +49,10 @@ export default function ThemeToggle() {
       onClick={cycle}
       title={`ธีม: ${label}`}
       aria-label={`ธีม: ${label}`}
-      style={{
-        fontSize: ".9rem",
-        color: "var(--ink-2)",
-        border: "1px solid var(--line)",
-        borderRadius: 20,
-        padding: "5px 10px",
-        background: "var(--surface)",
-        cursor: "pointer",
-        fontFamily: "inherit",
-        lineHeight: 1,
-      }}
+      className={`inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm ${TINT[theme]}`}
+      style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
     >
-      <span aria-hidden>{ICON[theme]}</span>
+      <Icon icon={ICON[theme]} className="h-4 w-4" />
     </button>
   );
 }

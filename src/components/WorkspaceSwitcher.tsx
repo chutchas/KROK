@@ -3,7 +3,8 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { switchWorkspace, createWorkspace } from "@/lib/workspace-actions";
 import { useT } from "@/i18n/LanguageProvider";
-import { LogoMark } from "@/components/Logo";
+import { ChevronDown, Check, Plus } from "lucide-react";
+import Icon from "@/components/Icon";
 
 export interface WorkspaceItem {
   tenantId: string;
@@ -87,11 +88,11 @@ export default function WorkspaceSwitcher({
         }}
         title={t("ws.switch")}
       >
-        <LogoMark size={28} />
+        <div className="hazard" style={{ width: 26, height: 26, borderRadius: 6, flex: "0 0 auto" }} />
         <div>
           <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
           <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}>
-            {active?.tenantName ?? ""} <span aria-hidden style={{ fontSize: ".6rem" }}>▾</span>
+            {active?.tenantName ?? ""} <Icon icon={ChevronDown} className="h-3 w-3" />
           </small>
         </div>
       </button>
@@ -138,7 +139,7 @@ export default function WorkspaceSwitcher({
                 }}
               >
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.tenantName}</span>
-                {on && <span aria-hidden style={{ color: "var(--accent)" }}>✓</span>}
+                {on && <span style={{ color: "var(--accent)", display: "inline-flex" }}><Icon icon={Check} className="h-4 w-4" /></span>}
               </button>
             );
           })}
@@ -176,7 +177,7 @@ export default function WorkspaceSwitcher({
               onClick={() => setCreating(true)}
               style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", color: "var(--accent)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500 }}
             >
-              <span aria-hidden>＋</span> {t("ws.create")}
+              <Icon icon={Plus} className="h-4 w-4" /> {t("ws.create")}
             </button>
           )}
         </div>

@@ -2,6 +2,8 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
+import Icon from "@/components/Icon";
+import { Check, Lock, Zap } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { createWebhook, toggleWebhook, deleteWebhook, testWebhookById } from "./actions";
 
@@ -76,7 +78,7 @@ export default function IntegrationsClient({ webhooks }: { webhooks: WebhookItem
                       color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
                     }}
                   >
-                    {on ? "✓ " : ""}{eventLabel(ev)}
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>{on && <Icon icon={Check} className="h-3.5 w-3.5" />}{eventLabel(ev)}</span>
                   </button>
                 );
               })}
@@ -100,7 +102,7 @@ export default function IntegrationsClient({ webhooks }: { webhooks: WebhookItem
                 <div style={{ flex: 1, minWidth: 160 }}>
                   <b style={{ fontSize: ".95rem" }}>{w.name}</b>
                   {w.active ? <Pill kind="pass">{t("intg.on")}</Pill> : <Pill kind="na">{t("intg.off")}</Pill>}
-                  {w.hasSecret && <span style={{ fontSize: ".72rem", color: "var(--ink-3)", marginLeft: 6 }}>🔐 {t("intg.signed")}</span>}
+                  {w.hasSecret && <span style={{ fontSize: ".72rem", color: "var(--ink-3)", marginLeft: 6, display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Lock} className="h-3 w-3" /> {t("intg.signed")}</span>}
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem", overflowWrap: "anywhere", marginTop: 2 }}>{w.url}</small>
                 </div>
               </div>
@@ -127,7 +129,7 @@ export default function IntegrationsClient({ webhooks }: { webhooks: WebhookItem
                   }}
                   disabled={testing === w.id}
                 >
-                  {testing === w.id ? "…" : "⚡ " + t("intg.test")}
+                  {testing === w.id ? "…" : <><Icon icon={Zap} className="h-4 w-4" /> {t("intg.test")}</>}
                 </Button>
                 <Button onClick={async () => { await toggleWebhook(w.id, !w.active); router.refresh(); }}>
                   {w.active ? t("intg.disable") : t("intg.enable")}

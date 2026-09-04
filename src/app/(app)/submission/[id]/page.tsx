@@ -1,8 +1,9 @@
 import { notFound, redirect } from "next/navigation";
+import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
-import { LogoMark } from "@/components/Logo";
 
 export const dynamic = "force-dynamic";
 
@@ -66,7 +67,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <a href="/dashboard" style={{ fontSize: ".9rem" }}>← กลับ Dashboard</a>
+        <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> กลับ Dashboard</a>
         <PrintButton />
       </div>
 
@@ -75,7 +76,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--ink)", paddingBottom: 14, marginBottom: 6, gap: 12 }}>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <LogoMark size={24} variant="compact" />
+              <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
             </div>
             <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}>{sub.form_icon} {sub.form_title}</h1>
@@ -105,7 +106,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
             <div key={i} style={row}>
               <div style={label}>
                 {a.label}
-                {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2 }}>⚠ {a.note}</div>}
+                {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
               </div>
               <div style={{ flex: 1, fontWeight: 600, color: a.fail ? "var(--fail)" : "var(--ink)" }}>
                 {a.photoField && photoMap[a.photoField] ? (
@@ -126,7 +127,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
             <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 8 }}>ประวัติการอนุมัติ</div>
             {(sub.approval_history as { step: number; label: string; reviewer_name: string; decision: string; note: string; at: string }[]).map((h, i) => (
               <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--line)", fontSize: ".86rem" }}>
-                <span aria-hidden>{h.decision === "approved" ? "✓" : "↩"}</span>
+                <span aria-hidden style={{ display: "inline-flex" }}><Icon icon={h.decision === "approved" ? Check : Undo2} className="h-4 w-4" /></span>
                 <div style={{ flex: 1 }}>
                   <b style={{ color: h.decision === "approved" ? "var(--pass)" : "var(--fail)" }}>
                     {h.label} — {h.decision === "approved" ? "อนุมัติ" : "ตีกลับ"}
@@ -142,16 +143,16 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
 
         {/* current step (still pending) */}
         {sub.approval_status === "pending" && Array.isArray(sub.approval_chain) && (sub.approval_chain as unknown[]).length > 0 && (
-          <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "var(--accent-soft)", color: "var(--ink-2)", fontSize: ".86rem" }}>
-            🕒 กำลังรออนุมัติขั้นที่ {(sub.approval_step as number) + 1} จาก {(sub.approval_chain as unknown[]).length}
+          <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "var(--accent-soft)", color: "var(--ink-2)", fontSize: ".86rem", display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon icon={Clock} className="h-4 w-4" /> กำลังรออนุมัติขั้นที่ {(sub.approval_step as number) + 1} จาก {(sub.approval_chain as unknown[]).length}
           </div>
         )}
 
         {/* review block */}
         {(sub.approval_status === "approved" || sub.approval_status === "rejected") && (
           <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 10, background: sub.approval_status === "approved" ? "var(--pass-soft)" : "var(--fail-soft)" }}>
-            <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", color: sub.approval_status === "approved" ? "var(--pass)" : "var(--fail)" }}>
-              {sub.approval_status === "approved" ? "✓ อนุมัติโดย" : "↩ ตีกลับโดย"} {sub.reviewer_name || "ผู้ตรวจ"}
+            <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", color: sub.approval_status === "approved" ? "var(--pass)" : "var(--fail)", display: "flex", alignItems: "center", gap: 6 }}>
+              <Icon icon={sub.approval_status === "approved" ? Check : Undo2} className="h-4 w-4" /> {sub.approval_status === "approved" ? "อนุมัติโดย" : "ตีกลับโดย"} {sub.reviewer_name || "ผู้ตรวจ"}
             </div>
             <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginTop: 2 }}>{fmt(sub.reviewed_at)}</div>
             {sub.review_note && <div style={{ fontSize: ".88rem", marginTop: 6 }}>“{sub.review_note}”</div>}
