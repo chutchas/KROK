@@ -126,5 +126,12 @@ drop policy if exists audit_insert on public.audit_log;
 create policy audit_insert on public.audit_log
   for insert with check (tenant_id in (select public.my_tenant_ids()));
 
--- realtime: ให้ dashboard subscribe submissions ได้
-alter publication supabase_realtime add table public.submissions;
+-- realtime: ให้ dashboard subscribe submissions ได้ (idempotent)
+do $$ begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'submissions'
+  ) then
+    alter publication supabase_realtime add table public.submissions;
+  end if;
+end $$;

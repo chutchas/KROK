@@ -209,5 +209,12 @@ drop trigger if exists trg_notify_review on public.submissions;
 create trigger trg_notify_review after update on public.submissions
 for each row execute function public.notify_on_review();
 
--- realtime สำหรับ bell
-alter publication supabase_realtime add table public.notifications;
+-- realtime สำหรับ bell (idempotent)
+do $$ begin
+  if not exists (
+    select 1 from pg_publication_tables
+    where pubname = 'supabase_realtime' and schemaname = 'public' and tablename = 'notifications'
+  ) then
+    alter publication supabase_realtime add table public.notifications;
+  end if;
+end $$;
