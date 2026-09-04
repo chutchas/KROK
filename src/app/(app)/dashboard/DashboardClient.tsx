@@ -34,10 +34,58 @@ function fmt(ts: string) {
 }
 const todayKey = () => new Date().toLocaleDateString("sv");
 
+type WidgetKey = "today" | "pass" | "fail" | "rate";
+const DEFAULT_ORDER: WidgetKey[] = ["today", "pass", "fail", "rate"];
+const LS_KEY = "krok_dash_widgets_v1";
+
 export default function DashboardClient({ tenantId, initial }: { tenantId: string; initial: SubRow[] }) {
   const { t } = useT();
   const [subs, setSubs] = useState<SubRow[]>(initial);
   const [open, setOpen] = useState<SubRow | null>(null);
+  const [customize, setCustomize] = useState(false);
+  const [order, setOrder] = useState<WidgetKey[]>(DEFAULT_ORDER);
+  const [hidden, setHidden] = useState<WidgetKey[]>([]);
+  const [dragKey, setDragKey] = useState<WidgetKey | null>(null);
+
+  useEffect(() => {
+    // hydrate widget layout จาก localStorage ครั้งเดียวตอน mount (ค่าเริ่มต้นอยู่ฝั่ง server)
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { order?: WidgetKey[]; hidden?: WidgetKey[] };
+        const ord = (p.order || []).filter((k) => DEFAULT_ORDER.includes(k));
+        const merged = [...ord, ...DEFAULT_ORDER.filter((k) => !ord.includes(k))];
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setOrder(merged);
+        setHidden((p.hidden || []).filter((k) => DEFAULT_ORDER.includes(k)));
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  function persist(nextOrder: WidgetKey[], nextHidden: WidgetKey[]) {
+    setOrder(nextOrder);
+    setHidden(nextHidden);
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({ order: nextOrder, hidden: nextHidden }));
+    } catch {
+      /* ignore */
+    }
+  }
+
+  function onDrop(target: WidgetKey) {
+    if (!dragKey || dragKey === target) return;
+    const next = order.filter((k) => k !== dragKey);
+    const idx = next.indexOf(target);
+    next.splice(idx, 0, dragKey);
+    persist(next, hidden);
+    setDragKey(null);
+  }
+
+  function toggleHidden(k: WidgetKey) {
+    persist(order, hidden.includes(k) ? hidden.filter((x) => x !== k) : [...hidden, k]);
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -69,18 +117,59 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        <a
-          href="/api/export/submissions"
-          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none", fontSize: ".9rem", fontWeight: 500 }}
-        >
-          ⬇️ {t("dash.export")}
-        </a>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            onClick={() => setCustomize((v) => !v)}
+            style={{ padding: "9px 16px", borderRadius: 8, border: customize ? "1px solid var(--accent)" : "1px solid var(--line)", background: customize ? "var(--accent-soft)" : "var(--surface)", color: customize ? "var(--accent)" : "var(--ink)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500 }}
+          >
+            {customize ? "✓ " + t("dash.done") : "⚙ " + t("dash.customize")}
+          </button>
+          <a
+            href="/api/export/submissions"
+            style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none", fontSize: ".9rem", fontWeight: 500 }}
+          >
+            ⬇️ {t("dash.export")}
+          </a>
+        </div>
       </div>
+      {customize && (
+        <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: "0 0 8px" }}>{t("dash.customizeHint")}</p>
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 12, marginBottom: 16 }} className="krok-tiles">
-        <Tile v={stats.today} label={t("dash.today")} />
-        <Tile v={stats.pass} label={t("dash.pass")} color="var(--pass)" />
-        <Tile v={stats.fail} label={t("dash.fail")} color="var(--fail)" />
-        <Tile v={stats.rate == null ? "–" : stats.rate + "%"} label={t("dash.rate")} />
+        {order.map((k) => {
+          const isHidden = hidden.includes(k);
+          if (isHidden && !customize) return null;
+          const map = {
+            today: { v: stats.today as number | string, label: t("dash.today"), color: undefined as string | undefined },
+            pass: { v: stats.pass, label: t("dash.pass"), color: "var(--pass)" },
+            fail: { v: stats.fail, label: t("dash.fail"), color: "var(--fail)" },
+            rate: { v: stats.rate == null ? "–" : stats.rate + "%", label: t("dash.rate"), color: undefined },
+          }[k];
+          return (
+            <div
+              key={k}
+              draggable={customize}
+              onDragStart={() => customize && setDragKey(k)}
+              onDragOver={(e) => customize && e.preventDefault()}
+              onDrop={() => customize && onDrop(k)}
+              style={{ position: "relative", cursor: customize ? "grab" : "default", opacity: isHidden ? 0.4 : 1 }}
+            >
+              <Tile v={map.v} label={map.label} color={map.color} />
+              {customize && (
+                <div style={{ position: "absolute", top: 6, right: 6, display: "flex", gap: 4, alignItems: "center" }}>
+                  <button
+                    onClick={() => toggleHidden(k)}
+                    title={isHidden ? t("dash.show") : t("dash.hide")}
+                    style={{ border: "1px solid var(--line)", background: "var(--surface)", borderRadius: 6, cursor: "pointer", fontSize: ".72rem", padding: "1px 6px", color: "var(--ink-2)" }}
+                  >
+                    {isHidden ? "👁" : "🚫"}
+                  </button>
+                  <span aria-hidden style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>⠿</span>
+                </div>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       <Card>

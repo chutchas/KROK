@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
+import { notifySubmission } from "./actions";
 
 type Answer = { value?: string | string[]; note?: string; ai?: string };
 type Props = {
@@ -209,6 +210,9 @@ export default function FillWizard(props: Props) {
         target_id: subId,
         meta: { form_id: props.formId, result, fails: fails.length },
       });
+
+      // แจ้ง webhook ภายนอก (best-effort, ไม่บล็อกผู้ใช้)
+      void notifySubmission(subId).catch(() => {});
 
       setDone({ result, fails, dur, pending: props.requiresApproval });
       window.scrollTo(0, 0);

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeChain, type ApprovalHistoryEntry } from "@/lib/approval";
+import { dispatchWebhooks } from "@/lib/webhooks";
 
 export async function reviewSubmission(
   id: string,
@@ -79,6 +80,22 @@ export async function reviewSubmission(
     target_id: id,
     meta: { step, note, advanced },
   });
+
+  // แจ้ง webhook เมื่อจบกระบวนการ (อนุมัติครบ หรือ ตีกลับ) — ไม่แจ้งตอนแค่เลื่อนขั้น
+  if (newStatus === "approved" || newStatus === "rejected") {
+    await dispatchWebhooks(
+      session.tenantId,
+      newStatus === "approved" ? "submission.approved" : "submission.rejected",
+      {
+        submission_id: id,
+        form_title: sub.form_title,
+        decision,
+        reviewer_name: session.displayName,
+        note: note.slice(0, 500),
+        at: entry.at,
+      }
+    );
+  }
 
   revalidatePath("/approvals");
   revalidatePath("/dashboard");

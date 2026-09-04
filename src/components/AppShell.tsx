@@ -15,6 +15,7 @@ const NAV: { href: string; key: MessageKey; icon: string; manage: boolean }[] = 
   { href: "/dashboard", key: "nav.dashboard", icon: "📊", manage: false },
   { href: "/settings/team", key: "nav.team", icon: "👥", manage: true },
   { href: "/settings/billing", key: "nav.billing", icon: "💳", manage: true },
+  { href: "/settings/integrations", key: "nav.integrations", icon: "🔗", manage: true },
   { href: "/settings/ai", key: "nav.ai", icon: "🤖", manage: true },
 ];
 

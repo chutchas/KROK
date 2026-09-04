@@ -4,9 +4,10 @@ import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import FormPreview from "@/components/FormPreview";
+import FormEditor from "@/components/FormEditor";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
-import { saveForm, deleteForm } from "./actions";
+import { saveForm, updateForm, deleteForm } from "./actions";
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 
@@ -24,6 +25,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [visMode, setVisMode] = useState<VisMode>("all");
   const [visTeams, setVisTeams] = useState<string[]>([]);
   const [visUsers, setVisUsers] = useState<string[]>([]);
+  const [editMode, setEditMode] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
@@ -98,19 +101,44 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     }
     setBusy("กำลังเผยแพร่");
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
-    const res = await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility);
+    const res = editingId
+      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility)
+      : await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility);
     setBusy(null);
     if ("error" in res) {
       setStatus({ t: res.error, err: true });
       return;
     }
+    resetDraft();
+    if (editingId) router.refresh();
+    else router.push("/forms");
+    router.refresh();
+  }
+
+  function resetDraft() {
     setDraft(null);
     setPrompt("");
+    setEditingId(null);
+    setEditMode(false);
+    setRequiresApproval(false);
+    setChain([]);
     setVisMode("all");
     setVisTeams([]);
     setVisUsers([]);
-    router.push("/forms");
-    router.refresh();
+    setStatus(null);
+  }
+
+  function editExisting(f: FormRow) {
+    setDraft(f.schema);
+    setEditingId(f.id);
+    setEditMode(true);
+    setRequiresApproval(f.requires_approval);
+    setChain(f.approval_chain || []);
+    setVisMode(f.visibility || "all");
+    setVisTeams(f.visible_teams || []);
+    setVisUsers(f.visible_users || []);
+    setStatus(null);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function onDelete(id: string, title: string) {
@@ -165,13 +193,41 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
       {draft && (
         <Card>
-          <h2 style={{ fontSize: "1.15rem" }}>
-            {draft.icon} {draft.title}
-          </h2>
-          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
-            {draft.description} · {draft.steps.length} ขั้นตอน · {countFields(draft)} ฟิลด์
-          </p>
-          <FormPreview schema={draft} />
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+            <div>
+              <h2 style={{ fontSize: "1.15rem", margin: 0 }}>
+                {editingId ? "✏️ " : ""}{draft.icon} {draft.title}
+              </h2>
+              <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
+                {editingId ? t("studio.editingForm") + " · " : ""}{draft.steps.length} ขั้นตอน · {countFields(draft)} ฟิลด์
+              </p>
+            </div>
+            <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
+              <button
+                onClick={() => setEditMode(false)}
+                style={{ padding: "7px 14px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: editMode ? "var(--surface)" : "var(--accent-soft)", color: editMode ? "var(--ink-2)" : "var(--accent)", fontWeight: editMode ? 400 : 600 }}
+              >
+                👁 {t("studio.preview")}
+              </button>
+              <button
+                onClick={() => setEditMode(true)}
+                style={{ padding: "7px 14px", border: "none", borderLeft: "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: editMode ? "var(--accent-soft)" : "var(--surface)", color: editMode ? "var(--accent)" : "var(--ink-2)", fontWeight: editMode ? 600 : 400 }}
+              >
+                ✏️ {t("studio.editFields")}
+              </button>
+            </div>
+          </div>
+
+          {editMode ? (
+            <div style={{ marginTop: 12 }}>
+              <FormEditor
+                value={draft}
+                onChange={(s) => setDraft(s)}
+              />
+            </div>
+          ) : (
+            <FormPreview schema={draft} />
+          )}
 
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
             <b style={{ fontFamily: "var(--font-anuphan)" }}>ปรับแก้ด้วย AI</b>
@@ -286,8 +342,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <Button variant="primary" onClick={publish} disabled={!!busy}>{t("studio.publish")}</Button>
-            <Button onClick={() => setDraft(null)} disabled={!!busy}>{t("studio.discard")}</Button>
+            <Button variant="primary" onClick={publish} disabled={!!busy}>{editingId ? t("studio.saveChanges") : t("studio.publish")}</Button>
+            <Button onClick={resetDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
       )}
@@ -308,8 +364,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   {f.schema.steps.length} ขั้นตอน · {countFields(f.schema)} ฟิลด์
                 </small>
               </div>
+              <Button onClick={() => editExisting(f)}>✏️ {t("common.edit")}</Button>
               <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
-              <Button variant="danger" onClick={() => onDelete(f.id, f.title)}>ลบ</Button>
+              <Button variant="danger" onClick={() => onDelete(f.id, f.title)}>{t("common.delete")}</Button>
             </div>
           ))}
         </div>

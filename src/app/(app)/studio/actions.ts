@@ -99,6 +99,57 @@ export async function saveForm(
   return { id: data.id as string };
 }
 
+export async function updateForm(
+  id: string,
+  rawSchema: unknown,
+  requiresApproval = false,
+  rawChain: unknown = [],
+  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] }
+): Promise<{ id: string } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์แก้ไขฟอร์ม" };
+
+  let schema: FormSchema;
+  try {
+    schema = sanitizeSchema(rawSchema);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
+  }
+  const chain = requiresApproval ? sanitizeChain(rawChain) : [];
+  const vis = sanitizeVisibility(rawVisibility);
+
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("forms")
+    .update({
+      title: schema.title,
+      icon: schema.icon,
+      description: schema.description,
+      schema,
+      requires_approval: requiresApproval,
+      approval_chain: chain,
+      visibility: vis.mode,
+      visible_teams: vis.teamIds,
+      visible_users: vis.userIds,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("tenant_id", session.tenantId)
+    .select("id")
+    .single();
+
+  if (error) return { error: error.message };
+  await audit(session.tenantId, session.userId, "form.update", id, {
+    title: schema.title,
+    fields: countFields(schema),
+    visibility: vis.mode,
+  });
+  revalidatePath("/forms");
+  revalidatePath("/studio");
+  return { id: data.id as string };
+}
+
 export async function deleteForm(id: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };

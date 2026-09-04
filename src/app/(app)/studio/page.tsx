@@ -12,6 +12,11 @@ export interface FormRow {
   icon: string;
   schema: FormSchema;
   created_by_name: string;
+  requires_approval: boolean;
+  approval_chain: { user_id: string; name: string; label: string }[];
+  visibility: "all" | "teams" | "users";
+  visible_teams: string[];
+  visible_users: string[];
 }
 
 export default async function StudioPage() {
@@ -28,7 +33,8 @@ export default async function StudioPage() {
   const [{ data }, { data: memberRows }, { data: teamRows }] = await Promise.all([
     supabase
       .from("forms")
-      .select("id, title, icon, schema")
+      .select("id, title, icon, schema, requires_approval, approval_chain, visibility, visible_teams, visible_users")
+      .eq("tenant_id", session.tenantId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
     supabase
@@ -49,6 +55,11 @@ export default async function StudioPage() {
     icon: f.icon as string,
     schema: f.schema as FormSchema,
     created_by_name: "",
+    requires_approval: (f.requires_approval as boolean) ?? false,
+    approval_chain: (f.approval_chain as FormRow["approval_chain"]) ?? [],
+    visibility: (f.visibility as FormRow["visibility"]) ?? "all",
+    visible_teams: (f.visible_teams as string[]) ?? [],
+    visible_users: (f.visible_users as string[]) ?? [],
   }));
 
   const members = (memberRows || []).map((m) => ({
