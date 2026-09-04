@@ -154,13 +154,14 @@ async function completeOpenAICompatible(
   maxTokens: number
 ): Promise<string> {
   const client = openAIClient(cfg);
-  const content: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [{ type: "text", text: userText }];
-  if (image) {
-    content.push({
-      type: "image_url",
-      image_url: { url: `data:${image.mediaType};base64,${image.base64}` },
-    });
-  }
+  // สำคัญ: ไม่มีรูป → ส่ง content เป็น string ธรรมดา
+  // ถ้าส่งเป็น array แบบ multimodal โมเดล text (qwen-plus/qwen-max) จะตอบ 403 Model access denied
+  const content: OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"] = image
+    ? [
+        { type: "text", text: userText },
+        { type: "image_url", image_url: { url: `data:${image.mediaType};base64,${image.base64}` } },
+      ]
+    : userText;
   const res = await client.chat.completions.create({
     model: cfg.model,
     max_tokens: maxTokens,
