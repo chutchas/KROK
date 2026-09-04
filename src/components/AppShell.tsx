@@ -1,5 +1,6 @@
 "use client";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
@@ -10,13 +11,20 @@ import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu } from "lucide-react";
 
-const NAV: { href: string; key: MessageKey; icon: IconType; manage: boolean }[] = [
+type NavEntry = { href: string; key: MessageKey; icon: IconType; manage: boolean };
+
+// เมนูหลัก — เห็นบน navbar ตลอด (งานที่ใช้ประจำ)
+const PRIMARY: NavEntry[] = [
   { href: "/studio", key: "nav.studio", icon: PenSquare, manage: true },
   { href: "/forms", key: "nav.fill", icon: Smartphone, manage: false },
-  { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, manage: true },
   { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, manage: false },
+];
+
+// เมนูรอง — อยู่ในเมนู hamburger; ตัวที่กำลังเปิดจะโผล่มาเป็นแท็บ active บน navbar
+const SECONDARY: NavEntry[] = [
+  { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, manage: true },
   { href: "/settings/team", key: "nav.team", icon: Users, manage: true },
   { href: "/settings/billing", key: "nav.billing", icon: CreditCard, manage: true },
   { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, manage: true },
@@ -43,6 +51,21 @@ export default function AppShell({
   const path = usePathname();
   const router = useRouter();
   const { t } = useT();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+  // ปิดเมนูเมื่อเปลี่ยนหน้า
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setMenuOpen(false);
+  }, [path]);
 
   async function signOut() {
     await createClient().auth.signOut();
@@ -50,7 +73,11 @@ export default function AppShell({
     router.refresh();
   }
 
-  const items = NAV.filter((n) => !n.manage || canManage);
+  const visible = (n: NavEntry) => !n.manage || canManage;
+  const primary = PRIMARY.filter(visible);
+  const secondary = SECONDARY.filter(visible);
+  const activeSecondary = secondary.find((n) => path.startsWith(n.href));
+  const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
 
   return (
     <>
@@ -75,6 +102,63 @@ export default function AppShell({
             flexWrap: "wrap",
           }}
         >
+          {secondary.length > 0 && (
+            <div ref={menuRef} style={{ position: "relative" }}>
+              <button
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-label={t("nav.more")}
+                title={t("nav.more")}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
+                style={{ border: "none", background: menuOpen ? "var(--accent-soft)" : "transparent", color: menuOpen ? "var(--accent)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}
+              >
+                <Icon icon={Menu} className="h-5 w-5" />
+              </button>
+              {menuOpen && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: "calc(100% + 8px)",
+                    left: 0,
+                    minWidth: 220,
+                    background: "var(--surface)",
+                    border: "1px solid var(--line)",
+                    borderRadius: 12,
+                    boxShadow: "var(--shadow)",
+                    padding: 6,
+                    zIndex: 40,
+                  }}
+                >
+                  <div style={{ fontSize: ".7rem", color: "var(--ink-3)", padding: "6px 10px 4px", fontWeight: 600, letterSpacing: ".03em" }}>
+                    {t("nav.more")}
+                  </div>
+                  {secondary.map((n) => {
+                    const on = path.startsWith(n.href);
+                    return (
+                      <Link
+                        key={n.href}
+                        href={n.href}
+                        onClick={() => setMenuOpen(false)}
+                        className="inline-flex items-center gap-2.5"
+                        style={{
+                          width: "100%",
+                          padding: "9px 10px",
+                          borderRadius: 8,
+                          fontSize: ".9rem",
+                          textDecoration: "none",
+                          fontWeight: on ? 600 : 500,
+                          color: on ? "var(--accent)" : "var(--ink)",
+                          background: on ? "var(--accent-soft)" : "transparent",
+                        }}
+                      >
+                        <Icon icon={n.icon} className="h-[18px] w-[18px]" /> {t(n.key)}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           {workspaces.length > 1 || canManage ? (
             <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
           ) : (
@@ -89,8 +173,8 @@ export default function AppShell({
             </Link>
           )}
 
-          <nav style={{ display: "flex", gap: 2, marginLeft: "auto" }}>
-            {items.map((n) => {
+          <nav style={{ display: "flex", gap: 2, marginLeft: "auto", flexWrap: "wrap" }}>
+            {navItems.map((n) => {
               const on = path.startsWith(n.href);
               return (
                 <Link

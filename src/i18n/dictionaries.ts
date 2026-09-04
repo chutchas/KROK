@@ -12,6 +12,7 @@ export const DICT = {
     "nav.billing": "แผน/โควตา",
     "nav.integrations": "เชื่อมต่อ",
     "nav.ai": "AI",
+    "nav.more": "เมนูเพิ่มเติม",
     "nav.profile": "โปรไฟล์",
     "nav.signout": "ออก",
     // plan / quota
@@ -269,6 +270,7 @@ export const DICT = {
     "nav.billing": "Plan",
     "nav.integrations": "Connect",
     "nav.ai": "AI",
+    "nav.more": "More",
     "nav.profile": "Profile",
     "nav.signout": "Sign out",
     "plan.title": "Plan & quota",
