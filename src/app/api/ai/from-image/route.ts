@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
 import { formFromImage } from "@/lib/ai";
+import { consumeAiCredit } from "@/lib/quota";
 
 export const maxDuration = 120;
 
@@ -20,6 +21,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
     if (file.size > 8 * 1024 * 1024)
       return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 8MB" }, { status: 400 });
+
+    const credit = await consumeAiCredit(session.tenantId);
+    if (!credit.ok)
+      return NextResponse.json(
+        { error: `ใช้เครดิต AI ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
+        { status: 402 }
+      );
 
     const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
     const schema = await formFromImage(session.tenantId, b64, file.type);

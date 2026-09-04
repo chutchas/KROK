@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
 import { generateForm, refineForm } from "@/lib/ai";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
+import { consumeAiCredit } from "@/lib/quota";
 
 export const maxDuration = 120;
 
@@ -17,6 +18,13 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
+
+  const credit = await consumeAiCredit(session.tenantId);
+  if (!credit.ok)
+    return NextResponse.json(
+      { error: `ใช้เครดิต AI ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
+      { status: 402 }
+    );
 
   try {
     let schema: FormSchema;

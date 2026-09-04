@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema, countFields, type FormSchema } from "@/lib/form-schema";
 import { sanitizeChain } from "@/lib/approval";
+import { canAddForm } from "@/lib/quota";
+import { fmtLimit } from "@/lib/plans";
 
 async function audit(
   tenantId: string,
@@ -59,6 +61,10 @@ export async function saveForm(
   }
   const chain = requiresApproval ? sanitizeChain(rawChain) : [];
   const vis = sanitizeVisibility(rawVisibility);
+
+  const quota = await canAddForm(session.tenantId);
+  if (!quota.ok)
+    return { error: `แผนปัจจุบันสร้างฟอร์มได้สูงสุด ${fmtLimit(quota.max)} ฟอร์ม (ใช้ไป ${quota.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา” เพื่อเพิ่มโควตา` };
 
   const supabase = await createClient();
   const { data, error } = await supabase

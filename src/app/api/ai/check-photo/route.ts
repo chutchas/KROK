@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { checkPhoto } from "@/lib/ai";
+import { consumeAiCredit } from "@/lib/quota";
 
 export const maxDuration = 60;
 
@@ -18,6 +19,13 @@ export async function POST(req: Request) {
     if (!(file instanceof File)) return NextResponse.json({ error: "no file" }, { status: 400 });
     if (!ALLOWED.includes(file.type))
       return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
+
+    const credit = await consumeAiCredit(session.tenantId);
+    if (!credit.ok)
+      return NextResponse.json(
+        { error: `ใช้เครดิต AI ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max})`, ok: true, pass: true, note: "" },
+        { status: 402 }
+      );
 
     const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
     const result = await checkPhoto(session.tenantId, b64, file.type, hint, label);

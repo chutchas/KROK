@@ -2,6 +2,8 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, type KrokSession } from "@/lib/session";
+import { canAddMember } from "@/lib/quota";
+import { fmtLimit } from "@/lib/plans";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 const ROLES: Role[] = ["owner", "admin", "designer", "operator"];
@@ -24,6 +26,10 @@ export async function inviteMember(email: string, role: Role): Promise<{ ok: tru
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { error: "อีเมลไม่ถูกต้อง" };
   if (!ROLES.includes(role)) return { error: "role ไม่ถูกต้อง" };
   if (role === "owner" && session.role !== "owner") return { error: "เฉพาะ owner เชิญ owner ได้" };
+
+  const q = await canAddMember(session.tenantId);
+  if (!q.ok)
+    return { error: `แผนปัจจุบันมีสมาชิกได้สูงสุด ${fmtLimit(q.max)} คน (ปัจจุบัน ${q.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` };
 
   const supabase = await createClient();
   const { error } = await supabase
