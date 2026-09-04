@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Notice } from "@/components/ui";
-import { inviteMember, cancelInvite, changeRole, removeMember } from "./actions";
+import { inviteMember, cancelInvite, changeRole, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 
 type Role = "owner" | "admin" | "designer" | "operator";
@@ -18,6 +18,11 @@ export interface Invite {
   email: string;
   role: Role;
   created_at: string;
+}
+export interface Team {
+  id: string;
+  name: string;
+  memberIds: string[];
 }
 
 const ROLE_LABEL: Record<Role, string> = {
@@ -40,15 +45,17 @@ export default function TeamClient({
   tenantName,
   members,
   invites,
+  teams,
 }: {
   me: string;
   myRole: Role;
   tenantName: string;
   members: Member[];
   invites: Invite[];
+  teams: Team[];
 }) {
   const router = useRouter();
-  const { tt } = useT();
+  const { t, tt } = useT();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("operator");
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
@@ -161,6 +168,139 @@ export default function TeamClient({
           })}
         </div>
       </Card>
+
+      <TeamsSection teams={teams} members={members} router={router} t={t} />
     </div>
   );
+}
+
+function TeamsSection({
+  teams,
+  members,
+  router,
+  t,
+}: {
+  teams: Team[];
+  members: Member[];
+  router: ReturnType<typeof useRouter>;
+  t: (k: import("@/i18n/dictionaries").MessageKey) => string;
+}) {
+  const [newName, setNewName] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [editing, setEditing] = useState<string | null>(null);
+  const [draftIds, setDraftIds] = useState<string[]>([]);
+
+  function nameOf(uid: string) {
+    const m = members.find((x) => x.user_id === uid);
+    return m?.name || m?.email || "สมาชิก";
+  }
+
+  async function add(e: React.FormEvent) {
+    e.preventDefault();
+    if (!newName.trim()) return;
+    setBusy(true);
+    const res = await createTeam(newName);
+    setBusy(false);
+    if ("error" in res) { alert(res.error); return; }
+    setNewName("");
+    router.refresh();
+  }
+
+  function startEdit(team: Team) {
+    setEditing(team.id);
+    setDraftIds([...team.memberIds]);
+  }
+
+  async function saveMembers(teamId: string) {
+    setBusy(true);
+    const res = await setTeamMembers(teamId, draftIds);
+    setBusy(false);
+    if ("error" in res) { alert(res.error); return; }
+    setEditing(null);
+    router.refresh();
+  }
+
+  return (
+    <Card>
+      <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("team.teamsTitle")}</h2>
+      <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("team.teamsSub")}</p>
+
+      <form onSubmit={add} style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+        <Field value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("team.teamNamePlaceholder")} style={{ flex: 1, minWidth: 200 }} />
+        <Button variant="primary" type="submit" disabled={busy || !newName.trim()}>{t("team.addTeam")}</Button>
+      </form>
+
+      {teams.length === 0 && <p style={{ color: "var(--ink-3)", fontSize: ".85rem" }}>{t("team.noTeams")}</p>}
+
+      <div style={{ display: "grid", gap: 10 }}>
+        {teams.map((team) => (
+          <div key={team.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center" }}>🏷️</div>
+              <div style={{ flex: 1, minWidth: 120 }}>
+                <b style={{ fontSize: ".95rem" }}>{team.name}</b>
+                <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{tt2(t("team.memberCount"), team.memberIds.length)}</small>
+              </div>
+              {editing === team.id ? (
+                <>
+                  <Button variant="primary" onClick={() => saveMembers(team.id)} disabled={busy}>{t("common.save")}</Button>
+                  <Button onClick={() => setEditing(null)}>{t("common.cancel")}</Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={() => startEdit(team)}>{t("team.editMembers")}</Button>
+                  <Button
+                    variant="danger"
+                    onClick={async () => {
+                      if (!confirm(t("team.deleteTeamConfirm"))) return;
+                      const res = await deleteTeam(team.id);
+                      if ("error" in res) alert(res.error);
+                      else router.refresh();
+                    }}
+                  >
+                    {t("team.deleteTeam")}
+                  </Button>
+                </>
+              )}
+            </div>
+
+            {editing === team.id ? (
+              <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--line)", display: "grid", gap: 6 }}>
+                {members.map((m) => {
+                  const on = draftIds.includes(m.user_id);
+                  return (
+                    <label key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
+                      <input
+                        type="checkbox"
+                        checked={on}
+                        onChange={(e) =>
+                          setDraftIds((ids) => (e.target.checked ? [...ids, m.user_id] : ids.filter((x) => x !== m.user_id)))
+                        }
+                        style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
+                      />
+                      {m.name || m.email || "สมาชิก"}
+                    </label>
+                  );
+                })}
+              </div>
+            ) : (
+              team.memberIds.length > 0 && (
+                <div style={{ marginTop: 8, display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {team.memberIds.map((uid) => (
+                    <span key={uid} style={{ fontSize: ".78rem", color: "var(--ink-2)", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 20, padding: "3px 10px" }}>
+                      {nameOf(uid)}
+                    </span>
+                  ))}
+                </div>
+              )
+            )}
+          </div>
+        ))}
+      </div>
+    </Card>
+  );
+}
+
+function tt2(template: string, n: number) {
+  return template.replace("{n}", String(n));
 }

@@ -25,7 +25,7 @@ export default async function StudioPage() {
     );
 
   const supabase = await createClient();
-  const [{ data }, { data: memberRows }] = await Promise.all([
+  const [{ data }, { data: memberRows }, { data: teamRows }] = await Promise.all([
     supabase
       .from("forms")
       .select("id, title, icon, schema")
@@ -34,6 +34,12 @@ export default async function StudioPage() {
     supabase
       .from("memberships")
       .select("user_id, name, email, role")
+      .eq("tenant_id", session.tenantId)
+      .order("created_at", { ascending: true }),
+    supabase
+      .from("teams")
+      .select("id, name")
+      .eq("tenant_id", session.tenantId)
       .order("created_at", { ascending: true }),
   ]);
 
@@ -51,5 +57,7 @@ export default async function StudioPage() {
     role: m.role as string,
   }));
 
-  return <StudioClient initialForms={forms} members={members} />;
+  const teams = ((teamRows || []) as { id: string; name: string }[]).map((tt) => ({ id: tt.id, name: tt.name }));
+
+  return <StudioClient initialForms={forms} members={members} teams={teams} />;
 }

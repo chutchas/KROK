@@ -23,10 +23,29 @@ async function audit(
   });
 }
 
+export interface Visibility {
+  mode: "all" | "teams" | "users";
+  teamIds: string[];
+  userIds: string[];
+}
+
+function sanitizeVisibility(v: unknown): Visibility {
+  const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
+  const mode = o.mode === "teams" || o.mode === "users" ? o.mode : "all";
+  const asIds = (x: unknown) =>
+    Array.isArray(x) ? Array.from(new Set(x.filter((s): s is string => typeof s === "string"))) : [];
+  return {
+    mode,
+    teamIds: mode === "teams" ? asIds(o.teamIds) : [],
+    userIds: mode === "users" ? asIds(o.userIds) : [],
+  };
+}
+
 export async function saveForm(
   rawSchema: unknown,
   requiresApproval = false,
-  rawChain: unknown = []
+  rawChain: unknown = [],
+  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] }
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -39,6 +58,7 @@ export async function saveForm(
     return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
   }
   const chain = requiresApproval ? sanitizeChain(rawChain) : [];
+  const vis = sanitizeVisibility(rawVisibility);
 
   const supabase = await createClient();
   const { data, error } = await supabase
@@ -52,6 +72,9 @@ export async function saveForm(
       status: "published",
       requires_approval: requiresApproval,
       approval_chain: chain,
+      visibility: vis.mode,
+      visible_teams: vis.teamIds,
+      visible_users: vis.userIds,
       created_by: session.userId,
     })
     .select("id")
@@ -63,6 +86,7 @@ export async function saveForm(
     fields: countFields(schema),
     requires_approval: requiresApproval,
     approval_steps: chain.length,
+    visibility: vis.mode,
   });
   revalidatePath("/forms");
   revalidatePath("/studio");

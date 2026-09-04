@@ -11,14 +11,19 @@ import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 
 interface Member { user_id: string; name: string; role: string }
+interface Team { id: string; name: string }
+type VisMode = "all" | "teams" | "users";
 
-export default function StudioClient({ initialForms, members }: { initialForms: FormRow[]; members: Member[] }) {
+export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
   const { t } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [draft, setDraft] = useState<FormSchema | null>(null);
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [chain, setChain] = useState<ApprovalStep[]>([]);
+  const [visMode, setVisMode] = useState<VisMode>("all");
+  const [visTeams, setVisTeams] = useState<string[]>([]);
+  const [visUsers, setVisUsers] = useState<string[]>([]);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
@@ -83,8 +88,17 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
       setStatus({ t: "มีขั้นอนุมัติที่ยังไม่ได้เลือกผู้อนุมัติ", err: true });
       return;
     }
+    if (visMode === "teams" && visTeams.length === 0) {
+      setStatus({ t: t("studio.visPickTeam"), err: true });
+      return;
+    }
+    if (visMode === "users" && visUsers.length === 0) {
+      setStatus({ t: t("studio.visPickUser"), err: true });
+      return;
+    }
     setBusy("กำลังเผยแพร่");
-    const res = await saveForm(draft, requiresApproval, requiresApproval ? chain : []);
+    const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
+    const res = await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility);
     setBusy(null);
     if ("error" in res) {
       setStatus({ t: res.error, err: true });
@@ -92,6 +106,9 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
     }
     setDraft(null);
     setPrompt("");
+    setVisMode("all");
+    setVisTeams([]);
+    setVisUsers([]);
     router.push("/forms");
     router.refresh();
   }
@@ -210,6 +227,64 @@ export default function StudioClient({ initialForms, members }: { initialForms: 
               </div>
             )}
           </div>
+
+          <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10 }}>
+            <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
+            <p style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("studio.visSub")}</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              {(["all", "teams", "users"] as VisMode[]).map((m) => {
+                const on = visMode === m;
+                const label = m === "all" ? t("studio.visAll") : m === "teams" ? t("studio.visTeams") : t("studio.visUsers");
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setVisMode(m)}
+                    style={{
+                      padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit",
+                      border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
+                      background: on ? "var(--accent-soft)" : "var(--surface)",
+                      color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {visMode === "teams" && (
+              teams.length === 0 ? (
+                <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: 0 }}>{t("studio.visNoTeams")}</p>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {teams.map((tm) => {
+                    const on = visTeams.includes(tm.id);
+                    return (
+                      <label key={tm.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
+                        <input type="checkbox" checked={on} onChange={(e) => setVisTeams((ids) => (e.target.checked ? [...ids, tm.id] : ids.filter((x) => x !== tm.id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                        🏷️ {tm.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
+            {visMode === "users" && (
+              <div style={{ display: "grid", gap: 6 }}>
+                {members.map((m) => {
+                  const on = visUsers.includes(m.user_id);
+                  return (
+                    <label key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
+                      <input type="checkbox" checked={on} onChange={(e) => setVisUsers((ids) => (e.target.checked ? [...ids, m.user_id] : ids.filter((x) => x !== m.user_id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                      👷 {m.name}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <Button variant="primary" onClick={publish} disabled={!!busy}>{t("studio.publish")}</Button>
             <Button onClick={() => setDraft(null)} disabled={!!busy}>{t("studio.discard")}</Button>

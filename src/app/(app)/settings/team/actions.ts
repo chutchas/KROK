@@ -104,3 +104,77 @@ export async function removeMember(userId: string): Promise<{ ok: true } | { err
   revalidatePath("/settings/team");
   return { ok: true };
 }
+
+// ============================================================
+// Teams / Sections (กลุ่มย่อยในองค์กร)
+// ============================================================
+
+export async function createTeam(name: string): Promise<{ ok: true } | { error: string }> {
+  const a = await requireAdmin();
+  if (!a.ok) return { error: a.error };
+  const { session } = a;
+  const clean = name.trim();
+  if (!clean) return { error: "ต้องระบุชื่อทีม" };
+  if (clean.length > 60) return { error: "ชื่อยาวเกินไป" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("teams")
+    .insert({ tenant_id: session.tenantId, name: clean, created_by: session.userId });
+  if (error) return { error: error.message };
+  revalidatePath("/settings/team");
+  return { ok: true };
+}
+
+export async function renameTeam(teamId: string, name: string): Promise<{ ok: true } | { error: string }> {
+  const a = await requireAdmin();
+  if (!a.ok) return { error: a.error };
+  const clean = name.trim();
+  if (!clean) return { error: "ต้องระบุชื่อทีม" };
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("teams").update({ name: clean }).eq("id", teamId).eq("tenant_id", a.session.tenantId);
+  if (error) return { error: error.message };
+  revalidatePath("/settings/team");
+  return { ok: true };
+}
+
+export async function deleteTeam(teamId: string): Promise<{ ok: true } | { error: string }> {
+  const a = await requireAdmin();
+  if (!a.ok) return { error: a.error };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("teams").delete().eq("id", teamId).eq("tenant_id", a.session.tenantId);
+  if (error) return { error: error.message };
+  revalidatePath("/settings/team");
+  return { ok: true };
+}
+
+export async function setTeamMembers(teamId: string, userIds: string[]): Promise<{ ok: true } | { error: string }> {
+  const a = await requireAdmin();
+  if (!a.ok) return { error: a.error };
+  const { session } = a;
+
+  const supabase = await createClient();
+  // ยืนยันว่า team อยู่ใน tenant นี้
+  const { data: team } = await supabase
+    .from("teams").select("id").eq("id", teamId).eq("tenant_id", session.tenantId).maybeSingle();
+  if (!team) return { error: "ไม่พบทีม" };
+
+  // ยืนยันว่า userIds เป็นสมาชิกของ tenant จริง
+  const { data: mem } = await supabase
+    .from("memberships").select("user_id").eq("tenant_id", session.tenantId);
+  const valid = new Set((mem || []).map((m) => m.user_id as string));
+  const clean = Array.from(new Set(userIds.filter((u) => valid.has(u))));
+
+  const { error: delErr } = await supabase.from("team_members").delete().eq("team_id", teamId);
+  if (delErr) return { error: delErr.message };
+  if (clean.length > 0) {
+    const rows = clean.map((user_id) => ({ team_id: teamId, user_id, tenant_id: session.tenantId }));
+    const { error: insErr } = await supabase.from("team_members").insert(rows);
+    if (insErr) return { error: insErr.message };
+  }
+  revalidatePath("/settings/team");
+  return { ok: true };
+}
