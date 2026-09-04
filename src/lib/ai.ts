@@ -186,7 +186,7 @@ export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เด
 {"title":"ชื่อฟอร์ม","description":"อธิบายสั้นๆ ว่าใช้เมื่อไหร่","icon":"emoji 1 ตัว",
 "steps":[{"title":"ชื่อขั้นตอน","fields":[{
  "id":"snake_case_id","type":"text|number|select|checkbox|pass_fail|photo|barcode|signature|datetime",
- "label":"คำถาม/สิ่งที่ต้องตรวจ (ภาษาไทย)","required":true,
+ "label":"คำถาม/สิ่งที่ต้องตรวจ (ใช้ภาษาเดียวกับคำขอ)","required":true,
  "tooltip":"คำแนะนำสั้นๆ ช่วยให้กรอกถูกต้อง เช่น จุดที่ต้องดู วิธีวัด",
  "example":"ตัวอย่างคำตอบที่ดี (เฉพาะ text/number)",
  "min":0,"max":100,"unit":"หน่วย (เฉพาะ number ที่มีช่วงค่ามาตรฐาน)",
@@ -199,7 +199,8 @@ export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เด
 ใช้ barcode ถ้ามีการระบุเครื่องจักร/พาเลท/เอกสารด้วยรหัส,
 ใช้ number พร้อม min/max/unit เมื่อมีค่ามาตรฐาน,
 เขียน tooltip ทุก field ให้คนหน้างานที่ไม่เคยทำก็เข้าใจ,
-ปิดท้ายด้วย signature ถ้าเหมาะสม`;
+ปิดท้ายด้วย signature ถ้าเหมาะสม,
+สำคัญ: เขียนทุกข้อความในฟอร์ม (title, label, tooltip, example, options) ด้วยภาษาเดียวกับคำขอของผู้ใช้ (ไทยหรืออังกฤษ) ห้ามปนภาษาอื่นเช่นจีนเด็ดขาด`;
 
 export async function generateForm(tenantId: string, prompt: string): Promise<FormSchema> {
   const text = await complete(
