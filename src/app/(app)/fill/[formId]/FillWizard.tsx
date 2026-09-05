@@ -4,11 +4,12 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
+import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
 
 type Answer = { value?: string | string[]; note?: string; ai?: string };
 type Props = {
@@ -76,7 +77,7 @@ export default function FillWizard(props: Props) {
   const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean } | null>(null);
+  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean } | null>(null);
 
   const step = schema.steps[idx];
 
@@ -164,60 +165,52 @@ export default function FillWizard(props: Props) {
           list.push(item);
         }
 
-      const result = fails.length ? "fail" : "pass";
+      const result: "pass" | "fail" = fails.length ? "fail" : "pass";
       const dur = Math.round((Date.now() - startedAt) / 1000);
 
-      const { error: subErr } = await supabase.from("submissions").insert({
-        id: subId,
-        tenant_id: props.tenantId,
-        form_id: props.formId,
-        form_title: props.title,
-        form_icon: props.icon,
-        form_version: props.version,
-        submitted_by: props.userId,
-        user_name: props.userName,
+      const payload: PendingSubmission = {
+        subId,
+        tenantId: props.tenantId,
+        formId: props.formId,
+        title: props.title,
+        icon: props.icon,
+        version: props.version,
+        userId: props.userId,
+        userName: props.userName,
+        requiresApproval: props.requiresApproval,
+        approvalChain: props.approvalChain,
         result,
         fails,
         answers: list,
-        duration_s: dur,
-        approval_status: props.requiresApproval ? "pending" : "none",
-        approval_chain: props.requiresApproval ? props.approvalChain : [],
-        approval_step: 0,
-        approval_history: [],
-      });
-      if (subErr) throw subErr;
+        dur,
+        photos: photoUploads,
+        queuedAt: 0,
+      };
 
-      // upload photos to storage + metadata rows
-      for (const p of photoUploads) {
-        const path = `${props.tenantId}/${subId}/${p.fieldId}.jpg`;
-        const blob = dataUrlToBlob(p.dataUrl);
-        const { error: upErr } = await supabase.storage
-          .from("submissions")
-          .upload(path, blob, { contentType: "image/jpeg", upsert: true });
-        if (!upErr) {
-          await supabase.from("submission_photos").insert({
-            tenant_id: props.tenantId,
-            submission_id: subId,
-            field_id: p.fieldId,
-            storage_path: path,
-            ai_check: p.ai ?? null,
-          });
-        }
+      // ออฟไลน์ → เข้าคิวไว้ก่อน แล้ว sync ทีหลัง
+      if (typeof navigator !== "undefined" && navigator.onLine === false) {
+        await enqueue({ ...payload, queuedAt: Date.now() });
+        window.dispatchEvent(new Event("krok-queue-changed"));
+        setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
+        window.scrollTo(0, 0);
+        return;
       }
-      // audit (best-effort)
-      void supabase.from("audit_log").insert({
-        tenant_id: props.tenantId,
-        actor_id: props.userId,
-        action: "submission.create",
-        target_type: "submission",
-        target_id: subId,
-        meta: { form_id: props.formId, result, fails: fails.length },
-      });
+
+      try {
+        await pushSubmission(supabase, payload);
+      } catch {
+        // ส่งไม่ผ่าน (เครือข่ายหลุด) → เก็บเข้าคิวออฟไลน์
+        await enqueue({ ...payload, queuedAt: Date.now() });
+        window.dispatchEvent(new Event("krok-queue-changed"));
+        setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
+        window.scrollTo(0, 0);
+        return;
+      }
 
       // แจ้ง webhook ภายนอก (best-effort, ไม่บล็อกผู้ใช้)
       void notifySubmission(subId).catch(() => {});
 
-      setDone({ result, fails, dur, pending: props.requiresApproval });
+      setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
       window.scrollTo(0, 0);
     } catch (e) {
       setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
@@ -228,16 +221,20 @@ export default function FillWizard(props: Props) {
   if (done) {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "center", color: done.pending ? "var(--amber)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
+        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--amber)" : done.pending ? "var(--amber)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
         <h2 style={{ margin: "10px 0 4px" }}>
-          {done.pending
+          {done.offline
+            ? t("fill.doneOffline")
+            : done.pending
             ? t("fill.donePending")
             : done.result === "pass"
             ? t("fill.doneOk")
             : `ส่งแล้ว — พบปัญหา ${done.fails.length} รายการ`}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>
-          {props.title} · ใช้เวลา {done.dur} วินาที · {done.pending ? "หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติ" : "ขึ้น dashboard แล้ว"}
+          {done.offline
+            ? t("fill.doneOfflineSub")
+            : `${props.title} · ใช้เวลา ${done.dur} วินาที · ${done.pending ? "หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติ" : "ขึ้น dashboard แล้ว"}`}
         </p>
         {done.fails.length > 0 && (
           <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>

@@ -7,6 +7,7 @@ import NotificationBell from "@/components/NotificationBell";
 import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { type WorkspaceItem } from "@/components/WorkspaceSwitcher";
+import OfflineSync from "@/components/OfflineSync";
 import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
@@ -215,6 +216,7 @@ export default function AppShell({
           </nav>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+            <OfflineSync />
             <ThemeToggle />
             <LanguageToggle />
             <NotificationBell userId={userId} />
