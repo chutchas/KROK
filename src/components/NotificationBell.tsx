@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2 } from "lucide-react";
+import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2, FilePlus2 } from "lucide-react";
 import Icon, { type IconType } from "@/components/Icon";
 
 interface Notif {
@@ -22,7 +22,7 @@ function fmt(ts: string) {
     return "";
   }
 }
-const ICON: Record<string, IconType> = { approval_request: Clock, fail_alert: AlertTriangle, approved: CheckCircle2, rejected: Undo2 };
+const ICON: Record<string, IconType> = { approval_request: Clock, fail_alert: AlertTriangle, approved: CheckCircle2, rejected: Undo2, new_form: FilePlus2 };
 
 export default function NotificationBell({ userId }: { userId: string }) {
   const router = useRouter();

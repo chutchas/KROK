@@ -1,6 +1,7 @@
 "use server";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema, countFields, type FormSchema } from "@/lib/form-schema";
 import { sanitizeChain } from "@/lib/approval";
@@ -29,6 +30,47 @@ export interface Visibility {
   mode: "public" | "all" | "teams" | "users";
   teamIds: string[];
   userIds: string[];
+}
+
+// แจ้งเตือน "ฟอร์มใหม่" ให้สมาชิกที่มีสิทธิ์เห็นฟอร์ม (ใช้ service role เพราะ notifications ไม่มี insert policy)
+async function notifyNewForm(
+  tenantId: string,
+  formId: string,
+  title: string,
+  icon: string,
+  vis: Visibility,
+  actorId: string
+) {
+  const admin = getAdminClient();
+  if (!admin) return;
+  try {
+    let userIds: string[] = [];
+    if (vis.mode === "teams") {
+      if (vis.teamIds.length) {
+        const { data } = await admin.from("team_members").select("user_id").eq("tenant_id", tenantId).in("team_id", vis.teamIds);
+        userIds = (data || []).map((r) => r.user_id as string);
+      }
+    } else if (vis.mode === "users") {
+      userIds = vis.userIds;
+    } else {
+      // public / all → สมาชิกทั้ง workspace
+      const { data } = await admin.from("memberships").select("user_id").eq("tenant_id", tenantId);
+      userIds = (data || []).map((r) => r.user_id as string);
+    }
+    userIds = Array.from(new Set(userIds)).filter((u) => u && u !== actorId);
+    if (!userIds.length) return;
+    const rows = userIds.map((uid) => ({
+      tenant_id: tenantId,
+      user_id: uid,
+      type: "new_form",
+      title: `${icon} ฟอร์มใหม่: ${title}`,
+      body: "มีฟอร์มใหม่ให้กรอก — แตะเพื่อเปิด",
+      link: `/forms?f=${formId}`,
+    }));
+    await admin.from("notifications").insert(rows);
+  } catch {
+    /* best-effort */
+  }
 }
 
 function sanitizeVisibility(v: unknown): Visibility {
@@ -119,6 +161,7 @@ export async function saveForm(
     approval_steps: chain.length,
     visibility: vis.mode,
   });
+  await notifyNewForm(session.tenantId, data.id as string, schema.title, schema.icon, vis, session.userId);
   revalidatePath("/forms");
   revalidatePath("/studio");
   return { id: data.id as string };
@@ -248,6 +291,24 @@ export async function setFormStatus(
     .eq("tenant_id", session.tenantId);
   if (error) return { error: error.message };
   await audit(session.tenantId, session.userId, "form.status", id, { status });
+
+  // เผยแพร่ (จากร่าง/กู้คืน) → แจ้งเตือนสมาชิกที่มีสิทธิ์เห็นฟอร์ม
+  if (status === "published") {
+    const { data: f } = await supabase
+      .from("forms")
+      .select("title, icon, visibility, visible_teams, visible_users")
+      .eq("id", id)
+      .eq("tenant_id", session.tenantId)
+      .maybeSingle();
+    if (f) {
+      await notifyNewForm(
+        session.tenantId, id, (f.title as string) || "ฟอร์ม", (f.icon as string) || "📋",
+        { mode: (f.visibility as Visibility["mode"]) || "all", teamIds: (f.visible_teams as string[]) || [], userIds: (f.visible_users as string[]) || [] },
+        session.userId
+      );
+    }
+  }
+
   revalidatePath("/studio");
   revalidatePath("/forms");
   return { ok: true };

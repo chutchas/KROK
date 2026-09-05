@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer, Archive, Trash2 } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer, Archive, Trash2, Search as SearchIcon } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
@@ -13,6 +13,7 @@ import QrModal from "@/components/QrModal";
 import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY } from "@/lib/prompt-library";
+import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
 import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
@@ -40,6 +41,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
+  const [search, setSearch] = useState("");
+  const [catFilter, setCatFilter] = useState("all");
+  const [customCat, setCustomCat] = useState(false);
   const [tab, setTab] = useState<"new" | "edit" | "all">("new");
   const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
   const [qrForm, setQrForm] = useState<FormRow | null>(null);
@@ -52,6 +56,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   }, []);
 
   const fillUrl = (f: FormRow) => `${origin}${f.visibility === "public" ? "/f/" : "/fill/"}${f.id}`;
+  const studioCats = Array.from(new Set(initialForms.map((f) => f.schema.category).filter((c): c is string => !!c)));
 
   async function saveAsDraft() {
     if (!draft) return;
@@ -176,6 +181,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setEditingId(null);
     setView("mobile");
     setSelKey(null);
+    setCustomCat(false);
     setRequiresApproval(false);
     setChain([]);
     setVisMode("all");
@@ -386,6 +392,37 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             </div>
           </div>
 
+          {/* ตั้งค่าฟอร์ม: ไอคอน/ชื่อ/คำอธิบาย/ประเภท */}
+          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 12, display: "grid", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr", gap: 8, alignItems: "start" }}>
+              <input value={draft.icon} onChange={(e) => setDraft({ ...draft, icon: e.target.value.slice(0, 4) })} aria-label="icon"
+                style={{ textAlign: "center", fontSize: "1.4rem", padding: "6px 4px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)" }} />
+              <div style={{ display: "grid", gap: 8 }}>
+                <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} />
+                <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
+              </div>
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <label style={{ fontSize: ".85rem", color: "var(--ink-2)", fontWeight: 600 }}>{t("studio.category")}</label>
+              <select
+                value={draft.category ? (isPresetCategory(draft.category) ? draft.category : "__custom") : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "__custom") { setCustomCat(true); setDraft({ ...draft, category: isPresetCategory(draft.category) || !draft.category ? "" : draft.category }); }
+                  else { setCustomCat(false); setDraft({ ...draft, category: v || undefined }); }
+                }}
+                style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem" }}
+              >
+                <option value="">{t("studio.categoryNone")}</option>
+                {FORM_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{lang === "en" ? c.en : c.th}</option>)}
+                <option value="__custom">{t("studio.categoryCustom")}</option>
+              </select>
+              {(customCat || (!!draft.category && !isPresetCategory(draft.category))) && (
+                <Field value={!isPresetCategory(draft.category) ? (draft.category || "") : ""} onChange={(e) => setDraft({ ...draft, category: e.target.value || undefined })} placeholder={t("studio.categoryCustomPh")} style={{ maxWidth: 220 }} maxLength={60} />
+              )}
+            </div>
+          </div>
+
           <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
 
           <div className="krok-editgrid" style={{ display: "grid", gridTemplateColumns: selKey ? "1fr 330px" : "1fr", gap: 14, marginTop: 8, alignItems: "start" }}>
@@ -546,7 +583,20 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
 
-        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "10px 0 14px" }}>
+        {/* ค้นหา + กรองประเภท */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0 10px" }}>
+          <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
+            <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
+            <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />
+          </div>
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
+            style={{ padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem" }}>
+            <option value="all">{t("studio.allCategories")}</option>
+            {studioCats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
+          </select>
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", margin: "0 0 14px" }}>
           {(["all", "published", "draft", "archived"] as const).map((k) => {
             const on = listFilter === k;
             const n = k === "all" ? initialForms.length : initialForms.filter((f) => f.status === k).length;
@@ -562,13 +612,18 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
         <div style={{ display: "grid", gap: 10 }}>
           {initialForms.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("studio.emptyForms")}</span>}
-          {initialForms.filter((f) => listFilter === "all" || f.status === listFilter).map((f) => (
+          {initialForms
+            .filter((f) => listFilter === "all" || f.status === listFilter)
+            .filter((f) => catFilter === "all" || (f.schema.category || "") === catFilter)
+            .filter((f) => !search.trim() || f.title.toLowerCase().includes(search.trim().toLowerCase()))
+            .map((f) => (
             <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--surface)", flexWrap: "wrap" }}>
               <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>{f.icon}</div>
               <div style={{ flex: 1, minWidth: 140 }}>
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>{" "}
                 {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="fail">{t("studio.stArchived")}</Pill>}
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
+                  {f.schema.category && <span style={{ display: "inline-block", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "0 6px", marginRight: 6, color: "var(--ink-2)" }}>{categoryLabel(f.schema.category, lang)}</span>}
                   {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
                 </small>
               </div>

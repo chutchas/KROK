@@ -52,6 +52,7 @@ export interface FormSchema {
   title: string;
   description: string;
   icon: string;
+  category?: string; // ประเภทฟอร์ม: preset key หรือข้อความกำหนดเอง
   flow: "sequential";
   steps: FormStep[];
   // ตำแหน่ง element บนมุมมองกระดาษ (px บนแคนวาส A4 กว้าง 794)
@@ -167,6 +168,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
     flow: "sequential",
     steps,
   };
+  if (r.category != null && r.category !== "") schema.category = str(r.category, 60);
   if (layout) schema.layout = layout;
   return schema;
 }

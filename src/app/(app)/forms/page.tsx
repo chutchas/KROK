@@ -15,8 +15,9 @@ interface FormRow {
   visible_users: string[] | null;
 }
 
-export default async function FormsPage() {
+export default async function FormsPage({ searchParams }: { searchParams: Promise<{ f?: string }> }) {
   const session = await enforceMenu("forms");
+  const { f: highlightId } = await searchParams;
 
   const supabase = await createClient();
   const [{ data }, { data: teamIdRows }] = await Promise.all([
@@ -48,7 +49,8 @@ export default async function FormsPage() {
     icon: f.icon,
     steps: f.schema.steps.length,
     fields: countFields(f.schema),
+    category: f.schema.category,
   }));
 
-  return <FormsListClient forms={forms} />;
+  return <FormsListClient forms={forms} highlightId={highlightId} />;
 }
