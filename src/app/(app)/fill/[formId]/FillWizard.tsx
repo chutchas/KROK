@@ -8,6 +8,7 @@ import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLi
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 import { notifySubmission } from "./actions";
+import LiveScanner from "@/components/LiveScanner";
 
 type Answer = { value?: string | string[]; note?: string; ai?: string };
 type Props = {
@@ -335,10 +336,12 @@ function FieldControl({
   setPhoto: (d: string | null) => void;
   setSig: (d: string | null) => void;
 }) {
+  const { t } = useT();
   const [initial] = useState(getInitial);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState(initial.ai || "");
   const [scanMsg, setScanMsg] = useState("");
+  const [liveOpen, setLiveOpen] = useState(false);
   const [scanValue, setScanValue] = useState<string>(typeof initial.value === "string" ? initial.value : "");
   const photoRef = useRef<HTMLInputElement>(null);
   const scanRef = useRef<HTMLInputElement>(null);
@@ -491,12 +494,19 @@ function FieldControl({
         )}
         {f.type === "barcode" && (
           <>
-            <div style={{ display: "flex", gap: 10 }}>
-              <input type="text" style={{ ...input, flex: 1 }} value={scanValue} placeholder="รหัส เช่น FL-03" onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
-              <Button onClick={() => scanRef.current?.click()}><Icon icon={ScanLine} className="h-4 w-4" /> สแกน</Button>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <input type="text" style={{ ...input, flex: 1, minWidth: 140 }} value={scanValue} placeholder="รหัส เช่น FL-03" onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <Button variant="primary" onClick={() => setLiveOpen(true)}><Icon icon={ScanLine} className="h-4 w-4" /> {t("scan.live")}</Button>
+              <Button onClick={() => scanRef.current?.click()}><Icon icon={Camera} className="h-4 w-4" /> {t("scan.fromImage")}</Button>
             </div>
             <input ref={scanRef} type="file" accept="image/*" capture="environment" hidden onChange={onScan} />
             {scanMsg && <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>{scanMsg}</div>}
+            {liveOpen && (
+              <LiveScanner
+                onClose={() => setLiveOpen(false)}
+                onResult={(code) => { setLiveOpen(false); setScanValue(code); onPatch({ value: code }); setScanMsg("อ่านได้: " + code); }}
+              />
+            )}
           </>
         )}
         {f.type === "signature" && <SignaturePad hasSig={hasSig} onSave={setSig} />}
