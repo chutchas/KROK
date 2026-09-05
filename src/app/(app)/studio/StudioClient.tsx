@@ -36,6 +36,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
+  const [tab, setTab] = useState<"new" | "edit" | "all">("new");
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function saveAsDraft() {
@@ -48,6 +49,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setBusy(null);
     if ("error" in res) { setStatus({ t: res.error, err: true }); return; }
     resetDraft();
+    setTab("all");
     router.refresh();
   }
 
@@ -69,6 +71,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || t("studio.errAiFail"));
       setDraft(sanitizeSchema(json.schema));
+      setEditingId(null);
+      setView("edit");
+      setTab("edit");
     } catch (e) {
       setStatus({ t: e instanceof Error ? e.message : t("studio.errAiFail"), err: true });
     } finally {
@@ -108,6 +113,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || t("studio.errReadFail"));
       setDraft(sanitizeSchema(json.schema));
+      setEditingId(null);
+      setView("edit");
+      setTab("edit");
     } catch (err) {
       setStatus({ t: err instanceof Error ? err.message : t("studio.errReadFail"), err: true });
     } finally {
@@ -141,8 +149,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       return;
     }
     resetDraft();
-    if (editingId) router.refresh();
-    else router.push("/forms");
+    setTab("all");
     router.refresh();
   }
 
@@ -159,6 +166,13 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setStatus(null);
   }
 
+  // ยกเลิก/ปิดการแก้ไข → กลับไปแท็บที่เหมาะสม
+  function cancelDraft() {
+    const wasEditing = !!editingId;
+    resetDraft();
+    setTab(wasEditing ? "all" : "new");
+  }
+
   function editExisting(f: FormRow) {
     setDraft(f.schema);
     setEditingId(f.id);
@@ -169,6 +183,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setVisTeams(f.visible_teams || []);
     setVisUsers(f.visible_users || []);
     setStatus(null);
+    setView("edit");
+    setTab("edit");
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -181,6 +197,28 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
+      {/* แท็บหลัก 3 แท็บ */}
+      <div style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
+        {([
+          { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
+          { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
+          { k: "all" as const, icon: FileText, label: `${t("studio.tabAll")} (${initialForms.length})` },
+        ]).map((tb) => {
+          const on = tab === tb.k;
+          return (
+            <button
+              key={tb.k}
+              onClick={() => setTab(tb.k)}
+              className="inline-flex items-center justify-center gap-1.5"
+              style={{ flex: 1, minWidth: 120, padding: "10px 14px", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: ".92rem", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
+            >
+              <Icon icon={tb.icon} className="h-4 w-4" /> {tb.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "new" && (
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
           <div>
@@ -188,7 +226,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.subtitle")}</p>
           </div>
           <button
-            onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setStatus(null); setView("mobile"); }}
+            onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setEditingId(null); setStatus(null); setView("edit"); setTab("edit"); }}
             disabled={!!busy}
             style={{ background: "none", border: "none", color: "var(--brand-ink)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", flex: "0 0 auto" }}
           >
@@ -252,8 +290,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         )}
         {status && <Notice kind={status.err ? "error" : "info"}>{status.t}</Notice>}
       </Card>
+      )}
 
-      {draft && (
+      {tab === "edit" && (draft ? (
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
             <div>
@@ -413,11 +452,24 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <Button variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</Button>
             {!editingId && <Button onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</Button>}
-            <Button onClick={resetDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
+            <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
-      )}
+      ) : (
+        <Card>
+          <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-2)" }}>
+            <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)", marginBottom: 10 }}><Icon icon={Pencil} className="h-10 w-10" strokeWidth={1.4} /></div>
+            <h2 style={{ fontSize: "1.1rem", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h2>
+            <p style={{ fontSize: ".9rem", color: "var(--ink-3)", margin: "0 0 16px" }}>{t("studio.editEmptySub")}</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
+              <Button variant="primary" onClick={() => setTab("new")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.tabNew")}</Button>
+              <Button onClick={() => setTab("all")}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.tabAll")}</Button>
+            </div>
+          </div>
+        </Card>
+      ))}
 
+      {tab === "all" && (
       <Card>
         <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
@@ -462,6 +514,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           ))}
         </div>
       </Card>
+      )}
     </div>
   );
 }
