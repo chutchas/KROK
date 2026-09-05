@@ -31,7 +31,49 @@ function Blank({ f }: { f: FormField }) {
   return <span style={{ display: "block", borderBottom: "1px dotted #999", minHeight: 20 }} />;
 }
 
+// เรนเดอร์ตาม layout ลากวาง (อ่านอย่างเดียว) — ใช้ตอนพิมพ์/ดูฟอร์มที่จัดวางเอง
+function PaperLayoutView({ schema }: { schema: FormSchema }) {
+  const CANVAS_W = 794;
+  const layout = schema.layout!;
+  const fieldById = new Map<string, { label: string; required: boolean; unit?: string; type: FormField["type"]; options?: string[] }>();
+  schema.steps.forEach((s) => s.fields.forEach((f) => fieldById.set(f.id, f)));
+  const stepTitle = new Map<string, string>();
+  schema.steps.forEach((s, si) => stepTitle.set(`s:${s.id}`, `${si + 1}. ${s.title}`));
+
+  let maxY = 900;
+  for (const b of Object.values(layout)) maxY = Math.max(maxY, b.y + 80);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+      <div style={{ position: "relative", width: CANVAS_W, maxWidth: "100%", background: "#fff", color: "#111", border: "1px solid var(--line)", boxShadow: "var(--shadow)", minHeight: maxY }} className="krok-paper">
+        <div style={{ position: "absolute", top: 32, left: 40, right: 40, borderBottom: "2px solid #111", paddingBottom: 8, display: "flex", justifyContent: "space-between" }}>
+          <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>{schema.icon} {schema.title}</div>
+          <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right" }}>วันที่: ______________<br />เลขที่: ______________</div>
+        </div>
+        {Object.entries(layout).map(([key, box]) => {
+          if (key.startsWith("s:")) {
+            return (
+              <div key={key} style={{ position: "absolute", left: box.x, top: box.y, width: box.w, fontWeight: 700, background: "#f0f0f0", padding: "6px 10px", borderRadius: 3, fontSize: ".92rem" }}>
+                {stepTitle.get(key) || ""}
+              </div>
+            );
+          }
+          const f = fieldById.get(key);
+          if (!f) return null;
+          return (
+            <div key={key} style={{ position: "absolute", left: box.x, top: box.y, width: box.w, borderBottom: "1px solid #e5e5e5", paddingBottom: 4 }}>
+              <div style={{ fontSize: ".8rem", fontWeight: 600 }}>{f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}<span style={{ fontWeight: 400, fontSize: ".66rem", color: "#888" }}> · {FIELD_TYPE_LABELS[f.type]}{f.unit ? ` (${f.unit})` : ""}</span></div>
+              <Blank f={f as FormField} />
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export default function FormPaperView({ schema }: { schema: FormSchema }) {
+  if (schema.layout && Object.keys(schema.layout).length > 0) return <PaperLayoutView schema={schema} />;
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
       <div

@@ -6,7 +6,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
-import FormPaperView from "@/components/FormPaperView";
+import FormPaperEditor from "@/components/FormPaperEditor";
 import FormEditor from "@/components/FormEditor";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
@@ -284,7 +284,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
               <FormEditor value={draft} onChange={(s) => setDraft(s)} />
             </div>
           ) : view === "paper" ? (
-            <FormPaperView schema={draft} />
+            <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} />
           ) : (
             <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
               <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>

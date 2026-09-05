@@ -42,12 +42,21 @@ export interface FormStep {
   fields: FormField[];
 }
 
+export interface PaperBox {
+  x: number;
+  y: number;
+  w: number;
+}
+
 export interface FormSchema {
   title: string;
   description: string;
   icon: string;
   flow: "sequential";
   steps: FormStep[];
+  // ตำแหน่ง element บนมุมมองกระดาษ (px บนแคนวาส A4 กว้าง 794)
+  // key = field id, "s:<stepId>" สำหรับหัวข้อขั้นตอน
+  layout?: Record<string, PaperBox>;
 }
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
@@ -126,13 +135,40 @@ export function sanitizeSchema(raw: unknown): FormSchema {
 
   if (steps.length === 0) throw new Error("ฟอร์มไม่มีฟิลด์ที่ใช้งานได้");
 
-  return {
+  // เก็บ layout กระดาษ (ลากวาง) เฉพาะ key ที่ตรงกับ field id / "s:<stepId>" ที่มีจริง
+  const validKeys = new Set<string>();
+  for (const s of steps) {
+    validKeys.add(`s:${s.id}`);
+    for (const f of s.fields) validKeys.add(f.id);
+  }
+  let layout: Record<string, PaperBox> | undefined;
+  if (r.layout && typeof r.layout === "object") {
+    const out: Record<string, PaperBox> = {};
+    for (const [k, v] of Object.entries(r.layout as Record<string, unknown>)) {
+      if (!validKeys.has(k) || !v || typeof v !== "object") continue;
+      const vo = v as Record<string, unknown>;
+      const x = num(vo.x);
+      const y = num(vo.y);
+      const w = num(vo.w);
+      if (x === undefined || y === undefined || w === undefined) continue;
+      out[k] = {
+        x: Math.max(0, Math.min(794, Math.round(x))),
+        y: Math.max(0, Math.round(y)),
+        w: Math.max(60, Math.min(794, Math.round(w))),
+      };
+    }
+    if (Object.keys(out).length > 0) layout = out;
+  }
+
+  const schema: FormSchema = {
     title: str(r.title, 150, "ฟอร์มใหม่"),
     description: str(r.description, 300),
     icon: str(r.icon, 4, "📋") || "📋",
     flow: "sequential",
     steps,
   };
+  if (layout) schema.layout = layout;
+  return schema;
 }
 
 export function countFields(schema: FormSchema): number {
