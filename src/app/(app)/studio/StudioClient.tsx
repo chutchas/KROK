@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer, Archive, Trash2 } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
@@ -571,25 +571,25 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
                 </small>
               </div>
-              <Button onClick={() => editExisting(f)}><Icon icon={Pencil} className="h-4 w-4" /> {t("common.edit")}</Button>
+              <Button onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></Button>
               <Button onClick={() => setShareForm(f)} title={t("share.title")}>
                 <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
-                <span className="krok-hide-sm"> {t("share.short")}</span>
+                <span className="krok-btn-label"> {t("share.short")}</span>
               </Button>
               {f.status === "published" && (
                 <Button onClick={() => setQrForm(f)} title={t("qr.title")}>
-                  <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-hide-sm"> QR</span>
+                  <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-btn-label"> QR</span>
                 </Button>
               )}
               {f.status === "published" ? (
                 <>
-                  <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
-                  <Button onClick={() => changeStatus(f.id, "archived")}>{t("studio.cancelForm")}</Button>
+                  <Button onClick={() => router.push(`/fill/${f.id}`)} title={t("studio.openFill")}><Icon icon={Smartphone} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.openFill")}</span></Button>
+                  <Button onClick={() => changeStatus(f.id, "archived")} title={t("studio.cancelForm")}><Icon icon={Archive} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.cancelForm")}</span></Button>
                 </>
               ) : (
-                <Button variant="primary" onClick={() => changeStatus(f.id, "published")}><Icon icon={CheckCircle2} className="h-4 w-4" /> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</Button>
+                <Button variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></Button>
               )}
-              <Button variant="danger" onClick={() => onDelete(f.id, f.title)}>{t("common.delete")}</Button>
+              <Button variant="danger" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></Button>
             </div>
           ))}
         </div>
@@ -618,7 +618,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       )}
 
       <style>{`
-        @media(max-width:640px){.krok-hide-sm{display:none}}
+        @media(max-width:640px){.krok-btn-label{display:none}}
         @media(max-width:760px){.krok-editgrid{grid-template-columns:1fr!important}}
       `}</style>
     </div>
