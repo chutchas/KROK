@@ -1,13 +1,15 @@
 "use client";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2 } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormEditor from "@/components/FormEditor";
+import QrModal from "@/components/QrModal";
+import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
 import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
@@ -16,7 +18,7 @@ import type { ApprovalStep } from "@/lib/approval";
 
 interface Member { user_id: string; name: string; role: string }
 interface Team { id: string; name: string }
-type VisMode = "all" | "teams" | "users";
+type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper" | "edit";
 
 export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
@@ -37,7 +39,16 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
   const [tab, setTab] = useState<"new" | "edit" | "all">("new");
+  const [qrForm, setQrForm] = useState<FormRow | null>(null);
+  const [shareForm, setShareForm] = useState<FormRow | null>(null);
+  const [origin, setOrigin] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
+
+  const fillUrl = (f: FormRow) => `${origin}${f.visibility === "public" ? "/f/" : "/fill/"}${f.id}`;
 
   async function saveAsDraft() {
     if (!draft) return;
@@ -396,9 +407,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
             <p style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("studio.visSub")}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              {(["all", "teams", "users"] as VisMode[]).map((m) => {
+              {(["public", "all", "teams", "users"] as VisMode[]).map((m) => {
                 const on = visMode === m;
-                const label = m === "all" ? t("studio.visAll") : m === "teams" ? t("studio.visTeams") : t("studio.visUsers");
+                const label = m === "public" ? t("share.public") : m === "all" ? t("studio.visAll") : m === "teams" ? t("studio.visTeams") : t("studio.visUsers");
                 return (
                   <button
                     key={m}
@@ -501,6 +512,15 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                 </small>
               </div>
               <Button onClick={() => editExisting(f)}><Icon icon={Pencil} className="h-4 w-4" /> {t("common.edit")}</Button>
+              <Button onClick={() => setShareForm(f)} title={t("share.title")}>
+                <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
+                <span className="krok-hide-sm"> {t("share.short")}</span>
+              </Button>
+              {f.status === "published" && (
+                <Button onClick={() => setQrForm(f)} title={t("qr.title")}>
+                  <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-hide-sm"> QR</span>
+                </Button>
+              )}
               {f.status === "published" ? (
                 <>
                   <Button onClick={() => router.push(`/fill/${f.id}`)}>{t("studio.openFill")}</Button>
@@ -515,6 +535,29 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         </div>
       </Card>
       )}
+
+      {qrForm && (
+        <QrModal
+          url={fillUrl(qrForm)}
+          title={qrForm.title}
+          isPublic={qrForm.visibility === "public"}
+          onClose={() => setQrForm(null)}
+        />
+      )}
+
+      {shareForm && (
+        <ShareScopeModal
+          formId={shareForm.id}
+          title={shareForm.title}
+          initial={{ mode: (shareForm.visibility as ShareValue["mode"]) || "all", teamIds: shareForm.visible_teams || [], userIds: shareForm.visible_users || [] }}
+          teams={teams}
+          members={members.map((m) => ({ user_id: m.user_id, name: m.name }))}
+          onClose={() => setShareForm(null)}
+          onSaved={() => { setShareForm(null); router.refresh(); }}
+        />
+      )}
+
+      <style>{`@media(max-width:640px){.krok-hide-sm{display:none}}`}</style>
     </div>
   );
 }

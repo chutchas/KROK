@@ -13,7 +13,7 @@ export interface FormRow {
   created_by_name: string;
   requires_approval: boolean;
   approval_chain: { user_id: string; name: string; label: string }[];
-  visibility: "all" | "teams" | "users";
+  visibility: "public" | "all" | "teams" | "users";
   visible_teams: string[];
   visible_users: string[];
   status: "draft" | "published" | "archived";

@@ -23,6 +23,7 @@ type Props = {
   tenantId: string;
   userId: string;
   userName: string;
+  publicMode?: boolean;
 };
 
 // ---- client image shrink to jpeg data-url ----
@@ -168,6 +169,32 @@ export default function FillWizard(props: Props) {
       const result: "pass" | "fail" = fails.length ? "fail" : "pass";
       const dur = Math.round((Date.now() - startedAt) / 1000);
 
+      // โหมดสาธารณะ (ไม่ล็อกอิน) → ส่งผ่าน API ที่ตรวจสิทธิ์ฝั่ง server
+      if (props.publicMode) {
+        try {
+          const fd = new FormData();
+          fd.append("form_id", props.formId);
+          fd.append("user_name", props.userName);
+          fd.append("result", result);
+          fd.append("fails", JSON.stringify(fails));
+          fd.append("answers", JSON.stringify(list));
+          fd.append("duration", String(dur));
+          for (const p of photoUploads) fd.append(`photo_${p.fieldId}`, dataUrlToBlob(p.dataUrl), `${p.fieldId}.jpg`);
+          const res = await fetch("/api/public/submit", { method: "POST", body: fd });
+          if (!res.ok) {
+            const j = await res.json().catch(() => ({}));
+            throw new Error(j.error || "ส่งไม่สำเร็จ");
+          }
+        } catch (e) {
+          setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
+          setSubmitting(false);
+          return;
+        }
+        setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
+        window.scrollTo(0, 0);
+        return;
+      }
+
       const payload: PendingSubmission = {
         subId,
         tenantId: props.tenantId,
@@ -244,8 +271,14 @@ export default function FillWizard(props: Props) {
           </div>
         )}
         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
-          <Button variant="primary" onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
-          <Button onClick={() => router.push("/dashboard")}>{t("fill.viewDash")}</Button>
+          {props.publicMode ? (
+            <Button variant="primary" onClick={() => window.location.reload()}>{t("fill.submitAgain")}</Button>
+          ) : (
+            <>
+              <Button variant="primary" onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
+              <Button onClick={() => router.push("/dashboard")}>{t("fill.viewDash")}</Button>
+            </>
+          )}
         </div>
       </div>
     );
@@ -255,7 +288,7 @@ export default function FillWizard(props: Props) {
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
         <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
-        <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>
+        {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
       </div>
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>

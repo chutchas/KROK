@@ -26,14 +26,15 @@ async function audit(
 }
 
 export interface Visibility {
-  mode: "all" | "teams" | "users";
+  mode: "public" | "all" | "teams" | "users";
   teamIds: string[];
   userIds: string[];
 }
 
 function sanitizeVisibility(v: unknown): Visibility {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
-  const mode = o.mode === "teams" || o.mode === "users" ? o.mode : "all";
+  const mode =
+    o.mode === "public" || o.mode === "teams" || o.mode === "users" ? o.mode : "all";
   const asIds = (x: unknown) =>
     Array.isArray(x) ? Array.from(new Set(x.filter((s): s is string => typeof s === "string"))) : [];
   return {
@@ -41,6 +42,30 @@ function sanitizeVisibility(v: unknown): Visibility {
     teamIds: mode === "teams" ? asIds(o.teamIds) : [],
     userIds: mode === "users" ? asIds(o.userIds) : [],
   };
+}
+
+// เปลี่ยนสิทธิ์การแชร์ของฟอร์มจากหน้า "ฟอร์มทั้งหมด" (ไม่ต้องเปิด editor)
+export async function setFormVisibility(
+  formId: string,
+  rawVisibility: unknown
+): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์แก้สิทธิ์การแชร์" };
+
+  const vis = sanitizeVisibility(rawVisibility);
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("forms")
+    .update({ visibility: vis.mode, visible_teams: vis.teamIds, visible_users: vis.userIds })
+    .eq("id", formId)
+    .eq("tenant_id", session.tenantId);
+  if (error) return { error: error.message };
+
+  await audit(session.tenantId, session.userId, "form.visibility", formId, { mode: vis.mode });
+  revalidatePath("/studio");
+  revalidatePath("/forms");
+  return { ok: true };
 }
 
 export async function saveForm(

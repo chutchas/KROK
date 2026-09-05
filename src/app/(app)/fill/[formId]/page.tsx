@@ -9,7 +9,7 @@ export const dynamic = "force-dynamic";
 export default async function FillPage({ params }: { params: Promise<{ formId: string }> }) {
   const { formId } = await params;
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) redirect(`/login?next=/fill/${formId}`);
 
   const supabase = await createClient();
   const { data } = await supabase
