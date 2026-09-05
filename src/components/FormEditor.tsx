@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Field } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowUp, ArrowDown, Trash2, Settings2, ChevronUp, Plus, X } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, Settings2, ChevronUp, Plus, X, GripVertical } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import {
   FIELD_TYPES,
@@ -21,6 +21,14 @@ function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
   [copy[i], copy[j]] = [copy[j], copy[i]];
   return copy;
 }
+// ย้ายจากตำแหน่ง from ไป to (ลากวาง)
+function reorder<T>(arr: T[], from: number, to: number): T[] {
+  if (from === to || from < 0 || to < 0 || from >= arr.length || to >= arr.length) return arr;
+  const copy = [...arr];
+  const [item] = copy.splice(from, 1);
+  copy.splice(to, 0, item);
+  return copy;
+}
 
 let idc = 0;
 const newId = (p: string) => `${p}_${Date.now().toString(36)}${(idc++).toString(36)}`;
@@ -34,6 +42,16 @@ export default function FormEditor({
 }) {
   const { t } = useT();
   const [openField, setOpenField] = useState<string | null>(null);
+  // ลากวางจัดลำดับฟิลด์ (ภายในขั้นตอนเดียวกัน)
+  const [drag, setDrag] = useState<{ si: number; fi: number } | null>(null);
+  const [dragEnabled, setDragEnabled] = useState<string | null>(null);
+
+  function onFieldDrop(si: number, targetFi: number) {
+    if (!drag || drag.si !== si || drag.fi === targetFi) { setDrag(null); setDragEnabled(null); return; }
+    patchStep(si, { fields: reorder(value.steps[si].fields, drag.fi, targetFi) });
+    setDrag(null);
+    setDragEnabled(null);
+  }
 
   function patch(p: Partial<FormSchema>) {
     onChange({ ...value, ...p });
@@ -102,9 +120,32 @@ export default function FormEditor({
           <div style={{ display: "grid", gap: 8 }}>
             {step.fields.map((field, fi) => {
               const isOpen = openField === field.id;
+              const isDragging = drag?.si === si && drag?.fi === fi;
               return (
-                <div key={field.id} style={{ border: "1px solid var(--line)", borderRadius: 9, background: "var(--surface)", padding: 10 }}>
+                <div
+                  key={field.id}
+                  draggable={dragEnabled === field.id}
+                  onDragStart={() => setDrag({ si, fi })}
+                  onDragEnd={() => { setDrag(null); setDragEnabled(null); }}
+                  onDragOver={(e) => { if (drag && drag.si === si) e.preventDefault(); }}
+                  onDrop={() => onFieldDrop(si, fi)}
+                  style={{
+                    border: isDragging ? "1px solid var(--accent)" : "1px solid var(--line)",
+                    borderRadius: 9, background: "var(--surface)", padding: 10,
+                    opacity: isDragging ? 0.5 : 1,
+                    boxShadow: drag && drag.si === si && !isDragging ? "inset 0 0 0 1px var(--accent-soft)" : "none",
+                  }}
+                >
                   <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <span
+                      title={t("editor.dragReorder")}
+                      onMouseDown={() => setDragEnabled(field.id)}
+                      onMouseUp={() => setDragEnabled(null)}
+                      onTouchStart={() => setDragEnabled(field.id)}
+                      style={{ ...iconBtn, cursor: "grab", color: "var(--ink-3)", touchAction: "none" }}
+                    >
+                      <Icon icon={GripVertical} className="h-4 w-4" />
+                    </span>
                     <Field value={field.label} onChange={(e) => patchField(si, fi, { label: e.target.value })} placeholder={t("editor.fieldLabel")} style={{ flex: 1, minWidth: 140 }} />
                     <select value={field.type} onChange={(e) => patchField(si, fi, { type: e.target.value as FieldType })} style={sel}>
                       {FIELD_TYPES.map((ft) => (

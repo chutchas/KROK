@@ -18,6 +18,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       canManage={canManage(session.role)}
       role={session.role}
       isPlatformAdmin={session.isPlatformAdmin}
+      platformRole={session.platformRole}
       allowedMenus={allowedMenus}
       userId={session.userId}
       workspaces={workspaces}

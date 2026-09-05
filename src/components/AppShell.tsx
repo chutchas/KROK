@@ -13,9 +13,9 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal } from "lucide-react";
 
-type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" };
+type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
 // เมนูหลัก — เห็นบน navbar ตลอด (งานที่ใช้ประจำ) กรองตามสิทธิ์เมนูของ role
 const PRIMARY: NavEntry[] = [
@@ -73,7 +73,10 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
   },
   {
     labelKey: "grp.platform",
-    items: [{ href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" }],
+    items: [
+      { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
+      { href: "/admin/developer", key: "nav.developer", icon: Terminal, gate: "dev" },
+    ],
   },
 ];
 
@@ -85,6 +88,7 @@ export default function AppShell({
   canManage,
   role,
   isPlatformAdmin,
+  platformRole,
   allowedMenus,
   userId,
   workspaces,
@@ -97,6 +101,7 @@ export default function AppShell({
   canManage: boolean;
   role: Role;
   isPlatformAdmin: boolean;
+  platformRole: "platform_admin" | "developer" | "user";
   allowedMenus: MenuKey[];
   userId: string;
   workspaces: WorkspaceItem[];
@@ -135,6 +140,7 @@ export default function AppShell({
   const isWsAdmin = role === "owner" || role === "admin";
   const visible = (n: NavEntry) => {
     if (n.gate === "platform") return isPlatformAdmin;
+    if (n.gate === "dev") return isPlatformAdmin || platformRole === "developer";
     if (n.gate === "wsadmin") return isWsAdmin;
     if (n.menu) return allowed.has(n.menu);
     return true;
