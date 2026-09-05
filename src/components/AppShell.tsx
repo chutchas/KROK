@@ -12,7 +12,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" };
 
@@ -31,6 +31,8 @@ const SECONDARY: NavEntry[] = [
   { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
   { href: "/settings/ai", key: "nav.ai", icon: Bot, menu: "ai" },
   { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
+  { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
+  { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
 ];
 
@@ -50,6 +52,8 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
     items: [
       { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
       { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
+      { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
+      { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
     ],
   },
   {
