@@ -3,7 +3,10 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { LayoutGrid, RotateCcw, Move, GripVertical } from "lucide-react";
+import { LayoutGrid, RotateCcw, Move, GripVertical, Printer } from "lucide-react";
+
+let idc = 0;
+const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
 
 // ============================================================
 // FormPaperEditor — มุมมองกระดาษแบบ "ลากวาง" ปรับตำแหน่ง element ได้
@@ -86,11 +89,28 @@ function BlankPreview({ f }: { f: FormField }) {
   return <div style={{ borderBottom: "1px dotted #999", height: 14, marginTop: 6 }} />;
 }
 
-export default function FormPaperEditor({ schema, onChange }: { schema: FormSchema; onChange: (s: FormSchema) => void }) {
+export default function FormPaperEditor({
+  schema,
+  onChange,
+  selectedKey,
+  onSelect,
+  onPrint,
+}: {
+  schema: FormSchema;
+  onChange: (s: FormSchema) => void;
+  selectedKey?: string | null;
+  onSelect?: (key: string | null) => void;
+  onPrint?: () => void;
+}) {
   const { t } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const canvasRef = useRef<HTMLDivElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const clip = useRef<FormField | null>(null);
   const [scale, setScale] = useState(1);
+  const [internalActive, setInternalActive] = useState<string | null>(null);
+  const active = selectedKey !== undefined ? selectedKey : internalActive;
+  const select = useCallback((k: string | null) => { if (onSelect) onSelect(k); else setInternalActive(k); }, [onSelect]);
 
   // layout ปัจจุบัน: ใช้จาก schema ถ้ามี, ไม่มีก็ auto
   const layout: Record<string, PaperBox> = useMemo(() => {
@@ -114,7 +134,6 @@ export default function FormPaperEditor({ schema, onChange }: { schema: FormSche
   }, [blocks, layout]);
 
   const drag = useRef<{ key: string; mode: "move" | "resize"; sx: number; sy: number; ox: number; oy: number; ow: number } | null>(null);
-  const [active, setActive] = useState<string | null>(null);
 
   const commit = useCallback(
     (next: Record<string, PaperBox>) => {
@@ -129,7 +148,62 @@ export default function FormPaperEditor({ schema, onChange }: { schema: FormSche
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     const box = layout[key];
     drag.current = { key, mode, sx: e.clientX, sy: e.clientY, ox: box.x, oy: box.y, ow: box.w };
-    setActive(key);
+    select(key);
+    scrollRef.current?.focus({ preventScroll: true });
+  }
+
+  function findField(key: string | null): { si: number; fi: number; field: FormField } | null {
+    if (!key) return null;
+    for (let si = 0; si < schema.steps.length; si++) {
+      const fi = schema.steps[si].fields.findIndex((f) => f.id === key);
+      if (fi >= 0) return { si, fi, field: schema.steps[si].fields[fi] };
+    }
+    return null;
+  }
+
+  function onKeyDown(e: React.KeyboardEvent) {
+    if (!active) return;
+    const ctrl = e.ctrlKey || e.metaKey;
+    const k = e.key.toLowerCase();
+    if (ctrl && k === "c") { const loc = findField(active); if (loc) clip.current = JSON.parse(JSON.stringify(loc.field)); e.preventDefault(); return; }
+    if (ctrl && k === "x") {
+      const loc = findField(active);
+      if (loc) {
+        clip.current = JSON.parse(JSON.stringify(loc.field));
+        const steps = schema.steps.map((s, i) => (i === loc.si ? { ...s, fields: s.fields.filter((_, j) => j !== loc.fi) } : s));
+        const nl = { ...layout }; delete nl[loc.field.id];
+        onChange({ ...schema, steps, layout: nl });
+        select(null);
+      }
+      e.preventDefault(); return;
+    }
+    if (ctrl && k === "v") {
+      if (clip.current) {
+        let si = schema.steps.length - 1;
+        const loc = findField(active);
+        if (loc) si = loc.si;
+        else if (active.startsWith("s:")) { const idx = schema.steps.findIndex((s) => s.id === active.slice(2)); if (idx >= 0) si = idx; }
+        const nf: FormField = { ...clip.current, id: newFieldId() };
+        const steps = schema.steps.map((s, i) => (i === si ? { ...s, fields: [...s.fields, nf] } : s));
+        const base = layout[active];
+        const box: PaperBox = base ? { x: Math.min(CANVAS_W - base.w, base.x + GRID * 2), y: base.y + GRID * 2, w: base.w } : { x: 40, y: START_Y, w: 300 };
+        onChange({ ...schema, steps, layout: { ...layout, [nf.id]: box } });
+        select(nf.id);
+      }
+      e.preventDefault(); return;
+    }
+    if (ctrl && k === "p") { onPrint?.(); e.preventDefault(); return; }
+    if (k.startsWith("arrow")) {
+      const box = layout[active]; if (!box) return;
+      const stepPx = e.shiftKey ? 1 : GRID;
+      let { x, y } = box;
+      if (k === "arrowup") y = Math.max(0, y - stepPx);
+      else if (k === "arrowdown") y = y + stepPx;
+      else if (k === "arrowleft") x = Math.max(0, x - stepPx);
+      else if (k === "arrowright") x = Math.min(CANVAS_W - box.w, x + stepPx);
+      commit({ ...layout, [active]: { ...box, x, y } });
+      e.preventDefault();
+    }
   }
 
   function onPointerMove(e: React.PointerEvent) {
@@ -162,9 +236,15 @@ export default function FormPaperEditor({ schema, onChange }: { schema: FormSche
       {/* แถบเครื่องมือ */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".82rem", color: "var(--ink-2)" }}>
-          <Icon icon={Move} className="h-4 w-4" /> {t("paper.dragHint")}
+          <Icon icon={Move} className="h-4 w-4" /> {t("paper.keyboardHint")}
         </span>
         <div style={{ flex: 1 }} />
+        {onPrint && (
+          <button onClick={onPrint} className="inline-flex items-center gap-1.5"
+            style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+            <Icon icon={Printer} className="h-4 w-4" /> {t("paper.print")}
+          </button>
+        )}
         <button onClick={() => commit(autoLayout(blocks))} className="inline-flex items-center gap-1.5"
           style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
           <Icon icon={LayoutGrid} className="h-4 w-4" /> {t("paper.autoArrange")}
@@ -175,8 +255,8 @@ export default function FormPaperEditor({ schema, onChange }: { schema: FormSche
         </button>
       </div>
 
-      {/* กรอบเลื่อน + แคนวาส A4 */}
-      <div style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 16, display: "flex", justifyContent: "center" }}>
+      {/* กรอบเลื่อน + แคนวาส A4 (โฟกัสได้เพื่อใช้คีย์บอร์ด) */}
+      <div ref={scrollRef} tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 16, display: "flex", justifyContent: "center", outline: "none" }}>
         <div
           ref={canvasRef}
           onPointerMove={onPointerMove}

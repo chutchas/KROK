@@ -3,9 +3,18 @@ import { Lightbulb, Lock } from "lucide-react";
 import Icon from "@/components/Icon";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 
-function FieldCard({ f }: { f: FormField }) {
+function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean; onSelect?: () => void }) {
   return (
-    <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, margin: "10px 0", background: "var(--surface)" }}>
+    <div
+      onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : undefined}
+      style={{
+        border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
+        borderRadius: 10, padding: 14, margin: "10px 0",
+        background: selected ? "var(--accent-soft)" : "var(--surface)",
+        cursor: onSelect ? "pointer" : "default",
+        boxShadow: selected ? "0 2px 10px rgba(0,0,0,.08)" : "none",
+      }}
+    >
       <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
         {f.label}
         {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
@@ -56,25 +65,43 @@ function FieldCard({ f }: { f: FormField }) {
   );
 }
 
-export default function FormPreview({ schema }: { schema: FormSchema }) {
+export default function FormPreview({
+  schema,
+  selectedKey,
+  onSelect,
+}: {
+  schema: FormSchema;
+  selectedKey?: string | null;
+  onSelect?: (key: string | null) => void;
+}) {
+  const editable = !!onSelect;
   return (
     <div>
-      {schema.steps.map((s, i) => (
-        <div key={s.id}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px" }}>
-            <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
-              STEP {i + 1}/{schema.steps.length}
-            </span>
-            <h3 style={{ fontSize: "1.05rem" }}>{s.title}</h3>
+      {schema.steps.map((s, i) => {
+        const stepKey = `s:${s.id}`;
+        const stepSel = selectedKey === stepKey;
+        return (
+          <div key={s.id}>
+            <div
+              onClick={editable ? (e) => { e.stopPropagation(); onSelect!(stepKey); } : undefined}
+              style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
+            >
+              <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
+                STEP {i + 1}/{schema.steps.length}
+              </span>
+              <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent)" : "var(--ink)" }}>{s.title}</h3>
+            </div>
+            {s.fields.map((f) => (
+              <FieldCard key={f.id} f={f} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined} />
+            ))}
           </div>
-          {s.fields.map((f) => (
-            <FieldCard key={f.id} f={f} />
-          ))}
+        );
+      })}
+      {!editable && (
+        <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
+          <Icon icon={Lock} className="h-3.5 w-3.5" /> โหมดกรอกจริงจะล็อคลำดับ — ต้องทำ step ก่อนหน้าให้ครบจึงไปต่อได้
         </div>
-      ))}
-      <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
-        <Icon icon={Lock} className="h-3.5 w-3.5" /> โหมดกรอกจริงจะล็อคลำดับ — ต้องทำ step ก่อนหน้าให้ครบจึงไปต่อได้
-      </div>
+      )}
     </div>
   );
 }

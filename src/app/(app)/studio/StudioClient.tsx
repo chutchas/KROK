@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
-import FormEditor from "@/components/FormEditor";
+import FormPaperView from "@/components/FormPaperView";
+import FieldSettingsPanel from "@/components/FieldSettingsPanel";
 import QrModal from "@/components/QrModal";
 import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
@@ -19,7 +20,7 @@ import type { ApprovalStep } from "@/lib/approval";
 interface Member { user_id: string; name: string; role: string }
 interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
-type ViewMode = "mobile" | "paper" | "edit";
+type ViewMode = "mobile" | "paper";
 
 export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
   const { t, tt, lang } = useT();
@@ -33,6 +34,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [visTeams, setVisTeams] = useState<string[]>([]);
   const [visUsers, setVisUsers] = useState<string[]>([]);
   const [view, setView] = useState<ViewMode>("mobile");
+  const [selKey, setSelKey] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -84,7 +86,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       if (!res.ok) throw new Error(json.error || t("studio.errAiFail"));
       setDraft(sanitizeSchema(json.schema));
       setEditingId(null);
-      setView("edit");
+      setView("mobile");
+      setSelKey(null);
       setTab("edit");
     } catch (e) {
       setStatus({ t: e instanceof Error ? e.message : t("studio.errAiFail"), err: true });
@@ -126,7 +129,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       if (!res.ok) throw new Error(json.error || t("studio.errReadFail"));
       setDraft(sanitizeSchema(json.schema));
       setEditingId(null);
-      setView("edit");
+      setView("mobile");
+      setSelKey(null);
       setTab("edit");
     } catch (err) {
       setStatus({ t: err instanceof Error ? err.message : t("studio.errReadFail"), err: true });
@@ -170,12 +174,17 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setPrompt("");
     setEditingId(null);
     setView("mobile");
+    setSelKey(null);
     setRequiresApproval(false);
     setChain([]);
     setVisMode("all");
     setVisTeams([]);
     setVisUsers([]);
     setStatus(null);
+  }
+
+  function doPrint() {
+    if (typeof window !== "undefined") window.print();
   }
 
   // ยกเลิก/ปิดการแก้ไข → กลับไปแท็บที่เหมาะสม
@@ -188,14 +197,15 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   function editExisting(f: FormRow) {
     setDraft(f.schema);
     setEditingId(f.id);
-    setView("edit");
+    setView("mobile");
+    setSelKey(null);
     setRequiresApproval(f.requires_approval);
     setChain(f.approval_chain || []);
     setVisMode(f.visibility || "all");
     setVisTeams(f.visible_teams || []);
     setVisUsers(f.visible_users || []);
     setStatus(null);
-    setView("edit");
+    setView("mobile");
     setTab("edit");
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
@@ -349,41 +359,56 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
             </div>
-            <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto", flexWrap: "wrap" }}>
-              {([
-                { m: "mobile" as ViewMode, icon: Smartphone, label: t("studio.viewMobile") },
-                { m: "paper" as ViewMode, icon: FileText, label: t("studio.viewPaper") },
-                { m: "edit" as ViewMode, icon: Pencil, label: t("studio.editFields") },
-              ]).map((v, i) => {
-                const on = view === v.m;
-                return (
-                  <button
-                    key={v.m}
-                    onClick={() => setView(v.m)}
-                    className="inline-flex items-center gap-1.5"
-                    style={{ padding: "7px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
-                  >
-                    <Icon icon={v.icon} className="h-4 w-4" /> {v.label}
-                  </button>
-                );
-              })}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
+                {([
+                  { m: "mobile" as ViewMode, icon: Smartphone, label: t("studio.viewMobile") },
+                  { m: "paper" as ViewMode, icon: FileText, label: t("studio.viewPaper") },
+                ]).map((v, i) => {
+                  const on = view === v.m;
+                  return (
+                    <button
+                      key={v.m}
+                      onClick={() => setView(v.m)}
+                      className="inline-flex items-center gap-1.5"
+                      style={{ padding: "7px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
+                    >
+                      <Icon icon={v.icon} className="h-4 w-4" /> {v.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <button onClick={doPrint} title={t("paper.print")} className="inline-flex items-center gap-1.5"
+                style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem" }}>
+                <Icon icon={Printer} className="h-4 w-4" /> {t("paper.print")}
+              </button>
             </div>
           </div>
 
-          {view === "edit" ? (
-            <div style={{ marginTop: 12 }}>
-              <FormEditor value={draft} onChange={(s) => setDraft(s)} />
+          <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
+
+          <div className="krok-editgrid" style={{ display: "grid", gridTemplateColumns: selKey ? "1fr 330px" : "1fr", gap: 14, marginTop: 8, alignItems: "start" }}>
+            <div>
+              {view === "paper" ? (
+                <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} />
+              ) : (
+                <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+                  <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
+                    <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
+                    <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} />
+                  </div>
+                </div>
+              )}
             </div>
-          ) : view === "paper" ? (
-            <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} />
-          ) : (
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-              <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
-                <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                <FormPreview schema={draft} />
+            {selKey && (
+              <div className="krok-editpanel">
+                <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} />
               </div>
-            </div>
-          )}
+            )}
+          </div>
+
+          {/* เอกสารสำหรับพิมพ์ (ซ่อนบนจอ แสดงเฉพาะตอนพิมพ์) */}
+          <div className="krok-print-root"><FormPaperView schema={draft} /></div>
 
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
             <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.refineTitle")}</b>
@@ -592,7 +617,10 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         />
       )}
 
-      <style>{`@media(max-width:640px){.krok-hide-sm{display:none}}`}</style>
+      <style>{`
+        @media(max-width:640px){.krok-hide-sm{display:none}}
+        @media(max-width:760px){.krok-editgrid{grid-template-columns:1fr!important}}
+      `}</style>
     </div>
   );
 }
