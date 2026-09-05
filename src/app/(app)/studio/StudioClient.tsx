@@ -4,14 +4,14 @@ import { useRouter } from "next/navigation";
 import { Button, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2 } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormEditor from "@/components/FormEditor";
 import QrModal from "@/components/QrModal";
 import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
-import { SAMPLE_FORM, CHIP_PROMPTS } from "@/lib/sample-form";
+import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY } from "@/lib/prompt-library";
 import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
@@ -22,7 +22,7 @@ type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper" | "edit";
 
 export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [createMode, setCreateMode] = useState<"prompt" | "file">("prompt");
@@ -39,6 +39,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
   const [tab, setTab] = useState<"new" | "edit" | "all">("new");
+  const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
   const [qrForm, setQrForm] = useState<FormRow | null>(null);
   const [shareForm, setShareForm] = useState<FormRow | null>(null);
   const [origin, setOrigin] = useState("");
@@ -230,19 +231,11 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       </div>
 
       {tab === "new" && (
+      <>
       <Card>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-          <div>
-            <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h2>
-            <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.subtitle")}</p>
-          </div>
-          <button
-            onClick={() => { setDraft(JSON.parse(JSON.stringify(SAMPLE_FORM))); setEditingId(null); setStatus(null); setView("edit"); setTab("edit"); }}
-            disabled={!!busy}
-            style={{ background: "none", border: "none", color: "var(--brand-ink)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", flex: "0 0 auto" }}
-          >
-            {t("studio.sample")}
-          </button>
+        <div>
+          <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h2>
+          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.subtitle")}</p>
         </div>
 
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
@@ -264,17 +257,12 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
         {createMode === "prompt" ? (
           <div>
-            <TextArea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")} />
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0" }}>
-              {CHIP_PROMPTS.map((p) => (
-                <button key={p} onClick={() => setPrompt(p)} style={{ fontSize: ".8rem", padding: "5px 12px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}>
-                  {p}
-                </button>
-              ))}
+            <TextArea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")} style={{ minHeight: 200 }} />
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+              <Button variant="primary" onClick={generate} disabled={!!busy} style={{ padding: "12px 30px", fontSize: "1rem" }}>
+                <Icon icon={Sparkles} className="h-[18px] w-[18px]" /> {t("studio.generate")}
+              </Button>
             </div>
-            <Button variant="primary" onClick={generate} disabled={!!busy}>
-              <Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.generate")}
-            </Button>
           </div>
         ) : (
           <div>
@@ -301,6 +289,53 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         )}
         {status && <Notice kind={status.err ? "error" : "info"}>{status.t}</Notice>}
       </Card>
+
+      {createMode === "prompt" && (
+        <Card>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap", marginBottom: 12 }}>
+            <div>
+              <b style={{ fontFamily: "var(--font-anuphan)", fontSize: "1rem" }}>{t("studio.libTitle")}</b>
+              <p style={{ color: "var(--ink-2)", fontSize: ".84rem", margin: "2px 0 0" }}>{t("studio.libSub")}</p>
+            </div>
+            <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 9, overflow: "hidden", flex: "0 0 auto" }}>
+              {([
+                { k: "task" as const, icon: Layers, label: t("studio.libByTask") },
+                { k: "industry" as const, icon: Factory, label: t("studio.libByIndustry") },
+              ]).map((g, i) => {
+                const on = promptGroupBy === g.k;
+                return (
+                  <button key={g.k} onClick={() => setPromptGroupBy(g.k)} className="inline-flex items-center gap-1.5"
+                    style={{ padding: "8px 14px", border: "none", borderLeft: i === 1 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}>
+                    <Icon icon={g.icon} className="h-4 w-4" /> {g.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gap: 14 }}>
+            {(promptGroupBy === "task" ? PROMPTS_BY_TASK : PROMPTS_BY_INDUSTRY).map((group) => (
+              <div key={group.key}>
+                <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--ink-3)", letterSpacing: ".02em", marginBottom: 7 }}>
+                  {lang === "en" ? group.en : group.th}
+                </div>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {group.items.map((it, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setPrompt(lang === "en" ? it.en : it.th)}
+                      style={{ fontSize: ".82rem", padding: "7px 13px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", lineHeight: 1.35 }}
+                    >
+                      {lang === "en" ? it.en : it.th}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+      </>
       )}
 
       {tab === "edit" && (draft ? (
