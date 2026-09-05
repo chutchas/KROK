@@ -1,6 +1,8 @@
 import "server-only";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
+import type { MenuKey } from "@/lib/menus";
 
 export const WS_COOKIE = "krok_ws";
 
@@ -138,4 +140,19 @@ export async function listWorkspaces(): Promise<WorkspaceItem[]> {
 
 export function canManage(role: KrokSession["role"]) {
   return role === "owner" || role === "admin" || role === "designer";
+}
+
+/**
+ * บังคับสิทธิ์ระดับหน้า: ต้องมี menu นี้ใน allowedMenus ของ role ปัจจุบัน
+ * ถ้าไม่มี → redirect ไปหน้าที่เข้าได้หน้าแรก (กัน loop) หรือหน้าโปรไฟล์
+ * คืน session เมื่อผ่าน
+ */
+export async function enforceMenu(menu: MenuKey): Promise<KrokSession> {
+  const session = await getSession();
+  if (!session) redirect("/login");
+  const allowed = await getAllowedMenus(session.tenantId, session.roleKey);
+  if (allowed.includes(menu)) return session;
+  const { MENUS } = await import("@/lib/menus");
+  const first = MENUS.find((m) => allowed.includes(m.key));
+  redirect(first ? first.href : "/settings/profile");
 }

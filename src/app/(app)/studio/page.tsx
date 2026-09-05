@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getSession, canManage } from "@/lib/session";
+import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import StudioClient from "./StudioClient";
 import type { FormSchema } from "@/lib/form-schema";
@@ -21,8 +20,7 @@ export interface FormRow {
 }
 
 export default async function StudioPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("studio");
   if (!canManage(session.role))
     return (
       <div style={{ color: "var(--ink-2)" }}>

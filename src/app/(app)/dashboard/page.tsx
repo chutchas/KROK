@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import DashboardClient, { type SubRow } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("dashboard");
 
   const supabase = await createClient();
   const { data } = await supabase

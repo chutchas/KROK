@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession, canManage } from "@/lib/session";
+import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import IntegrationsClient, { type WebhookItem } from "./IntegrationsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function IntegrationsPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("integrations");
   if (!canManage(session.role))
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin/designer เท่านั้น</div>;
 

@@ -18,30 +18,37 @@ async function requireAdmin(): Promise<AdminGate> {
   return { ok: true, session };
 }
 
-export async function inviteMember(email: string, role: Role): Promise<{ ok: true } | { error: string }> {
+// เชิญสมาชิกด้วย role_key (รองรับ custom role) — เก็บทั้ง role_key และ enum role (สำรอง/ความปลอดภัย)
+export async function inviteMember(email: string, roleKey: string): Promise<{ ok: true } | { error: string }> {
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const { session } = a;
   const clean = email.trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { error: "อีเมลไม่ถูกต้อง" };
-  if (!ROLES.includes(role)) return { error: "role ไม่ถูกต้อง" };
-  if (role === "owner" && session.role !== "owner") return { error: "เฉพาะ owner เชิญ owner ได้" };
+
+  const supabase = await createClient();
+  const { data: roleDef } = await supabase
+    .from("tenant_roles").select("key, can_manage").eq("tenant_id", session.tenantId).eq("key", roleKey).maybeSingle();
+  if (!roleDef) return { error: "ไม่พบ role นี้" };
+  if (roleKey === "owner" && session.role !== "owner") return { error: "เฉพาะ owner เชิญ owner ได้" };
+
+  // enum role (ชั้นความปลอดภัย/RLS) จาก can_manage
+  const role: Role = roleKey === "owner" ? "owner" : roleDef.can_manage ? "admin" : "operator";
 
   const q = await canAddMember(session.tenantId);
   if (!q.ok)
     return { error: `แผนปัจจุบันมีสมาชิกได้สูงสุด ${fmtLimit(q.max)} คน (ปัจจุบัน ${q.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` };
 
-  const supabase = await createClient();
   const { error } = await supabase
     .from("invites")
     .upsert(
-      { tenant_id: session.tenantId, email: clean, role, invited_by: session.userId, accepted_at: null },
+      { tenant_id: session.tenantId, email: clean, role, role_key: roleKey, invited_by: session.userId, accepted_at: null },
       { onConflict: "tenant_id,email" }
     );
   if (error) return { error: error.message };
   await supabase.from("audit_log").insert({
     tenant_id: session.tenantId, actor_id: session.userId,
-    action: "member.invite", target_type: "invite", meta: { email: clean, role },
+    action: "member.invite", target_type: "invite", meta: { email: clean, role_key: roleKey },
   });
   revalidatePath("/settings/team");
   return { ok: true };

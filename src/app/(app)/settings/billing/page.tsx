@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { enforceMenu } from "@/lib/session";
 import { getQuotaSnapshot } from "@/lib/quota";
 import BillingClient from "./BillingClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function BillingPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("billing");
 
   const snap = await getQuotaSnapshot(session.tenantId);
 

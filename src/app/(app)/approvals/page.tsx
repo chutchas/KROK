@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getSession, canManage } from "@/lib/session";
+import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeChain } from "@/lib/approval";
 import ApprovalsClient from "./ApprovalsClient";
@@ -8,8 +7,7 @@ import type { PendingSub } from "./ApprovalsClient";
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("approvals");
   if (!canManage(session.role))
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับผู้อนุมัติ (owner/admin/designer) เท่านั้น</div>;
 

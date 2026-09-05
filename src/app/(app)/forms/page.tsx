@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getSession, canManage } from "@/lib/session";
+import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { countFields, type FormSchema } from "@/lib/form-schema";
 import FormsListClient, { type FormListItem } from "./FormsListClient";
@@ -17,8 +16,7 @@ interface FormRow {
 }
 
 export default async function FormsPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("forms");
 
   const supabase = await createClient();
   const [{ data }, { data: teamIdRows }] = await Promise.all([

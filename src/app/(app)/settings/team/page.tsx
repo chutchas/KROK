@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import TeamClient, { type Member, type Invite, type Team } from "./TeamClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function TeamPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("team");
   if (session.role !== "owner" && session.role !== "admin")
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
 
@@ -20,7 +18,7 @@ export default async function TeamPage() {
       .order("created_at", { ascending: true }),
     supabase
       .from("invites")
-      .select("id, email, role, created_at")
+      .select("id, email, role, role_key, created_at")
       .eq("tenant_id", session.tenantId)
       .is("accepted_at", null)
       .order("created_at", { ascending: false }),

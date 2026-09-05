@@ -1,13 +1,11 @@
-import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import AiSettingsClient, { type AiSettings } from "./AiSettingsClient";
 
 export const dynamic = "force-dynamic";
 
 export default async function AiSettingsPage() {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const session = await enforceMenu("ai");
   if (session.role !== "owner" && session.role !== "admin")
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
 

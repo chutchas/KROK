@@ -21,6 +21,7 @@ export interface Invite {
   id: string;
   email: string;
   role: Role;
+  role_key: string | null;
   created_at: string;
 }
 export interface Team {
@@ -35,13 +36,6 @@ const ROLE_LABEL: Record<Role, string> = {
   designer: "ออกแบบฟอร์ม",
   operator: "หน้างาน",
 };
-const ROLE_HINT: Record<Role, string> = {
-  owner: "จัดการทุกอย่าง รวมถึงสมาชิกและองค์กร",
-  admin: "จัดการฟอร์ม สมาชิก และอนุมัติได้",
-  designer: "สร้าง/แก้ฟอร์ม และอนุมัติได้",
-  operator: "กรอกฟอร์มและดู dashboard",
-};
-const ASSIGNABLE: Role[] = ["admin", "designer", "operator"];
 
 export default function TeamClient({
   me,
@@ -63,17 +57,19 @@ export default function TeamClient({
   const router = useRouter();
   const { t, tt } = useT();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<Role>("operator");
+  const [roleKey, setRoleKey] = useState<string>("user");
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
 
   const canOwner = myRole === "owner";
+  const inviteOptions = canOwner ? roleOptions : roleOptions.filter((r) => r.key !== "owner");
+  const selectedRoleName = roleOptions.find((r) => r.key === roleKey)?.name || roleKey;
 
   async function doInvite(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await inviteMember(email, role);
+    const res = await inviteMember(email, roleKey);
     setBusy(false);
     if ("error" in res) setMsg({ t: res.error, err: true });
     else {
@@ -102,14 +98,14 @@ export default function TeamClient({
         </p>
         <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <Field type="email" placeholder="อีเมลของสมาชิก" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
-          <select value={role} onChange={(e) => setRole(e.target.value as Role)} style={selstyle}>
-            {(canOwner ? (["admin", "designer", "operator", "owner"] as Role[]) : ASSIGNABLE).map((r) => (
-              <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+          <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} style={selstyle}>
+            {inviteOptions.map((r) => (
+              <option key={r.key} value={r.key}>{r.name}</option>
             ))}
           </select>
           <Button variant="primary" type="submit" disabled={busy}>{busy ? "กำลังเชิญ..." : "เชิญ"}</Button>
         </form>
-        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>สิทธิ์ {ROLE_LABEL[role]}: {ROLE_HINT[role]}</p>
+        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>สิทธิ์ที่จะได้รับ: <b>{selectedRoleName}</b></p>
         {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
       </Card>
 
@@ -121,7 +117,7 @@ export default function TeamClient({
               <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: ".92rem" }}>{inv.email}</b>
-                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>สิทธิ์ {ROLE_LABEL[inv.role]} · รอสมัคร</small>
+                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>สิทธิ์ {roleOptions.find((r) => r.key === inv.role_key)?.name || ROLE_LABEL[inv.role]} · รอสมัคร</small>
                 </div>
                 <Button variant="danger" onClick={async () => { await cancelInvite(inv.id); router.refresh(); }}>ยกเลิก</Button>
               </div>
