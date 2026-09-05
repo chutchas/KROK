@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, Field, Notice } from "@/components/ui";
+import { Button, AsyncButton, Card, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { HardHat, Tag } from "lucide-react";
 import { inviteMember, cancelInvite, changeRoleKey, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
@@ -103,7 +103,7 @@ export default function TeamClient({
               <option key={r.key} value={r.key}>{r.name}</option>
             ))}
           </select>
-          <Button variant="primary" type="submit" disabled={busy}>{busy ? "กำลังเชิญ..." : "เชิญ"}</Button>
+          <Button variant="primary" type="submit" loading={busy}>เชิญ</Button>
         </form>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>สิทธิ์ที่จะได้รับ: <b>{selectedRoleName}</b></p>
         {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
@@ -119,7 +119,7 @@ export default function TeamClient({
                   <b style={{ fontSize: ".92rem" }}>{inv.email}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>สิทธิ์ {roleOptions.find((r) => r.key === inv.role_key)?.name || ROLE_LABEL[inv.role]} · รอสมัคร</small>
                 </div>
-                <Button variant="danger" onClick={async () => { await cancelInvite(inv.id); router.refresh(); }}>ยกเลิก</Button>
+                <AsyncButton variant="danger" onClick={async () => { await cancelInvite(inv.id); router.refresh(); }}>ยกเลิก</AsyncButton>
               </div>
             ))}
           </div>
@@ -160,12 +160,12 @@ export default function TeamClient({
                   <span style={{ fontSize: ".82rem", color: "var(--ink-2)", padding: "6px 12px", border: "1px solid var(--line)", borderRadius: 20 }}>{roleName}</span>
                 )}
                 {!isMe && canEditThis && (
-                  <Button variant="danger" onClick={async () => {
+                  <AsyncButton variant="danger" onClick={async () => {
                     if (!confirm(`นำ ${m.name || m.email} ออกจากองค์กร?`)) return;
                     const res = await removeMember(m.user_id);
                     if ("error" in res) alert(res.error);
                     else router.refresh();
-                  }}>นำออก</Button>
+                  }}>นำออก</AsyncButton>
                 )}
               </div>
             );

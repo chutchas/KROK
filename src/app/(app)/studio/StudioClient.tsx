@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
+import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer, Archive, Trash2 } from "lucide-react";
@@ -101,13 +101,14 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       setStatus({ t: t("studio.errPrompt"), err: true });
       return;
     }
-    callGenerate({ prompt }, t("studio.busyGenerate"));
+    return callGenerate({ prompt }, t("studio.busyGenerate"));
   }
 
   function refineDraft() {
     if (!refine.trim() || !draft) return;
-    callGenerate({ schema: draft, instruction: refine }, t("studio.busyRefine"));
+    const p = callGenerate({ schema: draft, instruction: refine }, t("studio.busyRefine"));
     setRefine("");
+    return p;
   }
 
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
@@ -269,9 +270,9 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           <div>
             <TextArea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")} style={{ minHeight: 200 }} />
             <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
-              <Button variant="primary" onClick={generate} disabled={!!busy} style={{ padding: "12px 30px", fontSize: "1rem" }}>
+              <AsyncButton variant="primary" onClick={generate} disabled={!!busy} style={{ padding: "12px 30px", fontSize: "1rem" }}>
                 <Icon icon={Sparkles} className="h-[18px] w-[18px]" /> {t("studio.generate")}
-              </Button>
+              </AsyncButton>
             </div>
           </div>
         ) : (
@@ -417,7 +418,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             </p>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} style={{ flex: 1, minWidth: 200 }} />
-              <Button onClick={refineDraft} disabled={!!busy}>{t("studio.refineBtn")}</Button>
+              <AsyncButton onClick={refineDraft} disabled={!!busy}>{t("studio.refineBtn")}</AsyncButton>
             </div>
           </div>
 
@@ -521,8 +522,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           </div>
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <Button variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</Button>
-            {!editingId && <Button onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</Button>}
+            <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
+            {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
@@ -584,12 +585,12 @@ export default function StudioClient({ initialForms, members, teams }: { initial
               {f.status === "published" ? (
                 <>
                   <Button onClick={() => router.push(`/fill/${f.id}`)} title={t("studio.openFill")}><Icon icon={Smartphone} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.openFill")}</span></Button>
-                  <Button onClick={() => changeStatus(f.id, "archived")} title={t("studio.cancelForm")}><Icon icon={Archive} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.cancelForm")}</span></Button>
+                  <AsyncButton onClick={() => changeStatus(f.id, "archived")} title={t("studio.cancelForm")}><Icon icon={Archive} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.cancelForm")}</span></AsyncButton>
                 </>
               ) : (
-                <Button variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></Button>
+                <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
               )}
-              <Button variant="danger" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></Button>
+              <AsyncButton variant="danger" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></AsyncButton>
             </div>
           ))}
         </div>

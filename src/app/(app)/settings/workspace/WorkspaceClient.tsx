@@ -67,8 +67,8 @@ export default function WorkspaceClient({
         <label style={{ display: "block", fontSize: ".85rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("ws.name")}</label>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Field value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 200 }} maxLength={80} />
-          <Button variant="primary" onClick={save} disabled={busy || !name.trim() || name.trim() === tenantName}>
-            <Icon icon={Save} className="h-4 w-4" /> {busy ? "…" : t("common.save")}
+          <Button variant="primary" onClick={save} loading={busy} disabled={!name.trim() || name.trim() === tenantName}>
+            <Icon icon={Save} className="h-4 w-4" /> {t("common.save")}
           </Button>
         </div>
         {msg && <div style={{ marginTop: 10 }}><Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice></div>}
@@ -89,8 +89,8 @@ export default function WorkspaceClient({
           </label>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <Field value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={tenantName} style={{ flex: 1, minWidth: 200 }} />
-            <Button variant="danger" onClick={doDelete} disabled={delBusy || confirm.trim() !== tenantName}>
-              <Icon icon={Trash2} className="h-4 w-4" /> {delBusy ? "…" : t("ws.deleteBtn")}
+            <Button variant="danger" onClick={doDelete} loading={delBusy} disabled={confirm.trim() !== tenantName}>
+              <Icon icon={Trash2} className="h-4 w-4" /> {t("ws.deleteBtn")}
             </Button>
           </div>
           {delMsg && <div style={{ marginTop: 10 }}><Notice kind="error">{delMsg}</Notice></div>}

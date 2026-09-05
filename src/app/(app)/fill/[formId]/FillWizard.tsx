@@ -335,7 +335,7 @@ export default function FillWizard(props: Props) {
 
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>{t("fill.prev")}</Button>}
-        <Button variant="primary" onClick={next} disabled={submitting} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
+        <Button variant="primary" onClick={next} loading={submitting} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
           {submitting ? t("fill.submitting") : idx === schema.steps.length - 1 ? <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</> : t("fill.next")}
         </Button>
       </div>

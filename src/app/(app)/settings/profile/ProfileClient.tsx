@@ -173,8 +173,8 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
           {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
 
           <div>
-            <Button variant="primary" type="submit" disabled={busy}>
-              {busy ? t("common.saving") : t("common.save")}
+            <Button variant="primary" type="submit" loading={busy}>
+              {t("common.save")}
             </Button>
           </div>
         </form>

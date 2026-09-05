@@ -138,11 +138,11 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
             style={{ marginTop: 12, minHeight: 52 }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            <Button variant="primary" onClick={() => act(s.id, "approved")} disabled={!!busy} style={{ flex: 1, background: "var(--pass)", borderColor: "var(--pass)" }}>
-              {busy === s.id + "approved" ? "..." : <><Icon icon={Check} className="h-4 w-4" /> {chainOf(s).length > 1 && (s.approval_step ?? 0) < chainOf(s).length - 1 ? t("appr.approveNext") : t("appr.approve")}</>}
+            <Button variant="primary" onClick={() => act(s.id, "approved")} disabled={!!busy} loading={busy === s.id + "approved"} style={{ flex: 1, background: "var(--pass)", borderColor: "var(--pass)" }}>
+              <Icon icon={Check} className="h-4 w-4" /> {chainOf(s).length > 1 && (s.approval_step ?? 0) < chainOf(s).length - 1 ? t("appr.approveNext") : t("appr.approve")}
             </Button>
-            <Button variant="danger" onClick={() => act(s.id, "rejected")} disabled={!!busy} style={{ flex: 1 }}>
-              {busy === s.id + "rejected" ? "..." : <><Icon icon={X} className="h-4 w-4" /> {t("appr.reject")}</>}
+            <Button variant="danger" onClick={() => act(s.id, "rejected")} disabled={!!busy} loading={busy === s.id + "rejected"} style={{ flex: 1 }}>
+              <Icon icon={X} className="h-4 w-4" /> {t("appr.reject")}
             </Button>
           </div>
         </Card>

@@ -119,7 +119,7 @@ export default function ShareScopeModal({
 
           <div style={{ display: "flex", gap: 10, marginTop: 16, justifyContent: "flex-end" }}>
             <Button onClick={onClose} disabled={busy}>{t("common.cancel")}</Button>
-            <Button variant="primary" onClick={save} disabled={busy}>{busy ? "…" : t("common.save")}</Button>
+            <Button variant="primary" onClick={save} loading={busy}>{t("common.save")}</Button>
           </div>
         </div>
       </div>

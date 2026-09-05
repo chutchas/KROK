@@ -105,8 +105,8 @@ export default function BillingClient({
                     <Icon icon={Lock} className="h-4 w-4" /> {t("plan.locked")}
                   </Button>
                 ) : (
-                  <Button variant={p.highlight ? "primary" : "default"} onClick={() => choose(key)} disabled={!!busy} style={{ width: "100%" }}>
-                    {busy === key ? "…" : t("plan.select")}
+                  <Button variant={p.highlight ? "primary" : "default"} onClick={() => choose(key)} disabled={!!busy} loading={busy === key} style={{ width: "100%" }}>
+                    {t("plan.select")}
                   </Button>
                 )}
               </div>
