@@ -12,7 +12,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Bot, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" };
 
@@ -32,6 +32,44 @@ const SECONDARY: NavEntry[] = [
   { href: "/settings/ai", key: "nav.ai", icon: Bot, menu: "ai" },
   { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
+];
+
+// หมวดหมู่ในเมนู sidebar (drawer)
+const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
+  {
+    labelKey: "grp.work",
+    items: [
+      { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
+      { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
+      { href: "/forms", key: "nav.fill", icon: Smartphone, menu: "forms" },
+      { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
+    ],
+  },
+  {
+    labelKey: "grp.org",
+    items: [
+      { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
+      { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
+    ],
+  },
+  {
+    labelKey: "grp.connect",
+    items: [
+      { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
+      { href: "/settings/ai", key: "nav.ai", icon: Bot, menu: "ai" },
+    ],
+  },
+  {
+    labelKey: "grp.billing",
+    items: [
+      { href: "/settings/billing", key: "nav.billing", icon: CreditCard, menu: "billing" },
+      { href: "/settings/billing/history", key: "nav.billingHistory", icon: ReceiptText, gate: "wsadmin" },
+    ],
+  },
+  {
+    labelKey: "grp.platform",
+    items: [{ href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" }],
+  },
 ];
 
 export default function AppShell({
@@ -122,62 +160,15 @@ export default function AppShell({
             flexWrap: "wrap",
           }}
         >
-          {secondary.length > 0 && (
-            <div ref={menuRef} style={{ position: "relative" }}>
-              <button
-                onClick={() => setMenuOpen((v) => !v)}
-                aria-label={t("nav.more")}
-                title={t("nav.more")}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
-                style={{ border: "none", background: menuOpen ? "var(--accent-soft)" : "transparent", color: menuOpen ? "var(--accent)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit" }}
-              >
-                <Icon icon={Menu} className="h-5 w-5" />
-              </button>
-              {menuOpen && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: "calc(100% + 8px)",
-                    left: 0,
-                    minWidth: 220,
-                    background: "var(--surface)",
-                    border: "1px solid var(--line)",
-                    borderRadius: 12,
-                    boxShadow: "var(--shadow)",
-                    padding: 6,
-                    zIndex: 40,
-                  }}
-                >
-                  <div style={{ fontSize: ".7rem", color: "var(--ink-3)", padding: "6px 10px 4px", fontWeight: 600, letterSpacing: ".03em" }}>
-                    {t("nav.more")}
-                  </div>
-                  {secondary.map((n) => {
-                    const on = path.startsWith(n.href);
-                    return (
-                      <Link
-                        key={n.href}
-                        href={n.href}
-                        onClick={() => setMenuOpen(false)}
-                        className="inline-flex items-center gap-2.5"
-                        style={{
-                          width: "100%",
-                          padding: "9px 10px",
-                          borderRadius: 8,
-                          fontSize: ".9rem",
-                          textDecoration: "none",
-                          fontWeight: on ? 600 : 500,
-                          color: on ? "var(--accent)" : "var(--ink)",
-                          background: on ? "var(--accent-soft)" : "transparent",
-                        }}
-                      >
-                        <Icon icon={n.icon} className="h-[18px] w-[18px]" /> {t(n.key)}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          )}
+          <button
+            onClick={() => setMenuOpen(true)}
+            aria-label={t("nav.menu")}
+            title={t("nav.menu")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
+            style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", flex: "0 0 auto" }}
+          >
+            <Icon icon={Menu} className="h-5 w-5" />
+          </button>
 
           {workspaces.length > 1 || canManage ? (
             <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
@@ -280,6 +271,85 @@ export default function AppShell({
           </div>
         </div>
       </header>
+
+      {/* Sidebar drawer (เมนูเต็ม แบ่งหมวดหมู่) */}
+      {menuOpen && (
+        <div
+          className="no-print"
+          onClick={() => setMenuOpen(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(10,14,18,.4)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
+        >
+          <aside
+            ref={menuRef}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              bottom: 0,
+              width: 300,
+              maxWidth: "86vw",
+              background: "var(--surface)",
+              borderRight: "1px solid var(--line)",
+              boxShadow: "0 0 40px rgba(10,14,18,.2)",
+              display: "flex",
+              flexDirection: "column",
+              overflowY: "auto",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--surface)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <LogoMark size={28} variant="compact" title="KROK" />
+                <div>
+                  <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem", letterSpacing: ".02em" }}>KROK</b>
+                  <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>{tenantName}</small>
+                </div>
+              </div>
+              <button onClick={() => setMenuOpen(false)} aria-label={t("common.close")} className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
+                <Icon icon={X} className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav style={{ padding: "8px 8px 24px" }}>
+              {DRAWER_GROUPS.map((g) => {
+                const items = g.items.filter(visible);
+                if (items.length === 0) return null;
+                return (
+                  <div key={g.labelKey} style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
+                      {t(g.labelKey)}
+                    </div>
+                    {items.map((n) => {
+                      const on = path.startsWith(n.href);
+                      return (
+                        <Link
+                          key={n.href}
+                          href={n.href}
+                          onClick={() => setMenuOpen(false)}
+                          className="inline-flex items-center gap-3"
+                          style={{
+                            width: "100%",
+                            padding: "10px 12px",
+                            borderRadius: 9,
+                            fontSize: ".95rem",
+                            textDecoration: "none",
+                            fontWeight: on ? 600 : 500,
+                            color: on ? "var(--accent)" : "var(--ink)",
+                            background: on ? "var(--accent-soft)" : "transparent",
+                          }}
+                        >
+                          <Icon icon={n.icon} className="h-[19px] w-[19px]" /> {t(n.key)}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </nav>
+          </aside>
+        </div>
+      )}
+
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "20px 16px 90px" }}>{children}</main>
     </>
   );
