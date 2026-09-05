@@ -152,6 +152,17 @@ export default function AppShell({
 
   return (
     <>
+      <style>{`
+        @media (max-width: 640px){
+          /* มือถือ: ปุ่มควบคุม (theme/lang/noti/profile) ขึ้นแถวบนชิดขวา */
+          .krok-controls{ order: 1; }
+          /* เมนูหลักลงแถวที่สอง เต็มความกว้าง — บรรทัดเดียว เลื่อนแนวนอนถ้าไม่พอ (ไม่ตกบรรทัด) */
+          .krok-nav{ order: 2; flex-basis: 100%; margin-left: -4px; overflow-x: auto; scrollbar-width: none; }
+          .krok-nav::-webkit-scrollbar{ display: none; }
+          .krok-nav a{ padding: 6px 9px !important; font-size: .82rem !important; flex: 0 0 auto; white-space: nowrap; }
+          .krok-nav a > svg{ width: 16px !important; height: 16px !important; }
+        }
+      `}</style>
       <header
         style={{
           background: "var(--surface)",
@@ -163,6 +174,7 @@ export default function AppShell({
         className="no-print"
       >
         <div
+          className="krok-topbar"
           style={{
             maxWidth: 1040,
             margin: "0 auto",
@@ -197,7 +209,7 @@ export default function AppShell({
             </Link>
           )}
 
-          <nav style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+          <nav className="krok-nav" style={{ display: "flex", gap: 2 }}>
             {navItems.map((n) => {
               const on = path.startsWith(n.href);
               return (
@@ -221,7 +233,7 @@ export default function AppShell({
             })}
           </nav>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+          <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
             <OfflineSync />
             <ThemeToggle />
             <LanguageToggle />
