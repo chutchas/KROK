@@ -11,6 +11,7 @@ export interface Plan {
   aiCreditsPerMonth: number;
   maxMembers: number;
   maxWorkspaces: number;
+  priceThb: number;   // ยอดต่อเดือน (บาท) สำหรับออกใบแจ้งหนี้
   highlight?: boolean;
 }
 
@@ -27,6 +28,7 @@ export const PLANS: Record<PlanKey, Plan> = {
     aiCreditsPerMonth: 30,
     maxMembers: 3,
     maxWorkspaces: 1,
+    priceThb: 0,
   },
   pro: {
     key: "pro",
@@ -38,6 +40,7 @@ export const PLANS: Record<PlanKey, Plan> = {
     aiCreditsPerMonth: 500,
     maxMembers: 20,
     maxWorkspaces: 3,
+    priceThb: 990,
     highlight: true,
   },
   business: {
@@ -50,6 +53,7 @@ export const PLANS: Record<PlanKey, Plan> = {
     aiCreditsPerMonth: 5000,
     maxMembers: 200,
     maxWorkspaces: 20,
+    priceThb: 2990,
   },
 };
 

@@ -22,7 +22,24 @@ export async function setPlan(plan: PlanKey): Promise<{ ok: true } | { error: st
     target_id: session.tenantId,
     meta: { plan },
   });
+
+  // ออกใบแจ้งหนี้ (เดโม) เมื่อเปลี่ยนไปแผนเสียเงิน — ยังไม่เรียกเก็บจริง
+  const amount = PLANS[plan].priceThb;
+  if (amount > 0) {
+    const period = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
+    await supabase.from("invoices").insert({
+      tenant_id: session.tenantId,
+      plan,
+      amount,
+      currency: "THB",
+      period,
+      status: "demo",
+      issued_by: session.userId,
+    });
+  }
+
   revalidatePath("/settings/billing");
+  revalidatePath("/settings/billing/history");
   revalidatePath("/", "layout");
   return { ok: true };
 }
