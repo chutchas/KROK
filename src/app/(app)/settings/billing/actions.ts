@@ -3,12 +3,17 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
 import { PLANS, type PlanKey } from "@/lib/plans";
+import { PAYMENTS_ENABLED } from "@/lib/payments";
 
 export async function setPlan(plan: PlanKey): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (session.role !== "owner") return { error: "เฉพาะ owner เปลี่ยนแผนได้" };
   if (!PLANS[plan]) return { error: "แผนไม่ถูกต้อง" };
+
+  // บล็อกการซื้อแผนเสียเงินจริงจนกว่าจะเปิดระบบชำระเงิน (ลดแผน/กลับ Free ได้)
+  if (PLANS[plan].priceThb > 0 && !PAYMENTS_ENABLED)
+    return { error: "ระบบชำระเงินยังไม่เปิดให้บริการ — ยังไม่สามารถซื้อแผนนี้ได้" };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("set_plan", { p_tenant: session.tenantId, p_plan: plan });

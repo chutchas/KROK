@@ -3,9 +3,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Check } from "lucide-react";
+import { Check, Lock, CreditCard } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey } from "@/lib/plans";
+import { PAYMENTS_ENABLED, GATEWAYS } from "@/lib/payments";
 import { setPlan } from "./actions";
 
 export default function BillingClient({
@@ -97,18 +98,45 @@ export default function BillingClient({
               <div style={{ marginTop: "auto" }}>
                 {isCurrent ? (
                   <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".88rem", fontWeight: 600 }}>{t("plan.currentBadge")}</div>
-                ) : isOwner ? (
+                ) : !isOwner ? (
+                  <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.ownerOnly")}</div>
+                ) : p.priceThb > 0 && !PAYMENTS_ENABLED ? (
+                  <Button variant="default" disabled style={{ width: "100%", opacity: 0.7 }}>
+                    <Icon icon={Lock} className="h-4 w-4" /> {t("plan.locked")}
+                  </Button>
+                ) : (
                   <Button variant={p.highlight ? "primary" : "default"} onClick={() => choose(key)} disabled={!!busy} style={{ width: "100%" }}>
                     {busy === key ? "…" : t("plan.select")}
                   </Button>
-                ) : (
-                  <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.ownerOnly")}</div>
                 )}
               </div>
             </div>
           );
         })}
       </div>
+
+      {/* การตั้งค่าการชำระเงิน (โครง — ยังปิดใช้งาน) */}
+      {isOwner && (
+        <Card>
+          <h2 style={{ fontSize: "1.1rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
+            <span style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--amber)", border: "1px solid var(--line)", borderRadius: 20, padding: "2px 8px" }}>{t("pay.soon")}</span>
+          </h2>
+          <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.sub")}</p>
+          <div style={{ display: "grid", gap: 8, marginTop: 8, opacity: 0.6, pointerEvents: "none" }}>
+            {GATEWAYS.map((g) => (
+              <label key={g.key} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
+                <input type="radio" name="gw" disabled style={{ accentColor: "var(--accent)" }} />
+                <span style={{ flex: 1 }}>
+                  <b style={{ fontSize: ".9rem" }}>{g.name}</b>
+                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{g.note}</small>
+                </span>
+              </label>
+            ))}
+          </div>
+          <Notice><span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon icon={Lock} className="h-4 w-4" /> {t("pay.disabledNote")}</span></Notice>
+        </Card>
+      )}
 
       <p style={{ color: "var(--ink-3)", fontSize: ".8rem", textAlign: "center" }}>{t("plan.noPayment")}</p>
 
