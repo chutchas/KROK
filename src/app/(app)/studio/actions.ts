@@ -165,6 +165,15 @@ export async function updateForm(
     .single();
 
   if (error) return { error: error.message };
+
+  // ซิงก์ชื่อ/ไอคอนไปยัง submissions เดิม เพื่อให้ทุกหน้า (dashboard/ประวัติ/อนุมัติ) แสดงชื่อใหม่ตรงกัน
+  // เป็นการ update จริง → ส่ง realtime UPDATE ให้ dashboard อัปเดตสด
+  await supabase
+    .from("submissions")
+    .update({ form_title: schema.title, form_icon: schema.icon })
+    .eq("form_id", id)
+    .eq("tenant_id", session.tenantId);
+
   await audit(session.tenantId, session.userId, "form.update", id, {
     title: schema.title,
     fields: countFields(schema),
@@ -172,6 +181,9 @@ export async function updateForm(
   });
   revalidatePath("/forms");
   revalidatePath("/studio");
+  revalidatePath("/dashboard");
+  revalidatePath("/approvals");
+  revalidatePath("/", "layout");
   return { id: data.id as string };
 }
 

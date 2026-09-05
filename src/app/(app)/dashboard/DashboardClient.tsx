@@ -101,6 +101,15 @@ export default function DashboardClient({ tenantId, initial }: { tenantId: strin
           setSubs((prev) => (prev.some((s) => s.id === row.id) ? prev : [row, ...prev].slice(0, 100)));
         }
       )
+      .on(
+        // อัปเดตสด เมื่อ submission ถูกแก้ (เช่น เปลี่ยนชื่อฟอร์ม → ซิงก์ form_title, หรือสถานะอนุมัติ)
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "submissions", filter: `tenant_id=eq.${tenantId}` },
+        (payload) => {
+          const row = payload.new as SubRow;
+          setSubs((prev) => prev.map((s) => (s.id === row.id ? { ...s, ...row } : s)));
+        }
+      )
       .subscribe();
     return () => {
       supabase.removeChannel(ch);
