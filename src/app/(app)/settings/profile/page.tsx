@@ -12,7 +12,7 @@ export default async function ProfilePage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("profiles")
-    .select("first_name, last_name, phone, position, language")
+    .select("first_name, last_name, phone, position, language, avatar_url")
     .eq("user_id", session.userId)
     .maybeSingle();
 
@@ -24,6 +24,8 @@ export default async function ProfilePage() {
     language: data?.language === "en" ? "en" : "th",
     email: session.email,
     role: session.role,
+    avatar_url: data?.avatar_url ?? "",
+    user_id: session.userId,
   };
 
   return <ProfileClient initial={profile} />;

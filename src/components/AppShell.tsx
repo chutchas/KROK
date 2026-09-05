@@ -79,6 +79,7 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
 export default function AppShell({
   children,
   displayName,
+  avatarUrl,
   tenantName,
   canManage,
   role,
@@ -90,6 +91,7 @@ export default function AppShell({
 }: {
   children: React.ReactNode;
   displayName: string;
+  avatarUrl: string;
   tenantName: string;
   canManage: boolean;
   role: Role;
@@ -232,7 +234,7 @@ export default function AppShell({
                   fontFamily: "inherit",
                 }}
               >
-                <Icon icon={HardHat} className="h-4 w-4" /> {displayName}
+                <Avatar url={avatarUrl} size={22} /> {displayName}
                 <Icon icon={ChevronDown} className="h-3.5 w-3.5" />
               </button>
               {profileOpen && (
@@ -250,9 +252,12 @@ export default function AppShell({
                     zIndex: 40,
                   }}
                 >
-                  <div style={{ padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4 }}>
-                    <b style={{ fontSize: ".88rem", display: "block" }}>{displayName}</b>
-                    <small style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tenantName}</small>
+                  <div style={{ padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+                    <Avatar url={avatarUrl} size={34} />
+                    <div>
+                      <b style={{ fontSize: ".88rem", display: "block" }}>{displayName}</b>
+                      <small style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tenantName}</small>
+                    </div>
                   </div>
                   <Link
                     href="/settings/profile"
@@ -356,5 +361,16 @@ export default function AppShell({
 
       <main style={{ maxWidth: 1040, margin: "0 auto", padding: "20px 16px 90px" }}>{children}</main>
     </>
+  );
+}
+
+function Avatar({ url, size }: { url: string; size: number }) {
+  if (url)
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={url} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flex: "0 0 auto" }} />;
+  return (
+    <span style={{ width: size, height: size, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}>
+      <Icon icon={HardHat} className="h-3.5 w-3.5" />
+    </span>
   );
 }

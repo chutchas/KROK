@@ -13,6 +13,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
   return (
     <AppShell
       displayName={session.displayName}
+      avatarUrl={session.avatarUrl}
       tenantName={session.tenantName}
       canManage={canManage(session.role)}
       role={session.role}

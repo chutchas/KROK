@@ -37,5 +37,25 @@ export async function saveProfile(input: ProfileInput): Promise<{ ok: true } | {
   }
 
   revalidatePath("/settings/profile");
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+// บันทึก URL รูปโปรไฟล์ (อัปโหลดไฟล์ทำฝั่ง client → storage bucket 'avatars')
+export async function saveAvatar(url: string): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  const clean = url.trim().slice(0, 500);
+
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("profiles")
+    .upsert({ user_id: session.userId, avatar_url: clean || null, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) return { error: error.message };
+
+  await supabase.auth.updateUser({ data: { avatar_url: clean || null } });
+
+  revalidatePath("/settings/profile");
+  revalidatePath("/", "layout");
   return { ok: true };
 }

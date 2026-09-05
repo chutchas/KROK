@@ -93,11 +93,17 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setBusy(t("studio.busyImage"));
+    const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
+    setBusy(isPdf ? t("studio.busyPdf") : t("studio.busyImage"));
     setStatus(null);
     try {
+      let toSend: File = file;
+      if (isPdf) {
+        const { pdfToImageFile } = await import("@/lib/pdf-to-image");
+        toSend = await pdfToImageFile(file);
+      }
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", toSend);
       const res = await fetch("/api/ai/from-image", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || t("studio.errReadFail"));
@@ -234,7 +240,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
               <b style={{ fontFamily: "var(--font-anuphan)", color: "var(--ink)" }}>{t("studio.fileDrop")}</b>
               <span style={{ fontSize: ".82rem" }}>{t("studio.fileHint")}</span>
             </button>
-            <input ref={fileRef} type="file" accept="image/*" hidden onChange={onUpload} />
+            <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden onChange={onUpload} />
             <p style={{ color: "var(--ink-3)", fontSize: ".78rem", marginTop: 8 }}>{t("studio.pdfNote")}</p>
           </div>
         )}

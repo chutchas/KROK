@@ -14,6 +14,7 @@ export interface KrokSession {
   roleName: string;
   canManageWs: boolean;
   displayName: string;
+  avatarUrl: string;
   platformRole: "platform_admin" | "developer" | "user";
   isPlatformAdmin: boolean;
 }
@@ -65,7 +66,7 @@ export async function getSession(): Promise<KrokSession | null> {
   const roleKey = active.role_key || (active.role === "operator" ? "user" : active.role);
 
   const [{ data: prof }, { data: roleRow }] = await Promise.all([
-    supabase.from("profiles").select("platform_role").eq("user_id", user.id).maybeSingle(),
+    supabase.from("profiles").select("platform_role, avatar_url").eq("user_id", user.id).maybeSingle(),
     supabase
       .from("tenant_roles")
       .select("name, can_manage")
@@ -90,6 +91,7 @@ export async function getSession(): Promise<KrokSession | null> {
     displayName:
       (user.user_metadata?.display_name as string) ||
       (user.email ? user.email.split("@")[0] : "ผู้ใช้"),
+    avatarUrl: (prof?.avatar_url as string) || (user.user_metadata?.avatar_url as string) || "",
     platformRole,
     isPlatformAdmin: platformRole === "platform_admin",
   };
