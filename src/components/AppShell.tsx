@@ -161,6 +161,11 @@ export default function AppShell({
           .krok-nav::-webkit-scrollbar{ display: none; }
           .krok-nav a{ padding: 6px 9px !important; font-size: .82rem !important; flex: 0 0 auto; white-space: nowrap; }
           .krok-nav a > svg{ width: 16px !important; height: 16px !important; }
+          /* ให้ปุ่มควบคุมอยู่แถวเดียวกับโลโก้เสมอ (ไม่ตกบรรทัด) */
+          .krok-controls{ flex: 0 0 auto; gap: 6px !important; }
+          .krok-brand{ flex: 1 1 auto; min-width: 0; }
+          .krok-profile-name{ display: none !important; }
+          .krok-ws-name{ max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         }
       `}</style>
       <header
@@ -195,19 +200,21 @@ export default function AppShell({
             <Icon icon={Menu} className="h-5 w-5" />
           </button>
 
-          {workspaces.length > 1 || canManage ? (
-            <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
-          ) : (
-            <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none" }}>
-              <LogoMark size={26} variant="compact" title="KROK" />
-              <div>
-                <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
-                <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>
-                  {tenantName}
-                </small>
-              </div>
-            </Link>
-          )}
+          <div className="krok-brand" style={{ display: "flex", minWidth: 0 }}>
+            {workspaces.length > 1 || canManage ? (
+              <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
+            ) : (
+              <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", minWidth: 0 }}>
+                <LogoMark size={26} variant="compact" title="KROK" />
+                <div style={{ minWidth: 0 }}>
+                  <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
+                  <small className="krok-ws-name" style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>
+                    {tenantName}
+                  </small>
+                </div>
+              </Link>
+            )}
+          </div>
 
           <nav className="krok-nav" style={{ display: "flex", gap: 2 }}>
             {navItems.map((n) => {
@@ -254,7 +261,7 @@ export default function AppShell({
                   fontFamily: "inherit",
                 }}
               >
-                <Avatar url={avatarUrl} size={22} /> {displayName}
+                <Avatar url={avatarUrl} size={22} /><span className="krok-profile-name">{displayName}</span>
                 <Icon icon={ChevronDown} className="h-3.5 w-3.5" />
               </button>
               {profileOpen && (

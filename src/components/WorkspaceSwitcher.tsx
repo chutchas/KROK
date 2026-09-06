@@ -90,10 +90,10 @@ export default function WorkspaceSwitcher({
         title={t("ws.switch")}
       >
         <LogoMark size={26} variant="compact" />
-        <div>
+        <div style={{ minWidth: 0 }}>
           <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
-          <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1 }}>
-            {active?.tenantName ?? ""} <Icon icon={ChevronDown} className="h-3 w-3" />
+          <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1, minWidth: 0 }}>
+            <span className="krok-ws-name">{active?.tenantName ?? ""}</span> <span style={{ flex: "0 0 auto", display: "inline-flex" }}><Icon icon={ChevronDown} className="h-3 w-3" /></span>
           </small>
         </div>
       </button>
