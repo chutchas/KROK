@@ -31,7 +31,7 @@ const DEFAULT_BASE: Record<Provider, string> = {
   anthropic: "",
 };
 
-export default function AdminAiClient({ current, configured }: { current: AiSettings; configured: boolean }) {
+export default function AdminAiClient({ current, configured, embedded }: { current: AiSettings; configured: boolean; embedded?: boolean }) {
   const router = useRouter();
   const [provider, setProvider] = useState<Provider>(current.provider);
   const [model, setModel] = useState(current.model);
@@ -77,14 +77,16 @@ export default function AdminAiClient({ current, configured }: { current: AiSett
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={Globe} className="h-5 w-5" /> ตั้งค่า AI (ระดับแพลตฟอร์ม)
-        </h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-          คีย์ชุดนี้ใช้ร่วมกันทุก workspace — ตั้งค่าได้เฉพาะ Platform Admin / Developer ผู้ใช้ทั่วไปเรียกใช้ได้แต่แก้ไม่ได้ เปลี่ยนแล้วมีผลทันที
-        </p>
-      </div>
+      {!embedded && (
+        <div>
+          <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Icon icon={Globe} className="h-5 w-5" /> ตั้งค่า AI (ระดับแพลตฟอร์ม)
+          </h1>
+          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
+            คีย์ชุดนี้ใช้ร่วมกันทุก workspace — ตั้งค่าได้เฉพาะ Platform Admin / Developer ผู้ใช้ทั่วไปเรียกใช้ได้แต่แก้ไม่ได้ เปลี่ยนแล้วมีผลทันที
+          </p>
+        </div>
+      )}
 
       <Card>
         <label style={{ fontWeight: 600, fontSize: ".9rem", display: "block", marginBottom: 6 }}>ผู้ให้บริการ</label>

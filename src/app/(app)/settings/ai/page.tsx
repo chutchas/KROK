@@ -7,6 +7,6 @@ export const dynamic = "force-dynamic";
 export default async function AiSettingsRedirect() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (session.isPlatformAdmin || session.platformRole === "developer") redirect("/admin/ai");
+  if (session.isPlatformAdmin || session.platformRole === "developer") redirect("/admin/settings");
   redirect("/settings/profile");
 }

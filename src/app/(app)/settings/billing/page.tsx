@@ -1,5 +1,6 @@
 import { enforceMenu } from "@/lib/session";
 import { getQuotaSnapshot } from "@/lib/quota";
+import { getEnabledPaymentMethods } from "@/lib/payments-server";
 import BillingClient from "./BillingClient";
 
 export const dynamic = "force-dynamic";
@@ -7,7 +8,10 @@ export const dynamic = "force-dynamic";
 export default async function BillingPage() {
   const session = await enforceMenu("billing");
 
-  const snap = await getQuotaSnapshot(session.tenantId);
+  const [snap, payMethods] = await Promise.all([
+    getQuotaSnapshot(session.tenantId),
+    getEnabledPaymentMethods(),
+  ]);
 
   return (
     <BillingClient
@@ -20,6 +24,7 @@ export default async function BillingPage() {
         ai: snap.aiUsed,
         period: snap.period,
       }}
+      payMethods={payMethods}
     />
   );
 }

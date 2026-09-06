@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import { Check, Lock, CreditCard } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey } from "@/lib/plans";
-import { PAYMENTS_ENABLED, GATEWAYS } from "@/lib/payments";
+import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { setPlan } from "./actions";
 
 export default function BillingClient({
@@ -14,11 +14,13 @@ export default function BillingClient({
   currentPlan,
   tenantName,
   usage,
+  payMethods = [],
 }: {
   isOwner: boolean;
   currentPlan: PlanKey;
   tenantName: string;
   usage: { forms: number; members: number; ai: number; period: string };
+  payMethods?: { id: string; name: string; hint: string }[];
 }) {
   const router = useRouter();
   const { t, lang } = useT();
@@ -115,30 +117,40 @@ export default function BillingClient({
         })}
       </div>
 
-      {/* การตั้งค่าการชำระเงิน (โครง — ยังปิดใช้งาน) */}
-      {isOwner && (
-        <Card>
-          <h2 style={{ fontSize: "1.1rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
+      {/* ช่องทางชำระเงินที่รองรับ (มาจากที่แพลตฟอร์มเปิดใช้งาน) */}
+      <Card>
+        <h2 style={{ fontSize: "1.1rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
+          {payMethods.length === 0 && (
             <span style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--amber)", border: "1px solid var(--line)", borderRadius: 20, padding: "2px 8px" }}>{t("pay.soon")}</span>
-          </h2>
-          <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.sub")}</p>
-          <div style={{ display: "grid", gap: 8, marginTop: 8, opacity: 0.6, pointerEvents: "none" }}>
-            {GATEWAYS.map((g) => (
-              <label key={g.key} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px" }}>
-                <input type="radio" name="gw" disabled style={{ accentColor: "var(--accent)" }} />
-                <span style={{ flex: 1 }}>
-                  <b style={{ fontSize: ".9rem" }}>{g.name}</b>
-                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{g.note}</small>
-                </span>
-              </label>
-            ))}
-          </div>
-          <Notice><span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon icon={Lock} className="h-4 w-4" /> {t("pay.disabledNote")}</span></Notice>
-        </Card>
-      )}
+          )}
+        </h2>
+        {payMethods.length > 0 ? (
+          <>
+            <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.available")}</p>
+            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+              {payMethods.map((m) => (
+                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", background: "var(--surface)" }}>
+                  <Icon icon={Check} className="h-4 w-4" />
+                  <span style={{ flex: 1 }}>
+                    <b style={{ fontSize: ".9rem" }}>{m.name}</b>
+                    <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{m.hint}</small>
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.sub")}</p>
+            <Notice><span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon icon={Lock} className="h-4 w-4" /> {t("pay.disabledNote")}</span></Notice>
+          </>
+        )}
+      </Card>
 
-      <p style={{ color: "var(--ink-3)", fontSize: ".8rem", textAlign: "center" }}>{t("plan.noPayment")}</p>
+      {payMethods.length === 0 && (
+        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", textAlign: "center" }}>{t("plan.noPayment")}</p>
+      )}
 
       <style>{`@media(max-width:700px){.krok-plans{grid-template-columns:1fr!important}}`}</style>
     </div>
