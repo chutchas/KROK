@@ -74,10 +74,10 @@ export default function FormPaperEditor({
     [onChange, schema]
   );
 
-  function onPointerDown(e: React.PointerEvent, key: string, mode: "move" | "resize") {
-    // ทัช/ปากกา: ปล่อยให้เบราว์เซอร์เลื่อน/แพนกระดาษได้ตามปกติ ไม่ลากปรับตำแหน่ง
-    // (เลือกฟิลด์ผ่าน onClick เมื่อแตะแทน) — ลากปรับตำแหน่งเฉพาะเมาส์
-    if (e.pointerType !== "mouse") return;
+  function onPointerDown(e: React.PointerEvent, key: string, mode: "move" | "resize", fromHandle = false) {
+    // แตะที่ "ตัวฟิลด์" บนมือถือ = ให้เบราว์เซอร์เลื่อน/แพนกระดาษ (ไม่ลาก)
+    // ลากปรับตำแหน่งด้วยนิ้วได้ผ่าน "ที่จับ" (fromHandle) เท่านั้น ส่วนเมาส์ลากได้ทั้งตัว
+    if (e.pointerType !== "mouse" && !fromHandle) return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -254,14 +254,28 @@ export default function FormPaperEditor({
                   outline: on ? "none" : "1px dashed #d0d0d0",
                   borderRadius: 4,
                   background: isStep ? "#f0f0f0" : "#fff",
-                  padding: isStep ? "7px 10px" : "6px 10px",
+                  padding: isStep ? "7px 10px 7px 28px" : "6px 10px 6px 28px",
                   boxShadow: on ? "0 2px 10px rgba(0,0,0,.15)" : "none",
                 }}
               >
+                {/* ที่จับสำหรับลากย้าย (แถบซ้าย) — ลากด้วยนิ้วได้บนมือถือ */}
+                <div
+                  onPointerDown={(e) => onPointerDown(e, b.key, "move", true)}
+                  title={t("paper.drag")}
+                  style={{
+                    position: "absolute", left: 0, top: 0, bottom: 0, width: 24,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    cursor: "grab", touchAction: "none",
+                    background: on ? "var(--accent)" : "#eceef0",
+                    color: on ? "#fff" : "#9aa0a6",
+                    borderRadius: "4px 0 0 4px",
+                  }}
+                >
+                  <Icon icon={GripVertical} className="h-4 w-4" />
+                </div>
+
                 {isStep ? (
-                  <div style={{ fontWeight: 700, fontSize: ".92rem", display: "flex", alignItems: "center", gap: 6 }}>
-                    <span style={{ color: "#999", display: "inline-flex" }}><Icon icon={GripVertical} className="h-4 w-4" /></span> {b.label}
-                  </div>
+                  <div style={{ fontWeight: 700, fontSize: ".92rem" }}>{b.label}</div>
                 ) : (
                   <>
                     <div style={{ fontSize: ".8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
@@ -271,13 +285,13 @@ export default function FormPaperEditor({
                     {b.field && <BlankPreview f={b.field} />}
                   </>
                 )}
-                {/* จับปรับความกว้าง */}
+                {/* จับปรับความกว้าง (ลากด้วยนิ้วได้) */}
                 <div
-                  onPointerDown={(e) => onPointerDown(e, b.key, "resize")}
-                  style={{ position: "absolute", right: -3, top: 0, bottom: 0, width: 10, cursor: "ew-resize" }}
+                  onPointerDown={(e) => onPointerDown(e, b.key, "resize", true)}
+                  style={{ position: "absolute", right: -3, top: 0, bottom: 0, width: 16, cursor: "ew-resize", touchAction: "none" }}
                   title={t("paper.resize")}
                 >
-                  <div style={{ position: "absolute", right: 3, top: "50%", transform: "translateY(-50%)", width: 3, height: 22, borderRadius: 2, background: on ? "var(--accent)" : "#ccc" }} />
+                  <div style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 4, height: 24, borderRadius: 2, background: on ? "var(--accent)" : "#ccc" }} />
                 </div>
               </div>
             );
