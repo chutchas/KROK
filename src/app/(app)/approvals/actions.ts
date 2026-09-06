@@ -17,7 +17,7 @@ export async function reviewSubmission(
   const supabase = await createClient();
   const { data: sub } = await supabase
     .from("submissions")
-    .select("id, approval_status, approval_step, approval_chain, approval_history, form_title")
+    .select("id, approval_status, approval_step, approval_chain, approval_history, form_title, form_id")
     .eq("id", id)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
@@ -88,12 +88,14 @@ export async function reviewSubmission(
       newStatus === "approved" ? "submission.approved" : "submission.rejected",
       {
         submission_id: id,
+        form_id: sub.form_id,
         form_title: sub.form_title,
         decision,
         reviewer_name: session.displayName,
         note: note.slice(0, 500),
         at: entry.at,
-      }
+      },
+      sub.form_id as string
     );
   }
 

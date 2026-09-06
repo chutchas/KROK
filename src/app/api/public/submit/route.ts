@@ -136,8 +136,8 @@ export async function POST(req: Request) {
   // แจ้ง webhook (best-effort)
   try {
     await dispatchWebhooks(f.tenant_id, "submission.created", {
-      id: subId, form_id: f.id, form_title: f.title, result, fails, user_name: userName, submitted_at: new Date().toISOString(), source: "public",
-    });
+      id: subId, form_id: f.id, form_title: f.title, result, fails, answers, user_name: userName, submitted_at: new Date().toISOString(), source: "public",
+    }, f.id);
   } catch { /* ignore */ }
 
   return NextResponse.json({ ok: true, id: subId });

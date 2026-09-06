@@ -30,6 +30,6 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
     answers: sub.answers,
     approval_status: sub.approval_status,
     submitted_at: sub.submitted_at,
-  });
+  }, sub.form_id as string);
   return { ok: true };
 }

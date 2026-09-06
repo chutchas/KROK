@@ -25,7 +25,9 @@ export async function createWebhook(
   name: string,
   url: string,
   events: unknown,
-  secret: string
+  secret: string,
+  formId?: string | null,
+  fields?: unknown
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -33,12 +35,27 @@ export async function createWebhook(
   if (!validUrl(url.trim())) return { error: "URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)" };
 
   const supabase = await createClient();
+
+  // ตรวจว่า formId (ถ้ามี) เป็นฟอร์มของ tenant นี้จริง
+  let form_id: string | null = null;
+  if (formId) {
+    const { data: f } = await supabase
+      .from("forms").select("id").eq("id", formId).eq("tenant_id", session.tenantId).maybeSingle();
+    if (!f) return { error: "ไม่พบฟอร์มที่เลือก" };
+    form_id = formId;
+  }
+  const fieldIds = Array.isArray(fields)
+    ? Array.from(new Set(fields.filter((x): x is string => typeof x === "string"))).slice(0, 200)
+    : [];
+
   const { error } = await supabase.from("webhooks").insert({
     tenant_id: session.tenantId,
     name: name.trim().slice(0, 80) || "Webhook",
     url: url.trim(),
     events: cleanEvents(events),
     secret: secret.trim() ? secret.trim().slice(0, 200) : null,
+    form_id,
+    fields: fieldIds,
     created_by: session.userId,
   });
   if (error) return { error: error.message };
