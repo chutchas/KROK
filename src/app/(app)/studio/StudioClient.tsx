@@ -271,7 +271,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   }
 
   return (
-    <div style={{ display: "grid", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
       {/* แท็บหลัก 3 แท็บ */}
       <div style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
         {([

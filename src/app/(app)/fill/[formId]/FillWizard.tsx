@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
+import { resolveLayout, PAD, CANVAS_W } from "@/lib/paper-layout";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
@@ -55,9 +56,29 @@ async function detectBarcode(file: File): Promise<string | null> {
     return null;
   }
 }
-// ฟิลด์ที่ควรกินเต็มความกว้าง (สูง/มีหลายบรรทัด) ในมุมมองกระดาษ 2 คอลัมน์
-function isWideField(f: FormField): boolean {
-  return f.type === "text" || f.type === "photo" || f.type === "signature" || f.type === "barcode";
+// จัดฟิลด์เป็น "แถว" ตามตำแหน่งที่ออกแบบไว้ในหน้าแก้ไข (schema.layout)
+// ฟิลด์ที่ y ใกล้กันถือว่าอยู่แถวเดียวกัน เรียงซ้าย→ขวาตาม x
+// คืน basis (% ของความกว้างกระดาษ) เพื่อคงสัดส่วนเดิม และ wrap ลงล่างบนจอแคบ
+const USABLE_W = CANVAS_W - PAD * 2;
+type RowItem = { f: FormField; basis: number };
+function stepRows(fields: FormField[], layout: Record<string, { x: number; y: number; w: number }>): RowItem[][] {
+  const items = fields.map((f) => ({ f, box: layout[f.id] || { x: PAD, y: 0, w: USABLE_W } }));
+  items.sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
+  const rows: RowItem[][] = [];
+  let cur: RowItem[] = [];
+  let curY: number | null = null;
+  for (const it of items) {
+    if (curY === null || Math.abs(it.box.y - curY) <= 24) {
+      if (curY === null) curY = it.box.y;
+      cur.push({ f: it.f, basis: Math.min(100, Math.round((it.box.w / USABLE_W) * 100)) });
+    } else {
+      rows.push(cur);
+      cur = [{ f: it.f, basis: Math.min(100, Math.round((it.box.w / USABLE_W) * 100)) }];
+      curY = it.box.y;
+    }
+  }
+  if (cur.length) rows.push(cur);
+  return rows;
 }
 function dataUrlToBlob(dataUrl: string): Blob {
   const [head, b64] = dataUrl.split(",");
@@ -351,6 +372,7 @@ export default function FillWizard(props: Props) {
   // ---------- โหมดกระดาษ: กรอกทั้งฟอร์มในหน้าเดียว (เอกสารกระดาษจริง) ----------
   if (mode === "paper") {
     const today = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
+    const paperLayout = resolveLayout(schema);
     return (
       <div>
         {/* แถบเครื่องมืออยู่นอกกระดาษ */}
@@ -383,13 +405,15 @@ export default function FillWizard(props: Props) {
                 <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", background: "#eef0f2", color: "#111", borderRadius: 3, padding: "6px 10px", marginBottom: 2 }}>
                   {si + 1}. {s.title}
                 </div>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", columnGap: 28, rowGap: 0 }}>
-                  {s.fields.map((f) => (
-                    <div key={f.id} style={{ gridColumn: isWideField(f) ? "1 / -1" : "auto", minWidth: 0 }}>
-                      {renderField(f, true)}
-                    </div>
-                  ))}
-                </div>
+                {stepRows(s.fields, paperLayout).map((row, ri) => (
+                  <div key={ri} style={{ display: "flex", flexWrap: "wrap", columnGap: 28 }}>
+                    {row.map(({ f, basis }) => (
+                      <div key={f.id} style={{ flex: `1 1 ${basis}%`, minWidth: 200, maxWidth: "100%" }}>
+                        {renderField(f, true)}
+                      </div>
+                    ))}
+                  </div>
+                ))}
               </div>
             ))}
 

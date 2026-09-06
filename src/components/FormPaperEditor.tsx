@@ -1,6 +1,7 @@
 "use client";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { CANVAS_W, GRID, HEADER_H, FIELD_H, START_Y, buildBlocks, autoLayout, snap, canvasHeight } from "@/lib/paper-layout";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus } from "lucide-react";
@@ -11,74 +12,8 @@ const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
 // ============================================================
 // FormPaperEditor — มุมมองกระดาษแบบ "ลากวาง" ปรับตำแหน่ง element ได้
 // เขียนผลลง schema.layout (px บนแคนวาส A4 กว้าง 794)
+// ตรรกะการจัดวางอยู่ที่ @/lib/paper-layout (ใช้ร่วมกับหน้ากรอก)
 // ============================================================
-
-const CANVAS_W = 794; // A4 @ 96dpi
-const GRID = 8;
-const HEADER_H = 34;
-const FIELD_H = 62;
-const GAP_Y = 10;
-const START_Y = 96; // ใต้หัวกระดาษ
-
-type BlockKind = "step" | "field";
-interface Block {
-  key: string;
-  kind: BlockKind;
-  label: string;
-  sub?: string;
-  field?: FormField;
-  stepIndex: number;
-}
-
-function snap(n: number) {
-  return Math.round(n / GRID) * GRID;
-}
-
-// วางอัตโนมัติแบบเรียงบนลงล่าง (หัวข้อเต็มแถว, ฟิลด์ 2 คอลัมน์)
-function autoLayout(blocks: Block[]): Record<string, PaperBox> {
-  const out: Record<string, PaperBox> = {};
-  const pad = 40;
-  const usable = CANVAS_W - pad * 2;
-  const colW = Math.floor((usable - 16) / 2);
-  let y = START_Y;
-  let col = 0;
-  for (const b of blocks) {
-    if (b.kind === "step") {
-      if (col === 1) y += FIELD_H + GAP_Y;
-      col = 0;
-      out[b.key] = { x: pad, y, w: usable };
-      y += HEADER_H + GAP_Y;
-    } else {
-      const x = pad + (col === 0 ? 0 : colW + 16);
-      out[b.key] = { x, y, w: colW };
-      if (col === 1) {
-        y += FIELD_H + GAP_Y;
-        col = 0;
-      } else {
-        col = 1;
-      }
-    }
-  }
-  return out;
-}
-
-function buildBlocks(schema: FormSchema): Block[] {
-  const blocks: Block[] = [];
-  schema.steps.forEach((s, si) => {
-    blocks.push({ key: `s:${s.id}`, kind: "step", label: `${si + 1}. ${s.title}`, stepIndex: si });
-    s.fields.forEach((f) => {
-      blocks.push({
-        key: f.id,
-        kind: "field",
-        label: f.label,
-        sub: FIELD_TYPE_LABELS[f.type] + (f.unit ? ` (${f.unit})` : ""),
-        field: f,
-        stepIndex: si,
-      });
-    });
-  });
-  return blocks;
-}
 
 function BlankPreview({ f }: { f: FormField }) {
   if (f.type === "pass_fail") return <div style={{ fontSize: ".72rem", color: "#555" }}>☐ ผ่าน ☐ ไม่ผ่าน</div>;
@@ -128,14 +63,7 @@ export default function FormPaperEditor({
     return merged;
   }, [blocks, schema.layout]);
 
-  const canvasH = useMemo(() => {
-    let max = 900;
-    for (const b of blocks) {
-      const box = layout[b.key];
-      if (box) max = Math.max(max, box.y + (b.kind === "step" ? HEADER_H : FIELD_H) + 60);
-    }
-    return max;
-  }, [blocks, layout]);
+  const canvasH = useMemo(() => canvasHeight(blocks, layout), [blocks, layout]);
 
   const drag = useRef<{ key: string; mode: "move" | "resize"; sx: number; sy: number; ox: number; oy: number; ow: number } | null>(null);
 
