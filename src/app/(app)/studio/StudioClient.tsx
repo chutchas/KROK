@@ -194,6 +194,52 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     if (typeof window !== "undefined") window.print();
   }
 
+  // สร้าง id ใหม่แบบไม่ชน
+  const newKey = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+  // เพิ่มฟิลด์ใหม่ (เข้าขั้นตอนที่กำลังโฟกัส หรือขั้นตอนสุดท้าย) — ไม่ต้องเลือกฟิลด์เดิมก่อน
+  function addField(stepIndex?: number) {
+    if (!draft) return;
+    if (draft.steps.length === 0) { addStep(); return; }
+    // ปลายทาง: ขั้นตอนที่ระบุ → ขั้นตอนที่กำลังโฟกัสจาก selKey → ขั้นตอนสุดท้าย
+    let si = draft.steps.length - 1;
+    if (stepIndex != null && stepIndex >= 0 && stepIndex < draft.steps.length) {
+      si = stepIndex;
+    } else if (selKey) {
+      if (selKey.startsWith("s:")) {
+        const idx = draft.steps.findIndex((s) => s.id === selKey.slice(2));
+        if (idx >= 0) si = idx;
+      } else {
+        const idx = draft.steps.findIndex((s) => s.fields.some((f) => f.id === selKey));
+        if (idx >= 0) si = idx;
+      }
+    }
+    const fid = newKey("f");
+    setDraft({ ...draft, steps: draft.steps.map((s, i) => (i === si ? { ...s, fields: [...s.fields, { id: fid, type: "text", label: "", required: true }] } : s)) });
+    setSelKey(fid);
+  }
+
+  // เพิ่มขั้นตอนใหม่ — ไม่ต้องเลือกฟิลด์เดิมก่อน
+  function addStep() {
+    if (!draft) return;
+    const id = newKey("s");
+    setDraft({ ...draft, steps: [...draft.steps, { id, title: "", fields: [{ id: newKey("f"), type: "text", label: "", required: true }] }] });
+    setSelKey(`s:${id}`);
+  }
+
+  // ปิดแผงตั้งค่าฟิลด์อัตโนมัติเมื่อคลิกที่ว่างนอกแผง (เดสก์ท็อป)
+  useEffect(() => {
+    if (!selKey) return;
+    function onDown(e: PointerEvent) {
+      const el = e.target as HTMLElement | null;
+      if (!el) return;
+      if (el.closest(".krok-settings") || el.closest("[data-krok-keep]")) return;
+      setSelKey(null);
+    }
+    document.addEventListener("pointerdown", onDown, true);
+    return () => document.removeEventListener("pointerdown", onDown, true);
+  }, [selKey]);
+
   // ยกเลิก/ปิดการแก้ไข → กลับไปแท็บที่เหมาะสม
   function cancelDraft() {
     const wasEditing = !!editingId;
@@ -419,12 +465,12 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
           <div className="krok-canvaswrap" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
-              <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} />
+              <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()} />
             ) : (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
                   <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} />
+                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} />
                 </div>
               </div>
             )}

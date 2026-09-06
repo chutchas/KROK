@@ -1,11 +1,13 @@
 "use client";
-import { Lightbulb, Lock } from "lucide-react";
+import { Lightbulb, Lock, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
+import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
 
 function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean; onSelect?: () => void }) {
   return (
     <div
+      data-krok-keep=""
       onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : undefined}
       style={{
         border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
@@ -69,12 +71,23 @@ export default function FormPreview({
   schema,
   selectedKey,
   onSelect,
+  onAddField,
+  onAddStep,
 }: {
   schema: FormSchema;
   selectedKey?: string | null;
   onSelect?: (key: string | null) => void;
+  onAddField?: (stepIndex: number) => void;
+  onAddStep?: () => void;
 }) {
+  const { t } = useT();
   const editable = !!onSelect;
+  const addBtn: React.CSSProperties = {
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
+    padding: "9px 12px", margin: "6px 0 2px", borderRadius: 9, border: "1px dashed var(--accent)",
+    background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit",
+    fontSize: ".84rem", fontWeight: 600,
+  };
   return (
     <div>
       {schema.steps.map((s, i) => {
@@ -83,6 +96,7 @@ export default function FormPreview({
         return (
           <div key={s.id}>
             <div
+              data-krok-keep=""
               onClick={editable ? (e) => { e.stopPropagation(); onSelect!(stepKey); } : undefined}
               style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
             >
@@ -94,9 +108,19 @@ export default function FormPreview({
             {s.fields.map((f) => (
               <FieldCard key={f.id} f={f} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined} />
             ))}
+            {editable && onAddField && (
+              <button data-krok-keep="" onClick={(e) => { e.stopPropagation(); onAddField(i); }} style={addBtn}>
+                <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
+              </button>
+            )}
           </div>
         );
       })}
+      {editable && onAddStep && (
+        <button data-krok-keep="" onClick={(e) => { e.stopPropagation(); onAddStep(); }} style={{ ...addBtn, marginTop: 14, borderStyle: "solid" }}>
+          <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
+        </button>
+      )}
       {!editable && (
         <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
           <Icon icon={Lock} className="h-3.5 w-3.5" /> โหมดกรอกจริงจะล็อคลำดับ — ต้องทำ step ก่อนหน้าให้ครบจึงไปต่อได้
