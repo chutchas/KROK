@@ -31,15 +31,34 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "ฟอร์มนี้ไม่เปิดให้กรอกแบบสาธารณะ" }, { status: 403 });
   }
 
+  // กันสแปม: จำกัดจำนวนการส่งแบบไม่ล็อกอินต่อฟอร์มใน 60 วินาทีล่าสุด (best-effort, ไม่ต้องมีตารางเพิ่ม)
+  try {
+    const since = new Date(Date.now() - 60_000).toISOString();
+    const { count } = await admin
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", f.id)
+      .is("submitted_by", null)
+      .gte("submitted_at", since);
+    if ((count ?? 0) >= 60) {
+      return NextResponse.json({ error: "มีการส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่" }, { status: 429 });
+    }
+  } catch { /* ถ้านับไม่ได้ ไม่บล็อกการส่ง */ }
+
   const userName = String(form.get("user_name") || "").trim().slice(0, 120) || "ผู้ไม่ระบุชื่อ";
   const result = form.get("result") === "fail" ? "fail" : "pass";
-  const duration = parseInt(String(form.get("duration") || "0"), 10) || 0;
+  let duration = parseInt(String(form.get("duration") || "0"), 10) || 0;
+  if (duration < 0) duration = 0;
+  if (duration > 86400) duration = 86400; // ตัดค่าที่ผิดปกติ
   let fails: unknown[] = [];
   let answers: unknown[] = [];
   try { fails = JSON.parse(String(form.get("fails") || "[]")); } catch { /* keep [] */ }
   try { answers = JSON.parse(String(form.get("answers") || "[]")); } catch { /* keep [] */ }
   if (!Array.isArray(fails)) fails = [];
   if (!Array.isArray(answers)) answers = [];
+  // จำกัดขนาด payload กัน DoS
+  if (answers.length > 500) answers = answers.slice(0, 500);
+  if (fails.length > 500) fails = fails.slice(0, 500);
 
   const subId = crypto.randomUUID();
   const { error: subErr } = await admin.from("submissions").insert({
@@ -62,10 +81,16 @@ export async function POST(req: Request) {
   });
   if (subErr) return NextResponse.json({ error: subErr.message }, { status: 500 });
 
-  // อัปโหลดรูป/ลายเซ็น (ไฟล์ชื่อ photo_<fieldId>)
+  // อัปโหลดรูป/ลายเซ็น (ไฟล์ชื่อ photo_<fieldId>) — จำกัดจำนวนไฟล์และขนาดต่อไฟล์
+  const MAX_PHOTOS = 40;
+  const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB/ไฟล์
+  let photoCount = 0;
   for (const [key, value] of form.entries()) {
     if (!key.startsWith("photo_") || !(value instanceof File)) continue;
-    const fieldId = key.slice("photo_".length);
+    if (++photoCount > MAX_PHOTOS) break;
+    if (value.size > MAX_PHOTO_BYTES) continue;
+    const fieldId = key.slice("photo_".length).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+    if (!fieldId) continue;
     const path = `${f.tenant_id}/${subId}/${fieldId}.jpg`;
     const buf = Buffer.from(await value.arrayBuffer());
     const { error: upErr } = await admin.storage

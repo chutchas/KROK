@@ -1,6 +1,5 @@
 "use client";
 import { useEffect, useState } from "react";
-import QRCode from "qrcode";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { X, Copy, Download, Check, Globe, Lock } from "lucide-react";
@@ -23,9 +22,13 @@ export default function QrModal({
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    QRCode.toDataURL(url, { width: 480, margin: 2, errorCorrectionLevel: "M" })
-      .then(setDataUrl)
-      .catch(() => setDataUrl(""));
+    // โหลด qrcode แบบ dynamic เฉพาะตอนเปิดโมดัล เพื่อไม่ให้ติดมากับ bundle หน้าสร้างฟอร์ม
+    let alive = true;
+    import("qrcode")
+      .then((m) => m.default.toDataURL(url, { width: 480, margin: 2, errorCorrectionLevel: "M" }))
+      .then((d) => { if (alive) setDataUrl(d); })
+      .catch(() => { if (alive) setDataUrl(""); });
+    return () => { alive = false; };
   }, [url]);
 
   async function copy() {

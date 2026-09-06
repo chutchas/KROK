@@ -1,12 +1,13 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
-import jsQR from "jsqr";
 import Icon from "@/components/Icon";
 import { X, ScanLine } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 
 // สแกน QR/บาร์โค้ดสดจากกล้อง — ใช้ BarcodeDetector (ถ้ามี) ไม่งั้น fallback jsQR (QR เท่านั้น)
+// jsQR โหลดแบบ dynamic เฉพาะตอนเปิดสแกนเนอร์ เพื่อไม่ให้ติดมากับ bundle หน้ากรอก
 type BD = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
+type JsQrFn = (data: Uint8ClampedArray, w: number, h: number, opts?: { inversionAttempts?: string }) => { data: string } | null;
 
 export default function LiveScanner({ onResult, onClose }: { onResult: (code: string) => void; onClose: () => void }) {
   const { t } = useT();
@@ -15,6 +16,7 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
   const rafRef = useRef<number | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const detectorRef = useRef<BD | null>(null);
+  const jsqrRef = useRef<JsQrFn | null>(null);
   const stopped = useRef(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -26,6 +28,10 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
         const BDClass = (window as unknown as { BarcodeDetector?: new (o?: unknown) => BD }).BarcodeDetector;
         if (BDClass) {
           try { detectorRef.current = new BDClass(); } catch { detectorRef.current = null; }
+        }
+        // โหลด jsQR เฉพาะเมื่อไม่มี BarcodeDetector (fallback)
+        if (!detectorRef.current) {
+          try { jsqrRef.current = (await import("jsqr")).default as unknown as JsQrFn; } catch { /* ไม่มี fallback */ }
         }
         const stream = await navigator.mediaDevices.getUserMedia({
           video: { facingMode: { ideal: "environment" } },
@@ -62,11 +68,13 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
               } catch { /* ตกไป jsQR */ }
             }
             // 2) fallback jsQR (QR เท่านั้น)
-            try {
-              const img = ctx.getImageData(0, 0, w, h);
-              const qr = jsQR(img.data, w, h, { inversionAttempts: "dontInvert" });
-              if (qr?.data) return finish(qr.data);
-            } catch { /* ข้ามเฟรม */ }
+            if (jsqrRef.current) {
+              try {
+                const img = ctx.getImageData(0, 0, w, h);
+                const qr = jsqrRef.current(img.data, w, h, { inversionAttempts: "dontInvert" });
+                if (qr?.data) return finish(qr.data);
+              } catch { /* ข้ามเฟรม */ }
+            }
           }
         }
       }
