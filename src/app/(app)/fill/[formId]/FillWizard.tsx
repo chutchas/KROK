@@ -55,6 +55,10 @@ async function detectBarcode(file: File): Promise<string | null> {
     return null;
   }
 }
+// ฟิลด์ที่ควรกินเต็มความกว้าง (สูง/มีหลายบรรทัด) ในมุมมองกระดาษ 2 คอลัมน์
+function isWideField(f: FormField): boolean {
+  return f.type === "text" || f.type === "photo" || f.type === "signature" || f.type === "barcode";
+}
 function dataUrlToBlob(dataUrl: string): Blob {
   const [head, b64] = dataUrl.split(",");
   const mime = head.match(/:(.*?);/)?.[1] || "image/jpeg";
@@ -361,7 +365,7 @@ export default function FillWizard(props: Props) {
         <div style={{ display: "flex", justifyContent: "center" }}>
           <div
             className="krok-paper"
-            style={{ width: "100%", maxWidth: 760, background: "#fff", color: "#111", border: "1px solid var(--line)", borderRadius: 6, boxShadow: "var(--shadow)", padding: "clamp(20px, 4vw, 40px)" }}
+            style={{ width: "100%", maxWidth: 820, background: "#fff", color: "#111", border: "1px solid var(--line)", borderRadius: 6, boxShadow: "var(--shadow)", padding: "clamp(20px, 4vw, 40px)" }}
           >
             {/* หัวเอกสาร */}
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, borderBottom: "2px solid #111", paddingBottom: 10, marginBottom: 6, flexWrap: "wrap" }}>
@@ -379,7 +383,13 @@ export default function FillWizard(props: Props) {
                 <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", background: "#eef0f2", color: "#111", borderRadius: 3, padding: "6px 10px", marginBottom: 2 }}>
                   {si + 1}. {s.title}
                 </div>
-                {s.fields.map((f) => renderField(f, true))}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", columnGap: 28, rowGap: 0 }}>
+                  {s.fields.map((f) => (
+                    <div key={f.id} style={{ gridColumn: isWideField(f) ? "1 / -1" : "auto", minWidth: 0 }}>
+                      {renderField(f, true)}
+                    </div>
+                  ))}
+                </div>
               </div>
             ))}
 
