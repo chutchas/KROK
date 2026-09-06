@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Card, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
 import {
-  Check, Download, Clock, X, Plus, Pencil, Trash2, GripVertical,
+  Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
@@ -136,10 +136,11 @@ export default function DashboardClient({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        <a href="/api/export/submissions" className="inline-flex items-center gap-1.5"
-          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none", fontSize: ".9rem", fontWeight: 500 }}>
-          <Icon icon={Download} className="h-4 w-4" /> {t("dash.export")}
-        </a>
+        <button onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
+          className="inline-flex items-center gap-1.5"
+          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600 }}>
+          <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
+        </button>
       </div>
 
       {/* แถวสรุป workspace (ตายตัว 3 การ์ด) */}
@@ -150,31 +151,18 @@ export default function DashboardClient({
       </div>
 
       {/* โซน widget ปรับเองได้ */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
-        <button onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
-          className="inline-flex items-center gap-1.5"
-          style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", fontWeight: 600 }}>
-          <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
-        </button>
-      </div>
-
-      {widgets.length === 0 ? (
-        <Card>
-          <div style={{ textAlign: "center", padding: "26px 12px", color: "var(--ink-3)" }}>
-            <Icon icon={TrendingUp} className="h-7 w-7" />
-            <p style={{ margin: "8px 0 0", fontSize: ".9rem" }}>{t("dash.widgetsEmpty")}</p>
+      {widgets.length > 0 && (
+        <>
+          <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 18 }}>
+            {widgets.map((w) => (
+              <div key={w.id} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
+                <WidgetCard w={w} slim={slim} formName={formName} en={en}
+                  onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t} />
+              </div>
+            ))}
           </div>
-        </Card>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 18 }}>
-          {widgets.map((w) => (
-            <div key={w.id} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
-              <WidgetCard w={w} slim={slim} formName={formName} en={en}
-                onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t} />
-            </div>
-          ))}
-        </div>
+        </>
       )}
 
       {/* รายการล่าสุด (คงเดิม) */}
