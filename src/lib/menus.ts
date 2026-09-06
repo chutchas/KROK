@@ -6,6 +6,7 @@ export type MenuKey =
   | "forms"
   | "approvals"
   | "dashboard"
+  | "reports"
   | "team"
   | "billing"
   | "integrations";
@@ -24,6 +25,7 @@ export const MENUS: MenuDef[] = [
   { key: "forms", href: "/forms", labelKey: "nav.fill" },
   { key: "approvals", href: "/approvals", labelKey: "nav.approvals" },
   { key: "dashboard", href: "/dashboard", labelKey: "nav.dashboard" },
+  { key: "reports", href: "/reports", labelKey: "nav.reports" },
   { key: "team", href: "/settings/team", labelKey: "nav.team" },
   { key: "billing", href: "/settings/billing", labelKey: "nav.billing" },
   { key: "integrations", href: "/settings/integrations", labelKey: "nav.integrations" },
