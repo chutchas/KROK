@@ -7,7 +7,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { LogoMark } from "@/components/Logo";
 
-export default function LoginForm() {
+export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
   const params = useSearchParams();
   const { t } = useT();
@@ -47,16 +47,20 @@ export default function LoginForm() {
     }
   }
 
-  return (
-    <div style={{ maxWidth: 400, margin: "0 auto", padding: "56px 20px" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
-        <LogoMark size={40} title="KROK" />
-        <div style={{ flex: 1 }}>
-          <div className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.6rem" }}>KROK</div>
-          <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("login.tagline")}</div>
-        </div>
-        <LanguageToggle />
+  const header = (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 22 }}>
+      <LogoMark size={40} title="KROK" />
+      <div style={{ flex: 1 }}>
+        <div className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.6rem" }}>KROK</div>
+        <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("login.tagline")}</div>
       </div>
+      <LanguageToggle />
+    </div>
+  );
+
+  return (
+    <div style={embedded ? undefined : { maxWidth: 400, margin: "0 auto", padding: "56px 20px" }}>
+      {!embedded && header}
 
       <Card>
         <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>
