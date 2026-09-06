@@ -122,7 +122,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickAvatar} />
         </div>
         <form onSubmit={submit} style={{ display: "grid", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
               <label style={label}>{t("profile.firstName")}</label>
               <Field value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
@@ -139,7 +139,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
             <p style={{ color: "var(--ink-3)", fontSize: ".76rem", margin: "4px 0 0" }}>{t("profile.emailReadonly")}</p>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
               <label style={label}>{t("profile.phone")}</label>
               <Field value={form.phone} onChange={(e) => set("phone", e.target.value)} inputMode="tel" placeholder="08x-xxx-xxxx" />
@@ -150,7 +150,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
               <label style={label}>{t("profile.role")}</label>
               <div style={{ padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface-2, var(--code-bg))", color: "var(--ink-2)", fontSize: ".95rem" }}>

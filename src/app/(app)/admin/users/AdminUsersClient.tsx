@@ -61,7 +61,7 @@ export default function AdminUsersClient({ users, meId }: { users: SysUser[]; me
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("admin.usersSub")}</p>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))", gap: 12 }}>
         <Stat v={counts.total} label={t("admin.statUsers")} />
         <Stat v={counts.admins} label={t("admin.statAdmins")} />
         <Stat v={counts.devs} label={t("admin.statDevs")} />

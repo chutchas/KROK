@@ -41,8 +41,8 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <PrintButton />
       </div>
 
-      <div style={{ background: "#fff", color: "#111", border: "1px solid var(--line)", borderRadius: 8, boxShadow: "var(--shadow)", padding: "36px 40px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 18 }}>
+      <div style={{ background: "#fff", color: "#111", border: "1px solid var(--line)", borderRadius: 8, boxShadow: "var(--shadow)", padding: "clamp(20px, 5vw, 40px)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 14, marginBottom: 18, gap: 12, flexWrap: "wrap" }}>
           <div>
             <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.5rem" }}>KROK</div>
             <div style={{ color: "#555", fontSize: ".8rem" }}>แพลตฟอร์มฟอร์มดิจิทัลหน้างาน</div>
@@ -54,7 +54,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 20, marginBottom: 20, fontSize: ".88rem" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 20, marginBottom: 20, fontSize: ".88rem", flexWrap: "wrap" }}>
           <div>
             <div style={{ color: "#888", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".05em" }}>เรียกเก็บจาก / Bill to</div>
             <div style={{ fontWeight: 600 }}>{session.tenantName}</div>
@@ -66,6 +66,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
         </div>
 
+        <div style={{ overflowX: "auto" }}>
         <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".9rem" }}>
           <thead>
             <tr style={{ background: "#f0f0f0" }}>
@@ -86,6 +87,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </tr>
           </tfoot>
         </table>
+        </div>
 
         <div style={{ marginTop: 20, padding: "10px 14px", borderRadius: 6, background: demo ? "#fff6e5" : "#eef6ff", color: "#664", fontSize: ".82rem" }}>
           {demo

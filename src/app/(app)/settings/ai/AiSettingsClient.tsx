@@ -98,7 +98,7 @@ export default function AiSettingsClient({ current }: { current: AiSettings }) {
 
       <Card>
         <label style={{ fontWeight: 600, fontSize: ".9rem", display: "block", marginBottom: 6 }}>ผู้ให้บริการ</label>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 8 }}>
           {PROVIDERS.map((p) => (
             <button
               key={p.id}

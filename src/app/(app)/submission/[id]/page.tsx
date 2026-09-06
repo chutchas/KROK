@@ -71,10 +71,10 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         <PrintButton />
       </div>
 
-      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "28px 30px", boxShadow: "var(--shadow)" }}>
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
         {/* header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--ink)", paddingBottom: 14, marginBottom: 6, gap: 12 }}>
-          <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--ink)", paddingBottom: 14, marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
@@ -93,7 +93,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         </div>
 
         {/* meta */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 24px", fontSize: ".86rem", margin: "14px 0 8px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 24px", fontSize: ".86rem", margin: "14px 0 8px" }}>
           <div><span style={{ color: "var(--ink-3)" }}>ผู้กรอก: </span><b>{sub.user_name || "—"}</b></div>
           <div><span style={{ color: "var(--ink-3)" }}>เวลาส่ง: </span>{fmt(sub.submitted_at)}</div>
           <div><span style={{ color: "var(--ink-3)" }}>ใช้เวลา: </span>{sub.duration_s ?? "—"} วินาที</div>
@@ -103,8 +103,8 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         {/* answers */}
         <div style={{ marginTop: 12 }}>
           {answers.map((a, i) => (
-            <div key={i} style={row}>
-              <div style={label}>
+            <div key={i} className="krok-sub-row" style={row}>
+              <div className="krok-sub-label" style={label}>
                 {a.label}
                 {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
               </div>
@@ -159,11 +159,12 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           </div>
         )}
 
-        <div style={{ marginTop: 26, paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: ".72rem", color: "var(--ink-3)", fontFamily: "monospace", display: "flex", justifyContent: "space-between" }}>
+        <div style={{ marginTop: 26, paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: ".72rem", color: "var(--ink-3)", fontFamily: "monospace", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
           <span>สร้างโดย KROK · ฟอร์มดิจิทัลหน้างาน</span>
-          <span>{String(sub.id)}</span>
+          <span style={{ wordBreak: "break-all" }}>{String(sub.id)}</span>
         </div>
       </div>
+      <style>{`@media(max-width:600px){ .krok-sub-row{flex-direction:column;gap:4px} .krok-sub-label{width:auto !important} }`}</style>
     </div>
   );
 }

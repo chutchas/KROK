@@ -122,7 +122,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
             <summary style={{ cursor: "pointer", color: "var(--accent)", fontSize: ".88rem" }}>ดูคำตอบทั้งหมด</summary>
             <div style={{ marginTop: 8 }}>
               {s.answers.map((a, i) => (
-                <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "2px 14px", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: ".88rem" }}>
+                <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: ".88rem" }}>
                   <div style={{ color: "var(--ink-2)" }}>{a.label}{a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}</div>
                   <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Icon icon={Paperclip} className="h-3.5 w-3.5" /> มีไฟล์แนบ</span> : a.display ?? "—"}</div>
                 </div>

@@ -114,7 +114,7 @@ export default function TeamClient({
           <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>คำเชิญที่รอตอบรับ</h2>
           <div style={{ display: "grid", gap: 8 }}>
             {invites.map((inv) => (
-              <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+              <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: ".92rem" }}>{inv.email}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>สิทธิ์ {roleOptions.find((r) => r.key === inv.role_key)?.name || ROLE_LABEL[inv.role]} · รอสมัคร</small>
