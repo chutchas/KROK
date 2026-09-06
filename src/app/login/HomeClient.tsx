@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import LanguageToggle from "@/components/LanguageToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import LoginForm from "./LoginForm";
@@ -66,6 +67,7 @@ export default function HomeClient() {
           <LogoMark size={30} title="KROK" />
           <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.25rem", letterSpacing: ".02em" }}>KROK</b>
           <span style={{ flex: 1 }} />
+          <ThemeToggle />
           <LanguageToggle />
           <button onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5"
             style={{ padding: "9px 18px", borderRadius: 10, border: "none", background: "var(--accent)", color: "var(--accent-ink)", fontFamily: "inherit", fontWeight: 600, fontSize: ".9rem", cursor: "pointer" }}>

@@ -16,6 +16,8 @@
   --brand-ink: #1c5fd0;     /* แบรนด์ในรูปตัวอักษร */
   --brand-tint: #e9f1fe;
   --brand-mint: #eafaf3;
+  /* สีเครื่องหมายถูกกลางโลโก้ — light: เข้ม / dark: สว่าง (กันจมพื้นมืด) */
+  --brand-mark-ink: #0f172a;
 
   /* ---- surfaces (light) — แยกชั้นด้วยเส้นขอบเป็นหลัก ---- */
   --ground: #f8fafc;
@@ -58,6 +60,7 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --brand-ink: #8ba4ff;
+    --brand-mark-ink: #f8fafc;
     --ground: #0f172a;      /* navy เข้ม จงใจไม่ใช่ดำ */
     --surface: #182335;
     --surface-2: #1e2b3f;
@@ -84,6 +87,7 @@
 /* ---- dark: ผ่านปุ่มสลับ (ชนะทุกกรณี) ---- */
 :root[data-theme="dark"] {
   --brand-ink: #8ba4ff;
+  --brand-mark-ink: #f8fafc;
   --ground: #0f172a;
   --surface: #182335;
   --surface-2: #1e2b3f;
