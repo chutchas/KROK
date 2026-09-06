@@ -12,6 +12,9 @@
   --brand-stop-2: #18c8e8; /* ฟ้าใส */
   --brand-stop-3: #3a7ff0; /* น้ำเงิน */
   --brand-gradient: linear-gradient(95deg, var(--brand-stop-1) 0%, var(--brand-stop-2) 45%, var(--brand-stop-3) 100%);
+  /* ไล่สีแบรนด์แบบโปร่ง 50% (สำหรับ scrollbar) + ชัดขึ้นตอน hover */
+  --brand-gradient-50: linear-gradient(180deg, rgba(110, 231, 183, 0.5) 0%, rgba(24, 200, 232, 0.5) 45%, rgba(58, 127, 240, 0.5) 100%);
+  --brand-gradient-hover: linear-gradient(180deg, rgba(110, 231, 183, 0.85) 0%, rgba(24, 200, 232, 0.85) 45%, rgba(58, 127, 240, 0.85) 100%);
   --brand-primary: #2f6fe0; /* สีทึบสำหรับปุ่ม/คอนโทรลเล็ก */
   --brand-ink: #1c5fd0;     /* แบรนด์ในรูปตัวอักษร */
   --brand-tint: #e9f1fe;
@@ -124,6 +127,29 @@ body {
   -webkit-tap-highlight-color: transparent;
   font-size: 15.5px;
   line-height: 1.65;
+}
+/* ---- scrollbar: แถบเลื่อนสีธีมแบบไล่สี โปร่ง 50% (แทนสีเทา default) ---- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--accent) 50%, transparent) transparent;
+}
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track,
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  border-radius: 8px;
+  background-image: var(--brand-gradient-50);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+::-webkit-scrollbar-thumb:hover {
+  background-image: var(--brand-gradient-hover);
+  background-clip: padding-box;
 }
 h1, h2, h3, h4 {
   font-family: var(--font-anuphan);
