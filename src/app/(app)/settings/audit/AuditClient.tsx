@@ -50,7 +50,7 @@ export default function AuditClient({ rows, tenantName }: { rows: AuditRow[]; te
     });
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={ScrollText} className="h-6 w-6" /> {t("audit.title")}
