@@ -151,6 +151,18 @@ body {
   background-image: var(--brand-gradient-hover);
   background-clip: padding-box;
 }
+/* บางหน้าขอปิดสีธีมของ scrollbar — กลับไปใช้สีเทาจางปกติ */
+html.krok-plain-scroll {
+  scrollbar-color: var(--surface-4) transparent;
+}
+html.krok-plain-scroll ::-webkit-scrollbar-thumb {
+  background-image: none;
+  background-color: var(--surface-4);
+}
+html.krok-plain-scroll ::-webkit-scrollbar-thumb:hover {
+  background-image: none;
+  background-color: var(--line);
+}
 h1, h2, h3, h4 {
   font-family: var(--font-anuphan);
   line-height: 1.3;
