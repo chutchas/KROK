@@ -50,7 +50,7 @@ export default function FormsListClient({ forms, highlightId }: { forms: FormLis
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("forms.search")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
           <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
-            style={{ padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem" }}>
+            style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("forms.allCategories")}</option>
             {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>

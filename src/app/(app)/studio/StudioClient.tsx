@@ -590,7 +590,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
           <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
-            style={{ padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem" }}>
+            style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("studio.allCategories")}</option>
             {studioCats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>
@@ -627,25 +627,25 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
                 </small>
               </div>
-              <Button onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></Button>
-              <Button onClick={() => setShareForm(f)} title={t("share.title")}>
-                <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
-                <span className="krok-btn-label"> {t("share.short")}</span>
-              </Button>
-              {f.status === "published" && (
-                <Button onClick={() => setQrForm(f)} title={t("qr.title")}>
-                  <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-btn-label"> QR</span>
+              <div className="krok-row-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                {/* เรียงตามการใช้งาน: แก้ไข → แชร์ → QR → เผยแพร่/ยกเลิก → ลบ */}
+                <Button onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></Button>
+                <Button onClick={() => setShareForm(f)} title={t("share.title")}>
+                  <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
+                  <span className="krok-btn-label"> {t("share.short")}</span>
                 </Button>
-              )}
-              {f.status === "published" ? (
-                <>
-                  <Button onClick={() => router.push(`/fill/${f.id}`)} title={t("studio.openFill")}><Icon icon={Smartphone} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.openFill")}</span></Button>
+                {f.status === "published" && (
+                  <Button onClick={() => setQrForm(f)} title={t("qr.title")}>
+                    <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-btn-label"> QR</span>
+                  </Button>
+                )}
+                {f.status === "published" ? (
                   <AsyncButton onClick={() => changeStatus(f.id, "archived")} title={t("studio.cancelForm")}><Icon icon={Archive} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.cancelForm")}</span></AsyncButton>
-                </>
-              ) : (
-                <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
-              )}
-              <AsyncButton variant="danger" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></AsyncButton>
+                ) : (
+                  <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
+                )}
+                <AsyncButton variant="danger" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></AsyncButton>
+              </div>
             </div>
           ))}
         </div>
@@ -674,7 +674,10 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       )}
 
       <style>{`
-        @media(max-width:640px){.krok-btn-label{display:none}}
+        @media(max-width:640px){
+          .krok-btn-label{display:none}
+          .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
+        }
         @media(max-width:760px){.krok-editgrid{grid-template-columns:1fr!important}}
       `}</style>
     </div>
