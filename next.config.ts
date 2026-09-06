@@ -49,9 +49,10 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
-  // build ออกมาเป็นชุดเล็ก ๆ ที่รันด้วย `node server.js` ได้เอง
-  // จำเป็นสำหรับ Docker / ECS (ไม่ต้องยก node_modules ทั้งก้อนเข้า image)
-  output: "standalone",
+  // build ออกมาเป็นชุดเล็ก ๆ ที่รันด้วย `node server.js` ได้เอง (Docker / ECS)
+  // แต่บน Vercel ห้ามใช้ standalone — จะชนกับ file-tracing ของ Vercel
+  // (Error: ENOENT .next/next-server.js.nft.json) จึงเปิดเฉพาะตอนไม่ได้อยู่บน Vercel
+  output: process.env.VERCEL ? undefined : "standalone",
 
   // ไม่บอก stack ที่ใช้ (ลด fingerprint)
   poweredByHeader: false,
