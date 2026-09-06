@@ -296,10 +296,11 @@ export default function FillWizard(props: Props) {
     );
   }
 
-  const renderField = (f: FormField) => (
+  const renderField = (f: FormField, paper = false) => (
     <div id={"fld-" + f.id} key={f.id}>
       <FieldControl
         field={f}
+        paper={paper}
         getInitial={() => answers.current[f.id] || {}}
         photo={photos[f.id]}
         hasSig={!!sigs[f.id]}
@@ -343,32 +344,57 @@ export default function FillWizard(props: Props) {
     </div>
   );
 
-  // ---------- โหมดกระดาษ: กรอกทั้งฟอร์มในหน้าเดียว ----------
+  // ---------- โหมดกระดาษ: กรอกทั้งฟอร์มในหน้าเดียว (เอกสารกระดาษจริง) ----------
   if (mode === "paper") {
+    const today = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
     return (
-      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div>
+        {/* แถบเครื่องมืออยู่นอกกระดาษ */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {viewToggle}
             {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
           </div>
         </div>
-        {schema.description ? <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "6px 0 0" }}>{schema.description}</p> : null}
 
-        {schema.steps.map((s, si) => (
-          <div key={s.id} style={{ marginTop: 16 }}>
-            <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 4 }}>
-              {si + 1}. {s.title}
+        <div style={{ display: "flex", justifyContent: "center" }}>
+          <div
+            className="krok-paper"
+            style={{ width: "100%", maxWidth: 760, background: "#fff", color: "#111", border: "1px solid var(--line)", borderRadius: 6, boxShadow: "var(--shadow)", padding: "clamp(20px, 4vw, 40px)" }}
+          >
+            {/* หัวเอกสาร */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, borderBottom: "2px solid #111", paddingBottom: 10, marginBottom: 6, flexWrap: "wrap" }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{props.icon} {props.title}</div>
+                {schema.description && <div style={{ color: "#555", fontSize: ".82rem", marginTop: 2 }}>{schema.description}</div>}
+              </div>
+              <div style={{ fontSize: ".76rem", color: "#555", textAlign: "right", lineHeight: 1.7 }}>
+                ผู้กรอก: {props.userName || "______________"}<br />วันที่: {today}
+              </div>
             </div>
-            {s.fields.map(renderField)}
-          </div>
-        ))}
 
-        <div style={{ marginTop: 18 }}>
-          <Button variant="primary" onClick={submitPaper} loading={submitting} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
-            {submitting ? t("fill.submitting") : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
-          </Button>
+            {schema.steps.map((s, si) => (
+              <div key={s.id} style={{ marginTop: 16 }}>
+                <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", background: "#eef0f2", color: "#111", borderRadius: 3, padding: "6px 10px", marginBottom: 2 }}>
+                  {si + 1}. {s.title}
+                </div>
+                {s.fields.map((f) => renderField(f, true))}
+              </div>
+            ))}
+
+            {/* ลายเซ็นท้ายเอกสาร (ตกแต่งให้เหมือนเอกสารจริง) */}
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 20, marginTop: 26, fontSize: ".8rem", color: "#333", flexWrap: "wrap" }}>
+              <div>ผู้ตรวจ: ______________________<br /><span style={{ fontSize: ".7rem", color: "#888" }}>ลงชื่อ / วันที่</span></div>
+              <div>ผู้อนุมัติ: ______________________<br /><span style={{ fontSize: ".7rem", color: "#888" }}>ลงชื่อ / วันที่</span></div>
+            </div>
+
+            <div style={{ marginTop: 18 }}>
+              <Button variant="primary" onClick={submitPaper} loading={submitting} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
+                {submitting ? t("fill.submitting") : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -398,7 +424,7 @@ export default function FillWizard(props: Props) {
         <h3 style={{ fontSize: "1.05rem" }}>{step.title}</h3>
       </div>
 
-      {step.fields.map(renderField)}
+      {step.fields.map((f) => renderField(f))}
 
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>{t("fill.prev")}</Button>}
@@ -423,6 +449,7 @@ function FieldControl({
   onPatch,
   setPhoto,
   setSig,
+  paper = false,
 }: {
   field: FormField;
   getInitial: () => Answer;
@@ -432,6 +459,7 @@ function FieldControl({
   onPatch: (patch: Partial<Answer>, render?: boolean) => void;
   setPhoto: (d: string | null) => void;
   setSig: (d: string | null) => void;
+  paper?: boolean;
 }) {
   const { t } = useT();
   const [initial] = useState(getInitial);
@@ -486,8 +514,12 @@ function FieldControl({
     e.target.value = "";
   }
 
-  const box: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 10, padding: 14, margin: "10px 0", background: "var(--surface)" };
-  const input: React.CSSProperties = { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
+  const box: React.CSSProperties = paper
+    ? { border: "none", borderBottom: "1px solid #e5e5e5", borderRadius: 0, padding: "11px 0 13px", margin: 0, background: "transparent", color: "#111" }
+    : { border: "1px solid var(--line)", borderRadius: 10, padding: 14, margin: "10px 0", background: "var(--surface)" };
+  const input: React.CSSProperties = paper
+    ? { width: "100%", padding: "8px 11px", border: "1px solid #b9bec4", borderRadius: 6, background: "#fff", color: "#111", fontFamily: "inherit", fontSize: ".95rem" }
+    : { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
   const [numValue, setNumValue] = useState(String(initial.value ?? ""));
   const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
   const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) ? initial.value : []);
@@ -503,23 +535,25 @@ function FieldControl({
   }, []);
 
   return (
-    <div style={{ ...box, borderColor: error ? "var(--fail)" : "var(--line)" }}>
-      <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
+    <div style={{ ...box, ...(error ? (paper ? { borderBottomColor: "var(--fail)" } : { borderColor: "var(--fail)" }) : {}) }}>
+      <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap", color: paper ? "#111" : undefined }}>
         {f.label}
         {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
-        <span style={{ fontFamily: "monospace", fontSize: ".65rem", color: "var(--ink-3)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 6px", marginLeft: "auto" }}>
-          {FIELD_TYPE_LABELS[f.type]}
-        </span>
+        {!paper && (
+          <span style={{ fontFamily: "monospace", fontSize: ".65rem", color: "var(--ink-3)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 6px", marginLeft: "auto" }}>
+            {FIELD_TYPE_LABELS[f.type]}
+          </span>
+        )}
       </div>
       {f.tooltip && (
-        <div style={{ fontSize: ".83rem", color: "var(--ink-2)", background: "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0", display: "flex", gap: 7, alignItems: "flex-start" }}>
+        <div style={{ fontSize: ".83rem", color: paper ? "#555" : "var(--ink-2)", background: paper ? "#f4f5f6" : "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0", display: "flex", gap: 7, alignItems: "flex-start" }}>
           <span aria-hidden style={{ color: "var(--amber)", marginTop: 1 }}><Icon icon={Lightbulb} className="h-4 w-4" /></span>
           <span>{f.tooltip}</span>
         </div>
       )}
       {f.photo_hint && (
-        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", margin: "4px 0" }}>
-          รูปต้องเห็น: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
+        <div style={{ fontSize: ".8rem", color: paper ? "#777" : "var(--ink-3)", margin: "4px 0" }}>
+          รูปต้องเห็น: <code style={{ background: paper ? "#f4f5f6" : "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
         </div>
       )}
 
@@ -566,8 +600,8 @@ function FieldControl({
         {f.type === "pass_fail" && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <PfBtn active={pf === "pass"} kind="pass" onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> ผ่าน</span></PfBtn>
-              <PfBtn active={pf === "fail"} kind="fail" onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> ไม่ผ่าน</span></PfBtn>
+              <PfBtn active={pf === "pass"} kind="pass" paper={paper} onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> ผ่าน</span></PfBtn>
+              <PfBtn active={pf === "fail"} kind="fail" paper={paper} onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> ไม่ผ่าน</span></PfBtn>
             </div>
             {pf === "fail" && (
               <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => onPatch({ note: e.target.value })} />
@@ -576,7 +610,7 @@ function FieldControl({
         )}
         {f.type === "photo" && (
           <>
-            <div onClick={() => photoRef.current?.click()} style={{ border: "2px dashed var(--line)", borderRadius: 10, padding: 18, textAlign: "center", color: "var(--ink-3)", fontSize: ".9rem", cursor: "pointer" }}>
+            <div onClick={() => photoRef.current?.click()} style={{ border: paper ? "2px dashed #b9bec4" : "2px dashed var(--line)", borderRadius: 10, padding: 18, textAlign: "center", color: paper ? "#777" : "var(--ink-3)", fontSize: ".9rem", cursor: "pointer" }}>
               {photo && <img src={photo} alt="รูปที่ถ่าย" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "0 auto 8px" }} />}
               <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? "แตะเพื่อถ่ายใหม่" : <><Icon icon={Camera} className="h-4 w-4" /> แตะเพื่อถ่ายรูป / เลือกรูป</>}</div>
             </div>
@@ -606,7 +640,7 @@ function FieldControl({
             )}
           </>
         )}
-        {f.type === "signature" && <SignaturePad hasSig={hasSig} onSave={setSig} />}
+        {f.type === "signature" && <SignaturePad hasSig={hasSig} onSave={setSig} paper={paper} />}
       </div>
 
       {error && <div style={{ fontSize: ".82rem", color: "var(--fail)", marginTop: 6 }}>{error}</div>}
@@ -625,18 +659,21 @@ function NumHint({ field: f, value }: { field: FormField; value?: string }) {
   );
 }
 
-function PfBtn({ active, kind, onClick, children }: { active: boolean; kind: "pass" | "fail"; onClick: () => void; children: React.ReactNode }) {
+function PfBtn({ active, kind, onClick, children, paper = false }: { active: boolean; kind: "pass" | "fail"; onClick: () => void; children: React.ReactNode; paper?: boolean }) {
   const on = kind === "pass"
     ? { background: "var(--pass-soft)", borderColor: "var(--pass)", color: "var(--pass)" }
     : { background: "var(--fail-soft)", borderColor: "var(--fail)", color: "var(--fail)" };
+  const base = paper
+    ? { border: "1px solid #b9bec4", background: "#fff", color: "#111" }
+    : { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" };
   return (
-    <button onClick={onClick} style={{ padding: 14, fontWeight: 700, fontSize: "1rem", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", ...(active ? on : {}) }}>
+    <button onClick={onClick} style={{ padding: 14, fontWeight: 700, fontSize: "1rem", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", ...base, ...(active ? on : {}) }}>
       {children}
     </button>
   );
 }
 
-function SignaturePad({ hasSig, onSave }: { hasSig: boolean; onSave: (d: string | null) => void }) {
+function SignaturePad({ hasSig, onSave, paper = false }: { hasSig: boolean; onSave: (d: string | null) => void; paper?: boolean }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const last = useRef<[number, number]>([0, 0]);
@@ -650,8 +687,8 @@ function SignaturePad({ hasSig, onSave }: { hasSig: boolean; onSave: (d: string 
     ctx.scale(2, 2);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = getComputedStyle(document.body).color;
-  }, []);
+    ctx.strokeStyle = paper ? "#111" : getComputedStyle(document.body).color;
+  }, [paper]);
   useEffect(() => { setup(); }, [setup]);
 
   const pos = (e: React.PointerEvent) => {
@@ -663,7 +700,7 @@ function SignaturePad({ hasSig, onSave }: { hasSig: boolean; onSave: (d: string 
     <>
       <canvas
         ref={ref}
-        style={{ width: "100%", height: 140, border: "1px dashed var(--line)", borderRadius: 10, background: "var(--surface)", touchAction: "none", display: "block" }}
+        style={{ width: "100%", height: 140, border: paper ? "1px dashed #b9bec4" : "1px dashed var(--line)", borderRadius: 10, background: paper ? "#fff" : "var(--surface)", touchAction: "none", display: "block" }}
         onPointerDown={(e) => { drawing.current = true; last.current = pos(e); ref.current!.setPointerCapture(e.pointerId); }}
         onPointerMove={(e) => {
           if (!drawing.current) return;
