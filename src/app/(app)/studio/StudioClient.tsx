@@ -417,23 +417,24 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
           <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
 
-          <div className="krok-editgrid" style={{ display: "grid", gridTemplateColumns: selKey ? "1fr 330px" : "1fr", gap: 14, marginTop: 8, alignItems: "start" }}>
-            <div>
-              {view === "paper" ? (
-                <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} />
-              ) : (
-                <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
-                  <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
-                    <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                    <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} />
-                  </div>
+          <div className="krok-canvaswrap" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
+            {view === "paper" ? (
+              <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} />
+            ) : (
+              <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+                <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
+                  <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
+                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} />
                 </div>
-              )}
-            </div>
-            {selKey && (
-              <div className="krok-editpanel">
-                <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} />
               </div>
+            )}
+            {selKey && (
+              <>
+                <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />
+                <div className="krok-settings">
+                  <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} />
+                </div>
+              </>
             )}
           </div>
 
@@ -666,11 +667,19 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       )}
 
       <style>{`
+        /* แผงตั้งค่าฟิลด์ลอยทับพื้นที่กระดาษ (ไม่ดันเลย์เอาต์) */
+        .krok-settings-backdrop{ display:none; }
+        .krok-settings{ position:absolute; top:8px; right:8px; width:320px; max-width:calc(100% - 16px);
+          max-height:calc(100% - 16px); overflow:auto; z-index:20; border-radius:12px; background:var(--surface);
+          box-shadow:0 10px 34px rgba(10,14,18,.24); }
         @media(max-width:640px){
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
+          /* มือถือ: ตั้งค่าฟิลด์เป็น popup ขึ้นจากด้านล่าง */
+          .krok-settings{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
+            max-height:82vh; z-index:70; border-radius:16px 16px 0 0; }
+          .krok-settings-backdrop{ display:block; position:fixed; inset:0; background:rgba(6,10,14,.45); z-index:69; }
         }
-        @media(max-width:760px){.krok-editgrid{grid-template-columns:1fr!important}}
       `}</style>
     </div>
   );
