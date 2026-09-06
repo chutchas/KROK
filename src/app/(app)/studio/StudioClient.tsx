@@ -667,17 +667,17 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       )}
 
       <style>{`
-        /* แผงตั้งค่าฟิลด์ลอยทับพื้นที่กระดาษ (ไม่ดันเลย์เอาต์) */
+        /* แผงตั้งค่าฟิลด์ = drawer ด้านขวาแบบตรึงจอ (เลื่อนหน้าไปก็ยังเห็น ไม่ดันเลย์เอาต์) */
         .krok-settings-backdrop{ display:none; }
-        .krok-settings{ position:absolute; top:8px; right:8px; width:320px; max-width:calc(100% - 16px);
-          max-height:calc(100% - 16px); overflow:auto; z-index:20; border-radius:12px; background:var(--surface);
-          box-shadow:0 10px 34px rgba(10,14,18,.24); }
+        .krok-settings{ position:fixed; top:74px; right:16px; width:340px; max-width:calc(100vw - 24px);
+          max-height:calc(100vh - 96px); overflow:auto; z-index:50; border-radius:14px; background:var(--surface);
+          box-shadow:0 14px 44px rgba(10,14,18,.28); }
         @media(max-width:640px){
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
           /* มือถือ: ตั้งค่าฟิลด์เป็น popup ขึ้นจากด้านล่าง */
           .krok-settings{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
-            max-height:82vh; z-index:70; border-radius:16px 16px 0 0; }
+            max-height:82vh; border-radius:16px 16px 0 0; z-index:70; }
           .krok-settings-backdrop{ display:block; position:fixed; inset:0; background:rgba(6,10,14,.45); z-index:69; }
         }
       `}</style>
