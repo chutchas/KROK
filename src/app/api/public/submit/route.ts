@@ -97,6 +97,16 @@ export async function POST(req: Request) {
   });
   if (subErr) return NextResponse.json({ error: subErr.message }, { status: 500 });
 
+  // audit: บันทึกการส่งฟอร์มสาธารณะ (ให้ Platform Admin ตรวจย้อนหลังได้)
+  await admin.from("audit_log").insert({
+    tenant_id: f.tenant_id,
+    actor_id: null,
+    action: "submission.create",
+    target_type: "form",
+    target_id: f.id,
+    meta: { submission_id: subId, result, source: "public", user_name: userName },
+  });
+
   // อัปโหลดรูป/ลายเซ็น (ไฟล์ชื่อ photo_<fieldId>) — จำกัดจำนวนไฟล์และขนาดต่อไฟล์
   const MAX_PHOTOS = 40;
   const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB/ไฟล์

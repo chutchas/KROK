@@ -30,11 +30,12 @@ const SECONDARY: NavEntry[] = [
   { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
   { href: "/settings/billing", key: "nav.billing", icon: CreditCard, menu: "billing" },
   { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
-  { href: "/settings/ai", key: "nav.ai", icon: Bot, menu: "ai" },
   { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
   { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
   { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
+  { href: "/admin/ai", key: "nav.adminAi", icon: Bot, gate: "dev" },
+  { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
 ];
 
 // หมวดหมู่ในเมนู sidebar (drawer)
@@ -61,7 +62,6 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
     labelKey: "grp.connect",
     items: [
       { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
-      { href: "/settings/ai", key: "nav.ai", icon: Bot, menu: "ai" },
     ],
   },
   {
@@ -75,6 +75,8 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
     labelKey: "grp.platform",
     items: [
       { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
+      { href: "/admin/ai", key: "nav.adminAi", icon: Bot, gate: "dev" },
+      { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
       { href: "/admin/developer", key: "nav.developer", icon: Terminal, gate: "dev" },
     ],
   },

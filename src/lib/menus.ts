@@ -8,8 +8,7 @@ export type MenuKey =
   | "dashboard"
   | "team"
   | "billing"
-  | "integrations"
-  | "ai";
+  | "integrations";
 
 // enum ความปลอดภัยข้างใต้ (ยังใช้กับ RLS) — role ที่แสดงจริงมาจาก tenant_roles
 export type Role = "owner" | "admin" | "designer" | "operator";
@@ -28,7 +27,6 @@ export const MENUS: MenuDef[] = [
   { key: "team", href: "/settings/team", labelKey: "nav.team" },
   { key: "billing", href: "/settings/billing", labelKey: "nav.billing" },
   { key: "integrations", href: "/settings/integrations", labelKey: "nav.integrations" },
-  { key: "ai", href: "/settings/ai", labelKey: "nav.ai" },
 ];
 
 export const ALL_MENU_KEYS: MenuKey[] = MENUS.map((m) => m.key);

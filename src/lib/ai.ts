@@ -61,14 +61,16 @@ function envConfig(): ProviderConfig {
   };
 }
 
-// config ต่อ tenant: อ่านจาก DB (service role) ก่อน ถ้าไม่มีคีย์ค่อย fallback ไป env
-async function resolveConfig(tenantId?: string): Promise<ProviderConfig> {
+// config ระดับแพลตฟอร์ม: อ่านจาก platform_ai_settings (service role) ก่อน
+// ถ้ายังไม่มีคีย์ค่อย fallback ไป env — ทุก tenant ใช้คีย์กลางชุดเดียวกัน
+// (พารามิเตอร์ tenantId คงไว้เพื่อความเข้ากันได้ แต่ไม่ได้ใช้เลือกคีย์อีกต่อไป)
+async function resolveConfig(_tenantId?: string): Promise<ProviderConfig> {
   const admin = getAdminClient();
-  if (tenantId && admin) {
+  if (admin) {
     const { data } = await admin
-      .from("tenant_ai_settings")
+      .from("platform_ai_settings")
       .select("provider, model, base_url, azure_endpoint, azure_api_version, api_key")
-      .eq("tenant_id", tenantId)
+      .eq("id", true)
       .maybeSingle();
     if (data && data.api_key) {
       const provider = (data.provider || "qwen") as Provider;
@@ -99,7 +101,7 @@ async function complete(
 ): Promise<string> {
   const cfg = await resolveConfig(tenantId);
   if (!cfg.apiKey)
-    throw new Error("ยังไม่ได้ตั้งค่า AI provider — ไปที่ Settings → AI เพื่อใส่คีย์ (หรือตั้ง env)");
+    throw new Error("ระบบยังไม่ได้ตั้งค่า AI — โปรดให้ผู้ดูแลแพลตฟอร์มตั้งค่าที่เมนู Platform → AI");
 
   if (cfg.provider === "anthropic") return completeAnthropic(cfg, userText, image, maxTokens);
   return completeOpenAICompatible(cfg, userText, image, maxTokens);
