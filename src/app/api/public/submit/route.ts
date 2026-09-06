@@ -31,7 +31,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "ฟอร์มนี้ไม่เปิดให้กรอกแบบสาธารณะ" }, { status: 403 });
   }
 
-  // กันสแปม: จำกัดจำนวนการส่งแบบไม่ล็อกอินต่อฟอร์มใน 60 วินาทีล่าสุด (best-effort, ไม่ต้องมีตารางเพิ่ม)
+  // กันสแปมระดับ IP (atomic ผ่าน Postgres) — 20 ครั้ง/60 วินาทีต่อ IP ต่อฟอร์ม
+  // best-effort: ถ้ายังไม่ได้รัน migration 0016 (ไม่มีฟังก์ชัน) จะข้ามไปใช้ backstop ต่อฟอร์มด้านล่าง
+  const ip = (req.headers.get("x-forwarded-for")?.split(",")[0]?.trim())
+    || req.headers.get("x-real-ip")
+    || "unknown";
+  try {
+    const { data: allowed, error: rlErr } = await admin.rpc("hit_rate_limit", {
+      p_key: `pubsubmit:${ip}:${f.id}`,
+      p_max: 20,
+      p_window_seconds: 60,
+    });
+    if (!rlErr && allowed === false) {
+      return NextResponse.json({ error: "ส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่" }, { status: 429 });
+    }
+  } catch { /* ไม่มีฟังก์ชัน/ผิดพลาด → ไม่บล็อก ใช้ backstop ต่อฟอร์มแทน */ }
+
+  // backstop: จำกัดจำนวนการส่งแบบไม่ล็อกอินต่อฟอร์มใน 60 วินาทีล่าสุด
   try {
     const since = new Date(Date.now() - 60_000).toISOString();
     const { count } = await admin
