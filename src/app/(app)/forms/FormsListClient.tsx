@@ -49,13 +49,14 @@ export default function FormsListClient({ forms, highlightId }: { forms: FormLis
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("forms.search")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
-          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
             style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("forms.allCategories")}</option>
             {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>
         </div>
       )}
+      <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; flex:1 1 100% !important; min-width:0 !important; } }`}</style>
 
       <div style={{ display: "grid", gap: 10 }}>
         {forms.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("forms.empty")}</span>}

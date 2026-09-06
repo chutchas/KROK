@@ -302,14 +302,14 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         </div>
 
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
-        <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
+        <div className="krok-seg" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
           {(["prompt", "file"] as const).map((m) => {
             const on = createMode === m;
             return (
               <button
                 key={m}
                 onClick={() => setCreateMode(m)}
-                className="inline-flex items-center gap-1.5"
+                className="inline-flex items-center gap-1.5 krok-seg-btn"
                 style={{ padding: "9px 16px", border: "none", borderLeft: m === "file" ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}
               >
                 <Icon icon={m === "prompt" ? Sparkles : FileUp} className="h-4 w-4" /> {m === "prompt" ? t("studio.modePrompt") : t("studio.modeFile")}
@@ -360,14 +360,14 @@ export default function StudioClient({ initialForms, members, teams }: { initial
               <b style={{ fontFamily: "var(--font-anuphan)", fontSize: "1rem" }}>{t("studio.libTitle")}</b>
               <p style={{ color: "var(--ink-2)", fontSize: ".84rem", margin: "2px 0 0" }}>{t("studio.libSub")}</p>
             </div>
-            <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 9, overflow: "hidden", flex: "0 0 auto" }}>
+            <div className="krok-seg" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 9, overflow: "hidden", flex: "0 0 auto" }}>
               {([
                 { k: "task" as const, icon: Layers, label: t("studio.libByTask") },
                 { k: "industry" as const, icon: Factory, label: t("studio.libByIndustry") },
               ]).map((g, i) => {
                 const on = promptGroupBy === g.k;
                 return (
-                  <button key={g.k} onClick={() => setPromptGroupBy(g.k)} className="inline-flex items-center gap-1.5"
+                  <button key={g.k} onClick={() => setPromptGroupBy(g.k)} className="inline-flex items-center gap-1.5 krok-seg-btn"
                     style={{ padding: "8px 14px", border: "none", borderLeft: i === 1 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}>
                     <Icon icon={g.icon} className="h-4 w-4" /> {g.label}
                   </button>
@@ -442,6 +442,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
               <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
               <select
                 title={t("studio.category")}
+                className="krok-typefilter"
                 value={draft.category ? (isPresetCategory(draft.category) ? draft.category : "__custom") : ""}
                 onChange={(e) => {
                   const v = e.target.value;
@@ -516,9 +517,10 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   {chain.length === 0 ? t("studio.approverHintEmpty") : t("studio.approverHintSet")}
                 </p>
                 {chain.map((s, i) => (
-                  <div key={i} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+                  <div key={i} className="krok-appr-row" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
                     <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px" }}>{t("editor.step")} {i + 1}</span>
                     <select
+                      className="krok-appr-select"
                       value={s.user_id}
                       onChange={(e) => {
                         const m = members.find((x) => x.user_id === e.target.value);
@@ -529,8 +531,10 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                       <option value="">{t("studio.pickApprover")}</option>
                       {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
                     </select>
-                    <Field value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder={t("studio.rolePlaceholder")} style={{ width: 120, flex: "0 0 auto" }} />
-                    <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px" }}>{t("common.delete")}</Button>
+                    <div className="krok-appr-roleline" style={{ display: "flex", gap: 8, alignItems: "center", flex: "0 0 auto" }}>
+                      <Field className="krok-appr-role" value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder={t("studio.rolePlaceholder")} style={{ width: 120, flex: "0 0 auto" }} />
+                      <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px", flex: "0 0 auto" }}>{t("common.delete")}</Button>
+                    </div>
                   </div>
                 ))}
                 {chain.length < 6 && (
@@ -597,7 +601,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+          <div className="krok-editbtns" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
             {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
@@ -628,7 +632,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
-          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)}
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
             style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("studio.allCategories")}</option>
             {studioCats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
@@ -721,6 +725,19 @@ export default function StudioClient({ initialForms, members, teams }: { initial
         @media(max-width:640px){
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
+          /* ปุ่ม action 5 ปุ่มในการ์ดฟอร์ม: กว้างเท่ากันเต็มแถว */
+          .krok-row-actions>button{flex:1 1 0;min-width:0}
+          /* toggle แบบแบ่งครึ่ง: เต็มแถว */
+          .krok-seg{display:flex !important;width:100%;flex-basis:100%}
+          .krok-seg-btn{flex:1;justify-content:center}
+          /* dropdown ประเภทฟอร์ม: เต็มแถว */
+          .krok-typefilter{width:100%;flex:1 1 100% !important;min-width:0 !important}
+          /* ปุ่มบันทึก/ยกเลิก: เต็มแถว แบ่งเท่ากัน */
+          .krok-editbtns>button{flex:1 1 0}
+          /* ลำดับผู้อนุมัติ: dropdown เต็มแถว, บทบาท+ลบ อยู่แถวเดียวกันเต็มแถว */
+          .krok-appr-select{flex:1 1 100% !important;min-width:0 !important}
+          .krok-appr-roleline{flex:1 1 100%;width:100%}
+          .krok-appr-roleline .krok-appr-role{flex:1 1 auto !important;width:auto !important}
           /* มือถือ: ตั้งค่าฟิลด์เป็น popup ขึ้นจากด้านล่าง */
           .krok-settings{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
             max-height:82vh; border-radius:16px 16px 0 0; z-index:70; }
