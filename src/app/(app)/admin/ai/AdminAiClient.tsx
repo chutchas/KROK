@@ -76,7 +76,7 @@ export default function AdminAiClient({ current, configured }: { current: AiSett
   }
 
   return (
-    <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gap: 16 }}>
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={Globe} className="h-5 w-5" /> ตั้งค่า AI (ระดับแพลตฟอร์ม)

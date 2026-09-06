@@ -54,7 +54,7 @@ export default function WorkspaceClient({
   }
 
   return (
-    <div style={{ display: "grid", gap: 16, maxWidth: 640 }}>
+    <div style={{ display: "grid", gap: 16 }}>
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={Building2} className="h-6 w-6" /> {t("ws.title")}
