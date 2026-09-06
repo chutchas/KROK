@@ -78,6 +78,7 @@ export default function FillWizard(props: Props) {
   const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  const [mode, setMode] = useState<"mobile" | "paper">("mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean } | null>(null);
 
   const step = schema.steps[idx];
@@ -88,9 +89,9 @@ export default function FillWizard(props: Props) {
     if (render) rerender();
   }, [rerender]);
 
-  function validate(): boolean {
+  function validate(fields: FormField[] = step.fields): boolean {
     const errs: Record<string, string> = {};
-    for (const f of step.fields) {
+    for (const f of fields) {
       if (!f.required) continue;
       const a = answers.current[f.id] || {};
       let miss = false;
@@ -117,6 +118,17 @@ export default function FillWizard(props: Props) {
     } else {
       await submit();
     }
+  }
+
+  // โหมดกระดาษ: ตรวจทุกฟิลด์ทั้งฟอร์มแล้วส่งครั้งเดียว
+  async function submitPaper() {
+    const all = schema.steps.flatMap((s) => s.fields);
+    if (!validate(all)) {
+      const firstErr = all.find((f) => errors[f.id]);
+      if (firstErr && typeof document !== "undefined") document.getElementById("fld-" + firstErr.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    await submit();
   }
 
   async function submit() {
@@ -284,11 +296,93 @@ export default function FillWizard(props: Props) {
     );
   }
 
+  const renderField = (f: FormField) => (
+    <div id={"fld-" + f.id} key={f.id}>
+      <FieldControl
+        field={f}
+        getInitial={() => answers.current[f.id] || {}}
+        photo={photos[f.id]}
+        hasSig={!!sigs[f.id]}
+        error={errors[f.id]}
+        onPatch={(patch, render) => patchAnswer(f.id, patch, render)}
+        setPhoto={(d) => {
+          setPhotos((prev) => {
+            const nextP = { ...prev };
+            if (d) nextP[f.id] = d;
+            else delete nextP[f.id];
+            return nextP;
+          });
+          patchAnswer(f.id, { ai: undefined });
+        }}
+        setSig={(d) => {
+          setSigs((prev) => {
+            const nextS = { ...prev };
+            if (d) nextS[f.id] = d;
+            else delete nextS[f.id];
+            return nextS;
+          });
+        }}
+      />
+    </div>
+  );
+
+  const viewToggle = (
+    <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
+      {([
+        { m: "mobile" as const, label: t("studio.viewMobile") },
+        { m: "paper" as const, label: t("studio.viewPaper") },
+      ]).map((v, i) => {
+        const on = mode === v.m;
+        return (
+          <button key={v.m} onClick={() => setMode(v.m)}
+            style={{ padding: "6px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: on ? 600 : 400, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}>
+            {v.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+
+  // ---------- โหมดกระดาษ: กรอกทั้งฟอร์มในหน้าเดียว ----------
+  if (mode === "paper") {
+    return (
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            {viewToggle}
+            {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
+          </div>
+        </div>
+        {schema.description ? <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "6px 0 0" }}>{schema.description}</p> : null}
+
+        {schema.steps.map((s, si) => (
+          <div key={s.id} style={{ marginTop: 16 }}>
+            <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 12px", marginBottom: 4 }}>
+              {si + 1}. {s.title}
+            </div>
+            {s.fields.map(renderField)}
+          </div>
+        ))}
+
+        <div style={{ marginTop: 18 }}>
+          <Button variant="primary" onClick={submitPaper} loading={submitting} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
+            {submitting ? t("fill.submitting") : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // ---------- โหมดมือถือ: ทีละขั้นตอน ----------
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
-        {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          {viewToggle}
+          {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
+        </div>
       </div>
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>
@@ -304,34 +398,7 @@ export default function FillWizard(props: Props) {
         <h3 style={{ fontSize: "1.05rem" }}>{step.title}</h3>
       </div>
 
-      {step.fields.map((f) => (
-        <FieldControl
-          key={f.id}
-          field={f}
-          getInitial={() => answers.current[f.id] || {}}
-          photo={photos[f.id]}
-          hasSig={!!sigs[f.id]}
-          error={errors[f.id]}
-          onPatch={(patch, render) => patchAnswer(f.id, patch, render)}
-          setPhoto={(d) => {
-            setPhotos((prev) => {
-              const nextP = { ...prev };
-              if (d) nextP[f.id] = d;
-              else delete nextP[f.id];
-              return nextP;
-            });
-            patchAnswer(f.id, { ai: undefined });
-          }}
-          setSig={(d) => {
-            setSigs((prev) => {
-              const nextS = { ...prev };
-              if (d) nextS[f.id] = d;
-              else delete nextS[f.id];
-              return nextS;
-            });
-          }}
-        />
-      ))}
+      {step.fields.map(renderField)}
 
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>{t("fill.prev")}</Button>}
