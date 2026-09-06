@@ -75,6 +75,9 @@ export default function FormPaperEditor({
   );
 
   function onPointerDown(e: React.PointerEvent, key: string, mode: "move" | "resize") {
+    // ทัช/ปากกา: ปล่อยให้เบราว์เซอร์เลื่อน/แพนกระดาษได้ตามปกติ ไม่ลากปรับตำแหน่ง
+    // (เลือกฟิลด์ผ่าน onClick เมื่อแตะแทน) — ลากปรับตำแหน่งเฉพาะเมาส์
+    if (e.pointerType !== "mouse") return;
     e.preventDefault();
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -200,7 +203,7 @@ export default function FormPaperEditor({
       </div>
 
       {/* กรอบเลื่อน + แคนวาส A4 (โฟกัสได้เพื่อใช้คีย์บอร์ด) */}
-      <div ref={scrollRef} tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 16, display: "flex", justifyContent: "center", outline: "none" }}>
+      <div ref={scrollRef} tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 16, outline: "none", WebkitOverflowScrolling: "touch" }}>
         <div
           ref={canvasRef}
           onPointerMove={onPointerMove}
@@ -209,15 +212,15 @@ export default function FormPaperEditor({
             position: "relative",
             width: CANVAS_W,
             minHeight: canvasH,
+            margin: "0 auto",
             background: "#fff",
             color: "#111",
             boxShadow: "0 2px 16px rgba(0,0,0,.18)",
-            flex: "0 0 auto",
             transform: `scale(${scale})`,
             transformOrigin: "top center",
             backgroundImage: "radial-gradient(#e6e6e6 1px, transparent 1px)",
             backgroundSize: `${GRID * 2}px ${GRID * 2}px`,
-            touchAction: "none",
+            touchAction: "pan-x pan-y",
           }}
         >
           {/* หัวกระดาษ (คงที่) */}
@@ -236,6 +239,7 @@ export default function FormPaperEditor({
               <div
                 key={b.key}
                 data-krok-keep=""
+                onClick={() => select(b.key)}
                 onPointerDown={(e) => onPointerDown(e, b.key, "move")}
                 style={{
                   position: "absolute",
