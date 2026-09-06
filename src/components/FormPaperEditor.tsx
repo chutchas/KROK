@@ -83,7 +83,10 @@ export default function FormPaperEditor({
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     const box = layout[key];
     drag.current = { key, mode, sx: e.clientX, sy: e.clientY, ox: box.x, oy: box.y, ow: box.w };
-    select(key);
+    // ลากด้วยนิ้วผ่านที่จับ (ทัช): ปิดแผงตั้งค่าเพื่อไม่ให้ popup บังตอนลาก
+    // (แตะที่ "ตัวฟิลด์" เพื่อเปิดตั้งค่าแทน) — เมาส์ยังเลือก+ไฮไลต์ได้ตามปกติ
+    if (fromHandle && e.pointerType !== "mouse") select(null);
+    else select(key);
     scrollRef.current?.focus({ preventScroll: true });
   }
 
