@@ -1,8 +1,13 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 
-// /api/health ต้องเปิดให้ ALB/ECS ยิงได้โดยไม่ต้องล็อกอิน
-const PUBLIC_PATHS = ["/login", "/auth", "/api/health"];
+// เส้นทางที่เข้าได้โดยไม่ต้องล็อกอิน:
+// - /login, /auth: หน้าเข้าสู่ระบบ
+// - /api/health: health check ของ ALB/ECS
+// - /f: หน้ากรอกฟอร์มสาธารณะ (QR / ลิงก์แชร์) — กรอก+ส่งได้โดยไม่ต้องล็อกอิน
+// - /api/public: API รับการส่งฟอร์มสาธารณะ (ตรวจสิทธิ์ฟอร์ม public ในตัว)
+// - /sw.js, /offline, /manifest: ไฟล์ PWA/ออฟไลน์
+const PUBLIC_PATHS = ["/login", "/auth", "/api/health", "/f/", "/api/public", "/sw.js", "/offline", "/manifest"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
