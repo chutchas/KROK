@@ -149,7 +149,17 @@ export default function AppShell({
   };
   const primary = PRIMARY.filter(visible);
   const secondary = SECONDARY.filter(visible);
-  const activeSecondary = secondary.find((n) => path.startsWith(n.href));
+  // เลือก "แท็บที่ active" แบบเจาะจงที่สุด (href ที่ยาวสุดที่ตรงกับ path)
+  // กันปัญหา /settings/billing กับ /settings/billing/history ติด active พร้อมกัน
+  const allHrefs = Array.from(new Set([
+    ...PRIMARY.map((n) => n.href),
+    ...SECONDARY.map((n) => n.href),
+    ...DRAWER_GROUPS.flatMap((g) => g.items.map((n) => n.href)),
+  ]));
+  const matchesHref = (href: string) => path === href || path.startsWith(href + "/");
+  const activeHref = allHrefs.filter(matchesHref).sort((a, b) => b.length - a.length)[0] || "";
+  const isActive = (href: string) => href === activeHref;
+  const activeSecondary = secondary.find((n) => isActive(n.href));
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
 
   return (
@@ -220,7 +230,7 @@ export default function AppShell({
 
           <nav className="krok-nav" style={{ display: "flex", gap: 2 }}>
             {navItems.map((n) => {
-              const on = path.startsWith(n.href);
+              const on = isActive(n.href);
               return (
                 <Link
                   key={n.href}
@@ -358,7 +368,7 @@ export default function AppShell({
                       {t(g.labelKey)}
                     </div>
                     {items.map((n) => {
-                      const on = path.startsWith(n.href);
+                      const on = isActive(n.href);
                       return (
                         <Link
                           key={n.href}
