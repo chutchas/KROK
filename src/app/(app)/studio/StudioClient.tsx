@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Printer, Archive, Trash2, Search as SearchIcon } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
@@ -385,42 +385,34 @@ export default function StudioClient({ initialForms, members, teams }: { initial
                   );
                 })}
               </div>
-              <button onClick={doPrint} title={t("paper.print")} className="inline-flex items-center gap-1.5"
-                style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem" }}>
-                <Icon icon={Printer} className="h-4 w-4" /> {t("paper.print")}
-              </button>
             </div>
           </div>
 
-          {/* ตั้งค่าฟอร์ม: ไอคอน/ชื่อ/คำอธิบาย/ประเภท */}
-          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 12, display: "grid", gap: 10 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "52px 1fr", gap: 8, alignItems: "start" }}>
-              <input value={draft.icon} onChange={(e) => setDraft({ ...draft, icon: e.target.value.slice(0, 4) })} aria-label="icon"
-                style={{ textAlign: "center", fontSize: "1.4rem", padding: "6px 4px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)" }} />
-              <div style={{ display: "grid", gap: 8 }}>
-                <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} />
-                <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
-              </div>
-            </div>
+          {/* ตั้งค่าฟอร์ม: ไอคอน/ชื่อ + ประเภท (แถวเดียวกัน) / คำอธิบาย */}
+          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 12, display: "grid", gap: 8 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <label style={{ fontSize: ".85rem", color: "var(--ink-2)", fontWeight: 600 }}>{t("studio.category")}</label>
+              <input value={draft.icon} onChange={(e) => setDraft({ ...draft, icon: e.target.value.slice(0, 4) })} aria-label="icon"
+                style={{ width: 52, textAlign: "center", fontSize: "1.4rem", padding: "6px 4px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", flex: "0 0 auto" }} />
+              <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
               <select
+                title={t("studio.category")}
                 value={draft.category ? (isPresetCategory(draft.category) ? draft.category : "__custom") : ""}
                 onChange={(e) => {
                   const v = e.target.value;
                   if (v === "__custom") { setCustomCat(true); setDraft({ ...draft, category: isPresetCategory(draft.category) || !draft.category ? "" : draft.category }); }
                   else { setCustomCat(false); setDraft({ ...draft, category: v || undefined }); }
                 }}
-                style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem" }}
+                style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", minWidth: 200, flex: "0 0 auto" }}
               >
                 <option value="">{t("studio.categoryNone")}</option>
                 {FORM_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{lang === "en" ? c.en : c.th}</option>)}
                 <option value="__custom">{t("studio.categoryCustom")}</option>
               </select>
-              {(customCat || (!!draft.category && !isPresetCategory(draft.category))) && (
-                <Field value={!isPresetCategory(draft.category) ? (draft.category || "") : ""} onChange={(e) => setDraft({ ...draft, category: e.target.value || undefined })} placeholder={t("studio.categoryCustomPh")} style={{ maxWidth: 220 }} maxLength={60} />
-              )}
             </div>
+            {(customCat || (!!draft.category && !isPresetCategory(draft.category))) && (
+              <Field value={!isPresetCategory(draft.category) ? (draft.category || "") : ""} onChange={(e) => setDraft({ ...draft, category: e.target.value || undefined })} placeholder={t("studio.categoryCustomPh")} maxLength={60} />
+            )}
+            <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
           </div>
 
           <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
