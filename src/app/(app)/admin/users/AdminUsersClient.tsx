@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Field, Notice, Pill, Button } from "@/components/ui";
+import { Card, Field, Notice, Pill, Button, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Crown, Code2, UserRound } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
@@ -120,7 +120,7 @@ export default function AdminUsersClient({ users, meId }: { users: SysUser[]; me
               )}
             </div>
           ))}
-          {filtered.length === 0 && <span style={{ color: "var(--ink-3)", fontSize: ".85rem" }}>{t("admin.noneFound")}</span>}
+          {filtered.length === 0 && <EmptyState icon={<Icon icon={UserRound} className="h-7 w-7" />} title={t("admin.noneFound")} />}
         </div>
       </Card>
     </div>

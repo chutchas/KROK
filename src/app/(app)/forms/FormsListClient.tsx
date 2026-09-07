@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Card, Field } from "@/components/ui";
+import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
 
@@ -59,8 +59,12 @@ export default function FormsListClient({ forms, highlightId }: { forms: FormLis
       <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; flex:1 1 100% !important; min-width:0 !important; } }`}</style>
 
       <div style={{ display: "grid", gap: 10 }}>
-        {forms.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("forms.empty")}</span>}
-        {forms.length > 0 && filtered.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("forms.noMatch")}</span>}
+        {forms.length === 0 && (
+          <Card><EmptyState icon={<Icon icon={Smartphone} className="h-7 w-7" />} title={t("forms.empty")} /></Card>
+        )}
+        {forms.length > 0 && filtered.length === 0 && (
+          <Card><EmptyState icon={<Icon icon={SearchX} className="h-7 w-7" />} title={t("forms.noMatch")} /></Card>
+        )}
         {filtered.map((f) => {
           const on = hl === f.id;
           return (
