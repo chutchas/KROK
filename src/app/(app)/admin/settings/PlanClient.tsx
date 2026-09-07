@@ -13,7 +13,7 @@ const QUOTA_FIELDS: { key: QuotaField; label: string }[] = [
   { key: "maxWorkspaces", label: "จำนวน Workspace" },
 ];
 
-interface Row { priceThb: number; maxForms: number; aiCreditsPerMonth: number; maxMembers: number; maxWorkspaces: number }
+interface Row { name: string; nameEn: string; priceThb: number; maxForms: number; aiCreditsPerMonth: number; maxMembers: number; maxWorkspaces: number }
 
 export default function PlanClient({ plans, configured }: { plans: Record<PlanKey, Plan>; configured: boolean }) {
   const router = useRouter();
@@ -22,6 +22,7 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
     for (const k of PLAN_ORDER) {
       const p = plans[k];
       init[k] = {
+        name: p.name, nameEn: p.nameEn,
         priceThb: p.priceThb, maxForms: p.maxForms, aiCreditsPerMonth: p.aiCreditsPerMonth,
         maxMembers: p.maxMembers, maxWorkspaces: p.maxWorkspaces,
       };
@@ -31,7 +32,7 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
 
-  function set(k: PlanKey, field: keyof Row, value: number) {
+  function set(k: PlanKey, field: keyof Row, value: number | string) {
     setRows((s) => ({ ...s, [k]: { ...s[k], [field]: value } }));
   }
 
@@ -67,11 +68,21 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
               {p.highlight && <span style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--accent)", background: "var(--accent-soft)", border: "1px solid var(--line)", borderRadius: 20, padding: "2px 8px" }}>แนะนำ</span>}
             </div>
 
-            {/* ราคา */}
-            <div style={{ marginBottom: 12, maxWidth: 260 }}>
-              <label style={labelStyle}>ราคา (บาท / เดือน)</label>
-              <Field type="number" min={0} value={String(r.priceThb)}
-                onChange={(e) => set(k, "priceThb", Math.max(0, parseInt(e.target.value || "0", 10) || 0))} />
+            {/* ชื่อแพ็กเกจ + ราคา */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12, marginBottom: 12 }}>
+              <div>
+                <label style={labelStyle}>ชื่อแพ็กเกจ (ไทย)</label>
+                <Field value={r.name} onChange={(e) => set(k, "name", e.target.value)} placeholder={p.name} />
+              </div>
+              <div>
+                <label style={labelStyle}>ชื่อแพ็กเกจ (EN)</label>
+                <Field value={r.nameEn} onChange={(e) => set(k, "nameEn", e.target.value)} placeholder={p.nameEn} />
+              </div>
+              <div>
+                <label style={labelStyle}>ราคา (บาท / เดือน)</label>
+                <Field type="number" min={0} value={String(r.priceThb)}
+                  onChange={(e) => set(k, "priceThb", Math.max(0, parseInt(e.target.value || "0", 10) || 0))} />
+              </div>
             </div>
 
             {/* โควตา */}

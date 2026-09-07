@@ -99,12 +99,17 @@ export async function savePlanSettings(
     const raw = (input as Record<string, unknown>)[k];
     if (!raw || typeof raw !== "object") continue;
     const o = raw as Record<string, unknown>;
-    const entry: Record<string, number> = {};
+    const entry: Record<string, number | string> = {};
     for (const f of FIELDS) {
       const v = o[f];
       if (typeof v === "number" && Number.isFinite(v) && v >= 0) entry[f] = Math.floor(v);
     }
-    if (Object.keys(entry).length) clean[k as PlanKey] = entry;
+    // ชื่อแพ็กเกจ (ตัวเลือก) — เก็บเป็น string สั้นๆ
+    for (const nf of ["name", "nameEn"] as const) {
+      const v = o[nf];
+      if (typeof v === "string" && v.trim()) entry[nf] = v.trim().slice(0, 40);
+    }
+    if (Object.keys(entry).length) clean[k as PlanKey] = entry as PlanOverrides[PlanKey];
   }
 
   const { error } = await admin.from("platform_plan_settings").upsert(

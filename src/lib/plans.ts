@@ -69,6 +69,8 @@ export function fmtLimit(n: number): string {
 
 // ---- override ราคา/โควตา จากฝั่ง DB (ตั้งค่าระบบ) ----
 export interface PlanOverride {
+  name?: string;
+  nameEn?: string;
   priceThb?: number;
   maxForms?: number;
   aiCreditsPerMonth?: number;
@@ -87,8 +89,12 @@ export function effectivePlans(ov: PlanOverrides = {}): Record<PlanKey, Plan> {
     const base = PLANS[k];
     const o = ov[k] || {};
     const priceThb = numOr(o.priceThb, base.priceThb);
+    const str = (v: unknown, fallback: string) =>
+      typeof v === "string" && v.trim() ? v.trim() : fallback;
     out[k] = {
       ...base,
+      name: str(o.name, base.name),
+      nameEn: str(o.nameEn, base.nameEn),
       priceThb,
       maxForms: numOr(o.maxForms, base.maxForms),
       aiCreditsPerMonth: numOr(o.aiCreditsPerMonth, base.aiCreditsPerMonth),
