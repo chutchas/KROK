@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getPaymentSettingsForAdmin } from "@/lib/payments-server";
+import { getEffectivePlans } from "@/lib/plans-server";
 import type { AiSettings } from "../ai/AdminAiClient";
 import SystemSettingsClient from "./SystemSettingsClient";
 
@@ -43,12 +44,17 @@ export default async function SystemSettingsPage() {
   // ---- Payment settings ----
   const { configured: payConfigured, views: payViews } = await getPaymentSettingsForAdmin();
 
+  // ---- Plan settings (ราคา/โควตา) ----
+  const plans = await getEffectivePlans();
+
   return (
     <SystemSettingsClient
       ai={ai}
       aiConfigured={aiConfigured}
       payViews={payViews}
       payConfigured={payConfigured}
+      plans={plans}
+      plansConfigured={!!admin}
     />
   );
 }

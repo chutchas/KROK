@@ -1,23 +1,29 @@
 "use client";
 import { useState, useEffect } from "react";
 import Icon from "@/components/Icon";
-import { Settings, Bot, CreditCard } from "lucide-react";
+import { Settings, Bot, CreditCard, Package } from "lucide-react";
 import AdminAiClient, { type AiSettings } from "../ai/AdminAiClient";
 import PaymentClient from "./PaymentClient";
+import PlanClient from "./PlanClient";
 import type { ProviderClientView, PaymentProviderId } from "@/lib/payment-meta";
+import type { Plan, PlanKey } from "@/lib/plans";
 
-type Tab = "ai" | "payment";
+type Tab = "ai" | "payment" | "plans";
 
 export default function SystemSettingsClient({
   ai,
   aiConfigured,
   payViews,
   payConfigured,
+  plans,
+  plansConfigured,
 }: {
   ai: AiSettings;
   aiConfigured: boolean;
   payViews: Record<PaymentProviderId, ProviderClientView>;
   payConfigured: boolean;
+  plans: Record<PlanKey, Plan>;
+  plansConfigured: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("ai");
 
@@ -30,6 +36,7 @@ export default function SystemSettingsClient({
   const TABS: { id: Tab; label: string; icon: typeof Bot }[] = [
     { id: "ai", label: "ตั้งค่า AI", icon: Bot },
     { id: "payment", label: "การชำระเงิน", icon: CreditCard },
+    { id: "plans", label: "แผน & ราคา", icon: Package },
   ];
 
   return (
@@ -69,6 +76,9 @@ export default function SystemSettingsClient({
       </div>
       <div hidden={tab !== "payment"}>
         <PaymentClient views={payViews} configured={payConfigured} />
+      </div>
+      <div hidden={tab !== "plans"}>
+        <PlanClient plans={plans} configured={plansConfigured} />
       </div>
     </div>
   );

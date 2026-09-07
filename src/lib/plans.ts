@@ -66,3 +66,37 @@ export function getPlan(key: string | null | undefined): Plan {
 export function fmtLimit(n: number): string {
   return n >= UNLIMITED ? "∞" : String(n);
 }
+
+// ---- override ราคา/โควตา จากฝั่ง DB (ตั้งค่าระบบ) ----
+export interface PlanOverride {
+  priceThb?: number;
+  maxForms?: number;
+  aiCreditsPerMonth?: number;
+  maxMembers?: number;
+  maxWorkspaces?: number;
+}
+export type PlanOverrides = Partial<Record<PlanKey, PlanOverride>>;
+
+const numOr = (v: unknown, fallback: number) =>
+  typeof v === "number" && Number.isFinite(v) && v >= 0 ? Math.floor(v) : fallback;
+
+// รวม override ทับค่า default → ได้แผนที่ใช้จริง (ชื่อ/highlight คงจากโค้ด, ราคา label คำนวณจาก priceThb)
+export function effectivePlans(ov: PlanOverrides = {}): Record<PlanKey, Plan> {
+  const out = {} as Record<PlanKey, Plan>;
+  for (const k of PLAN_ORDER) {
+    const base = PLANS[k];
+    const o = ov[k] || {};
+    const priceThb = numOr(o.priceThb, base.priceThb);
+    out[k] = {
+      ...base,
+      priceThb,
+      maxForms: numOr(o.maxForms, base.maxForms),
+      aiCreditsPerMonth: numOr(o.aiCreditsPerMonth, base.aiCreditsPerMonth),
+      maxMembers: numOr(o.maxMembers, base.maxMembers),
+      maxWorkspaces: numOr(o.maxWorkspaces, base.maxWorkspaces),
+      priceLabel: priceThb <= 0 ? "฿0 / เดือน" : `฿${priceThb.toLocaleString()} / เดือน`,
+      priceLabelEn: priceThb <= 0 ? "฿0 / mo" : `฿${priceThb.toLocaleString()} / mo`,
+    };
+  }
+  return out;
+}

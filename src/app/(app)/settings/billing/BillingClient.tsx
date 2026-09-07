@@ -5,7 +5,7 @@ import { Card, Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Check, Lock, CreditCard } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey } from "@/lib/plans";
+import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey, type Plan } from "@/lib/plans";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { setPlan } from "./actions";
 
@@ -15,19 +15,21 @@ export default function BillingClient({
   tenantName,
   usage,
   payMethods = [],
+  plans = PLANS,
 }: {
   isOwner: boolean;
   currentPlan: PlanKey;
   tenantName: string;
   usage: { forms: number; members: number; ai: number; period: string };
   payMethods?: { id: string; name: string; hint: string }[];
+  plans?: Record<PlanKey, Plan>;
 }) {
   const router = useRouter();
   const { t, lang } = useT();
   const [busy, setBusy] = useState<PlanKey | null>(null);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
 
-  const plan = PLANS[currentPlan];
+  const plan = plans[currentPlan];
   const en = lang === "en";
 
   async function choose(p: PlanKey) {
@@ -66,7 +68,7 @@ export default function BillingClient({
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }} className="krok-plans">
         {PLAN_ORDER.map((key) => {
-          const p = PLANS[key];
+          const p = plans[key];
           const isCurrent = key === currentPlan;
           return (
             <div

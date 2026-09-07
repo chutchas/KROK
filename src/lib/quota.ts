@@ -1,16 +1,21 @@
 import "server-only";
 import { createClient } from "@/lib/supabase/server";
-import { getPlan, type Plan } from "@/lib/plans";
+import { type Plan, type PlanKey } from "@/lib/plans";
+import { getEffectivePlans } from "@/lib/plans-server";
 
 export function currentPeriod(d = new Date()): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-/** อ่าน plan ของ tenant (คืน 'free' ถ้าไม่พบ) */
+/** อ่าน plan ของ tenant (คืน 'free' ถ้าไม่พบ) — ใช้ราคา/โควตาที่ override จากตั้งค่าระบบ */
 export async function getTenantPlan(tenantId: string): Promise<Plan> {
   const supabase = await createClient();
-  const { data } = await supabase.from("tenants").select("plan").eq("id", tenantId).maybeSingle();
-  return getPlan((data?.plan as string) ?? "free");
+  const [{ data }, plans] = await Promise.all([
+    supabase.from("tenants").select("plan").eq("id", tenantId).maybeSingle(),
+    getEffectivePlans(),
+  ]);
+  const key = (data?.plan as PlanKey) ?? "free";
+  return plans[key] ?? plans.free;
 }
 
 export interface QuotaSnapshot {

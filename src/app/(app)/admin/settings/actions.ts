@@ -2,6 +2,7 @@
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { PAYMENT_PROVIDERS, PAYMENT_PROVIDER_IDS, type PaymentProviderId } from "@/lib/payment-meta";
+import { PLAN_ORDER, type PlanKey, type PlanOverrides } from "@/lib/plans";
 
 export interface SavePaymentInput {
   provider: PaymentProviderId;
@@ -73,6 +74,51 @@ export async function savePaymentProvider(
     action: "platform.payment.update",
     target_type: "platform_payment_settings",
     meta: { provider: input.provider, enabled: !!input.enabled },
+  });
+
+  return { ok: true };
+}
+
+// ---- แผน & ราคา (override ระดับแพลตฟอร์ม) ----
+const FIELDS = ["priceThb", "maxForms", "aiCreditsPerMonth", "maxMembers", "maxWorkspaces"] as const;
+
+export async function savePlanSettings(
+  input: PlanOverrides
+): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!session.isPlatformAdmin && session.platformRole !== "developer")
+    return { error: "เฉพาะ Platform Admin / Developer เท่านั้น" };
+
+  const admin = getAdminClient();
+  if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
+
+  // ทำความสะอาด: เก็บเฉพาะ plan key + field ที่รู้จัก, ค่าเป็นจำนวนเต็ม ≥ 0
+  const clean: PlanOverrides = {};
+  for (const k of PLAN_ORDER) {
+    const raw = (input as Record<string, unknown>)[k];
+    if (!raw || typeof raw !== "object") continue;
+    const o = raw as Record<string, unknown>;
+    const entry: Record<string, number> = {};
+    for (const f of FIELDS) {
+      const v = o[f];
+      if (typeof v === "number" && Number.isFinite(v) && v >= 0) entry[f] = Math.floor(v);
+    }
+    if (Object.keys(entry).length) clean[k as PlanKey] = entry;
+  }
+
+  const { error } = await admin.from("platform_plan_settings").upsert(
+    { id: true, plans: clean, updated_by: session.userId, updated_at: new Date().toISOString() },
+    { onConflict: "id" }
+  );
+  if (error) return { error: error.message };
+
+  await admin.from("audit_log").insert({
+    tenant_id: null,
+    actor_id: session.userId,
+    action: "platform.plans.update",
+    target_type: "platform_plan_settings",
+    meta: { plans: Object.keys(clean) },
   });
 
   return { ok: true };
