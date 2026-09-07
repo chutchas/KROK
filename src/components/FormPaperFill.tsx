@@ -65,17 +65,18 @@ export default function FormPaperFill({
               background: "#fff", color: "#111", boxShadow: "0 2px 16px rgba(0,0,0,.15)",
             }}
           >
-            {/* หัวกระดาษ (ซ่อนได้) */}
+            {/* ชื่อเอกสาร (ซ่อน/ย้ายได้) */}
             {schema.show_header !== false && (
-            <div style={{ position: "absolute", top: (schema.layout?.header?.y ?? 32), left: (schema.layout?.header?.x ?? 40), width: (schema.layout?.header?.w ?? CANVAS_W - 80), borderBottom: "2px solid #111", paddingBottom: 8, display: "flex", justifyContent: "space-between", gap: 12 }}>
-              <div style={{ minWidth: 0 }}>
+              <div style={{ position: "absolute", top: (schema.layout?.header?.y ?? 26), left: (schema.layout?.header?.x ?? 32), width: (schema.layout?.header?.w ?? 500), borderBottom: "2px solid #111", paddingBottom: 6 }}>
                 <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>{icon} {title}</div>
                 {schema.description && <div style={{ fontSize: ".72rem", color: "#555", marginTop: 2 }}>{schema.description}</div>}
               </div>
-              <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>
+            )}
+            {/* วันที่/ผู้กรอก (ซ่อน/ย้ายได้) */}
+            {schema.show_meta !== false && (
+              <div style={{ position: "absolute", top: (schema.layout?.meta?.y ?? 26), left: (schema.layout?.meta?.x ?? 596), width: (schema.layout?.meta?.w ?? CANVAS_W - 32 - 596), fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>
                 ผู้กรอก: {userName || "__________"}<br />วันที่: {today}
               </div>
-            </div>
             )}
 
             {/* บล็อกตามตำแหน่งที่ออกแบบ */}

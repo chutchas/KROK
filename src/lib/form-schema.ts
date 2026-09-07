@@ -71,8 +71,9 @@ export interface FormSchema {
   category?: string; // ประเภทฟอร์ม: preset key หรือข้อความกำหนดเอง
   flow: "sequential";
   steps: FormStep[];
-  // แสดงหัวเอกสาร (ชื่อ/วันที่/เลขที่) ไหม — undefined/true = แสดง, false = ซ่อน
+  // แสดงชื่อเอกสาร / แสดงวันที่-เลขที่ (แยกกัน) — undefined/true = แสดง, false = ซ่อน
   show_header?: boolean;
+  show_meta?: boolean;
   // ตำแหน่ง element บนมุมมองกระดาษ (px บนแคนวาส A4 กว้าง 794)
   // key = field id, "s:<stepId>" สำหรับหัวข้อขั้นตอน, "header" = หัวเอกสาร
   layout?: Record<string, PaperBox>;
@@ -178,7 +179,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (steps.length === 0) throw new Error("ฟอร์มไม่มีฟิลด์ที่ใช้งานได้");
 
   // เก็บ layout กระดาษ (ลากวาง) เฉพาะ key ที่ตรงกับ field id / "s:<stepId>" ที่มีจริง
-  const validKeys = new Set<string>(["header"]);
+  const validKeys = new Set<string>(["header", "meta"]);
   for (const s of steps) {
     validKeys.add(`s:${s.id}`);
     for (const f of s.fields) validKeys.add(f.id);
@@ -211,6 +212,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   };
   if (r.category != null && r.category !== "") schema.category = str(r.category, 60);
   if (r.show_header === false) schema.show_header = false;
+  if (r.show_meta === false) schema.show_meta = false;
   if (layout) schema.layout = layout;
   return schema;
 }

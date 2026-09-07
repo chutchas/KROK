@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, HEADER_H, FIELD_H, START_Y, HEADER_KEY, DEFAULT_HEADER_BOX, buildBlocks, autoLayout, snap, canvasHeight } from "@/lib/paper-layout";
+import { CANVAS_W, GRID, HEADER_H, FIELD_H, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, canvasHeight } from "@/lib/paper-layout";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus } from "lucide-react";
@@ -60,8 +60,9 @@ export default function FormPaperEditor({
         if (schema.layout[b.key]) merged[b.key] = schema.layout[b.key];
       }
     }
-    // หัวเอกสารเป็นบล็อกลากวางได้ (key = "header")
+    // ชื่อเอกสาร + วันที่/เลขที่ เป็นบล็อกลากวางแยกกัน
     merged[HEADER_KEY] = schema.layout?.[HEADER_KEY] || DEFAULT_HEADER_BOX;
+    merged[META_KEY] = schema.layout?.[META_KEY] || DEFAULT_META_BOX;
     return merged;
   }, [blocks, schema.layout]);
 
@@ -228,45 +229,42 @@ export default function FormPaperEditor({
             touchAction: "pan-x pan-y",
           }}
         >
-          {/* หัวเอกสาร — บล็อกลากวาง/ปรับขนาด/ซ่อนได้ */}
-          {(() => {
-            const hb = layout[HEADER_KEY];
-            const on = active === HEADER_KEY;
-            const hidden = schema.show_header === false;
+          {/* ชื่อเอกสาร + วันที่/เลขที่ — บล็อกลากวาง/ปรับขนาด/ซ่อนแยกกัน */}
+          {([
+            { key: HEADER_KEY, hidden: schema.show_header === false, hiddenLabel: t("editor.headerHidden"), content: (
+              <div style={{ fontSize: "1.2rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", borderBottom: "2px solid #111", paddingBottom: 4 }}>{schema.icon} {schema.title}</div>
+            ) },
+            { key: META_KEY, hidden: schema.show_meta === false, hiddenLabel: t("editor.metaHidden"), content: (
+              <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>วันที่: __________<br />เลขที่: __________</div>
+            ) },
+          ] as const).map((blk) => {
+            const bx = layout[blk.key];
+            const on = active === blk.key;
             return (
-              <div
-                data-krok-keep=""
-                onClick={() => select(HEADER_KEY)}
-                onPointerDown={(e) => onPointerDown(e, HEADER_KEY, "move")}
+              <div key={blk.key} data-krok-keep=""
+                onClick={() => select(blk.key)}
+                onPointerDown={(e) => onPointerDown(e, blk.key, "move")}
                 style={{
-                  position: "absolute", left: hb.x, top: hb.y, width: hb.w, boxSizing: "border-box",
-                  cursor: "grab", userSelect: "none", padding: "6px 10px 8px 28px",
-                  borderRadius: 4, opacity: hidden ? 0.45 : 1,
+                  position: "absolute", left: bx.x, top: bx.y, width: bx.w, boxSizing: "border-box",
+                  cursor: "grab", userSelect: "none", padding: "6px 10px 6px 28px", borderRadius: 4,
+                  opacity: blk.hidden ? 0.4 : 1,
                   border: on ? "1.5px solid var(--accent)" : "1px solid transparent",
                   outline: on ? "none" : "1px dashed #d0d0d0",
                   boxShadow: on ? "0 2px 10px rgba(0,0,0,.15)" : "none",
-                  borderBottom: hidden ? undefined : "2px solid #111",
                 }}
               >
-                <div onPointerDown={(e) => onPointerDown(e, HEADER_KEY, "move", true)} title={t("paper.drag")}
+                <div onPointerDown={(e) => onPointerDown(e, blk.key, "move", true)} title={t("paper.drag")}
                   style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 24, display: "flex", alignItems: "center", justifyContent: "center", cursor: "grab", touchAction: "none", background: on ? "var(--accent)" : "#eceef0", color: on ? "#fff" : "#9aa0a6", borderRadius: "4px 0 0 4px" }}>
                   <Icon icon={GripVertical} className="h-4 w-4" />
                 </div>
-                {hidden ? (
-                  <div style={{ fontSize: ".8rem", color: "#777" }}>{t("editor.headerHidden")}</div>
-                ) : (
-                  <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
-                    <div style={{ fontSize: "1.2rem", fontWeight: 700, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis" }}>{schema.icon} {schema.title}</div>
-                    <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>วันที่: __________<br />เลขที่: __________</div>
-                  </div>
-                )}
-                <div onPointerDown={(e) => onPointerDown(e, HEADER_KEY, "resize", true)} title={t("paper.resize")}
+                {blk.hidden ? <div style={{ fontSize: ".78rem", color: "#777" }}>{blk.hiddenLabel}</div> : blk.content}
+                <div onPointerDown={(e) => onPointerDown(e, blk.key, "resize", true)} title={t("paper.resize")}
                   style={{ position: "absolute", right: -3, top: 0, bottom: 0, width: 16, cursor: "ew-resize", touchAction: "none" }}>
                   <div style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 4, height: 24, borderRadius: 2, background: on ? "var(--accent)" : "#ccc" }} />
                 </div>
               </div>
             );
-          })()}
+          })}
 
           {/* บล็อกลากวาง */}
           {blocks.map((b) => {

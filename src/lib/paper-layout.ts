@@ -16,9 +16,11 @@ export const GAP_Y = 10;
 export const START_Y = 96; // ใต้หัวกระดาษ
 export const PAD = 40;
 
-// กล่องเริ่มต้นของ "หัวเอกสาร" (ชื่อ/วันที่/เลขที่) — ลาก/ปรับขนาด/ซ่อนได้
-export const HEADER_KEY = "header";
-export const DEFAULT_HEADER_BOX: PaperBox = { x: 32, y: 24, w: CANVAS_W - 64 };
+// หัวเอกสารแยกเป็น 2 บล็อกอิสระ: ชื่อเอกสาร + วันที่/เลขที่ (ลาก/ปรับขนาด/ซ่อนแยกกัน)
+export const HEADER_KEY = "header"; // ชื่อเอกสาร
+export const META_KEY = "meta";     // วันที่ / เลขที่
+export const DEFAULT_HEADER_BOX: PaperBox = { x: 32, y: 26, w: 500 };
+export const DEFAULT_META_BOX: PaperBox = { x: 596, y: 26, w: CANVAS_W - 32 - 596 };
 
 export type BlockKind = "step" | "field";
 export interface Block {

@@ -67,15 +67,19 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
           lineHeight: 1.5,
         }}
       >
-        {schema.show_header !== false && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 10, marginBottom: 16 }}>
-          <div>
-            <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{schema.icon} {schema.title}</div>
-            {schema.description && <div style={{ color: "#555", fontSize: ".82rem" }}>{schema.description}</div>}
-          </div>
-          <div style={{ fontSize: ".78rem", color: "#555", textAlign: "right" }}>
-            วันที่: ______________<br />เลขที่: ______________
-          </div>
+        {(schema.show_header !== false || schema.show_meta !== false) && (
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: schema.show_header !== false ? "2px solid #111" : "none", paddingBottom: 10, marginBottom: 16, gap: 12 }}>
+          {schema.show_header !== false ? (
+            <div>
+              <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{schema.icon} {schema.title}</div>
+              {schema.description && <div style={{ color: "#555", fontSize: ".82rem" }}>{schema.description}</div>}
+            </div>
+          ) : <div />}
+          {schema.show_meta !== false && (
+            <div style={{ fontSize: ".78rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>
+              วันที่: ______________<br />เลขที่: ______________
+            </div>
+          )}
         </div>
         )}
 

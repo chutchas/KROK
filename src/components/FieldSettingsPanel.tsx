@@ -83,21 +83,24 @@ export default function FieldSettingsPanel({
     );
   }
 
-  // ----- document header selected -----
-  if (selectedKey === "header") {
-    const shown = schema.show_header !== false;
-    const toggle = (v: boolean) => {
+  // ----- document header / meta selected -----
+  if (selectedKey === "header" || selectedKey === "meta") {
+    const toggle = (key: "show_header" | "show_meta", v: boolean) => {
       const n = { ...schema };
-      if (v) delete n.show_header; else n.show_header = false;
+      if (v) delete n[key]; else n[key] = false;
       onChange(n);
     };
+    const cbRow = (checked: boolean, label: string, onC: (v: boolean) => void) => (
+      <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".9rem", color: "var(--ink)", cursor: "pointer", marginTop: 8 }}>
+        <input type="checkbox" checked={checked} onChange={(e) => onC(e.target.checked)} style={{ width: 17, height: 17, accentColor: "var(--accent)" }} />
+        {label}
+      </label>
+    );
     return (
       <Shell title={t("editor.docHeader")} onClose={() => onSelect(null)}>
         <p style={{ fontSize: ".85rem", color: "var(--ink-2)", marginTop: 0 }}>{t("editor.docHeaderHint")}</p>
-        <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".9rem", color: "var(--ink)", cursor: "pointer" }}>
-          <input type="checkbox" checked={shown} onChange={(e) => toggle(e.target.checked)} style={{ width: 17, height: 17, accentColor: "var(--accent)" }} />
-          {t("editor.showHeader")}
-        </label>
+        {cbRow(schema.show_header !== false, t("editor.showHeader"), (v) => toggle("show_header", v))}
+        {cbRow(schema.show_meta !== false, t("editor.showMeta"), (v) => toggle("show_meta", v))}
       </Shell>
     );
   }
