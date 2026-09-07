@@ -21,17 +21,20 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
 
   if (!sub || sub.tenant_id !== session.tenantId) return { ok: false };
 
-  await dispatchWebhooks(session.tenantId, "submission.created", {
-    submission_id: sub.id,
-    form_id: sub.form_id,
-    form_title: sub.form_title,
-    user_name: sub.user_name,
-    result: sub.result,
-    fails: sub.fails,
-    answers: sub.answers,
-    approval_status: sub.approval_status,
-    submitted_at: sub.submitted_at,
-  }, sub.form_id as string);
+  // best-effort: อย่าให้ webhook พังทำให้ทั้ง action ล้ม (submission บันทึกไปแล้ว)
+  try {
+    await dispatchWebhooks(session.tenantId, "submission.created", {
+      submission_id: sub.id,
+      form_id: sub.form_id,
+      form_title: sub.form_title,
+      user_name: sub.user_name,
+      result: sub.result,
+      fails: sub.fails,
+      answers: sub.answers,
+      approval_status: sub.approval_status,
+      submitted_at: sub.submitted_at,
+    }, sub.form_id as string);
+  } catch { /* ignore */ }
 
   // แจ้งเตือน LINE/Email (best-effort)
   try {

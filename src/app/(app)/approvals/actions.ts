@@ -84,20 +84,23 @@ export async function reviewSubmission(
 
   // แจ้ง webhook เมื่อจบกระบวนการ (อนุมัติครบ หรือ ตีกลับ) — ไม่แจ้งตอนแค่เลื่อนขั้น
   if (newStatus === "approved" || newStatus === "rejected") {
-    await dispatchWebhooks(
-      session.tenantId,
-      newStatus === "approved" ? "submission.approved" : "submission.rejected",
-      {
-        submission_id: id,
-        form_id: sub.form_id,
-        form_title: sub.form_title,
-        decision,
-        reviewer_name: session.displayName,
-        note: note.slice(0, 500),
-        at: entry.at,
-      },
-      sub.form_id as string
-    );
+    // best-effort: การอนุมัติ commit ไปแล้ว — webhook พังต้องไม่ทำให้ action ล้ม
+    try {
+      await dispatchWebhooks(
+        session.tenantId,
+        newStatus === "approved" ? "submission.approved" : "submission.rejected",
+        {
+          submission_id: id,
+          form_id: sub.form_id,
+          form_title: sub.form_title,
+          decision,
+          reviewer_name: session.displayName,
+          note: note.slice(0, 500),
+          at: entry.at,
+        },
+        sub.form_id as string
+      );
+    } catch { /* ignore */ }
 
     // แจ้งเตือน LINE/Email (best-effort)
     try {

@@ -113,7 +113,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     history,
   };
 
-  const pdf = await buildSubmissionPdf(data);
+  let pdf: Buffer;
+  try {
+    pdf = await buildSubmissionPdf(data);
+  } catch (e) {
+    console.error("[krok] PDF generation failed:", e);
+    return NextResponse.json({ error: "สร้าง PDF ไม่สำเร็จ" }, { status: 500 });
+  }
   const filename = `KROK-${data.docNo}.pdf`;
 
   return new NextResponse(new Uint8Array(pdf), {

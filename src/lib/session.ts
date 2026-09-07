@@ -53,9 +53,94 @@ interface Bundle {
 
 const EMPTY_BUNDLE: Bundle = { memberships: [], profile: null, active: null };
 
+interface MembershipRow {
+  role: KrokSession["role"];
+  role_key: string | null;
+  tenant_id: string;
+  created_at: string;
+  tenants: { name: string } | { name: string }[] | null;
+}
+function nameOf(row: { tenants: MembershipRow["tenants"] }): string {
+  const tn = row.tenants;
+  const n = Array.isArray(tn) ? tn[0]?.name : tn?.name;
+  return n ?? "องค์กร";
+}
+
+type ServerClient = Awaited<ReturnType<typeof createClient>>;
+
+/**
+ * fallback: สร้าง bundle จาก query ตรง (memberships + profile + tenant_role)
+ * ใช้เมื่อ RPC session_bundle ล้มเหลว — เช่น ยังไม่ได้รัน migration 0023
+ * หรือ error ชั่วคราว — กันไม่ให้ผู้ใช้ที่ล็อกอินแล้วกลายเป็น null (ลูป /login)
+ */
+async function bundleFromQueries(supabase: ServerClient, userId: string, wanted: string | null): Promise<Bundle> {
+  const { data: rows } = await supabase
+    .from("memberships")
+    .select("role, role_key, tenant_id, created_at, tenants(name)")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: true });
+  const list = (rows || []) as MembershipRow[];
+
+  const { data: prof } = await supabase
+    .from("profiles")
+    .select("platform_role, avatar_url")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const profile = prof
+    ? { platform_role: (prof.platform_role as string) ?? null, avatar_url: (prof.avatar_url as string) ?? null }
+    : null;
+
+  const memberships: BundleMembership[] = list.map((m) => ({
+    tenant_id: m.tenant_id,
+    role: m.role,
+    role_key: m.role_key,
+    tenant_name: nameOf(m),
+    created_at: m.created_at,
+  }));
+
+  if (list.length === 0) return { memberships, profile, active: null };
+
+  const active = (wanted && list.find((m) => m.tenant_id === wanted)) || list[0];
+  const roleKey = active.role_key || (active.role === "operator" ? "user" : active.role);
+
+  let menus: string[] | null;
+  let can_manage: boolean;
+  let role_name: string;
+  if (roleKey === "owner") {
+    menus = null;
+    can_manage = true;
+    role_name = "owner";
+  } else {
+    const { data: roleRow } = await supabase
+      .from("tenant_roles")
+      .select("name, can_manage, menus")
+      .eq("tenant_id", active.tenant_id)
+      .eq("key", roleKey)
+      .maybeSingle();
+    menus = roleRow?.menus ? (roleRow.menus as string[]) : ["forms", "dashboard"];
+    can_manage = roleRow ? !!roleRow.can_manage : active.role !== "operator";
+    role_name = (roleRow?.name as string) || roleKey;
+  }
+
+  return {
+    memberships,
+    profile,
+    active: {
+      tenant_id: active.tenant_id,
+      role: active.role,
+      role_key: roleKey,
+      tenant_name: nameOf(active),
+      role_name,
+      can_manage,
+      menus,
+    },
+  };
+}
+
 /**
  * ยิง Supabase ครั้งเดียวต่อ request: auth.getUser() + rpc(session_bundle) แบบขนาน
  * (rpc อ่าน auth.uid() จาก JWT ใน cookie จึงไม่ต้องรอ getUser ก่อน)
+ * ถ้า RPC ล้มเหลว → fallback ไป query ตรง (ยังใช้งานได้แม้ migration 0023 ยังไม่ถูกรัน)
  * cache() → layout + page + action ใน request เดียวกันใช้ผลลัพธ์ร่วมกัน
  */
 const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null> => {
@@ -63,14 +148,28 @@ const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null>
   const store = await cookies();
   const wanted = store.get(WS_COOKIE)?.value ?? null;
 
-  const [{ data: userData }, { data: bundleData }] = await Promise.all([
+  const [{ data: userData }, rpcRes] = await Promise.all([
     supabase.auth.getUser(),
     supabase.rpc("session_bundle", { p_wanted: wanted }),
   ]);
 
   const user = userData?.user;
   if (!user) return null;
-  return { user, bundle: (bundleData as Bundle | null) ?? EMPTY_BUNDLE };
+
+  // RPC สำเร็จ → ใช้ผลจาก RPC (round-trip เดียว = fast path)
+  if (!rpcRes.error && rpcRes.data) {
+    return { user, bundle: rpcRes.data as Bundle };
+  }
+
+  // RPC ล้มเหลว → degrade อย่างนุ่มนวลด้วย query ตรง (อย่าปล่อยให้เป็น EMPTY = null session)
+  if (rpcRes.error) console.error("[krok] session_bundle rpc failed, falling back:", rpcRes.error.message);
+  try {
+    const bundle = await bundleFromQueries(supabase, user.id, wanted);
+    return { user, bundle };
+  } catch (e) {
+    console.error("[krok] session fallback query failed:", e);
+    return { user, bundle: EMPTY_BUNDLE };
+  }
 });
 
 /**

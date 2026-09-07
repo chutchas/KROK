@@ -5,9 +5,18 @@ import PDFDocument from "pdfkit";
 
 // ฟอนต์ไทย Garuda (TLWG, เผยแพร่ต่อได้) — ฝังใน repo ที่ src/assets/fonts
 // pdfkit ใช้ fontkit จัด layout จึงวางสระ/วรรณยุกต์ไทยถูกต้อง
-const FONT_DIR = path.join(process.cwd(), "src/assets/fonts");
-const FONT_REGULAR = fs.readFileSync(path.join(FONT_DIR, "Garuda-Regular.ttf"));
-const FONT_BOLD = fs.readFileSync(path.join(FONT_DIR, "Garuda-Bold.ttf"));
+// โหลดแบบ lazy + cache: ถ้า path เพี้ยนตอน runtime จะ throw เฉพาะตอนสร้าง PDF
+// (route จับ error → 500 พร้อมข้อความ) ไม่พังตอน import ทั้งโมดูล
+let _fonts: { reg: Buffer; bold: Buffer } | null = null;
+function loadFonts(): { reg: Buffer; bold: Buffer } {
+  if (_fonts) return _fonts;
+  const dir = path.join(process.cwd(), "src/assets/fonts");
+  _fonts = {
+    reg: fs.readFileSync(path.join(dir, "Garuda-Regular.ttf")),
+    bold: fs.readFileSync(path.join(dir, "Garuda-Bold.ttf")),
+  };
+  return _fonts;
+}
 
 // จานสีเอกสาร (โหมดพิมพ์ = สว่างเสมอ)
 const C = {
@@ -76,9 +85,10 @@ function statusHex(s?: SubmissionPdfData["statusColor"]): string {
 /** สร้าง PDF ใบส่งฟอร์มเป็น Buffer (เรียกจาก API route) */
 export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
+    const fonts = loadFonts();
     const doc = new PDFDocument({ size: "A4", margins: { top: M, bottom: M, left: M, right: M }, bufferPages: true });
-    doc.registerFont("th", FONT_REGULAR);
-    doc.registerFont("th-bold", FONT_BOLD);
+    doc.registerFont("th", fonts.reg);
+    doc.registerFont("th-bold", fonts.bold);
 
     const chunks: Buffer[] = [];
     doc.on("data", (c: Buffer) => chunks.push(c));
@@ -145,7 +155,7 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     // ---------- Answers ----------
     for (const a of data.answers) {
       if (a.type === "table" && a.columns && a.columns.length) {
-        drawTable(doc, a, () => y, (ny) => { y = ny; }, ensure);
+        drawTable(doc, a, () => y, (ny) => { y = ny; });
         continue;
       }
       // ปกติ: label ซ้าย + ค่าขวา (ถ้าเป็นรูป → เต็มความกว้างใต้ label)
@@ -237,55 +247,61 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
   });
 }
 
-// ตารางแบบกริด
+// ตารางแบบกริด — จัดการ page break เอง (local y) และวาดเส้นแบ่งคอลัมน์ต่อแถว
+// จึงถูกต้องแม้ตารางยาวข้ามหน้า
 function drawTable(
   doc: PDFKit.PDFDocument,
   a: PdfAnswer,
   getY: () => number,
-  setY: (n: number) => void,
-  ensure: (n: number) => void
+  setY: (n: number) => void
 ) {
   const cols = a.columns!;
   const rows = a.rows || [];
   const colW = CONTENT_W / cols.length;
   const rowH = 20;
+  const bottom = PAGE.h - M;
 
-  ensure(40);
   let y = getY();
+  const brk = (need: number) => { if (y + need > bottom) { doc.addPage(); y = M; } };
+
+  // เส้นขอบแถว: กรอบนอก + เส้นแบ่งคอลัมน์ (สูงเท่าแถวนี้ → ข้ามหน้าไม่เพี้ยน)
+  const rowBorders = () => {
+    doc.lineWidth(0.5).strokeColor(C.line);
+    doc.rect(M, y, CONTENT_W, rowH).stroke();
+    for (let i = 1; i < cols.length; i++) doc.moveTo(M + i * colW, y).lineTo(M + i * colW, y + rowH).stroke();
+  };
+
+  brk(40);
   doc.font("th").fontSize(9.5).fillColor(C.muted).text(clean(a.label) || "—", M, y);
   y = doc.y + 4;
 
-  // header
-  ensure(rowH + 4);
-  doc.rect(M, y, CONTENT_W, rowH).fill(C.brandSoft);
-  cols.forEach((c, i) => {
-    doc.font("th-bold").fontSize(8.5).fillColor(C.ink)
-      .text(clean(c.label), M + i * colW + 5, y + 5, { width: colW - 10, ellipsis: true, lineBreak: false });
-  });
-  // vertical + outer border
-  doc.lineWidth(0.5).strokeColor(C.line);
-  doc.rect(M, y, CONTENT_W, rowH).stroke();
-  y += rowH;
+  const drawHeader = () => {
+    doc.rect(M, y, CONTENT_W, rowH).fill(C.brandSoft);
+    cols.forEach((c, i) => {
+      doc.font("th-bold").fontSize(8.5).fillColor(C.ink)
+        .text(clean(c.label), M + i * colW + 5, y + 5, { width: colW - 10, ellipsis: true, lineBreak: false });
+    });
+    rowBorders();
+    y += rowH;
+  };
+
+  brk(rowH * 2);
+  drawHeader();
 
   if (!rows.length) {
-    doc.rect(M, y, CONTENT_W, rowH).stroke(C.line);
     doc.font("th").fontSize(9).fillColor(C.faint).text("—", M + 5, y + 5);
+    rowBorders();
     y += rowH;
   }
   for (const r of rows) {
-    ensure(rowH + 2);
-    if (y + rowH > PAGE.h - M) { doc.addPage(); y = M; }
+    // ขึ้นหน้าใหม่ → วาดหัวตารางซ้ำ
+    if (y + rowH > bottom) { doc.addPage(); y = M; drawHeader(); }
     cols.forEach((c, i) => {
       doc.font("th").fontSize(9).fillColor(C.ink)
         .text(clean(r[c.id]) || "—", M + i * colW + 5, y + 5, { width: colW - 10, ellipsis: true, lineBreak: false });
     });
-    doc.lineWidth(0.5).strokeColor(C.line).rect(M, y, CONTENT_W, rowH).stroke();
+    rowBorders();
     y += rowH;
-  }
-  // column separators
-  doc.lineWidth(0.5).strokeColor(C.line);
-  for (let i = 1; i < cols.length; i++) {
-    doc.moveTo(M + i * colW, getY()).lineTo(M + i * colW, y).stroke();
   }
   setY(y + 10);
 }
