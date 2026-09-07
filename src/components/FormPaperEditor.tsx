@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, HEADER_H, FIELD_H, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, canvasHeight } from "@/lib/paper-layout";
+import { CANVAS_W, GRID, HEADER_H, FIELD_H, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, canvasHeight, fieldBoxHeight } from "@/lib/paper-layout";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus } from "lucide-react";
@@ -19,6 +19,24 @@ function BlankPreview({ f }: { f: FormField }) {
   if (f.type === "pass_fail") return <div style={{ fontSize: ".72rem", color: "#555" }}>☐ ผ่าน ☐ ไม่ผ่าน</div>;
   if (f.type === "signature") return <div style={{ borderBottom: "1px solid #333", height: 20, marginTop: 4 }} />;
   if (f.type === "photo") return <div style={{ border: "1px dashed #999", height: 22, borderRadius: 3, marginTop: 4 }} />;
+  if (f.type === "table") {
+    const cols = f.columns?.length ? f.columns : [{ id: "c0", label: "รายการ" }];
+    const rows = Math.min(Math.max(f.min_rows ?? 1, 1), 4);
+    return (
+      <div style={{ marginTop: 4, border: "1px solid #bbb", borderRadius: 3, overflow: "hidden" }}>
+        <div style={{ display: "flex", background: "#eee", borderBottom: "1px solid #bbb" }}>
+          {cols.map((c) => (
+            <div key={c.id} style={{ flex: 1, fontSize: ".62rem", color: "#333", padding: "2px 5px", borderRight: "1px solid #ddd", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</div>
+          ))}
+        </div>
+        {Array.from({ length: rows }).map((_, ri) => (
+          <div key={ri} style={{ display: "flex", borderBottom: ri < rows - 1 ? "1px solid #eee" : "none" }}>
+            {cols.map((c) => <div key={c.id} style={{ flex: 1, height: 18, borderRight: "1px solid #eee" }} />)}
+          </div>
+        ))}
+      </div>
+    );
+  }
   if ((f.type === "select" || f.type === "checkbox") && f.options?.length)
     return <div style={{ fontSize: ".68rem", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.options.map((o) => `☐ ${o}`).join("  ")}</div>;
   return <div style={{ borderBottom: "1px dotted #999", height: 14, marginTop: 6 }} />;
@@ -283,7 +301,7 @@ export default function FormPaperEditor({
                   left: box.x,
                   top: box.y,
                   width: box.w,
-                  minHeight: isStep ? HEADER_H : FIELD_H,
+                  minHeight: isStep ? HEADER_H : fieldBoxHeight(b.field),
                   boxSizing: "border-box",
                   cursor: "grab",
                   userSelect: "none",

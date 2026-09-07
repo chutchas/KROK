@@ -36,6 +36,19 @@ export function snap(n: number) {
   return Math.round(n / GRID) * GRID;
 }
 
+// ความสูงของกล่องฟิลด์: ตารางสูงตามจำนวนแถวเริ่มต้น, ที่เหลือคงที่
+export function fieldBoxHeight(f?: FormField): number {
+  if (f?.type === "table") {
+    const rows = Math.min(Math.max(f.min_rows ?? 1, 1), 6);
+    return 44 + rows * 26 + 20; // หัวตาราง + แถว + ป้ายชื่อ
+  }
+  return FIELD_H;
+}
+
+export function blockHeight(b: Block): number {
+  return b.kind === "step" ? HEADER_H : fieldBoxHeight(b.field);
+}
+
 // วางอัตโนมัติแบบเรียงบนลงล่าง (หัวข้อเต็มแถว, ฟิลด์ 2 คอลัมน์)
 export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
   const out: Record<string, PaperBox> = {};
@@ -49,11 +62,11 @@ export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
       col = 0;
       out[b.key] = { x: PAD, y, w: usable };
       y += HEADER_H + GAP_Y;
-    } else if (b.field?.width === "full") {
-      // ฟิลด์เต็มแถว — ปิดคู่ครึ่งแถวที่ค้างก่อน
+    } else if (b.field?.width === "full" || b.field?.type === "table") {
+      // ฟิลด์เต็มแถว (รวมตาราง) — ปิดคู่ครึ่งแถวที่ค้างก่อน
       if (col === 1) { y += FIELD_H + GAP_Y; col = 0; }
       out[b.key] = { x: PAD, y, w: usable };
-      y += FIELD_H + GAP_Y;
+      y += fieldBoxHeight(b.field) + GAP_Y;
     } else {
       const x = PAD + (col === 0 ? 0 : colW + 16);
       out[b.key] = { x, y, w: colW };
@@ -103,7 +116,7 @@ export function canvasHeight(blocks: Block[], layout: Record<string, PaperBox>, 
   let max = min;
   for (const b of blocks) {
     const box = layout[b.key];
-    if (box) max = Math.max(max, box.y + (b.kind === "step" ? HEADER_H : FIELD_H) + 60);
+    if (box) max = Math.max(max, box.y + blockHeight(b) + 60);
   }
   return max;
 }

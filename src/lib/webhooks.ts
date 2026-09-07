@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "crypto";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { filterAnswersByFields } from "@/lib/webhook-utils";
 
 export type WebhookEvent = "submission.created" | "submission.approved" | "submission.rejected";
 
@@ -12,6 +13,37 @@ interface WebhookRow {
   active: boolean;
   form_id: string | null;
   fields: string[] | null;
+}
+
+const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+/**
+ * ยิง POST พร้อม retry: ลองสูงสุด 3 ครั้ง (1 + 2 retry)
+ * retry เมื่อ network error / timeout / HTTP 5xx / 429 — หยุดทันทีถ้า 2xx-4xx อื่น
+ * backoff สั้น (300ms, 1200ms) เพราะรันใน request แบบ serverless
+ */
+async function postWithRetry(
+  url: string,
+  headers: Record<string, string>,
+  body: string,
+  attempts = 3
+): Promise<string> {
+  let last = "";
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), 8000);
+      const res = await fetch(url, { method: "POST", headers, body, signal: ctrl.signal });
+      clearTimeout(timer);
+      const retryable = res.status >= 500 || res.status === 429;
+      last = i > 0 ? `${res.status} (attempt ${i + 1})` : `${res.status}`;
+      if (!retryable) return last; // สำเร็จหรือ error ฝั่ง client → ไม่ลองซ้ำ
+    } catch (e) {
+      last = "error: " + (e instanceof Error ? e.message.slice(0, 80) : "failed");
+    }
+    if (i < attempts - 1) await sleep(i === 0 ? 300 : 1200);
+  }
+  return last;
 }
 
 // ลำดับ field id ของฟอร์ม (flatten steps) — ใช้จับคู่กับ answers ที่เรียงลำดับเดียวกัน
@@ -65,29 +97,19 @@ export async function dispatchWebhooks(
       // เลือกฟิลด์ → สร้าง body เฉพาะของ webhook นี้ (กรอง answers ตามลำดับ field)
       let body = fullBody;
       if (answers && Array.isArray(h.fields) && h.fields.length > 0 && fieldIds.length) {
-        const keep = new Set(h.fields);
-        const filtered = answers.filter((_, i) => keep.has(fieldIds[i]));
+        const filtered = filterAnswersByFields(answers, fieldIds, h.fields);
         body = JSON.stringify({ event, sent_at: new Date().toISOString(), data: { ...payload, answers: filtered } });
       }
-      let status = "";
-      try {
-        const headers: Record<string, string> = {
-          "Content-Type": "application/json",
-          "User-Agent": "KROK-Webhook/1.0",
-          "X-KROK-Event": event,
-        };
-        if (h.secret) {
-          headers["X-KROK-Signature"] =
-            "sha256=" + crypto.createHmac("sha256", h.secret).update(body).digest("hex");
-        }
-        const ctrl = new AbortController();
-        const timer = setTimeout(() => ctrl.abort(), 8000);
-        const res = await fetch(h.url, { method: "POST", headers, body, signal: ctrl.signal });
-        clearTimeout(timer);
-        status = `${res.status}`;
-      } catch (e) {
-        status = "error: " + (e instanceof Error ? e.message.slice(0, 80) : "failed");
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        "User-Agent": "KROK-Webhook/1.0",
+        "X-KROK-Event": event,
+      };
+      if (h.secret) {
+        headers["X-KROK-Signature"] =
+          "sha256=" + crypto.createHmac("sha256", h.secret).update(body).digest("hex");
       }
+      const status = await postWithRetry(h.url, headers, body);
       await admin.from("webhooks").update({ last_status: status, last_at: new Date().toISOString() }).eq("id", h.id);
     })
   );

@@ -3,7 +3,8 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon, Smartphone, SearchX } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus } from "lucide-react";
+import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
 
@@ -16,7 +17,7 @@ export interface FormListItem {
   category?: string;
 }
 
-export default function FormsListClient({ forms, highlightId }: { forms: FormListItem[]; highlightId?: string }) {
+export default function FormsListClient({ forms, highlightId, canCreate = false }: { forms: FormListItem[]; highlightId?: string; canCreate?: boolean }) {
   const { t, tt, lang } = useT();
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
@@ -59,8 +60,24 @@ export default function FormsListClient({ forms, highlightId }: { forms: FormLis
       <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; flex:1 1 100% !important; min-width:0 !important; } }`}</style>
 
       <div style={{ display: "grid", gap: 10 }}>
-        {forms.length === 0 && (
+        {forms.length === 0 && !canCreate && (
           <Card><EmptyState icon={<Icon icon={Smartphone} className="h-7 w-7" />} title={t("forms.empty")} /></Card>
+        )}
+        {forms.length === 0 && canCreate && (
+          <Card>
+            <EmptyState
+              icon={<Icon icon={Smartphone} className="h-7 w-7" />}
+              title={t("forms.emptyManager")}
+              hint={t("forms.emptyManagerHint")}
+            />
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+              <Link href="/studio" style={{ textDecoration: "none" }}>
+                <Button variant="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon icon={Plus} className="h-4 w-4" /> {t("forms.createFirst")}
+                </Button>
+              </Link>
+            </div>
+          </Card>
         )}
         {forms.length > 0 && filtered.length === 0 && (
           <Card><EmptyState icon={<Icon icon={SearchX} className="h-7 w-7" />} title={t("forms.noMatch")} /></Card>

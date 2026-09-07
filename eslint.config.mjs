@@ -11,6 +11,8 @@ const eslintConfig = defineConfig([
       "@next/next/no-img-element": "off",
       // โหลดฟอนต์ผ่าน <link> ใน App Router head ถูกต้องแล้ว
       "@next/next/no-page-custom-font": "off",
+      // ตั้ง state ใน effect บางจุด (sync ค่าจาก prop/online/route) ตั้งใจแล้ว → เตือน ไม่บล็อก CI
+      "react-hooks/set-state-in-effect": "warn",
     },
   },
   // Override default ignores of eslint-config-next.

@@ -52,5 +52,5 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
     category: f.schema.category,
   }));
 
-  return <FormsListClient forms={forms} highlightId={highlightId} />;
+  return <FormsListClient forms={forms} highlightId={highlightId} canCreate={manager} />;
 }

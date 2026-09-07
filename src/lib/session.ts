@@ -2,6 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import type { MenuKey } from "@/lib/menus";
 
@@ -28,86 +29,97 @@ export interface WorkspaceItem {
   role: KrokSession["role"];
 }
 
-interface MembershipRow {
+// รูปแบบ jsonb ที่ RPC session_bundle คืน (ดู supabase/migrations/0023_session_bundle.sql)
+interface BundleMembership {
+  tenant_id: string;
   role: KrokSession["role"];
   role_key: string | null;
-  tenant_id: string;
+  tenant_name: string;
   created_at: string;
-  tenants: { name: string } | { name: string }[] | null;
+}
+interface Bundle {
+  memberships: BundleMembership[];
+  profile: { platform_role: string | null; avatar_url: string | null } | null;
+  active: {
+    tenant_id: string;
+    role: KrokSession["role"];
+    role_key: string;
+    tenant_name: string;
+    role_name: string;
+    can_manage: boolean;
+    menus: string[] | null; // null = ทุกเมนู (owner)
+  } | null;
 }
 
-function nameOf(row: MembershipRow): string {
-  const t = row.tenants;
-  const n = Array.isArray(t) ? t[0]?.name : t?.name;
-  return n ?? "องค์กร";
-}
+const EMPTY_BUNDLE: Bundle = { memberships: [], profile: null, active: null };
+
+/**
+ * ยิง Supabase ครั้งเดียวต่อ request: auth.getUser() + rpc(session_bundle) แบบขนาน
+ * (rpc อ่าน auth.uid() จาก JWT ใน cookie จึงไม่ต้องรอ getUser ก่อน)
+ * cache() → layout + page + action ใน request เดียวกันใช้ผลลัพธ์ร่วมกัน
+ */
+const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null> => {
+  const supabase = await createClient();
+  const store = await cookies();
+  const wanted = store.get(WS_COOKIE)?.value ?? null;
+
+  const [{ data: userData }, { data: bundleData }] = await Promise.all([
+    supabase.auth.getUser(),
+    supabase.rpc("session_bundle", { p_wanted: wanted }),
+  ]);
+
+  const user = userData?.user;
+  if (!user) return null;
+  return { user, bundle: (bundleData as Bundle | null) ?? EMPTY_BUNDLE };
+});
 
 /**
  * ดึง session ปัจจุบัน + workspace ที่ active (ตาม cookie krok_ws)
- * ถ้า cookie ไม่ตรงกับ membership ใด ๆ → ใช้ workspace แรก
  * คืน null ถ้าไม่ได้ล็อกอินหรือยังไม่มี membership
  */
-// cache(): dedupe ภายในหนึ่ง request — layout + page เรียก getSession ได้โดยยิง Supabase ครั้งเดียว
 export const getSession = cache(async (): Promise<KrokSession | null> => {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return null;
+  const res = await getBundle();
+  if (!res) return null;
+  const { user, bundle } = res;
+  const a = bundle.active;
+  if (!a) return null;
 
-  const { data: rows } = await supabase
-    .from("memberships")
-    .select("role, role_key, tenant_id, created_at, tenants(name)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
-
-  const list = (rows || []) as MembershipRow[];
-  if (list.length === 0) return null;
-
-  const store = await cookies();
-  const wanted = store.get(WS_COOKIE)?.value;
-  const active = (wanted && list.find((m) => m.tenant_id === wanted)) || list[0];
-  const roleKey = active.role_key || (active.role === "operator" ? "user" : active.role);
-
-  const [{ data: prof }, { data: roleRow }] = await Promise.all([
-    supabase.from("profiles").select("platform_role, avatar_url").eq("user_id", user.id).maybeSingle(),
-    supabase
-      .from("tenant_roles")
-      .select("name, can_manage")
-      .eq("tenant_id", active.tenant_id)
-      .eq("key", roleKey)
-      .maybeSingle(),
-  ]);
-
-  const platformRole = ((prof?.platform_role as string) ?? "user") as KrokSession["platformRole"];
-  const canManageWs =
-    roleKey === "owner" || (roleRow ? (roleRow.can_manage as boolean) : active.role !== "operator");
+  const platformRole = ((bundle.profile?.platform_role as string) ?? "user") as KrokSession["platformRole"];
 
   return {
     userId: user.id,
     email: user.email ?? "",
-    tenantId: active.tenant_id,
-    tenantName: nameOf(active),
-    role: active.role,
-    roleKey,
-    roleName: (roleRow?.name as string) || roleKey,
-    canManageWs,
+    tenantId: a.tenant_id,
+    tenantName: a.tenant_name,
+    role: a.role,
+    roleKey: a.role_key,
+    roleName: a.role_name,
+    canManageWs: a.can_manage,
     displayName:
       (user.user_metadata?.display_name as string) ||
       (user.email ? user.email.split("@")[0] : "ผู้ใช้"),
-    avatarUrl: (prof?.avatar_url as string) || (user.user_metadata?.avatar_url as string) || "",
+    avatarUrl: (bundle.profile?.avatar_url as string) || (user.user_metadata?.avatar_url as string) || "",
     platformRole,
     isPlatformAdmin: platformRole === "platform_admin",
   };
 });
 
-/** สิทธิ์เมนูของ role ปัจจุบันใน workspace (จาก tenant_roles.menus; owner = ทุกเมนู) */
+/** สิทธิ์เมนูของ role ปัจจุบันใน workspace (owner = ทุกเมนู) */
 export const getAllowedMenus = cache(async (
   tenantId: string,
   roleKey: string
-): Promise<import("@/lib/menus").MenuKey[]> => {
+): Promise<MenuKey[]> => {
   const { ALL_MENU_KEYS, cleanMenus } = await import("@/lib/menus");
   if (roleKey === "owner") return ALL_MENU_KEYS;
+
+  // fast path: ถ้าถามถึง workspace ที่ active อยู่ → ใช้ menus จาก bundle (ไม่ยิงเพิ่ม)
+  const res = await getBundle();
+  const a = res?.bundle.active;
+  if (a && a.tenant_id === tenantId && a.role_key === roleKey) {
+    return a.menus === null ? ALL_MENU_KEYS : cleanMenus(a.menus);
+  }
+
+  // fallback: workspace อื่น (พบไม่บ่อย) → query ตรง
   const supabase = await createClient();
   const { data } = await supabase
     .from("tenant_roles")
@@ -121,21 +133,11 @@ export const getAllowedMenus = cache(async (
 
 /** รายชื่อ workspace ทั้งหมดที่ผู้ใช้ปัจจุบันเป็นสมาชิก (เรียงตามเวลาที่เข้าร่วม) */
 export async function listWorkspaces(): Promise<WorkspaceItem[]> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
-
-  const { data: rows } = await supabase
-    .from("memberships")
-    .select("role, tenant_id, created_at, tenants(name)")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: true });
-
-  return ((rows || []) as MembershipRow[]).map((m) => ({
+  const res = await getBundle();
+  if (!res) return [];
+  return res.bundle.memberships.map((m) => ({
     tenantId: m.tenant_id,
-    tenantName: nameOf(m),
+    tenantName: m.tenant_name,
     role: m.role,
   }));
 }
