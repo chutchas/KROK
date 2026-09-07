@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
@@ -9,7 +9,6 @@ import { LogoMark } from "@/components/Logo";
 
 export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const params = useSearchParams();
   const { t } = useT();
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [email, setEmail] = useState("");
@@ -37,7 +36,8 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        router.push(params.get("next") || "/dashboard");
+        // ล็อกอินสำเร็จ → เข้าแดชบอร์ดเสมอ
+        router.push("/dashboard");
         router.refresh();
       }
     } catch (err) {
