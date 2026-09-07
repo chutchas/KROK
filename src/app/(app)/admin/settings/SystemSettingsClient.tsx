@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Icon from "@/components/Icon";
 import { Settings, Bot, CreditCard, Package } from "lucide-react";
 import AdminAiClient, { type AiSettings } from "../ai/AdminAiClient";
@@ -26,12 +26,6 @@ export default function SystemSettingsClient({
   plansConfigured: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("ai");
-
-  // ปิดสีธีมของ scrollbar เฉพาะหน้านี้ (กลับเป็นสีเทาปกติ)
-  useEffect(() => {
-    document.documentElement.classList.add("krok-plain-scroll");
-    return () => document.documentElement.classList.remove("krok-plain-scroll");
-  }, []);
 
   const TABS: { id: Tab; label: string; icon: typeof Bot }[] = [
     { id: "ai", label: "ตั้งค่า AI", icon: Bot },

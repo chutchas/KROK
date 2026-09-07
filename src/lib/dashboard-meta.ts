@@ -55,6 +55,33 @@ export const formatHint = (f: WidgetFormat, en = false) => pick(FORMAT_HINT_L[f]
 export const metricLabel = (m: WidgetMetric, en = false) => pick(METRIC_L[m], en);
 export const rangeLabel = (r: WidgetRange, en = false) => pick(RANGE_L[r], en);
 
+// ---- คำนวณ metric (pure — ใช้ทั้งฝั่ง server และเทสต์) ----
+export interface MetricRow {
+  result: "pass" | "fail";
+  approval_status?: string | null;
+  duration_s: number | null;
+  user_name?: string | null;
+}
+export function calcMetric(rows: MetricRow[], metric: WidgetMetric): number {
+  if (metric === "usage") return rows.length;
+  if (metric === "pending") return rows.filter((r) => r.approval_status === "pending").length;
+  if (metric === "passrate") {
+    const pass = rows.filter((r) => r.result === "pass").length;
+    const fail = rows.filter((r) => r.result === "fail").length;
+    return pass + fail ? Math.round((pass / (pass + fail)) * 100) : 0;
+  }
+  if (metric === "avgtime") {
+    const ds = rows.map((r) => r.duration_s).filter((n): n is number => typeof n === "number");
+    return ds.length ? Math.round(ds.reduce((a, b) => a + b, 0) / ds.length) : 0;
+  }
+  return new Set(rows.map((r) => (r.user_name || "").trim()).filter(Boolean)).size; // submitters
+}
+
+// จำนวนวันของ trend ตามช่วง (month = ถึงวันปัจจุบันของเดือน)
+export function trendDays(range: WidgetRange, now = new Date()): number {
+  return range === "7d" ? 7 : range === "30d" ? 30 : now.getDate();
+}
+
 // หน่วยต่อท้ายค่า (สำหรับ stat)
 export const metricUnit = (m: WidgetMetric, en = false): string => {
   if (m === "passrate") return "%";

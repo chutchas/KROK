@@ -2,7 +2,7 @@ import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getQuotaSnapshot } from "@/lib/quota";
 import type { DashWidget } from "@/lib/dashboard-meta";
-import DashboardClient, { type SubRow, type SlimRow, type FormOpt, type Summary } from "./DashboardClient";
+import DashboardClient, { type SubRow, type FormOpt, type Summary } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
 
@@ -10,9 +10,7 @@ export default async function DashboardPage() {
   const session = await enforceMenu("dashboard");
   const supabase = await createClient();
 
-  const since90 = new Date(Date.now() - 90 * 24 * 3600 * 1000).toISOString();
-
-  const [snap, recentRes, slimRes, formsRes, layoutRes] = await Promise.all([
+  const [snap, recentRes, formsRes, layoutRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด (ครบฟิลด์ สำหรับ list + modal)
     supabase
@@ -20,13 +18,6 @@ export default async function DashboardPage() {
       .select("id, form_title, form_icon, user_name, result, fails, answers, duration_s, submitted_at, approval_status")
       .order("submitted_at", { ascending: false })
       .limit(100),
-    // ข้อมูล slim 90 วัน (สำหรับคำนวณ widget)
-    supabase
-      .from("submissions")
-      .select("form_id, form_title, form_icon, user_name, result, approval_status, duration_s, submitted_at")
-      .gte("submitted_at", since90)
-      .order("submitted_at", { ascending: false })
-      .limit(5000),
     // ฟอร์มทั้งหมด (สำหรับตัวเลือกใน widget)
     supabase
       .from("forms")
@@ -62,7 +53,6 @@ export default async function DashboardPage() {
     <DashboardClient
       tenantId={session.tenantId}
       initial={(recentRes.data || []) as SubRow[]}
-      slim={(slimRes.data || []) as SlimRow[]}
       forms={forms}
       summary={summary}
       initialWidgets={initialWidgets}

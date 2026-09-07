@@ -13,7 +13,7 @@ import {
   formatLabel, formatHint, metricLabel, rangeLabel, metricUnit,
   type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
-import { saveDashboardLayout } from "./actions";
+import { saveDashboardLayout, computeWidget, type WidgetResult } from "./actions";
 
 export interface AnswerItem {
   label: string; type: string; display?: string; note?: string; fail?: boolean; photoField?: string;
@@ -23,12 +23,6 @@ export interface SubRow {
   result: "pass" | "fail"; fails: string[]; answers: AnswerItem[];
   duration_s: number | null; submitted_at: string;
   approval_status?: "none" | "pending" | "approved" | "rejected";
-}
-// แถวแบบเบา 90 วัน สำหรับคำนวณ widget
-export interface SlimRow {
-  form_id: string | null; form_title: string; form_icon: string; user_name: string;
-  result: "pass" | "fail"; approval_status?: "none" | "pending" | "approved" | "rejected";
-  duration_s: number | null; submitted_at: string;
 }
 export interface FormOpt { id: string; title: string; icon: string }
 export interface Summary {
@@ -43,35 +37,6 @@ function fmt(ts: string) {
     return new Date(ts).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 }
-const dayKey = (d: Date) => d.toLocaleDateString("sv"); // YYYY-MM-DD (local)
-
-// ---- ช่วงเวลา → timestamp เริ่มต้น ----
-function rangeStart(range: WidgetRange): number {
-  const now = new Date();
-  if (range === "today") { const d = new Date(now); d.setHours(0, 0, 0, 0); return d.getTime(); }
-  if (range === "7d") return now.getTime() - 7 * 864e5;
-  if (range === "30d") return now.getTime() - 30 * 864e5;
-  if (range === "month") return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-  return 0; // all (จำกัดที่ 90 วันตามข้อมูลที่โหลด)
-}
-
-// ---- คำนวณ metric จากชุดแถว ----
-function calcMetric(rows: SlimRow[], metric: WidgetMetric): number {
-  if (metric === "usage") return rows.length;
-  if (metric === "pending") return rows.filter((r) => r.approval_status === "pending").length;
-  if (metric === "passrate") {
-    const pass = rows.filter((r) => r.result === "pass").length;
-    const fail = rows.filter((r) => r.result === "fail").length;
-    return pass + fail ? Math.round((pass / (pass + fail)) * 100) : 0;
-  }
-  if (metric === "avgtime") {
-    const ds = rows.map((r) => r.duration_s).filter((n): n is number => typeof n === "number");
-    return ds.length ? Math.round(ds.reduce((a, b) => a + b, 0) / ds.length) : 0;
-  }
-  // submitters (unique)
-  return new Set(rows.map((r) => (r.user_name || "").trim()).filter(Boolean)).size;
-}
-
 function fmtValue(metric: WidgetMetric, v: number, en: boolean): string {
   if (metric === "avgtime") {
     if (v >= 60) { const m = Math.floor(v / 60), s = v % 60; return en ? `${m}m ${s}s` : `${m}น ${s}วิ`; }
@@ -82,9 +47,9 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean): string {
 }
 
 export default function DashboardClient({
-  tenantId, initial, slim, forms, summary, initialWidgets,
+  tenantId, initial, forms, summary, initialWidgets,
 }: {
-  tenantId: string; initial: SubRow[]; slim: SlimRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
+  tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
 }) {
   const { t, lang } = useT();
   const en = lang === "en";
@@ -157,7 +122,7 @@ export default function DashboardClient({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 18 }}>
             {widgets.map((w) => (
               <div key={w.id} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
-                <WidgetCard w={w} slim={slim} formName={formName} en={en}
+                <WidgetCard w={w} formName={formName} en={en}
                   onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t} />
               </div>
             ))}
@@ -227,19 +192,21 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
 
 // ---------- การ์ด widget ----------
 type TFn = (k: never) => string;
-function WidgetCard({ w, slim, formName, en, onEdit, onRemove, t }: {
-  w: DashWidget; slim: SlimRow[]; formName: (id: string) => string; en: boolean;
+function WidgetCard({ w, formName, en, onEdit, onRemove, t }: {
+  w: DashWidget; formName: (id: string) => string; en: boolean;
   onEdit: () => void; onRemove: () => void; t: TFn;
 }) {
-  const start = rangeStart(w.range);
-  const inRange = useMemo(() => slim.filter((r) => new Date(r.submitted_at).getTime() >= start), [slim, start]);
-  const scoped = useMemo(
-    () => (w.formId === "all" ? inRange : inRange.filter((r) => r.form_id === w.formId)),
-    [inRange, w.formId]
-  );
+  const [res, setRes] = useState<WidgetResult | null>(null);
+  const key = `${w.format}|${w.formId}|${w.metric}|${w.range}`;
+  useEffect(() => {
+    let active = true;
+    setRes(null);
+    computeWidget(w).then((r) => { if (active) setRes(r); });
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   const fIcon = w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
-  const title = `${metricLabel(w.metric, en)}`;
   const sub = `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
 
   return (
@@ -248,7 +215,7 @@ function WidgetCard({ w, slim, formName, en, onEdit, onRemove, t }: {
         <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600 }}>
-            <Icon icon={fIcon} className="h-4 w-4" /> {title}
+            <Icon icon={fIcon} className="h-4 w-4" /> {metricLabel(w.metric, en)}
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".74rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
@@ -257,9 +224,15 @@ function WidgetCard({ w, slim, formName, en, onEdit, onRemove, t }: {
       </div>
 
       <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        {w.format === "stat" && <StatView rows={scoped} metric={w.metric} en={en} />}
-        {w.format === "trend" && <TrendView rows={scoped} metric={w.metric} range={w.range} en={en} />}
-        {w.format === "ranking" && <RankingView rows={inRange} metric={w.metric} en={en} />}
+        {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{en ? "Loading…" : "กำลังโหลด…"}</div>}
+        {res && "error" in res && <div style={{ color: "var(--fail)", fontSize: ".82rem" }}>{res.error}</div>}
+        {res && !("error" in res) && (
+          <>
+            {res.kind === "stat" && <StatView res={res} metric={w.metric} en={en} />}
+            {res.kind === "trend" && <TrendView res={res} metric={w.metric} en={en} />}
+            {res.kind === "ranking" && <RankingView res={res} metric={w.metric} en={en} />}
+          </>
+        )}
       </div>
     </div>
   );
@@ -268,50 +241,29 @@ const iconBtn: React.CSSProperties = {
   border: "1px solid var(--line)", background: "var(--surface)", borderRadius: 6, cursor: "pointer", padding: "4px", color: "var(--ink-2)", flexShrink: 0,
 };
 
-function StatView({ rows, metric, en }: { rows: SlimRow[]; metric: WidgetMetric; en: boolean }) {
-  const v = calcMetric(rows, metric);
-  let extra = "";
-  if (metric === "passrate") {
-    const pass = rows.filter((r) => r.result === "pass").length;
-    const fail = rows.filter((r) => r.result === "fail").length;
-    extra = en ? `pass ${pass} · fail ${fail}` : `ผ่าน ${pass} · ไม่ผ่าน ${fail}`;
-  }
+function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "stat" }>; metric: WidgetMetric; en: boolean }) {
+  const extra = metric === "passrate" && res.pass != null
+    ? (en ? `pass ${res.pass} · fail ${res.fail}` : `ผ่าน ${res.pass} · ไม่ผ่าน ${res.fail}`)
+    : "";
   return (
     <div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1, color: "var(--ink)" }}>
-        {fmtValue(metric, v, en)}
+        {fmtValue(metric, res.value, en)}
       </div>
       {extra && <div style={{ color: "var(--ink-3)", fontSize: ".78rem", marginTop: 4 }}>{extra}</div>}
     </div>
   );
 }
 
-function TrendView({ rows, metric, range, en }: { rows: SlimRow[]; metric: WidgetMetric; range: WidgetRange; en: boolean }) {
-  const days = range === "7d" ? 7 : range === "30d" ? 30 : (new Date().getDate());
-  const series = useMemo(() => {
-    const buckets: { key: string; rows: SlimRow[] }[] = [];
-    const now = new Date();
-    for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(now); d.setDate(now.getDate() - i); d.setHours(0, 0, 0, 0);
-      buckets.push({ key: dayKey(d), rows: [] });
-    }
-    const idx = new Map(buckets.map((b, i) => [b.key, i]));
-    for (const r of rows) {
-      const k = dayKey(new Date(r.submitted_at));
-      const i = idx.get(k);
-      if (i != null) buckets[i].rows.push(r);
-    }
-    return buckets.map((b) => ({ key: b.key, v: calcMetric(b.rows, metric) }));
-  }, [rows, days, metric]);
-
+function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "trend" }>; metric: WidgetMetric; en: boolean }) {
+  const series = res.series;
   const max = Math.max(1, ...series.map((s) => s.v));
-  const total = calcMetric(rows, metric);
   return (
     <div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
-        {metric === "passrate" || metric === "avgtime" ? fmtValue(metric, total, en) : fmtValue(metric, total, en)}
+        {fmtValue(metric, res.total, en)}
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: days > 14 ? 2 : 4, height: 72 }}>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72 }}>
         {series.map((s) => (
           <div key={s.key} title={`${s.key.slice(5)} · ${s.v}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
             <div style={{ height: `${Math.round((s.v / max) * 100)}%`, minHeight: s.v > 0 ? 3 : 0, background: "var(--accent)", borderRadius: 3, opacity: 0.85 }} />
@@ -326,25 +278,13 @@ function TrendView({ rows, metric, range, en }: { rows: SlimRow[]; metric: Widge
   );
 }
 
-function RankingView({ rows, metric, en }: { rows: SlimRow[]; metric: WidgetMetric; en: boolean }) {
-  const ranked = useMemo(() => {
-    const groups = new Map<string, { title: string; icon: string; rows: SlimRow[] }>();
-    for (const r of rows) {
-      const id = r.form_id || r.form_title;
-      if (!groups.has(id)) groups.set(id, { title: r.form_title || "—", icon: r.form_icon || "📋", rows: [] });
-      groups.get(id)!.rows.push(r);
-    }
-    return Array.from(groups.values())
-      .map((g) => ({ ...g, v: calcMetric(g.rows, metric) }))
-      .sort((a, b) => b.v - a.v)
-      .slice(0, 8);
-  }, [rows, metric]);
-
-  const max = Math.max(1, ...ranked.map((r) => r.v));
-  if (ranked.length === 0) return <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{en ? "No data" : "ยังไม่มีข้อมูล"}</div>;
+function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "ranking" }>; metric: WidgetMetric; en: boolean }) {
+  const items = res.items;
+  const max = Math.max(1, ...items.map((r) => r.v));
+  if (items.length === 0) return <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{en ? "No data" : "ยังไม่มีข้อมูล"}</div>;
   return (
     <div style={{ display: "grid", gap: 8 }}>
-      {ranked.map((r, i) => (
+      {items.map((r, i) => (
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 18, textAlign: "right", color: "var(--ink-3)", fontSize: ".78rem" }}>{i + 1}</span>
           <span style={{ flex: 1, minWidth: 0 }}>

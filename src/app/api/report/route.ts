@@ -34,19 +34,33 @@ export async function GET(req: Request) {
     formTitle = (f?.title as string) || "ฟอร์ม";
   }
 
-  let q = supabase
-    .from("submissions")
-    .select("form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id")
-    .order("submitted_at", { ascending: false })
-    .limit(10000);
-  if (formId && formId !== "all") q = q.eq("form_id", formId);
-  if (from) q = q.gte("submitted_at", from + "T00:00:00");
-  if (to) q = q.lte("submitted_at", to + "T23:59:59");
-  if (result === "pass" || result === "fail") q = q.eq("result", result);
-  if (approval && approval !== "all") q = q.eq("approval_status", approval);
+  // ดึงทีละหน้า (batch) จนครบทุกแถวที่ตรงเงื่อนไข — ไม่ตัดที่ 10k อีกต่อไป
+  const PAGE = 1000;
+  const MAX_ROWS = 100000; // เพดานกันหน่วยความจำล้น (ปรับได้)
+  type Row = {
+    form_title: string; user_name: string | null; result: "pass" | "fail";
+    approval_status: string; fails: string[] | null; duration_s: number | null;
+    submitted_at: string; id: string;
+  };
+  const rows: Row[] = [];
+  for (let offset = 0; offset < MAX_ROWS; offset += PAGE) {
+    let q = supabase
+      .from("submissions")
+      .select("form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id")
+      .order("submitted_at", { ascending: false })
+      .range(offset, offset + PAGE - 1);
+    if (formId && formId !== "all") q = q.eq("form_id", formId);
+    if (from) q = q.gte("submitted_at", from + "T00:00:00");
+    if (to) q = q.lte("submitted_at", to + "T23:59:59");
+    if (result === "pass" || result === "fail") q = q.eq("result", result);
+    if (approval && approval !== "all") q = q.eq("approval_status", approval);
 
-  const { data, error } = await q;
-  if (error) return new Response(error.message, { status: 500 });
+    const { data, error } = await q;
+    if (error) return new Response(error.message, { status: 500 });
+    const batch = (data || []) as Row[];
+    rows.push(...batch);
+    if (batch.length < PAGE) break; // ครบแล้ว
+  }
 
   const origin = url.origin;
   const wb = new ExcelJS.Workbook();
@@ -76,7 +90,7 @@ export async function GET(req: Request) {
     c.border = { bottom: { style: "thin", color: { argb: "FFCBD5E1" } } };
   });
 
-  for (const s of data || []) {
+  for (const s of rows) {
     const fails = (s.fails as string[]) || [];
     let when = "";
     try {
