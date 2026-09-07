@@ -1,4 +1,5 @@
 import { getAdminClient } from "@/lib/supabase/admin";
+import { createClient } from "@/lib/supabase/server";
 import type { FormSchema } from "@/lib/form-schema";
 import PublicFillClient from "./PublicFillClient";
 
@@ -28,6 +29,15 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
 
   if (!data || data.visibility !== "public" || data.status !== "published" || data.deleted_at) return notAvailable;
 
+  // ถ้าผู้เปิดกำลังล็อกอินอยู่ (ไม่ว่าจะ tenant ไหน) การส่งฟอร์มสาธารณะจะไม่ผูกกับบัญชี
+  // → แจ้งเตือนให้รู้ตัวว่ากรอกในฐานะ guest (กันสับสนเคสล็อกอิน tenant อื่นแล้วสแกน QR)
+  let loggedIn = false;
+  try {
+    const supabase = await createClient();
+    const { data: u } = await supabase.auth.getUser();
+    loggedIn = !!u.user;
+  } catch { /* ไม่รู้สถานะล็อกอิน = ถือว่าไม่ล็อกอิน */ }
+
   return (
     <PublicFillClient
       formId={data.id as string}
@@ -38,6 +48,7 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       approvalChain={(data.approval_chain as unknown[]) || []}
       schema={data.schema as FormSchema}
       tenantId={data.tenant_id as string}
+      loggedIn={loggedIn}
     />
   );
 }

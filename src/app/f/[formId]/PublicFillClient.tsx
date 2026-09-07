@@ -3,17 +3,18 @@ import { useState } from "react";
 import { Button, Field } from "@/components/ui";
 import { LogoMark } from "@/components/Logo";
 import Icon from "@/components/Icon";
-import { Globe } from "lucide-react";
+import { Globe, Info } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import type { FormSchema } from "@/lib/form-schema";
 import FillWizard from "@/app/(app)/fill/[formId]/FillWizard";
 
 // หน้ากรอกฟอร์มสาธารณะ (ไม่ต้อง login) — ขอชื่อผู้กรอกก่อน แล้วเข้าสู่ wizard เดิมในโหมด public
 export default function PublicFillClient({
-  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId,
+  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false,
 }: {
   formId: string; title: string; icon: string; version: number;
   requiresApproval: boolean; approvalChain: unknown[]; schema: FormSchema; tenantId: string;
+  loggedIn?: boolean;
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
@@ -32,6 +33,12 @@ export default function PublicFillClient({
       </header>
 
       <main style={{ maxWidth: 640, margin: "0 auto", padding: "20px 16px 80px" }}>
+        {loggedIn && (
+          <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--accent-soft)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 12, fontSize: ".82rem", color: "var(--ink-2)" }}>
+            <span style={{ flexShrink: 0, marginTop: 1 }}><Icon icon={Info} className="h-4 w-4" /></span>
+            <span>{t("pubfill.guestNotice")}</span>
+          </div>
+        )}
         {!started ? (
           <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 22, boxShadow: "var(--shadow)", marginTop: 12 }}>
             <div style={{ fontSize: "1.6rem" }}>{icon}</div>

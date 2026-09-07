@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import type { FormSchema } from "@/lib/form-schema";
 import FillWizard from "./FillWizard";
 
@@ -19,7 +20,23 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
     .is("deleted_at", null)
     .maybeSingle();
 
-  if (!data) notFound();
+  // ไม่พบในองค์กรที่ล็อกอินอยู่ — อาจเป็นฟอร์ม "สาธารณะ" ของ tenant อื่น
+  // (เช่น สแกน QR ของ Tenant A ขณะล็อกอิน Tenant B) → พาไปหน้ากรอกสาธารณะแทน
+  // ผู้ใช้จึงกรอกได้เลยโดยไม่ต้อง logout
+  if (!data) {
+    const admin = getAdminClient();
+    if (admin) {
+      const { data: pub } = await admin
+        .from("forms")
+        .select("visibility, status, deleted_at")
+        .eq("id", formId)
+        .maybeSingle();
+      if (pub && pub.visibility === "public" && pub.status === "published" && !pub.deleted_at) {
+        redirect(`/f/${formId}`);
+      }
+    }
+    notFound();
+  }
 
   return (
     <FillWizard

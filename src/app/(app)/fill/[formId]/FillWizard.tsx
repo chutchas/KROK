@@ -312,6 +312,7 @@ export default function FillWizard(props: Props) {
         field={f}
         paper={paper}
         compact={compact}
+        publicMode={props.publicMode}
         getInitial={() => answers.current[f.id] || {}}
         photo={photos[f.id]}
         hasSig={!!sigs[f.id]}
@@ -551,6 +552,7 @@ function FieldControl({
   setSig,
   paper = false,
   compact = false,
+  publicMode = false,
 }: {
   field: FormField;
   getInitial: () => Answer;
@@ -562,6 +564,7 @@ function FieldControl({
   setSig: (d: string | null) => void;
   paper?: boolean;
   compact?: boolean;
+  publicMode?: boolean;
 }) {
   const { t } = useT();
   const [initial] = useState(getInitial);
@@ -723,7 +726,8 @@ function FieldControl({
               <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? "แตะเพื่อถ่ายใหม่" : <><Icon icon={Camera} className="h-4 w-4" /> แตะเพื่อถ่ายรูป / เลือกรูป</>}</div>
             </div>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
-            {photo && (
+            {/* โหมด public: ไม่มี AI ตรวจรูป (endpoint ต้องล็อกอิน + ใช้เครดิต tenant) */}
+            {photo && !publicMode && (
               <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
                 <Button onClick={aiCheck} disabled={aiBusy}>{aiBusy ? "AI กำลังดูรูป..." : <><Icon icon={Sparkles} className="h-4 w-4" /> ให้ AI ตรวจรูป</>}</Button>
                 {aiResult && <span style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{aiResult}</span>}
