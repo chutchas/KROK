@@ -2,6 +2,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
 import { dispatchWebhooks } from "@/lib/webhooks";
+import { dispatchNotifications } from "@/lib/notify";
 
 /**
  * แจ้ง webhook ว่ามี submission ใหม่ (เรียกหลังบันทึกสำเร็จจากฝั่ง client)
@@ -31,5 +32,17 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
     approval_status: sub.approval_status,
     submitted_at: sub.submitted_at,
   }, sub.form_id as string);
+
+  // แจ้งเตือน LINE/Email (best-effort)
+  try {
+    await dispatchNotifications(session.tenantId, "submission.created", {
+      formTitle: sub.form_title as string,
+      userName: sub.user_name as string,
+      result: sub.result as "pass" | "fail",
+      failCount: Array.isArray(sub.fails) ? (sub.fails as unknown[]).length : 0,
+      submissionId: sub.id as string,
+    });
+  } catch { /* ignore */ }
+
   return { ok: true };
 }

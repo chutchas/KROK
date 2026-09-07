@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeChain, type ApprovalHistoryEntry } from "@/lib/approval";
 import { dispatchWebhooks } from "@/lib/webhooks";
+import { dispatchNotifications } from "@/lib/notify";
 
 export async function reviewSubmission(
   id: string,
@@ -97,6 +98,20 @@ export async function reviewSubmission(
       },
       sub.form_id as string
     );
+
+    // แจ้งเตือน LINE/Email (best-effort)
+    try {
+      await dispatchNotifications(
+        session.tenantId,
+        newStatus === "approved" ? "submission.approved" : "submission.rejected",
+        {
+          formTitle: sub.form_title as string,
+          submissionId: id,
+          reviewer: session.displayName,
+          note: note.slice(0, 500),
+        }
+      );
+    } catch { /* ignore */ }
   }
 
   revalidatePath("/approvals");

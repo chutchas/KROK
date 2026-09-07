@@ -6,6 +6,24 @@ import Icon from "@/components/Icon";
 import { Check, Lock, Zap } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { createWebhook, toggleWebhook, deleteWebhook, testWebhookById } from "./actions";
+import NotifyPanel from "./NotifyPanel";
+
+export interface NotifySettings {
+  line_enabled: boolean;
+  hasLineToken: boolean;
+  line_target: string;
+  email_enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  hasSmtpPass: boolean;
+  email_from: string;
+  email_to: string[];
+  on_created: boolean;
+  on_approved: boolean;
+  on_rejected: boolean;
+  fail_only: boolean;
+}
 
 export interface FormField { id: string; label: string; type: string }
 export interface FormOption { id: string; title: string; icon: string; fields: FormField[] }
@@ -25,7 +43,7 @@ export interface WebhookItem {
 
 const ALL_EVENTS = ["submission.created", "submission.approved", "submission.rejected"] as const;
 
-export default function IntegrationsClient({ webhooks, forms }: { webhooks: WebhookItem[]; forms: FormOption[] }) {
+export default function IntegrationsClient({ webhooks, forms, notify }: { webhooks: WebhookItem[]; forms: FormOption[]; notify: NotifySettings }) {
   const router = useRouter();
   const { t } = useT();
   const [name, setName] = useState("");
@@ -72,6 +90,8 @@ export default function IntegrationsClient({ webhooks, forms }: { webhooks: Webh
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("intg.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("intg.subtitle")}</p>
       </div>
+
+      <NotifyPanel initial={notify} />
 
       <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intg.addTitle")}</h2>

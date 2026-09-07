@@ -64,7 +64,7 @@ const nextConfig: NextConfig = {
 
   // pdfkit อ่านไฟล์ฟอนต์มาตรฐาน (.afm) จาก __dirname ตอน runtime → ห้าม bundle
   // ให้ require จาก node_modules ตรง ๆ เพื่อให้ path ข้อมูลไม่พัง
-  serverExternalPackages: ["pdfkit"],
+  serverExternalPackages: ["pdfkit", "nodemailer"],
 
   // ให้ไฟล์ที่ API อ่านตอน runtime ถูกรวมไปกับ serverless/standalone function:
   // - ฟอนต์ไทย Garuda สำหรับสร้าง PDF ใบส่งฟอร์ม

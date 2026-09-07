@@ -1,6 +1,6 @@
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
-import IntegrationsClient, { type WebhookItem, type FormOption } from "./IntegrationsClient";
+import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySettings } from "./IntegrationsClient";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +10,7 @@ export default async function IntegrationsPage() {
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin/designer เท่านั้น</div>;
 
   const supabase = await createClient();
-  const [{ data: whData }, { data: formData }] = await Promise.all([
+  const [{ data: whData }, { data: formData }, { data: nData }] = await Promise.all([
     supabase
       .from("webhooks")
       .select("id, name, url, events, secret, active, last_status, last_at, form_id, fields")
@@ -22,7 +22,27 @@ export default async function IntegrationsPage() {
       .eq("tenant_id", session.tenantId)
       .is("deleted_at", null)
       .order("title"),
+    supabase.from("tenant_notify").select("*").eq("tenant_id", session.tenantId).maybeSingle(),
   ]);
+
+  // ไม่ส่ง secret จริงกลับไป client — ส่งแค่ธงว่ามีค่าเก็บไว้แล้ว
+  const n = (nData ?? {}) as Record<string, unknown>;
+  const notify: NotifySettings = {
+    line_enabled: !!n.line_enabled,
+    hasLineToken: !!n.line_token,
+    line_target: (n.line_target as string) ?? "",
+    email_enabled: !!n.email_enabled,
+    smtp_host: (n.smtp_host as string) ?? "",
+    smtp_port: (n.smtp_port as number) ?? 587,
+    smtp_user: (n.smtp_user as string) ?? "",
+    hasSmtpPass: !!n.smtp_pass,
+    email_from: (n.email_from as string) ?? "",
+    email_to: (n.email_to as string[]) ?? [],
+    on_created: n.on_created !== false,
+    on_approved: !!n.on_approved,
+    on_rejected: n.on_rejected !== false,
+    fail_only: !!n.fail_only,
+  };
 
   // ฟอร์ม + รายการฟิลด์ (id/label) จาก schema สำหรับตัวเลือก payload
   const forms: FormOption[] = ((formData || []) as Record<string, unknown>[]).map((f) => {
@@ -49,5 +69,5 @@ export default async function IntegrationsPage() {
     fields: (w.fields as string[]) ?? [],
   }));
 
-  return <IntegrationsClient webhooks={webhooks} forms={forms} />;
+  return <IntegrationsClient webhooks={webhooks} forms={forms} notify={notify} />;
 }

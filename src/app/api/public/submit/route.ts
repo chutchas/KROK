@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { dispatchWebhooks } from "@/lib/webhooks";
+import { dispatchNotifications } from "@/lib/notify";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -138,6 +139,18 @@ export async function POST(req: Request) {
     await dispatchWebhooks(f.tenant_id, "submission.created", {
       id: subId, form_id: f.id, form_title: f.title, result, fails, answers, user_name: userName, submitted_at: new Date().toISOString(), source: "public",
     }, f.id);
+  } catch { /* ignore */ }
+
+  // แจ้งเตือน LINE/Email (best-effort)
+  try {
+    await dispatchNotifications(f.tenant_id, "submission.created", {
+      formTitle: f.title as string,
+      formIcon: f.icon as string,
+      userName,
+      result,
+      failCount: Array.isArray(fails) ? fails.length : 0,
+      submissionId: subId,
+    });
   } catch { /* ignore */ }
 
   return NextResponse.json({ ok: true, id: subId });

@@ -3,6 +3,7 @@ import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { testWebhook, type WebhookEvent } from "@/lib/webhooks";
+import { sendLine, sendEmail } from "@/lib/notify";
 
 const EVENTS: WebhookEvent[] = ["submission.created", "submission.approved", "submission.rejected"];
 
@@ -102,4 +103,101 @@ export async function testWebhookById(id: string): Promise<{ ok: boolean; status
     .eq("tenant_id", session.tenantId);
   revalidatePath("/settings/integrations");
   return res;
+}
+
+// ---------- การแจ้งเตือน LINE / Email (ต่อองค์กร, BYO) ----------
+
+export interface NotifyInput {
+  line_enabled: boolean;
+  line_token: string; // "" = ไม่เปลี่ยนของเดิม
+  line_target: string;
+  email_enabled: boolean;
+  smtp_host: string;
+  smtp_port: number;
+  smtp_user: string;
+  smtp_pass: string; // "" = ไม่เปลี่ยนของเดิม
+  email_from: string;
+  email_to: string[];
+  on_created: boolean;
+  on_approved: boolean;
+  on_rejected: boolean;
+  fail_only: boolean;
+}
+
+export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session || !canManage(session.role)) return { error: "unauthorized" };
+  const supabase = await createClient();
+
+  // อ่านของเดิมเพื่อคงค่า secret ถ้าผู้ใช้ไม่ได้กรอกใหม่
+  const { data: cur } = await supabase
+    .from("tenant_notify")
+    .select("line_token, smtp_pass")
+    .eq("tenant_id", session.tenantId)
+    .maybeSingle();
+
+  const to = (input.email_to || [])
+    .map((s) => String(s).trim())
+    .filter((s) => s && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(s))
+    .slice(0, 20);
+
+  const row = {
+    tenant_id: session.tenantId,
+    line_enabled: !!input.line_enabled,
+    line_token: input.line_token ? input.line_token.trim() : ((cur?.line_token as string) ?? null),
+    line_target: input.line_target?.trim() || null,
+    email_enabled: !!input.email_enabled,
+    smtp_host: input.smtp_host?.trim() || null,
+    smtp_port: Number.isFinite(input.smtp_port) && input.smtp_port > 0 ? Math.round(input.smtp_port) : null,
+    smtp_user: input.smtp_user?.trim() || null,
+    smtp_pass: input.smtp_pass ? input.smtp_pass : ((cur?.smtp_pass as string) ?? null),
+    email_from: input.email_from?.trim() || null,
+    email_to: to,
+    on_created: !!input.on_created,
+    on_approved: !!input.on_approved,
+    on_rejected: !!input.on_rejected,
+    fail_only: !!input.fail_only,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { error } = await supabase.from("tenant_notify").upsert(row, { onConflict: "tenant_id" });
+  if (error) return { error: error.message };
+  revalidatePath("/settings/integrations");
+  return { ok: true };
+}
+
+// ทดสอบส่งจริงจาก config ที่บันทึกไว้ (บันทึกก่อนแล้วค่อยกดทดสอบ)
+export async function testNotify(channel: "line" | "email"): Promise<{ ok: boolean; status: string }> {
+  const session = await getSession();
+  if (!session || !canManage(session.role)) return { ok: false, status: "unauthorized" };
+  const supabase = await createClient();
+  const { data } = await supabase
+    .from("tenant_notify")
+    .select("*")
+    .eq("tenant_id", session.tenantId)
+    .maybeSingle();
+  if (!data) return { ok: false, status: "ยังไม่ได้บันทึกการตั้งค่า" };
+
+  const text = "[KROK] ทดสอบการแจ้งเตือน — หากได้รับข้อความนี้ แสดงว่าตั้งค่าถูกต้อง ✅";
+
+  if (channel === "line") {
+    if (!data.line_token) return { ok: false, status: "ยังไม่ได้ใส่ LINE token" };
+    return sendLine(data.line_token as string, (data.line_target as string) || null, text);
+  }
+  // email
+  if (!data.smtp_host || !data.smtp_port || !data.email_from || !(data.email_to as string[])?.length) {
+    return { ok: false, status: "ตั้งค่า SMTP/ผู้รับ ไม่ครบ" };
+  }
+  return sendEmail(
+    {
+      host: data.smtp_host as string,
+      port: data.smtp_port as number,
+      user: (data.smtp_user as string) || "",
+      pass: (data.smtp_pass as string) || "",
+      from: data.email_from as string,
+      to: data.email_to as string[],
+    },
+    "[KROK] ทดสอบการแจ้งเตือน",
+    text
+  );
 }
