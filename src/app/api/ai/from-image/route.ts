@@ -15,12 +15,20 @@ export async function POST(req: Request) {
 
   try {
     const form = await req.formData();
-    const file = form.get("file");
-    if (!(file instanceof File)) return NextResponse.json({ error: "no file" }, { status: 400 });
-    if (!ALLOWED.includes(file.type))
-      return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
-    if (file.size > 8 * 1024 * 1024)
-      return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 8MB" }, { status: 400 });
+    // รองรับหลายรูป (PDF หลายหน้า = หลายไฟล์) — เผื่อ back-compat กับ field "file" เดี่ยว
+    const raw = [...form.getAll("file"), ...form.getAll("files")];
+    const files = raw.filter((f): f is File => f instanceof File).slice(0, 6);
+    if (files.length === 0) return NextResponse.json({ error: "no file" }, { status: 400 });
+    let total = 0;
+    for (const f of files) {
+      if (!ALLOWED.includes(f.type))
+        return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
+      total += f.size;
+      if (f.size > 8 * 1024 * 1024)
+        return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 8MB" }, { status: 400 });
+    }
+    if (total > 20 * 1024 * 1024)
+      return NextResponse.json({ error: "รวมไฟล์ใหญ่เกิน 20MB" }, { status: 400 });
 
     const credit = await consumeAiCredit(session.tenantId);
     if (!credit.ok)
@@ -29,8 +37,10 @@ export async function POST(req: Request) {
         { status: 402 }
       );
 
-    const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const schema = await formFromImage(session.tenantId, b64, file.type);
+    const images = await Promise.all(
+      files.map(async (f) => ({ base64: Buffer.from(await f.arrayBuffer()).toString("base64"), mediaType: f.type }))
+    );
+    const schema = await formFromImage(session.tenantId, images);
     return NextResponse.json({ schema });
   } catch (e) {
     console.error("ai/from-image", e);

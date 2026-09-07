@@ -92,36 +92,38 @@ export interface ImageInput {
   mediaType: string;
 }
 
-// ---- ตัวเรียกกลาง: ส่ง prompt (+รูป) แล้วได้ text กลับ ----
+// ---- ตัวเรียกกลาง: ส่ง prompt (+รูป 0..n) แล้วได้ text กลับ ----
 async function complete(
   tenantId: string | undefined,
   userText: string,
-  image: ImageInput | null,
+  image: ImageInput | ImageInput[] | null,
   maxTokens = 3000
 ): Promise<string> {
   const cfg = await resolveConfig(tenantId);
   if (!cfg.apiKey)
     throw new Error("ระบบยังไม่ได้ตั้งค่า AI — โปรดให้ผู้ดูแลแพลตฟอร์มตั้งค่าที่เมนู Platform → AI");
 
-  if (cfg.provider === "anthropic") return completeAnthropic(cfg, userText, image, maxTokens);
-  return completeOpenAICompatible(cfg, userText, image, maxTokens);
+  const images = image == null ? [] : Array.isArray(image) ? image : [image];
+  if (cfg.provider === "anthropic") return completeAnthropic(cfg, userText, images, maxTokens);
+  return completeOpenAICompatible(cfg, userText, images, maxTokens);
 }
 
 // ---- Anthropic ----
 async function completeAnthropic(
   cfg: ProviderConfig,
   userText: string,
-  image: ImageInput | null,
+  images: ImageInput[],
   maxTokens: number
 ): Promise<string> {
   const client = new Anthropic({ apiKey: cfg.apiKey });
   const content: Anthropic.MessageParam["content"] = [];
-  if (image) {
+  images.forEach((img, i) => {
+    if (images.length > 1) content.push({ type: "text", text: `หน้า ${i + 1}:` });
     content.push({
       type: "image",
-      source: { type: "base64", media_type: image.mediaType as "image/jpeg", data: image.base64 },
+      source: { type: "base64", media_type: img.mediaType as "image/jpeg", data: img.base64 },
     });
-  }
+  });
   content.push({ type: "text", text: userText });
   const msg = await client.messages.create({
     model: cfg.model,
@@ -152,18 +154,22 @@ function openAIClient(cfg: ProviderConfig): OpenAI {
 async function completeOpenAICompatible(
   cfg: ProviderConfig,
   userText: string,
-  image: ImageInput | null,
+  images: ImageInput[],
   maxTokens: number
 ): Promise<string> {
   const client = openAIClient(cfg);
   // สำคัญ: ไม่มีรูป → ส่ง content เป็น string ธรรมดา
   // ถ้าส่งเป็น array แบบ multimodal โมเดล text (qwen-plus/qwen-max) จะตอบ 403 Model access denied
-  const content: OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"] = image
-    ? [
-        { type: "text", text: userText },
-        { type: "image_url", image_url: { url: `data:${image.mediaType};base64,${image.base64}` } },
-      ]
-    : userText;
+  const content: OpenAI.Chat.Completions.ChatCompletionUserMessageParam["content"] =
+    images.length > 0
+      ? [
+          { type: "text", text: userText },
+          ...images.map((img) => ({
+            type: "image_url" as const,
+            image_url: { url: `data:${img.mediaType};base64,${img.base64}` },
+          })),
+        ]
+      : userText;
   const res = await client.chat.completions.create({
     model: cfg.model,
     max_tokens: maxTokens,
@@ -230,13 +236,42 @@ export async function refineForm(tenantId: string, schema: FormSchema, instructi
   return sanitizeSchema(extractJson(text));
 }
 
-export async function formFromImage(tenantId: string, base64: string, mediaType: string): Promise<FormSchema> {
+// spec สำหรับ "คัดลอกฟอร์มเดิมจากรูป/ไฟล์" — เน้นความเหมือน ไม่ใช่ออกแบบใหม่
+export const REPLICATE_SPEC = `ตอบกลับเป็น JSON object เดียวเท่านั้น ห้ามมีข้อความอื่นนอก JSON ตาม spec นี้:
+{"title":"ชื่อฟอร์มตามที่พิมพ์บนเอกสาร","description":"อธิบายสั้นๆ (ถ้าเอกสารมี)","icon":"emoji 1 ตัว",
+"steps":[{"title":"ชื่อหัวข้อ/section ตามเอกสาร","fields":[{
+ "id":"snake_case_id",
+ "type":"text|number|select|checkbox|pass_fail|photo|barcode|signature|datetime",
+ "label":"ข้อความ/หัวข้อช่องกรอก คัดลอกคำต่อคำจากเอกสาร","required":false,
+ "options":["ตัวเลือกตามที่พิมพ์ในเอกสาร"],
+ "min":0,"max":100,"unit":"หน่วยที่พิมพ์ข้างช่อง (ถ้ามี)"}]}]}
+
+โหมดนี้คือ "ทำสำเนาดิจิทัลของฟอร์มเดิม" ไม่ใช่ออกแบบฟอร์มใหม่ ให้ยึดหลักนี้อย่างเคร่งครัด:
+1. เก็บ "ทุก" ช่องกรอก/ช่องว่าง/ช่องติ๊ก/บรรทัดที่คนต้องเขียนหรือเลือก ให้ครบ ห้ามข้ามหรือยุบรวมช่อง และห้ามเพิ่มช่องที่ไม่มีในเอกสาร ไม่จำกัดจำนวนฟิลด์ (มี 30+ ก็ต้องครบ)
+2. เรียงลำดับฟิลด์ตามเอกสารจริง (บนลงล่าง ซ้ายไปขวา)
+3. ทุกหัวข้อ/section/กล่องในเอกสาร = 1 step โดยใช้ชื่อหัวข้อนั้นเป็น title ของ step ถ้าเอกสารไม่มีการแบ่งหัวข้อชัดเจน ให้ใช้ step เดียว
+4. คัดลอก label คำต่อคำตามภาษาที่พิมพ์ในเอกสาร ห้ามแปลหรือเรียบเรียงใหม่
+5. เดาชนิดฟิลด์จากลักษณะช่องจริง: เส้น/กล่องว่างให้เขียน = text (หรือ number ถ้าเป็นตัวเลข/ค่าที่วัด); ช่องติ๊กหลายอัน = checkbox; ผ่าน/ไม่ผ่าน หรือ ใช่/ไม่ใช่ หรือ OK/NG = pass_fail; เลือกได้อันเดียวจากรายการ = select พร้อม options ตามจริง; ช่องวันที่/เวลา = datetime; เส้นเซ็นชื่อ = signature; ช่องแนบรูป/ถ่ายรูป = photo; รหัส/serial/barcode ที่ต้องสแกน = barcode
+6. select/checkbox ให้ใส่ options ตามที่พิมพ์ในเอกสาร "ทุกตัวเลือก" คำต่อคำ
+7. required = true เฉพาะช่องที่เอกสารระบุว่าบังคับ (เครื่องหมาย * หรือคำว่าบังคับ) นอกนั้น false
+8. ใส่ min/max/unit เฉพาะเมื่อเอกสารพิมพ์ค่ามาตรฐาน/หน่วยไว้จริง ห้ามแต่งเพิ่ม
+9. ห้ามเพิ่ม tooltip/example/on_fail_require_note เอง (โหมดนี้เน้นเหมือนของเดิม ไม่ใช่ปรับปรุง)
+10. ถ้ารูปมีหลายหน้า/หลายส่วนต่อกัน ให้อ่านทุกหน้าจนครบ
+สำคัญ: ผลลัพธ์ต้องใกล้เคียงฟอร์มเดิม 90%+ ทั้งจำนวนฟิลด์และโครงสร้าง เพื่อให้ผู้ใช้แก้ต่อได้ง่าย`;
+
+export async function formFromImage(
+  tenantId: string,
+  images: ImageInput[] | { base64: string; mediaType: string }
+): Promise<FormSchema> {
+  const imgs = Array.isArray(images) ? images : [images];
   const text = await complete(
     tenantId,
-    "รูปที่แนบคือฟอร์มกระดาษ/เอกสารเดิมที่ใช้ในโรงงานหรือคลังสินค้า จงอ่าน layout และช่องกรอกทั้งหมด " +
-      "แล้วแปลงเป็นฟอร์มดิจิทัล เก็บข้อมูลครบเท่าเดิม จัดลำดับขั้นตามการใช้งานจริง\n\n" +
-      SCHEMA_SPEC,
-    { base64, mediaType }
+    "รูป/ไฟล์ที่แนบคือฟอร์มเดิมที่ใช้จริง (กระดาษ/เอกสาร/PDF) หน้าที่ของคุณคือทำ 'สำเนาดิจิทัล' ให้เหมือนของเดิมมากที่สุด " +
+      (imgs.length > 1 ? `เอกสารมี ${imgs.length} หน้า (แนบมาตามลำดับ) ` : "") +
+      "อ่านทุกหัวข้อและช่องกรอกทั้งหมดในทุกหน้า แล้วสร้าง schema ที่มีฟิลด์ครบและโครงสร้างใกล้เคียงของเดิม\n\n" +
+      REPLICATE_SPEC,
+    imgs,
+    8000
   );
   return sanitizeSchema(extractJson(text));
 }

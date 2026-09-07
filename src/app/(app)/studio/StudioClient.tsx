@@ -123,13 +123,14 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setBusy(isPdf ? t("studio.busyPdf") : t("studio.busyImage"));
     setStatus(null);
     try {
-      let toSend: File = file;
-      if (isPdf) {
-        const { pdfToImageFile } = await import("@/lib/pdf-to-image");
-        toSend = await pdfToImageFile(file);
-      }
       const fd = new FormData();
-      fd.append("file", toSend);
+      if (isPdf) {
+        const { pdfToImageFiles } = await import("@/lib/pdf-to-image");
+        const pages = await pdfToImageFiles(file);
+        for (const p of pages) fd.append("file", p);
+      } else {
+        fd.append("file", file);
+      }
       const res = await fetch("/api/ai/from-image", { method: "POST", body: fd });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || t("studio.errReadFail"));
