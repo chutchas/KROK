@@ -70,7 +70,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> กลับ Dashboard</a>
-        <PrintButton />
+        <PrintButton submissionId={String(sub.id)} />
       </div>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
