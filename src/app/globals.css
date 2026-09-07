@@ -128,10 +128,10 @@ body {
   font-size: 15.5px;
   line-height: 1.65;
 }
-/* ---- scrollbar: แถบเลื่อนสีเทาจางเรียบ สม่ำเสมอทั้งเว็บ ---- */
+/* ---- scrollbar: แถบเลื่อนสีธีมแบบไล่สี โปร่ง 50% สม่ำเสมอทั้งเว็บ ---- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--surface-4) transparent;
+  scrollbar-color: color-mix(in srgb, var(--accent) 50%, transparent) transparent;
 }
 ::-webkit-scrollbar {
   width: 10px;
@@ -143,12 +143,12 @@ body {
 }
 ::-webkit-scrollbar-thumb {
   border-radius: 8px;
-  background-color: var(--surface-4);
+  background-image: var(--brand-gradient-50);
   background-clip: padding-box;
   border: 2px solid transparent;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--line);
+  background-image: var(--brand-gradient-hover);
   background-clip: padding-box;
 }
 h1, h2, h3, h4 {
