@@ -40,6 +40,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
@@ -116,8 +117,18 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     return p;
   }
 
-  async function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
+  // เลือกไฟล์ → ยังไม่ส่ง AI ทันที เก็บไว้ให้ผู้ใช้ยืนยันก่อน
+  function onUpload(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = "";
+    if (!file) return;
+    setStatus(null);
+    setPendingFile(file);
+  }
+
+  // ยืนยันแล้วค่อยแปลงเป็นดิจิทัล
+  async function runFromFile() {
+    const file = pendingFile;
     if (!file) return;
     const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name);
     setBusy(isPdf ? t("studio.busyPdf") : t("studio.busyImage"));
@@ -135,6 +146,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || t("studio.errReadFail"));
       setDraft(sanitizeSchema(json.schema));
+      setPendingFile(null);
       setEditingId(null);
       setView("mobile");
       setSelKey(null);
@@ -143,7 +155,6 @@ export default function StudioClient({ initialForms, members, teams }: { initial
       setStatus({ t: err instanceof Error ? err.message : t("studio.errReadFail"), err: true });
     } finally {
       setBusy(null);
-      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -330,17 +341,41 @@ export default function StudioClient({ initialForms, members, teams }: { initial
           </div>
         ) : (
           <div>
-            <button
-              onClick={() => fileRef.current?.click()}
-              disabled={!!busy}
-              style={{ width: "100%", border: "2px dashed var(--line)", borderRadius: 12, background: "var(--surface-2)", padding: "28px 16px", cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--ink-2)" }}
-            >
-              <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon icon={FileUp} className="h-6 w-6" />
-              </span>
-              <b style={{ fontFamily: "var(--font-anuphan)", color: "var(--ink)" }}>{t("studio.fileDrop")}</b>
-              <span style={{ fontSize: ".82rem" }}>{t("studio.fileHint")}</span>
-            </button>
+            {pendingFile ? (
+              // เลือกไฟล์แล้ว — โชว์ชื่อไฟล์ + ยืนยันก่อนแปลง
+              <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface-2)", padding: 16 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <span style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon icon={FileText} className="h-5 w-5" />
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <b style={{ fontSize: ".92rem", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{pendingFile.name}</b>
+                    <small style={{ color: "var(--ink-3)", fontSize: ".78rem" }}>
+                      {(pendingFile.size / 1024 / 1024).toFixed(2)} MB · {/\.pdf$/i.test(pendingFile.name) || pendingFile.type === "application/pdf" ? "PDF" : t("studio.fileKindImage")}
+                    </small>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+                  <Button variant="primary" onClick={runFromFile} disabled={!!busy}>
+                    <Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.fileConfirm")}
+                  </Button>
+                  <Button onClick={() => fileRef.current?.click()} disabled={!!busy}>{t("studio.fileChange")}</Button>
+                  <Button variant="ghost" onClick={() => setPendingFile(null)} disabled={!!busy}>{t("common.cancel")}</Button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => fileRef.current?.click()}
+                disabled={!!busy}
+                style={{ width: "100%", border: "2px dashed var(--line)", borderRadius: 12, background: "var(--surface-2)", padding: "28px 16px", cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--ink-2)" }}
+              >
+                <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon icon={FileUp} className="h-6 w-6" />
+                </span>
+                <b style={{ fontFamily: "var(--font-anuphan)", color: "var(--ink)" }}>{t("studio.fileDrop")}</b>
+                <span style={{ fontSize: ".82rem" }}>{t("studio.fileHint")}</span>
+              </button>
+            )}
             <input ref={fileRef} type="file" accept="image/*,application/pdf" hidden onChange={onUpload} />
             <p style={{ color: "var(--ink-3)", fontSize: ".78rem", marginTop: 8 }}>{t("studio.pdfNote")}</p>
           </div>
