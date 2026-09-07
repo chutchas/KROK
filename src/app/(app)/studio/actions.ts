@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema, countFields, type FormSchema } from "@/lib/form-schema";
+import { getTemplate } from "@/lib/form-templates";
 import { sanitizeChain } from "@/lib/approval";
 import { canAddForm } from "@/lib/quota";
 import { fmtLimit } from "@/lib/plans";
@@ -165,6 +166,14 @@ export async function saveForm(
   revalidatePath("/forms");
   revalidatePath("/studio");
   return { id: data.id as string };
+}
+
+// สร้างฟอร์มใหม่จากเทมเพลตสำเร็จรูป (built-in) — ใช้เส้นทางเดียวกับ saveForm
+// (ตรวจโควตา + published + แจ้งเตือน) แล้วให้ผู้ใช้ไปปรับแต่งต่อที่ "สร้างฟอร์ม" ได้
+export async function createFromTemplate(templateId: string): Promise<{ id: string } | { error: string }> {
+  const tpl = getTemplate(templateId);
+  if (!tpl) return { error: "ไม่พบเทมเพลตนี้" };
+  return saveForm(tpl.schema);
 }
 
 export async function updateForm(

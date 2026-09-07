@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
@@ -55,6 +55,13 @@ export default function FormsListClient({ forms, highlightId, canCreate = false 
             <option value="all">{t("forms.allCategories")}</option>
             {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>
+          {canCreate && (
+            <Link href="/studio/templates" style={{ textDecoration: "none", flex: "0 0 auto" }}>
+              <Button variant="ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
+                <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("templates.browse")}
+              </Button>
+            </Link>
+          )}
         </div>
       )}
       <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; flex:1 1 100% !important; min-width:0 !important; } }`}</style>
@@ -70,10 +77,15 @@ export default function FormsListClient({ forms, highlightId, canCreate = false 
               title={t("forms.emptyManager")}
               hint={t("forms.emptyManagerHint")}
             />
-            <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
+            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
               <Link href="/studio" style={{ textDecoration: "none" }}>
                 <Button variant="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <Icon icon={Plus} className="h-4 w-4" /> {t("forms.createFirst")}
+                </Button>
+              </Link>
+              <Link href="/studio/templates" style={{ textDecoration: "none" }}>
+                <Button variant="ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("templates.browse")}
                 </Button>
               </Link>
             </div>
