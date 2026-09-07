@@ -30,6 +30,8 @@ export interface FormField {
   unit?: string;
   // select / checkbox
   options?: string[];
+  // ความกว้างในหน้ากระดาษ: full = เต็มแถว, half = ครึ่งแถว (default ปฏิบัติเหมือน half)
+  width?: "full" | "half";
   // photo
   photo_hint?: string;
   // pass_fail
@@ -110,6 +112,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
             label: str(fo.label, 200, "ไม่ระบุ"),
             required: fo.required !== false,
           };
+          if (fo.width === "full" || fo.width === "half") o.width = fo.width;
           if (fo.tooltip) o.tooltip = str(fo.tooltip, 300);
           if (fo.example != null && fo.example !== "") o.example = str(fo.example, 120);
           if (type === "number") {

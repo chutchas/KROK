@@ -43,6 +43,11 @@ export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
       col = 0;
       out[b.key] = { x: PAD, y, w: usable };
       y += HEADER_H + GAP_Y;
+    } else if (b.field?.width === "full") {
+      // ฟิลด์เต็มแถว — ปิดคู่ครึ่งแถวที่ค้างก่อน
+      if (col === 1) { y += FIELD_H + GAP_Y; col = 0; }
+      out[b.key] = { x: PAD, y, w: usable };
+      y += FIELD_H + GAP_Y;
     } else {
       const x = PAD + (col === 0 ? 0 : colW + 16);
       out[b.key] = { x, y, w: colW };
