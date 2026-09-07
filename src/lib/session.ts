@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
@@ -46,7 +47,8 @@ function nameOf(row: MembershipRow): string {
  * ถ้า cookie ไม่ตรงกับ membership ใด ๆ → ใช้ workspace แรก
  * คืน null ถ้าไม่ได้ล็อกอินหรือยังไม่มี membership
  */
-export async function getSession(): Promise<KrokSession | null> {
+// cache(): dedupe ภายในหนึ่ง request — layout + page เรียก getSession ได้โดยยิง Supabase ครั้งเดียว
+export const getSession = cache(async (): Promise<KrokSession | null> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -97,13 +99,13 @@ export async function getSession(): Promise<KrokSession | null> {
     platformRole,
     isPlatformAdmin: platformRole === "platform_admin",
   };
-}
+});
 
 /** สิทธิ์เมนูของ role ปัจจุบันใน workspace (จาก tenant_roles.menus; owner = ทุกเมนู) */
-export async function getAllowedMenus(
+export const getAllowedMenus = cache(async (
   tenantId: string,
   roleKey: string
-): Promise<import("@/lib/menus").MenuKey[]> {
+): Promise<import("@/lib/menus").MenuKey[]> => {
   const { ALL_MENU_KEYS, cleanMenus } = await import("@/lib/menus");
   if (roleKey === "owner") return ALL_MENU_KEYS;
   const supabase = await createClient();
@@ -115,7 +117,7 @@ export async function getAllowedMenus(
     .maybeSingle();
   if (!data) return ["forms", "dashboard"];
   return cleanMenus(data.menus);
-}
+});
 
 /** รายชื่อ workspace ทั้งหมดที่ผู้ใช้ปัจจุบันเป็นสมาชิก (เรียงตามเวลาที่เข้าร่วม) */
 export async function listWorkspaces(): Promise<WorkspaceItem[]> {
