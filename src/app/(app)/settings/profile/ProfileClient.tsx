@@ -86,7 +86,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
   const roleLabel = t(("role." + form.role) as MessageKey);
 
   return (
-    <div style={{ maxWidth: 560, margin: "0 auto", display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16, minWidth: 0 }}>
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("profile.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("profile.subtitle")}</p>
