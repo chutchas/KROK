@@ -9,6 +9,8 @@ import {
   type FieldType,
   type FormField,
   type FormSchema,
+  type TableColumn,
+  type TableColType,
 } from "@/lib/form-schema";
 
 let idc = 0;
@@ -81,6 +83,25 @@ export default function FieldSettingsPanel({
     );
   }
 
+  // ----- document header selected -----
+  if (selectedKey === "header") {
+    const shown = schema.show_header !== false;
+    const toggle = (v: boolean) => {
+      const n = { ...schema };
+      if (v) delete n.show_header; else n.show_header = false;
+      onChange(n);
+    };
+    return (
+      <Shell title={t("editor.docHeader")} onClose={() => onSelect(null)}>
+        <p style={{ fontSize: ".85rem", color: "var(--ink-2)", marginTop: 0 }}>{t("editor.docHeaderHint")}</p>
+        <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".9rem", color: "var(--ink)", cursor: "pointer" }}>
+          <input type="checkbox" checked={shown} onChange={(e) => toggle(e.target.checked)} style={{ width: 17, height: 17, accentColor: "var(--accent)" }} />
+          {t("editor.showHeader")}
+        </label>
+      </Shell>
+    );
+  }
+
   // ----- field selected -----
   let si = -1, fi = -1;
   schema.steps.forEach((s, i) => s.fields.forEach((f, j) => { if (f.id === selectedKey) { si = i; fi = j; } }));
@@ -92,13 +113,25 @@ export default function FieldSettingsPanel({
     setSteps(schema.steps.map((s, i) => (i === si ? { ...s, fields: s.fields.map((f, j) => (j === fi ? { ...f, ...p } : f)) } : s)));
   const patchStepFields = (fields: FormField[]) => setSteps(schema.steps.map((s, i) => (i === si ? { ...s, fields } : s)));
 
+  // ----- table column helpers -----
+  const cols = field.columns || [];
+  const setCols = (columns: TableColumn[]) => patchField({ columns });
+  const patchCol = (i: number, p: Partial<TableColumn>) => setCols(cols.map((c, ci) => (ci === i ? { ...c, ...p } : c)));
+  const addCol = () => setCols([...cols, { id: newId("c"), label: `คอลัมน์ ${cols.length + 1}`, type: "text" }]);
+  const removeCol = (i: number) => setCols(cols.filter((_, ci) => ci !== i));
+
   return (
     <Shell title={t("editor.fieldSettings")} onClose={() => onSelect(null)}>
       <label style={lbl}>{t("editor.fieldLabel")}</label>
       <Field value={field.label} onChange={(e) => patchField({ label: e.target.value })} placeholder={t("editor.fieldLabel")} />
 
       <label style={lbl}>{t("editor.fieldType")}</label>
-      <select value={field.type} onChange={(e) => patchField({ type: e.target.value as FieldType })} style={sel}>
+      <select value={field.type} onChange={(e) => {
+        const nt = e.target.value as FieldType;
+        if (nt === "table" && !(field.columns && field.columns.length))
+          patchField({ type: nt, columns: [{ id: newId("c"), label: "รายการ", type: "text", width: 3 }, { id: newId("c"), label: "จำนวน", type: "number" }], min_rows: field.min_rows ?? 1 });
+        else patchField({ type: nt });
+      }} style={sel}>
         {FIELD_TYPES.map((ft) => <option key={ft} value={ft}>{FIELD_TYPE_LABELS[ft]}</option>)}
       </select>
 
@@ -151,6 +184,43 @@ export default function FieldSettingsPanel({
           <input type="checkbox" checked={field.on_fail_require_note !== false} onChange={(e) => patchField({ on_fail_require_note: e.target.checked })} style={{ width: 17, height: 17, accentColor: "var(--accent)" }} />
           {t("editor.failNote")}
         </label>
+      )}
+
+      {field.type === "table" && (
+        <div style={{ marginTop: 10 }}>
+          <label style={lbl}>{t("editor.tableCols")}</label>
+          <div style={{ display: "grid", gap: 8 }}>
+            {cols.map((c, i) => (
+              <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 8 }}>
+                <div style={{ display: "flex", gap: 6 }}>
+                  <Field value={c.label} onChange={(e) => patchCol(i, { label: e.target.value })} placeholder={t("editor.tableColName")} style={{ flex: 1 }} />
+                  <button onClick={() => removeCol(i)} disabled={cols.length <= 1} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
+                  <select value={c.type} onChange={(e) => patchCol(i, { type: e.target.value as TableColType })} style={{ ...sel, width: "auto", flex: "0 0 auto" }}>
+                    <option value="text">{FIELD_TYPE_LABELS.text}</option>
+                    <option value="number">{FIELD_TYPE_LABELS.number}</option>
+                    <option value="select">{t("editor.tableSelect")}</option>
+                  </select>
+                  <label style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("editor.tableWidth")}</label>
+                  <input type="number" min={1} max={6} value={c.width ?? 1} onChange={(e) => patchCol(i, { width: Math.min(6, Math.max(1, Number(e.target.value) || 1)) })} style={{ ...sel, width: 56, padding: "6px 8px" }} />
+                </div>
+                {c.type === "select" && (
+                  <div style={{ marginTop: 6 }}>
+                    <Field value={(c.options || []).join(", ")} onChange={(e) => patchCol(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder={t("editor.tableOptHint")} />
+                  </div>
+                )}
+              </div>
+            ))}
+            {cols.length < 12 && (
+              <button onClick={addCol} style={{ ...iconBtn, justifySelf: "start", color: "var(--accent)", borderColor: "var(--accent)" }}>
+                <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("editor.tableAddCol")}
+              </button>
+            )}
+          </div>
+          <label style={lbl}>{t("editor.tableMinRows")}</label>
+          <input type="number" min={1} max={20} value={field.min_rows ?? 1} onChange={(e) => patchField({ min_rows: Math.min(20, Math.max(1, Number(e.target.value) || 1)) })} style={sel} />
+        </div>
       )}
 
       <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>

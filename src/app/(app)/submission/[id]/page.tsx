@@ -14,6 +14,8 @@ interface AnswerItem {
   note?: string;
   fail?: boolean;
   photoField?: string;
+  rows?: Record<string, string>[];
+  columns?: { id: string; label: string }[];
 }
 
 const STATUS_LABEL: Record<string, { t: string; c: string }> = {
@@ -102,23 +104,45 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
 
         {/* answers */}
         <div style={{ marginTop: 12 }}>
-          {answers.map((a, i) => (
-            <div key={i} className="krok-sub-row" style={row}>
-              <div className="krok-sub-label" style={label}>
-                {a.label}
-                {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
+          {answers.map((a, i) =>
+            a.type === "table" && a.columns ? (
+              <div key={i} style={{ padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
+                <div style={{ color: "var(--ink-2)", marginBottom: 6 }}>{a.label}</div>
+                {a.rows && a.rows.length ? (
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ borderCollapse: "collapse", fontSize: ".85rem", minWidth: "100%" }}>
+                      <thead>
+                        <tr>{a.columns.map((c) => <th key={c.id} style={{ textAlign: "left", padding: "5px 9px", borderBottom: "1px solid var(--line)", color: "var(--ink-3)", whiteSpace: "nowrap" }}>{c.label}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {a.rows.map((r, ri) => (
+                          <tr key={ri} style={{ borderBottom: "1px solid var(--line)" }}>
+                            {a.columns!.map((c) => <td key={c.id} style={{ padding: "5px 9px", verticalAlign: "top" }}>{r[c.id] || "—"}</td>)}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : <span style={{ color: "var(--ink-3)" }}>—</span>}
               </div>
-              <div style={{ flex: 1, fontWeight: 600, color: a.fail ? "var(--fail)" : "var(--ink)" }}>
-                {a.photoField && photoMap[a.photoField] ? (
-                  <img src={photoMap[a.photoField]} alt={a.label} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
-                ) : a.photoField ? (
-                  <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(ไม่พบไฟล์)</span>
-                ) : (
-                  a.display ?? "—"
-                )}
+            ) : (
+              <div key={i} className="krok-sub-row" style={row}>
+                <div className="krok-sub-label" style={label}>
+                  {a.label}
+                  {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
+                </div>
+                <div style={{ flex: 1, fontWeight: 600, color: a.fail ? "var(--fail)" : "var(--ink)" }}>
+                  {a.photoField && photoMap[a.photoField] ? (
+                    <img src={photoMap[a.photoField]} alt={a.label} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
+                  ) : a.photoField ? (
+                    <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(ไม่พบไฟล์)</span>
+                  ) : (
+                    a.display ?? "—"
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            )
+          )}
         </div>
 
         {/* approval history timeline */}

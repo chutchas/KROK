@@ -4,15 +4,16 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
+import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type TableColumn } from "@/lib/form-schema";
 import FormPaperFill from "@/components/FormPaperFill";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
 
-type Answer = { value?: string | string[]; note?: string; ai?: string };
+type TableRow = Record<string, string>;
+type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string };
 type Props = {
   formId: string;
   title: string;
@@ -99,6 +100,8 @@ export default function FillWizard(props: Props) {
       if (f.type === "photo") miss = !photos[f.id];
       else if (f.type === "signature") miss = !sigs[f.id];
       else if (f.type === "checkbox") miss = !(Array.isArray(a.value) && a.value.length);
+      else if (f.type === "table")
+        miss = !(Array.isArray(a.value) && (a.value as TableRow[]).some((r) => r && typeof r === "object" && Object.values(r).some((v) => String(v ?? "").trim() !== "")));
       else miss = a.value == null || a.value === "";
       if (miss) {
         errs[f.id] = t("fill.required");
@@ -164,17 +167,23 @@ export default function FillWizard(props: Props) {
               fails.push(f.label);
             }
           } else if (f.type === "checkbox") {
-            const vals = Array.isArray(a.value) ? a.value : [];
+            const vals = (Array.isArray(a.value) ? a.value : []).filter((v): v is string => typeof v === "string");
             item.display = vals.join(", ") || "—";
             if (f.options && vals.length < f.options.length)
               item.note = "ไม่ได้เลือก: " + f.options.filter((o) => !vals.includes(o)).join(", ");
           } else if (f.type === "number") {
-            item.display = (a.value ?? "—") + (f.unit ? " " + f.unit : "");
+            item.display = String(a.value ?? "—") + (f.unit ? " " + f.unit : "");
             const v = parseFloat(String(a.value));
             if (Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max))) {
               item.fail = true;
               fails.push(f.label + " (ค่านอกช่วง)");
             }
+          } else if (f.type === "table") {
+            const trows = Array.isArray(a.value) && a.value.length && typeof a.value[0] === "object" ? (a.value as TableRow[]) : [];
+            const filled = trows.filter((r) => Object.values(r).some((v) => String(v ?? "").trim() !== ""));
+            item.display = `${filled.length} แถว`;
+            item.rows = filled;
+            item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
           } else item.display = String(a.value ?? "—");
           list.push(item);
         }
@@ -416,6 +425,121 @@ export default function FillWizard(props: Props) {
 }
 
 // ============ single field control ============
+function useIsNarrow() {
+  const [n, setN] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 640px)");
+    const on = () => setN(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  return n;
+}
+
+// ตารางกรอกข้อมูล — desktop = ตาราง, มือถือ = การ์ดต่อแถว
+function TableInput({
+  columns, minRows, initial, onChange, variant,
+}: {
+  columns: TableColumn[];
+  minRows: number;
+  initial: TableRow[];
+  onChange: (rows: TableRow[]) => void;
+  variant: "normal" | "paper" | "compact";
+}) {
+  const cols = columns.length ? columns : [{ id: "c0", label: "รายการ", type: "text" as const }];
+  const [rows, setRows] = useState<TableRow[]>(() => {
+    const base = initial.length ? initial.map((r) => ({ ...r })) : [];
+    while (base.length < Math.max(1, minRows)) base.push({});
+    return base;
+  });
+  const narrow = useIsNarrow();
+  const cards = narrow || variant === "compact";
+  const small = variant !== "normal";
+
+  function commit(next: TableRow[]) { setRows(next); onChange(next); }
+  const setCell = (ri: number, cid: string, v: string) => commit(rows.map((r, i) => (i === ri ? { ...r, [cid]: v } : r)));
+  const addRow = () => commit([...rows, {}]);
+  const delRow = (ri: number) => commit(rows.length > 1 ? rows.filter((_, i) => i !== ri) : [{}]);
+
+  const cellInput = (ri: number, c: TableColumn) => {
+    const v = rows[ri]?.[c.id] ?? "";
+    const st: React.CSSProperties = { width: "100%", padding: small ? "5px 7px" : "8px 9px", border: "1px solid #c3c8ce", borderRadius: 6, background: "#fff", color: "#111", fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
+    if (c.type === "select") {
+      return (
+        <select value={v} onChange={(e) => setCell(ri, c.id, e.target.value)} style={st}>
+          <option value="">—</option>
+          {(c.options || []).map((o, i) => <option key={i} value={o}>{o}</option>)}
+        </select>
+      );
+    }
+    return <input type={c.type === "number" ? "number" : "text"} inputMode={c.type === "number" ? "decimal" : undefined} value={v} onChange={(e) => setCell(ri, c.id, e.target.value)} style={st} />;
+  };
+
+  const addBtn = (
+    <button type="button" onClick={addRow} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
+      <Icon icon={Plus} className="h-3.5 w-3.5" /> เพิ่มแถว
+    </button>
+  );
+
+  if (cards) {
+    return (
+      <div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {rows.map((_, ri) => (
+            <div key={ri} style={{ border: "1px solid #d5d9de", borderRadius: 10, padding: 10, background: "#fafbfc" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                <b style={{ fontSize: ".78rem", color: "#555" }}>แถวที่ {ri + 1}</b>
+                <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", display: "inline-flex" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+              </div>
+              <div style={{ display: "grid", gap: 7 }}>
+                {cols.map((c) => (
+                  <label key={c.id} style={{ display: "grid", gap: 3 }}>
+                    <span style={{ fontSize: ".76rem", color: "#666", fontWeight: 600 }}>{c.label}</span>
+                    {cellInput(ri, c)}
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+        {addBtn}
+      </div>
+    );
+  }
+
+  const totalW = cols.reduce((s, c) => s + (c.width || 1), 0);
+  return (
+    <div>
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", minWidth: cols.length * 90 + 44 }}>
+          <colgroup>
+            {cols.map((c) => <col key={c.id} style={{ width: `${((c.width || 1) / totalW) * 96}%` }} />)}
+            <col style={{ width: 40 }} />
+          </colgroup>
+          <thead>
+            <tr>
+              {cols.map((c) => <th key={c.id} style={{ textAlign: "left", fontSize: small ? ".76rem" : ".82rem", color: "#444", padding: "4px 6px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>{c.label}</th>)}
+              <th style={{ borderBottom: "1px solid #ccc" }} />
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((_, ri) => (
+              <tr key={ri}>
+                {cols.map((c) => <td key={c.id} style={{ padding: "3px 5px", verticalAlign: "top" }}>{cellInput(ri, c)}</td>)}
+                <td style={{ padding: "3px 2px", textAlign: "center", verticalAlign: "middle" }}>
+                  <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {addBtn}
+    </div>
+  );
+}
+
 function FieldControl({
   field: f,
   getInitial,
@@ -504,7 +628,7 @@ function FieldControl({
     : { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
   const [numValue, setNumValue] = useState(String(initial.value ?? ""));
   const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
-  const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) ? initial.value : []);
+  const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) && typeof initial.value[0] === "string" ? (initial.value as string[]) : []);
   const [dtDefault] = useState(() =>
     new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
   );
@@ -625,6 +749,15 @@ function FieldControl({
           </>
         )}
         {f.type === "signature" && <SignaturePad hasSig={hasSig} onSave={setSig} paper={paper} compact={compact} />}
+        {f.type === "table" && (
+          <TableInput
+            columns={f.columns || []}
+            minRows={f.min_rows || 1}
+            initial={Array.isArray(initial.value) && typeof initial.value[0] === "object" ? (initial.value as TableRow[]) : []}
+            onChange={(rows) => onPatch({ value: rows }, false)}
+            variant={compact ? "compact" : paper ? "paper" : "normal"}
+          />
+        )}
       </div>
 
       {error && <div style={{ fontSize: ".82rem", color: "var(--fail)", marginTop: 6 }}>{error}</div>}

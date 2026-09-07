@@ -27,6 +27,22 @@ function Blank({ f }: { f: FormField }) {
   if (f.type === "photo") {
     return <span style={{ display: "block", border: "1px dashed #999", height: 64, borderRadius: 4 }} />;
   }
+  if (f.type === "table") {
+    const cols = f.columns || [];
+    const nRows = Math.max(3, f.min_rows || 3);
+    return (
+      <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".72rem", marginTop: 2 }}>
+        <thead>
+          <tr>{cols.map((c) => <th key={c.id} style={{ border: "1px solid #999", padding: "3px 5px", background: "#f0f0f0", textAlign: "left", fontWeight: 700 }}>{c.label}</th>)}</tr>
+        </thead>
+        <tbody>
+          {Array.from({ length: nRows }).map((_, i) => (
+            <tr key={i}>{cols.map((c) => <td key={c.id} style={{ border: "1px solid #ccc", height: 22 }} />)}</tr>
+          ))}
+        </tbody>
+      </table>
+    );
+  }
   // text / number / barcode / datetime
   return <span style={{ display: "block", borderBottom: "1px dotted #999", minHeight: 20 }} />;
 }
@@ -51,6 +67,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
           lineHeight: 1.5,
         }}
       >
+        {schema.show_header !== false && (
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 10, marginBottom: 16 }}>
           <div>
             <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{schema.icon} {schema.title}</div>
@@ -60,6 +77,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
             วันที่: ______________<br />เลขที่: ______________
           </div>
         </div>
+        )}
 
         {schema.steps.map((s, si) => (
           <div key={s.id} style={{ marginBottom: 18, breakInside: "avoid" }}>
@@ -68,17 +86,26 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
-                {s.fields.map((f) => (
-                  <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
-                    <td style={{ width: "42%", verticalAlign: "top", padding: "8px 8px 8px 0", color: "#222" }}>
-                      {f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}
-                      <span style={{ display: "block", fontSize: ".68rem", color: "#888" }}>{FIELD_TYPE_LABELS[f.type]}{f.unit ? ` (${f.unit})` : ""}</span>
-                    </td>
-                    <td style={{ verticalAlign: "middle", padding: "8px 0" }}>
-                      <Blank f={f} />
-                    </td>
-                  </tr>
-                ))}
+                {s.fields.map((f) =>
+                  f.type === "table" ? (
+                    <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
+                      <td colSpan={2} style={{ padding: "8px 0" }}>
+                        <div style={{ color: "#222", marginBottom: 4 }}>{f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}</div>
+                        <Blank f={f} />
+                      </td>
+                    </tr>
+                  ) : (
+                    <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
+                      <td style={{ width: "42%", verticalAlign: "top", padding: "8px 8px 8px 0", color: "#222" }}>
+                        {f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}
+                        <span style={{ display: "block", fontSize: ".68rem", color: "#888" }}>{FIELD_TYPE_LABELS[f.type]}{f.unit ? ` (${f.unit})` : ""}</span>
+                      </td>
+                      <td style={{ verticalAlign: "middle", padding: "8px 0" }}>
+                        <Blank f={f} />
+                      </td>
+                    </tr>
+                  )
+                )}
               </tbody>
             </table>
           </div>

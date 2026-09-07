@@ -17,6 +17,7 @@ import { saveDashboardLayout, computeWidget, type WidgetResult } from "./actions
 
 export interface AnswerItem {
   label: string; type: string; display?: string; note?: string; fail?: boolean; photoField?: string;
+  rows?: Record<string, string>[]; columns?: { id: string; label: string }[];
 }
 export interface SubRow {
   id: string; form_title: string; form_icon: string; user_name: string;
@@ -434,20 +435,42 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
           {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
         </p>
-        {sub.answers.map((a, i) => (
-          <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "9px 0", borderBottom: "1px solid var(--line)", fontSize: ".9rem" }}>
-            <div style={{ color: "var(--ink-2)" }}>
-              {a.label}
-              {a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}
+        {sub.answers.map((a, i) =>
+          a.type === "table" && a.columns ? (
+            <div key={i} style={{ padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
+              <div style={{ color: "var(--ink-2)", fontSize: ".9rem", marginBottom: 4 }}>{a.label}</div>
+              {a.rows && a.rows.length ? (
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ borderCollapse: "collapse", fontSize: ".82rem", minWidth: "100%" }}>
+                    <thead>
+                      <tr>{a.columns.map((c) => <th key={c.id} style={{ textAlign: "left", padding: "4px 8px", borderBottom: "1px solid var(--line)", color: "var(--ink-3)", whiteSpace: "nowrap" }}>{c.label}</th>)}</tr>
+                    </thead>
+                    <tbody>
+                      {a.rows.map((r, ri) => (
+                        <tr key={ri} style={{ borderBottom: "1px solid var(--line)" }}>
+                          {a.columns!.map((c) => <td key={c.id} style={{ padding: "4px 8px", verticalAlign: "top" }}>{r[c.id] || "—"}</td>)}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ) : <span style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>—</span>}
             </div>
-            <div style={{ fontWeight: 600, textAlign: "right", overflowWrap: "anywhere", color: a.fail ? "var(--fail)" : a.type === "pass_fail" ? "var(--pass)" : "var(--ink)" }}>
-              {a.photoField ? (
-                photos[a.photoField] ? <img src={photos[a.photoField]} alt={t("dash.photoAlt")} style={{ maxHeight: 110, borderRadius: 6 }} />
-                  : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
-              ) : (a.display ?? "—")}
+          ) : (
+            <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "9px 0", borderBottom: "1px solid var(--line)", fontSize: ".9rem" }}>
+              <div style={{ color: "var(--ink-2)" }}>
+                {a.label}
+                {a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}
+              </div>
+              <div style={{ fontWeight: 600, textAlign: "right", overflowWrap: "anywhere", color: a.fail ? "var(--fail)" : a.type === "pass_fail" ? "var(--pass)" : "var(--ink)" }}>
+                {a.photoField ? (
+                  photos[a.photoField] ? <img src={photos[a.photoField]} alt={t("dash.photoAlt")} style={{ maxHeight: 110, borderRadius: 6 }} />
+                    : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
+                ) : (a.display ?? "—")}
+              </div>
             </div>
-          </div>
-        ))}
+          )
+        )}
         <div style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
           <a href={`/submission/${sub.id}`} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, textDecoration: "none", fontSize: ".9rem" }}>{t("dash.openDoc")}</a>
           <button onClick={onClose} style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>{t("common.close")}</button>

@@ -65,8 +65,9 @@ export default function FormPaperFill({
               background: "#fff", color: "#111", boxShadow: "0 2px 16px rgba(0,0,0,.15)",
             }}
           >
-            {/* หัวกระดาษ */}
-            <div style={{ position: "absolute", top: 32, left: 40, right: 40, borderBottom: "2px solid #111", paddingBottom: 8, display: "flex", justifyContent: "space-between", gap: 12 }}>
+            {/* หัวกระดาษ (ซ่อนได้) */}
+            {schema.show_header !== false && (
+            <div style={{ position: "absolute", top: (schema.layout?.header?.y ?? 32), left: (schema.layout?.header?.x ?? 40), width: (schema.layout?.header?.w ?? CANVAS_W - 80), borderBottom: "2px solid #111", paddingBottom: 8, display: "flex", justifyContent: "space-between", gap: 12 }}>
               <div style={{ minWidth: 0 }}>
                 <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>{icon} {title}</div>
                 {schema.description && <div style={{ fontSize: ".72rem", color: "#555", marginTop: 2 }}>{schema.description}</div>}
@@ -75,6 +76,7 @@ export default function FormPaperFill({
                 ผู้กรอก: {userName || "__________"}<br />วันที่: {today}
               </div>
             </div>
+            )}
 
             {/* บล็อกตามตำแหน่งที่ออกแบบ */}
             {blocks.map((b) => {

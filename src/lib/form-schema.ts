@@ -13,9 +13,20 @@ export const FIELD_TYPES = [
   "barcode",
   "signature",
   "datetime",
+  "table",
 ] as const;
 
 export type FieldType = (typeof FIELD_TYPES)[number];
+
+// คอลัมน์ของฟิลด์ตาราง
+export type TableColType = "text" | "number" | "select";
+export interface TableColumn {
+  id: string;
+  label: string;
+  type: TableColType;
+  options?: string[]; // เฉพาะ select
+  width?: number;     // น้ำหนักความกว้างสัมพัทธ์ (>=1) default 1
+}
 
 export interface FormField {
   id: string;
@@ -36,6 +47,9 @@ export interface FormField {
   photo_hint?: string;
   // pass_fail
   on_fail_require_note?: boolean;
+  // table
+  columns?: TableColumn[];
+  min_rows?: number; // จำนวนแถวเริ่มต้นที่แสดงตอนกรอก (default 1)
 }
 
 export interface FormStep {
@@ -57,8 +71,10 @@ export interface FormSchema {
   category?: string; // ประเภทฟอร์ม: preset key หรือข้อความกำหนดเอง
   flow: "sequential";
   steps: FormStep[];
+  // แสดงหัวเอกสาร (ชื่อ/วันที่/เลขที่) ไหม — undefined/true = แสดง, false = ซ่อน
+  show_header?: boolean;
   // ตำแหน่ง element บนมุมมองกระดาษ (px บนแคนวาส A4 กว้าง 794)
-  // key = field id, "s:<stepId>" สำหรับหัวข้อขั้นตอน
+  // key = field id, "s:<stepId>" สำหรับหัวข้อขั้นตอน, "header" = หัวเอกสาร
   layout?: Record<string, PaperBox>;
 }
 
@@ -72,6 +88,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   barcode: "บาร์โค้ด/QR",
   signature: "ลายเซ็น",
   datetime: "วันเวลา",
+  table: "ตาราง",
 };
 
 const str = (v: unknown, max: number, fallback = ""): string => {
@@ -127,6 +144,27 @@ export function sanitizeSchema(raw: unknown): FormSchema {
           }
           if (type === "photo" && fo.photo_hint) o.photo_hint = str(fo.photo_hint, 200);
           if (type === "pass_fail") o.on_fail_require_note = fo.on_fail_require_note !== false;
+          if (type === "table") {
+            const rawCols = Array.isArray(fo.columns) ? fo.columns : [];
+            const cols: TableColumn[] = rawCols
+              .slice(0, 12)
+              .map((c: unknown, ci: number): TableColumn => {
+                const co = (c ?? {}) as Record<string, unknown>;
+                const ct = (["text", "number", "select"].includes(co.type as string) ? co.type : "text") as TableColType;
+                const col: TableColumn = {
+                  id: str(co.id, 30, `c${ci}`).replace(/[^\w-]/g, "_") || `c${ci}`,
+                  label: str(co.label, 60, `คอลัมน์ ${ci + 1}`),
+                  type: ct,
+                };
+                if (ct === "select" && Array.isArray(co.options)) col.options = co.options.slice(0, 20).map((x) => str(x, 60));
+                const w = num(co.width);
+                if (w !== undefined && w > 0) col.width = Math.min(6, Math.max(1, Math.round(w)));
+                return col;
+              });
+            o.columns = cols.length ? cols : [{ id: "c0", label: "รายการ", type: "text" }];
+            const mr = num(fo.min_rows);
+            o.min_rows = mr !== undefined ? Math.min(20, Math.max(1, Math.round(mr))) : 1;
+          }
           return o;
         });
       return {
@@ -140,7 +178,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (steps.length === 0) throw new Error("ฟอร์มไม่มีฟิลด์ที่ใช้งานได้");
 
   // เก็บ layout กระดาษ (ลากวาง) เฉพาะ key ที่ตรงกับ field id / "s:<stepId>" ที่มีจริง
-  const validKeys = new Set<string>();
+  const validKeys = new Set<string>(["header"]);
   for (const s of steps) {
     validKeys.add(`s:${s.id}`);
     for (const f of s.fields) validKeys.add(f.id);
@@ -172,6 +210,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
     steps,
   };
   if (r.category != null && r.category !== "") schema.category = str(r.category, 60);
+  if (r.show_header === false) schema.show_header = false;
   if (layout) schema.layout = layout;
   return schema;
 }
