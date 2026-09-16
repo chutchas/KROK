@@ -87,6 +87,16 @@ function sanitizeVisibility(v: unknown): Visibility {
   };
 }
 
+// ฟอร์มสาธารณะเปิดจาก QR โดยคนนอกองค์กร — ล็อคเครื่องกับฟอร์มแบบนั้นไม่มีความหมาย จึงบังคับปิดเสมอ
+function deviceLock(requireDevice: boolean, vis: Visibility): boolean {
+  return vis.mode === "public" ? false : !!requireDevice;
+}
+
+// ขอบเขตเครื่องมีความหมายเฉพาะตอนล็อคเครื่องเท่านั้น
+function deviceScopeOf(requireDevice: boolean, vis: Visibility, scope: "any" | "selected"): "any" | "selected" {
+  return deviceLock(requireDevice, vis) && scope === "selected" ? "selected" : "any";
+}
+
 // เปลี่ยนสิทธิ์การแชร์ของฟอร์มจากหน้า "ฟอร์มทั้งหมด" (ไม่ต้องเปิด editor)
 export async function setFormVisibility(
   formId: string,
@@ -115,7 +125,9 @@ export async function saveForm(
   rawSchema: unknown,
   requiresApproval = false,
   rawChain: unknown = [],
-  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] }
+  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] },
+  requireDevice = false,
+  deviceScope: "any" | "selected" = "any"
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -149,6 +161,8 @@ export async function saveForm(
       visibility: vis.mode,
       visible_teams: vis.teamIds,
       visible_users: vis.userIds,
+      require_approved_device: deviceLock(requireDevice, vis),
+      device_scope: deviceScopeOf(requireDevice, vis, deviceScope),
       created_by: session.userId,
     })
     .select("id")
@@ -181,7 +195,9 @@ export async function updateForm(
   rawSchema: unknown,
   requiresApproval = false,
   rawChain: unknown = [],
-  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] }
+  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] },
+  requireDevice = false,
+  deviceScope: "any" | "selected" = "any"
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -209,6 +225,8 @@ export async function updateForm(
       visibility: vis.mode,
       visible_teams: vis.teamIds,
       visible_users: vis.userIds,
+      require_approved_device: deviceLock(requireDevice, vis),
+      device_scope: deviceScopeOf(requireDevice, vis, deviceScope),
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
@@ -243,7 +261,9 @@ export async function saveDraft(
   rawSchema: unknown,
   requiresApproval = false,
   rawChain: unknown = [],
-  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] }
+  rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] },
+  requireDevice = false,
+  deviceScope: "any" | "selected" = "any"
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -273,6 +293,8 @@ export async function saveDraft(
       visibility: vis.mode,
       visible_teams: vis.teamIds,
       visible_users: vis.userIds,
+      require_approved_device: deviceLock(requireDevice, vis),
+      device_scope: deviceScopeOf(requireDevice, vis, deviceScope),
       created_by: session.userId,
     })
     .select("id")

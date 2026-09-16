@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import type { FormSchema } from "@/lib/form-schema";
+import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import FillWizard from "./FillWizard";
 
 export const dynamic = "force-dynamic";
@@ -15,7 +16,7 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
   const supabase = await createClient();
   const { data } = await supabase
     .from("forms")
-    .select("id, title, icon, schema, version, requires_approval, approval_chain")
+    .select("id, title, icon, schema, version, requires_approval, approval_chain, require_approved_device")
     .eq("id", formId)
     .is("deleted_at", null)
     .maybeSingle();
@@ -38,6 +39,18 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
     notFound();
   }
 
+  // เอกสารที่เกี่ยวข้อง (ถ้ายังไม่ได้รัน migration 0025 จะได้ลิสต์ว่าง — ฟอร์มยังกรอกได้ตามปกติ)
+  let attachments: Attachment[] = [];
+  try {
+    const { data: att } = await supabase
+      .from("form_attachments")
+      .select("id, field_id, kind, name, mime, size_bytes, url")
+      .eq("form_id", formId)
+      .order("sort", { ascending: true })
+      .order("created_at", { ascending: true });
+    attachments = (att || []).map((r) => rowToAttachment(r as Record<string, unknown>));
+  } catch { /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
+
   return (
     <FillWizard
       formId={data.id as string}
@@ -50,6 +63,8 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
       tenantId={session.tenantId}
       userId={session.userId}
       userName={session.displayName}
+      attachments={attachments}
+      requireDevice={!!data.require_approved_device}
     />
   );
 }

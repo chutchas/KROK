@@ -1,6 +1,7 @@
 import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import type { FormSchema } from "@/lib/form-schema";
+import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import PublicFillClient from "./PublicFillClient";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,18 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
 
   // ถ้าผู้เปิดกำลังล็อกอินอยู่ (ไม่ว่าจะ tenant ไหน) การส่งฟอร์มสาธารณะจะไม่ผูกกับบัญชี
   // → แจ้งเตือนให้รู้ตัวว่ากรอกในฐานะ guest (กันสับสนเคสล็อกอิน tenant อื่นแล้วสแกน QR)
+  // เอกสารที่เกี่ยวข้อง — ฟอร์มสาธารณะอ่านผ่าน service role
+  let attachments: Attachment[] = [];
+  try {
+    const { data: att } = await admin
+      .from("form_attachments")
+      .select("id, field_id, kind, name, mime, size_bytes, url")
+      .eq("form_id", formId)
+      .order("sort", { ascending: true })
+      .order("created_at", { ascending: true });
+    attachments = (att || []).map((r) => rowToAttachment(r as Record<string, unknown>));
+  } catch { /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
+
   let loggedIn = false;
   try {
     const supabase = await createClient();
@@ -49,6 +62,7 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       schema={data.schema as FormSchema}
       tenantId={data.tenant_id as string}
       loggedIn={loggedIn}
+      attachments={attachments}
     />
   );
 }

@@ -13,7 +13,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet, TabletSmartphone } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -33,6 +33,7 @@ const SECONDARY: NavEntry[] = [
   { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
   { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
   { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
+  { href: "/settings/devices", key: "nav.devices", icon: TabletSmartphone, gate: "wsadmin" },
   { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
   { href: "/admin/settings", key: "nav.adminSystem", icon: Settings, gate: "dev" },
@@ -57,6 +58,7 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
       { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
       { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
       { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
+      { href: "/settings/devices", key: "nav.devices", icon: TabletSmartphone, gate: "wsadmin" },
       { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
     ],
   },

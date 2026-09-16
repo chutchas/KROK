@@ -4,11 +4,13 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon } from "lucide-react";
+import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
 import FieldSettingsPanel from "@/components/FieldSettingsPanel";
+import AttachmentsPanel from "@/components/AttachmentsPanel";
+import FormDevicePicker from "@/components/FormDevicePicker";
 import QrModal from "@/components/QrModal";
 import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
@@ -23,13 +25,15 @@ interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper";
 
-export default function StudioClient({ initialForms, members, teams }: { initialForms: FormRow[]; members: Member[]; teams: Team[] }) {
+export default function StudioClient({ initialForms, members, teams, tenantId }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [createMode, setCreateMode] = useState<"prompt" | "file">("prompt");
   const [draft, setDraft] = useState<FormSchema | null>(null);
   const [requiresApproval, setRequiresApproval] = useState(false);
+  const [requireDevice, setRequireDevice] = useState(false);
+  const [deviceScope, setDeviceScope] = useState<"any" | "selected">("any");
   const [chain, setChain] = useState<ApprovalStep[]>([]);
   const [visMode, setVisMode] = useState<VisMode>("all");
   const [visTeams, setVisTeams] = useState<string[]>([]);
@@ -64,8 +68,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setBusy(t("studio.busyPublish"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
     const res = editingId
-      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility)
-      : await saveDraft(draft, requiresApproval, requiresApproval ? chain : [], visibility);
+      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope)
+      : await saveDraft(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
     setBusy(null);
     if ("error" in res) { setStatus({ t: res.error, err: true }); return; }
     resetDraft();
@@ -175,8 +179,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setBusy(t("studio.busyPublish"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
     const res = editingId
-      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility)
-      : await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility);
+      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope)
+      : await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
     setBusy(null);
     if ("error" in res) {
       setStatus({ t: res.error, err: true });
@@ -195,6 +199,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setSelKey(null);
     setCustomCat(false);
     setRequiresApproval(false);
+    setRequireDevice(false);
+    setDeviceScope("any");
     setChain([]);
     setVisMode("all");
     setVisTeams([]);
@@ -265,6 +271,8 @@ export default function StudioClient({ initialForms, members, teams }: { initial
     setView("mobile");
     setSelKey(null);
     setRequiresApproval(f.requires_approval);
+    setRequireDevice(!!f.require_approved_device);
+    setDeviceScope(f.device_scope === "selected" ? "selected" : "any");
     setChain(f.approval_chain || []);
     setVisMode(f.visibility || "all");
     setVisTeams(f.visible_teams || []);
@@ -515,7 +523,7 @@ export default function StudioClient({ initialForms, members, teams }: { initial
               <>
                 <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />
                 <div className="krok-settings">
-                  <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} />
+                  <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} />
                 </div>
               </>
             )}
@@ -523,6 +531,52 @@ export default function StudioClient({ initialForms, members, teams }: { initial
 
           {/* เอกสารสำหรับพิมพ์ (ซ่อนบนจอ แสดงเฉพาะตอนพิมพ์) */}
           <div className="krok-print-root"><FormPaperView schema={draft} /></div>
+
+          <AttachmentsPanel formId={editingId} tenantId={tenantId} />
+
+          {/* ล็อคให้กรอกได้เฉพาะเครื่องที่อนุมัติแล้ว */}
+          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: visMode === "public" ? "not-allowed" : "pointer", opacity: visMode === "public" ? 0.55 : 1 }}>
+              <input
+                type="checkbox"
+                checked={requireDevice && visMode !== "public"}
+                disabled={visMode === "public"}
+                onChange={(e) => setRequireDevice(e.target.checked)}
+                style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }}
+              />
+              <span>
+                <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon icon={TabletSmartphone} className="h-4 w-4" /> เฉพาะเครื่องที่อนุมัติแล้ว
+                </b>
+                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
+                  {visMode === "public"
+                    ? "ฟอร์มสาธารณะเปิดจาก QR โดยคนนอกองค์กร จึงล็อคเครื่องไม่ได้"
+                    : "เครื่องที่ยังไม่ได้รับอนุมัติจะเปิดกรอกฟอร์มนี้ไม่ได้ — อนุมัติเครื่องที่ ตั้งค่า → อุปกรณ์"}
+                </span>
+              </span>
+            </label>
+
+            {requireDevice && visMode !== "public" && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {([
+                    { v: "any" as const, label: "ทุกเครื่องที่อนุมัติแล้วในองค์กร", sub: "เครื่องใหม่ที่อนุมัติทีหลังใช้ฟอร์มนี้ได้ทันที" },
+                    { v: "selected" as const, label: "เฉพาะเครื่องที่เลือกไว้", sub: "อนุมัติเครื่องแล้วยังไม่พอ ต้องผูกกับฟอร์มนี้ด้วย" },
+                  ]).map((o) => (
+                    <label key={o.v} style={{ display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer", padding: "8px 10px", borderRadius: 8, border: `1px solid ${deviceScope === o.v ? "var(--accent)" : "var(--line)"}`, background: deviceScope === o.v ? "var(--accent-soft)" : "var(--surface)" }}>
+                      <input type="checkbox" checked={deviceScope === o.v} onChange={() => setDeviceScope(o.v)} style={{ width: 17, height: 17, marginTop: 2, accentColor: "var(--accent)" }} />
+                      <span>
+                        <b style={{ fontSize: ".88rem", fontFamily: "var(--font-anuphan)" }}>{o.label}</b>
+                        <span style={{ display: "block", fontSize: ".78rem", color: "var(--ink-3)" }}>{o.sub}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {deviceScope === "selected" && <FormDevicePicker formId={editingId} />}
+              </div>
+            )}
+          </div>
 
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
             <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.refineTitle")}</b>

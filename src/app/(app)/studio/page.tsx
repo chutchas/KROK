@@ -17,6 +17,8 @@ export interface FormRow {
   visible_teams: string[];
   visible_users: string[];
   status: "draft" | "published" | "archived";
+  require_approved_device: boolean;
+  device_scope: "any" | "selected";
 }
 
 export default async function StudioPage() {
@@ -32,7 +34,7 @@ export default async function StudioPage() {
   const [{ data }, { data: memberRows }, { data: teamRows }] = await Promise.all([
     supabase
       .from("forms")
-      .select("id, title, icon, schema, requires_approval, approval_chain, visibility, visible_teams, visible_users, status")
+      .select("id, title, icon, schema, requires_approval, approval_chain, visibility, visible_teams, visible_users, status, require_approved_device, device_scope")
       .eq("tenant_id", session.tenantId)
       .is("deleted_at", null)
       .order("created_at", { ascending: false }),
@@ -60,6 +62,8 @@ export default async function StudioPage() {
     visible_teams: (f.visible_teams as string[]) ?? [],
     visible_users: (f.visible_users as string[]) ?? [],
     status: (f.status as FormRow["status"]) ?? "published",
+    require_approved_device: (f.require_approved_device as boolean) ?? false,
+    device_scope: (f.device_scope as FormRow["device_scope"]) ?? "any",
   }));
 
   const members = (memberRows || []).map((m) => ({
@@ -70,5 +74,5 @@ export default async function StudioPage() {
 
   const teams = ((teamRows || []) as { id: string; name: string }[]).map((tt) => ({ id: tt.id, name: tt.name }));
 
-  return <StudioClient initialForms={forms} members={members} teams={teams} />;
+  return <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} />;
 }

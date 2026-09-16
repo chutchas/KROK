@@ -6,15 +6,17 @@ import Icon from "@/components/Icon";
 import { Globe, Info } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import type { FormSchema } from "@/lib/form-schema";
+import type { Attachment } from "@/lib/attachments";
 import FillWizard from "@/app/(app)/fill/[formId]/FillWizard";
 
 // หน้ากรอกฟอร์มสาธารณะ (ไม่ต้อง login) — ขอชื่อผู้กรอกก่อน แล้วเข้าสู่ wizard เดิมในโหมด public
 export default function PublicFillClient({
-  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false,
+  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false, attachments = [],
 }: {
   formId: string; title: string; icon: string; version: number;
   requiresApproval: boolean; approvalChain: unknown[]; schema: FormSchema; tenantId: string;
   loggedIn?: boolean;
+  attachments?: Attachment[];
 }) {
   const { t } = useT();
   const [name, setName] = useState("");
@@ -62,6 +64,7 @@ export default function PublicFillClient({
             tenantId={tenantId}
             userId=""
             userName={name.trim()}
+            attachments={attachments}
             publicMode
           />
         )}

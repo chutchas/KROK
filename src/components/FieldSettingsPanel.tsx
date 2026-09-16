@@ -3,6 +3,7 @@ import { Field } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ArrowUp, ArrowDown, Trash2, Copy, Plus, X } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import AttachmentsPanel from "@/components/AttachmentsPanel";
 import {
   FIELD_TYPES,
   FIELD_TYPE_LABELS,
@@ -30,11 +31,16 @@ export default function FieldSettingsPanel({
   selectedKey,
   onChange,
   onSelect,
+  formId = null,
+  tenantId = "",
 }: {
   schema: FormSchema;
   selectedKey: string | null;
   onChange: (s: FormSchema) => void;
   onSelect: (key: string | null) => void;
+  /** ฟอร์มที่บันทึกแล้วเท่านั้นจึงแนบเอกสารระดับฟิลด์ได้ */
+  formId?: string | null;
+  tenantId?: string;
 }) {
   const { t } = useT();
 
@@ -225,6 +231,8 @@ export default function FieldSettingsPanel({
           <input type="number" min={1} max={20} value={field.min_rows ?? 1} onChange={(e) => patchField({ min_rows: Math.min(20, Math.max(1, Number(e.target.value) || 1)) })} style={sel} />
         </div>
       )}
+
+      <AttachmentsPanel formId={formId} tenantId={tenantId} fieldId={field.id} compact />
 
       <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>
         <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStepFields(move(step.fields, fi, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>

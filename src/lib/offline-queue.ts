@@ -21,6 +21,7 @@ export interface PendingSubmission {
   answers: Record<string, unknown>[];
   dur: number;
   photos: { fieldId: string; dataUrl: string; ai?: string }[];
+  deviceId?: string | null;
   queuedAt: number;
 }
 
@@ -92,6 +93,7 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
     fails: p.fails,
     answers: p.answers,
     duration_s: p.dur,
+    device_id: p.deviceId ?? null,
     approval_status: p.requiresApproval ? "pending" : "none",
     approval_chain: p.requiresApproval ? p.approvalChain : [],
     approval_step: 0,

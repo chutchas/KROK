@@ -4,13 +4,27 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2 } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type TableColumn } from "@/lib/form-schema";
 import FormPaperFill from "@/components/FormPaperFill";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
+import AttachmentChips from "@/components/AttachmentView";
+import { groupAttachments, type Attachment } from "@/lib/attachments";
+import {
+  defaultDeviceName,
+  deviceShortCode,
+  freshApproved,
+  freshFormAllow,
+  getDeviceKey,
+  guessPlatform,
+  writeDeviceState,
+  writeFormAllow,
+  type DeviceStatus,
+} from "@/lib/device-client";
+import { registerDevice } from "@/app/(app)/settings/devices/actions";
 
 type TableRow = Record<string, string>;
 type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string };
@@ -26,6 +40,10 @@ type Props = {
   userId: string;
   userName: string;
   publicMode?: boolean;
+  /** เอกสารที่เกี่ยวข้อง (ระดับฟอร์ม + ระดับฟิลด์) */
+  attachments?: Attachment[];
+  /** ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว */
+  requireDevice?: boolean;
 };
 
 // ---- client image shrink to jpeg data-url ----
@@ -82,6 +100,70 @@ export default function FillWizard(props: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [mode, setMode] = useState<"mobile" | "paper">("mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean } | null>(null);
+
+  // ---- เอกสารที่เกี่ยวข้อง ----
+  const [attForm, attByField] = (() => {
+    const g = groupAttachments(props.attachments || []);
+    return [g.form, g.byField] as const;
+  })();
+
+  // ---- ตัวตนของเครื่อง (เฉพาะฟอร์มที่ล็อค) ----
+  const deviceLocked = !!props.requireDevice && !props.publicMode;
+  const [device, setDevice] = useState<{ id: string | null; status: DeviceStatus | "checking" | "error" | "notlinked"; msg?: string }>(
+    () => (deviceLocked ? { id: null, status: "checking" } : { id: null, status: "approved" })
+  );
+  const [deviceName, setDeviceName] = useState(() => defaultDeviceName(props.userName));
+  const [registering, setRegistering] = useState(false);
+
+  // ออฟไลน์/เรียก server ไม่ได้ → ใช้ผลที่แคชไว้ (อนุมัติแล้ว + ผูกกับฟอร์มนี้แล้ว ภายใน 24 ชม.)
+  const offlineFallback = useCallback((): { id: string | null; status: DeviceStatus | "error"; msg?: string } => {
+    const cached = freshApproved(props.tenantId);
+    if (!cached) return { id: null, status: "error", msg: "ออฟไลน์อยู่ และเครื่องนี้ยังไม่เคยผ่านการอนุมัติ" };
+    if (!freshFormAllow(props.formId))
+      return { id: cached.deviceId, status: "error", msg: "ออฟไลน์อยู่ และเครื่องนี้ยังไม่เคยกรอกฟอร์มนี้สำเร็จ" };
+    return { id: cached.deviceId, status: "approved" };
+  }, [props.tenantId, props.formId]);
+
+  const checkDevice = useCallback(async (name?: string) => {
+    if (!deviceLocked) return;
+    const key = getDeviceKey();
+
+    // ออฟไลน์: ใช้ผลอนุมัติที่แคชไว้ (ไม่เกิน 24 ชม.) เพื่อไม่ให้งานหยุดตอนสัญญาณหลุด
+    if (typeof navigator !== "undefined" && navigator.onLine === false) {
+      setDevice(offlineFallback());
+      return;
+    }
+
+    setRegistering(true);
+    try {
+      const res = await registerDevice(key, name || defaultDeviceName(props.userName), guessPlatform(), props.formId);
+      if ("error" in res) {
+        const fb = offlineFallback();
+        setDevice(fb.status === "approved" ? fb : { id: null, status: "error", msg: res.error });
+        return;
+      }
+      writeDeviceState(props.tenantId, { deviceId: res.deviceId, status: res.status, name: res.name, at: Date.now() });
+
+      // อนุมัติแล้วแต่ยังไม่ถูกผูกกับฟอร์มนี้ (ฟอร์มตั้งเป็น "เฉพาะเครื่องที่เลือก")
+      if (res.status === "approved" && res.allowedForForm === false) {
+        writeFormAllow(props.formId, false);
+        setDevice({ id: res.deviceId, status: "notlinked" });
+        return;
+      }
+      if (res.status === "approved") writeFormAllow(props.formId, true);
+      setDevice({ id: res.deviceId, status: res.status });
+    } catch {
+      const fb = offlineFallback();
+      setDevice(fb.status === "approved" ? fb : { id: null, status: "error", msg: "ตรวจสอบอุปกรณ์ไม่สำเร็จ" });
+    } finally {
+      setRegistering(false);
+    }
+  }, [deviceLocked, offlineFallback, props.formId, props.tenantId, props.userName]);
+
+  useEffect(() => {
+    if (!deviceLocked) return;
+    void checkDevice();
+  }, [deviceLocked, checkDevice]);
 
   const step = schema.steps[idx];
 
@@ -233,6 +315,7 @@ export default function FillWizard(props: Props) {
         answers: list,
         dur,
         photos: photoUploads,
+        deviceId: device.id,
         queuedAt: 0,
       };
 
@@ -265,6 +348,63 @@ export default function FillWizard(props: Props) {
       setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
       setSubmitting(false);
     }
+  }
+
+  // ---- ประตูตรวจอุปกรณ์: ฟอร์มที่ล็อค ต้องเป็นเครื่องที่อนุมัติแล้วเท่านั้น ----
+  if (deviceLocked && device.status !== "approved") {
+    const code = deviceShortCode(typeof window !== "undefined" ? getDeviceKey() : "");
+    const box: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "32px 20px", textAlign: "center", boxShadow: "var(--shadow)", maxWidth: 460, margin: "0 auto" };
+
+    if (device.status === "checking")
+      return (
+        <div style={box}>
+          <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={TabletSmartphone} className="h-10 w-10" strokeWidth={1.5} /></div>
+          <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>กำลังตรวจสอบอุปกรณ์…</h2>
+        </div>
+      );
+
+    const title = device.status === "revoked" ? "เครื่องนี้ถูกเพิกถอนสิทธิ์"
+      : device.status === "notlinked" ? "เครื่องนี้ยังไม่ได้ผูกกับฟอร์มนี้"
+      : device.status === "error" ? "ตรวจสอบอุปกรณ์ไม่สำเร็จ"
+      : "เครื่องนี้ยังไม่ได้รับอนุมัติ";
+    const sub = device.status === "revoked" ? "ติดต่อผู้ดูแลเพื่อขอเปิดสิทธิ์ใหม่"
+      : device.status === "notlinked" ? `เครื่องนี้ได้รับอนุมัติแล้ว แต่ฟอร์ม “${props.title}” ตั้งให้ใช้ได้เฉพาะเครื่องที่เลือกไว้ — แจ้งผู้ดูแลให้ผูกเครื่องนี้กับฟอร์มที่ ตั้งค่า → อุปกรณ์`
+      : device.status === "error" ? (device.msg || "ลองใหม่อีกครั้ง")
+      : "ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว — แจ้งรหัสเครื่องด้านล่างให้ผู้ดูแลเพื่ออนุมัติ";
+
+    return (
+      <div style={box}>
+        <div style={{ display: "flex", justifyContent: "center", color: device.status === "pending" || device.status === "notlinked" ? "var(--amber)" : "var(--fail)" }}>
+          <Icon icon={ShieldAlert} className="h-11 w-11" strokeWidth={1.5} />
+        </div>
+        <h2 style={{ margin: "10px 0 4px", fontSize: "1.08rem" }}>{title}</h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".88rem" }}>{sub}</p>
+
+        <div style={{ margin: "16px 0", padding: "12px 14px", borderRadius: 10, background: "var(--code-bg)", border: "1px solid var(--line)" }}>
+          <div style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>รหัสเครื่อง</div>
+          <div style={{ fontFamily: "monospace", fontSize: "1.5rem", letterSpacing: ".18em", fontWeight: 700 }}>{code}</div>
+        </div>
+
+        {device.status === "pending" && (
+          <div style={{ display: "grid", gap: 8, textAlign: "left" }}>
+            <label style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>ชื่อเครื่อง (ให้ผู้ดูแลรู้ว่าเป็นเครื่องไหน)</label>
+            <input
+              value={deviceName}
+              onChange={(e) => setDeviceName(e.target.value.slice(0, 80))}
+              placeholder="เช่น iPad ไลน์ผลิต 2"
+              style={{ width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".95rem" }}
+            />
+          </div>
+        )}
+
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
+          <Button variant="primary" onClick={() => checkDevice(deviceName)} loading={registering}>
+            <Icon icon={RefreshCw} className="h-4 w-4" /> {device.status === "pending" ? "ส่งคำขอ / ตรวจอีกครั้ง" : "ลองใหม่"}
+          </Button>
+          <Button onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
+        </div>
+      </div>
+    );
   }
 
   if (done) {
@@ -312,6 +452,7 @@ export default function FillWizard(props: Props) {
         field={f}
         paper={paper}
         compact={compact}
+        attachments={attByField[f.id] || []}
         publicMode={props.publicMode}
         getInitial={() => answers.current[f.id] || {}}
         photo={photos[f.id]}
@@ -369,6 +510,8 @@ export default function FillWizard(props: Props) {
           </div>
         </div>
 
+        {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
+
         <FormPaperFill
           schema={schema}
           icon={props.icon}
@@ -396,6 +539,8 @@ export default function FillWizard(props: Props) {
           {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
         </div>
       </div>
+
+      {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>
         {schema.steps.map((s, i) => (
@@ -543,6 +688,7 @@ function TableInput({
 
 function FieldControl({
   field: f,
+  attachments = [],
   getInitial,
   photo,
   hasSig,
@@ -555,6 +701,7 @@ function FieldControl({
   publicMode = false,
 }: {
   field: FormField;
+  attachments?: Attachment[];
   getInitial: () => Answer;
   photo?: string;
   hasSig: boolean;
@@ -660,6 +807,8 @@ function FieldControl({
           <span>{f.tooltip}</span>
         </div>
       )}
+      {attachments.length > 0 && <AttachmentChips items={attachments} paper={paper} />}
+
       {!compact && f.photo_hint && (
         <div style={{ fontSize: ".8rem", color: paper ? "#777" : "var(--ink-3)", margin: "4px 0" }}>
           รูปต้องเห็น: <code style={{ background: paper ? "#f4f5f6" : "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
