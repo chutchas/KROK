@@ -2,6 +2,7 @@
 import { Field } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ArrowUp, ArrowDown, Trash2, Copy, Plus, X } from "lucide-react";
+import Link from "next/link";
 import { useT } from "@/i18n/LanguageProvider";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
@@ -35,6 +36,7 @@ export default function FieldSettingsPanel({
   formId = null,
   tenantId = "",
   teams = [],
+  members = [],
 }: {
   schema: FormSchema;
   selectedKey: string | null;
@@ -45,6 +47,8 @@ export default function FieldSettingsPanel({
   tenantId?: string;
   /** ทีมใน workspace — ใช้ตั้งผู้รับผิดชอบขั้นตอน (ฟอร์มกรอกหลายคน) */
   teams?: { id: string; name: string }[];
+  /** สมาชิกใน workspace — ตั้งผู้รับผิดชอบเป็นรายบุคคล */
+  members?: { user_id: string; name: string }[];
 }) {
   const { t } = useT();
 
@@ -77,24 +81,45 @@ export default function FieldSettingsPanel({
         <Field value={step.title} onChange={(e) => patchStep({ title: e.target.value })} placeholder={t("editor.stepTitle")} />
 
         <label style={lbl}>{t("wf.assignee")}</label>
-        <select
-          style={sel}
-          value={step.assignee?.team_id ?? ""}
-          onChange={(e) => {
-            const v = e.target.value;
-            const n = { ...step };
-            if (v) n.assignee = { team_id: v }; else delete n.assignee;
-            setSteps(schema.steps.map((s, i) => (i === si ? n : s)));
-          }}
-        >
-          <option value="">{si === 0 ? t("wf.assigneeAnyone") : t("wf.assigneeSame")}</option>
-          {teams.map((tm) => <option key={tm.id} value={tm.id}>{t("wf.team")}: {tm.name}</option>)}
-          {step.assignee && !teams.some((tm) => tm.id === step.assignee!.team_id) && (
-            <option value={step.assignee.team_id}>{t("wf.teamMissing")}</option>
-          )}
-        </select>
+        {(() => {
+          // ค่าใน select: "t:<teamId>" | "u:<userId>" | "" (ไม่ตั้ง)
+          const a = step.assignee;
+          const cur = a?.team_id ? `t:${a.team_id}` : a?.user_id ? `u:${a.user_id}` : "";
+          const missing = (a?.team_id && !teams.some((tm) => tm.id === a.team_id)) || (a?.user_id && !members.some((m) => m.user_id === a.user_id));
+          return (
+            <select
+              style={sel}
+              value={cur}
+              onChange={(e) => {
+                const v = e.target.value;
+                const n = { ...step };
+                if (v.startsWith("t:")) n.assignee = { team_id: v.slice(2) };
+                else if (v.startsWith("u:")) n.assignee = { user_id: v.slice(2) };
+                else delete n.assignee;
+                setSteps(schema.steps.map((s, i) => (i === si ? n : s)));
+              }}
+            >
+              <option value="">{si === 0 ? t("wf.assigneeAnyone") : t("wf.assigneeSame")}</option>
+              {teams.length > 0 && (
+                <optgroup label={t("wf.groupTeams")}>
+                  {teams.map((tm) => <option key={tm.id} value={`t:${tm.id}`}>{t("wf.team")}: {tm.name}</option>)}
+                </optgroup>
+              )}
+              {members.length > 0 && (
+                <optgroup label={t("wf.groupPeople")}>
+                  {members.map((m) => <option key={m.user_id} value={`u:${m.user_id}`}>{m.name}</option>)}
+                </optgroup>
+              )}
+              {missing && <option value={cur}>{a?.team_id ? t("wf.teamMissing") : t("wf.userMissing")}</option>}
+            </select>
+          );
+        })()}
         <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "5px 0 0", lineHeight: 1.45 }}>
-          {teams.length === 0 ? t("wf.noTeams") : si === 0 ? t("wf.hintFirst") : t("wf.hintNext")}
+          {si === 0 ? t("wf.hintFirst") : t("wf.hintNext")}
+          {" "}
+          <Link href="/settings/team" target="_blank" style={{ color: "var(--accent)", whiteSpace: "nowrap" }}>
+            {teams.length === 0 ? t("wf.createTeam") : t("wf.manageTeams")} ↗
+          </Link>
         </p>
         <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           <button style={iconBtn} disabled={si === 0} onClick={() => setSteps(move(schema.steps, si, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>

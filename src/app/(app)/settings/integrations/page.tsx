@@ -1,10 +1,12 @@
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySettings } from "./IntegrationsClient";
+import type { IntakeConfig } from "./IntakePanel";
 
 export const dynamic = "force-dynamic";
 
-export default async function IntegrationsPage() {
+export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
+  const { tab } = await searchParams;
   const session = await enforceMenu("integrations");
   if (!canManage(session.role))
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin/designer เท่านั้น</div>;
@@ -24,6 +26,26 @@ export default async function IntegrationsPage() {
       .order("title"),
     supabase.from("tenant_notify").select("*").eq("tenant_id", session.tenantId).maybeSingle(),
   ]);
+  const [{ data: teamRows }, { data: memberRows }, intakeRes] = await Promise.all([
+    supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId).order("name"),
+    supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
+    // ยังไม่ได้รัน migration 0034 → error → ไม่มีค่าตั้ง (แท็บ API จะแจ้งให้รัน migration ตอนบันทึก)
+    supabase.from("form_intake").select("form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at").eq("tenant_id", session.tenantId),
+  ]);
+  const intake: Record<string, IntakeConfig> = {};
+  for (const r of (intakeRes.data || []) as Record<string, unknown>[]) {
+    const a = r.assignee as { team_id?: string; user_id?: string } | null;
+    intake[r.form_id as string] = {
+      enabled: !!r.enabled,
+      fieldKeys: (r.field_keys as Record<string, string>) || {},
+      assignee: a?.team_id ? `t:${a.team_id}` : a?.user_id ? `u:${a.user_id}` : "",
+      keyPrefix: (r.key_prefix as string) ?? null,
+      keyCreatedAt: (r.key_created_at as string) ?? null,
+      lastUsedAt: (r.last_used_at as string) ?? null,
+    };
+  }
+  const teams = ((teamRows || []) as { id: string; name: string }[]).map((x) => ({ id: x.id, name: x.name }));
+  const members = ((memberRows || []) as { user_id: string; name: string | null; email: string | null }[]).map((m) => ({ user_id: m.user_id, name: m.name || m.email || "สมาชิก" }));
 
   // ไม่ส่ง secret จริงกลับไป client — ส่งแค่ธงว่ามีค่าเก็บไว้แล้ว
   const n = (nData ?? {}) as Record<string, unknown>;
@@ -47,11 +69,11 @@ export default async function IntegrationsPage() {
 
   // ฟอร์ม + รายการฟิลด์ (id/label) จาก schema สำหรับตัวเลือก payload
   const forms: FormOption[] = ((formData || []) as Record<string, unknown>[]).map((f) => {
-    const schema = (f.schema ?? {}) as { steps?: { fields?: { id?: string; label?: string; type?: string }[] }[] };
-    const fields: { id: string; label: string; type: string }[] = [];
+    const schema = (f.schema ?? {}) as { steps?: { fields?: { id?: string; label?: string; type?: string; required?: boolean }[] }[] };
+    const fields: { id: string; label: string; type: string; required?: boolean }[] = [];
     for (const s of schema.steps || [])
       for (const fld of s.fields || [])
-        if (fld?.id) fields.push({ id: fld.id, label: fld.label || fld.id, type: fld.type || "text" });
+        if (fld?.id) fields.push({ id: fld.id, label: fld.label || fld.id, type: fld.type || "text", required: !!fld.required });
     return { id: f.id as string, title: (f.title as string) || "ฟอร์ม", icon: (f.icon as string) || "📋", fields };
   });
   const formTitle = new Map(forms.map((f) => [f.id, f.title]));
@@ -70,5 +92,10 @@ export default async function IntegrationsPage() {
     fields: (w.fields as string[]) ?? [],
   }));
 
-  return <IntegrationsClient webhooks={webhooks} forms={forms} notify={notify} />;
+  return (
+    <IntegrationsClient
+      webhooks={webhooks} forms={forms} notify={notify} intake={intake} teams={teams} members={members}
+      initialTab={tab === "webhooks" || tab === "intake" ? tab : "notify"}
+    />
+  );
 }

@@ -11,7 +11,7 @@
  *
  * แยกไว้เพื่อให้ตรวจสอบย้อนหลังได้ว่าค่าไหนคนกรอกเอง ค่าไหนเครื่องช่วยเติม
  */
-export type AnswerSrc = "scan" | "ai" | "ai_edited";
+export type AnswerSrc = "scan" | "ai" | "ai_edited" | "api";
 
 export interface AnswerItem {
   label: string;
@@ -38,4 +38,5 @@ export const SRC_LABEL: Record<AnswerSrc, string> = {
   scan: "สแกน",
   ai: "AI อ่าน",
   ai_edited: "AI อ่าน · แก้แล้ว",
+  api: "ระบบภายนอก",
 };

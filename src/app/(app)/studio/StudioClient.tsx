@@ -523,7 +523,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
               <>
                 <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />
                 <div className="krok-settings">
-                  <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} />
+                  <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
                 </div>
               </>
             )}

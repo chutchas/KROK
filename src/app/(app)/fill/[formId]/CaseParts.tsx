@@ -8,7 +8,7 @@ import { Lock, Users, CornerUpLeft, Send, CheckCircle2, Circle, CircleDot, Histo
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import { labelMap, type FormField, type FormSchema } from "@/lib/form-schema";
-import { caseNo, lastReturn, segmentEnd, stepTeam, type CaseData, type CaseHistoryItem } from "@/lib/case-flow";
+import { assigneeLabel, caseNo, lastReturn, segmentEnd, type CaseData, type CaseHistoryItem } from "@/lib/case-flow";
 import { PaperLabel, paperInputStyle } from "@/components/paper/PaperParts";
 
 type TableRow = Record<string, string>;
@@ -118,10 +118,11 @@ export function ReadonlyField({ field: f, answer, photo, sig, paper = false, com
 // ------------------------------------------------------------
 // แถบสถานะงาน: เลขงาน, ภาพรวมขั้นตอน (ใครทำขั้นไหน), เหตุผลที่ถูกส่งกลับ, ประวัติ
 // ------------------------------------------------------------
-export function CaseBanner({ schema, kase, teams, userId, segStart, segEnd, canClaim, claiming, onClaim }: {
+export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEnd, canClaim, claiming, onClaim }: {
   schema: FormSchema;
   kase: CaseData | null;
   teams: Record<string, string>;
+  users: Record<string, string>;
   userId: string;
   segStart: number;
   segEnd: number;
@@ -131,7 +132,9 @@ export function CaseBanner({ schema, kase, teams, userId, segStart, segEnd, canC
 }) {
   const { t } = useT();
   const [showHist, setShowHist] = useState(false);
-  const teamOf = (i: number) => { const id = stepTeam(schema, i); return id ? teams[id] || t("wf.teamMissing") : null; };
+  const teamOf = (i: number) => assigneeLabel(schema, i, teams, users);
+  // กองงานที่รออยู่ตอนนี้ (ทีมของช่วงปัจจุบัน; ไม่มีทีม = ผู้ดูแลจัดการ)
+  const poolLabel = kase?.assigneeTeam ? `${t("wf.team")} ${teams[kase.assigneeTeam] || t("wf.teamMissing")}` : t("wf.admins");
   const ret = kase && kase.claimedBy === userId ? lastReturn(kase) : null;
   const cur = kase ? kase.stepIdx : 0;
   const done = kase?.status === "done";
@@ -144,10 +147,9 @@ export function CaseBanner({ schema, kase, teams, userId, segStart, segEnd, canC
     else if (kase ? i >= cur && i <= segmentEnd(schema, cur) : i >= segStart && i <= segEnd) state = kase?.status === "cancelled" ? "todo" : "current";
     let who = "";
     if (state === "done" && meta) who = meta.name;
-    else if (state === "current") who = kase?.claimedBy === userId || !kase ? t("wf.you") : kase?.claimedName ? kase.claimedName : `${t("wf.waitClaim")}${teamOf(cur) ? ` · ${teamOf(cur)}` : ""}`;
+    else if (state === "current") who = kase?.claimedBy === userId || !kase ? t("wf.you") : kase?.claimedName ? kase.claimedName : `${t("wf.waitClaim")} · ${poolLabel}`;
     else {
-      const tn = teamOf(i);
-      who = tn ? `${t("wf.team")} ${tn}` : "";
+      who = teamOf(i) || "";
     }
     return { i, title: s.title, state, who };
   });
@@ -201,7 +203,7 @@ export function CaseBanner({ schema, kase, teams, userId, segStart, segEnd, canC
           <span style={{ color: "var(--ink-2)" }}>
             {kase.claimedBy
               ? t("wf.heldBy").replace("{name}", kase.claimedName || "-")
-              : t("wf.waitingTeam").replace("{team}", teamOf(kase.stepIdx) || "-")}
+              : t("wf.waitingTeam").replace("{team}", poolLabel)}
             {" · "}{t("wf.viewOnly")}
           </span>
           {canClaim && (

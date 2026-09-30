@@ -76,7 +76,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
                       {c.kind !== "mine" && (
                         <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}>
                           <Icon icon={Users} className="h-3 w-3" />
-                          {c.holderName ? t("wf.heldBy").replace("{name}", c.holderName) : t("wf.waitingTeam").replace("{team}", c.teamName || "-")}
+                          {c.holderName ? t("wf.heldBy").replace("{name}", c.holderName) : t("wf.waitingTeam").replace("{team}", c.teamName ? `${t("wf.team")} ${c.teamName}` : t("wf.admins"))}
                         </span>
                       )}
                       <span>· {fmtWhen(c.updatedAt)}</span>

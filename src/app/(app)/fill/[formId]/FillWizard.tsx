@@ -16,7 +16,7 @@ import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
 import { advanceCaseAction, cancelCaseAction, claimCaseAction, completeCaseAction, releaseCaseAction, returnCaseAction } from "./case-actions";
 import { CaseBanner, HandoffModal, ReadonlyField, ReturnModal } from "./CaseParts";
-import { segmentEnd, stepTeam, type CaseData, type CaseDocExtract } from "@/lib/case-flow";
+import { assigneeLabel, segmentEnd, type CaseData, type CaseDocExtract } from "@/lib/case-flow";
 import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import LiveScanner from "@/components/LiveScanner";
 import FillSourceBar, { type AppliedValue, type DocExtractRecord, type FillSrcTag } from "@/components/FillSourceBar";
@@ -37,7 +37,7 @@ import {
 import { registerDevice } from "@/app/(app)/settings/devices/actions";
 
 type TableRow = Record<string, string>;
-type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string; src?: FillSrcTag };
+type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string; src?: FillSrcTag | "api" };
 type Props = {
   formId: string;
   title: string;
@@ -59,7 +59,7 @@ type Props = {
   /** งานที่เปิดอยู่ (ฟอร์มกรอกหลายคน) */
   caseData?: CaseData | null;
   /** ฟอร์มนี้กรอกหลายคน: ชื่อทีม + สิทธิ์ของผู้ใช้ (null = ฟอร์มคนเดียวแบบเดิม) */
-  workflow?: { teams: Record<string, string>; canStart: boolean; canClaim: boolean; manager: boolean } | null;
+  workflow?: { teams: Record<string, string>; users: Record<string, string>; canStart: boolean; canClaim: boolean; manager: boolean } | null;
 };
 type DocRec = DocExtractRecord & { step?: number; path?: string | null };
 
@@ -720,7 +720,8 @@ export default function FillWizard(props: Props) {
   }
 
   // ================= งาน: ส่งต่อ / ส่งกลับ / รับงาน / คืนงาน / ยกเลิก =================
-  const teamName = (id: string | null) => (id ? props.workflow?.teams[id] ?? null : null);
+  /** ผู้รับผิดชอบขั้น i: "ทีม X" หรือชื่อคน (null = คนเดิมกรอกต่อ) */
+  const whoOf = (i: number) => assigneeLabel(schema, i, props.workflow?.teams ?? {}, props.workflow?.users ?? {});
   const netErr = (e: unknown) => {
     const raw = e instanceof Error ? e.message : String(e ?? "");
     if (typeof navigator !== "undefined" && navigator.onLine === false) return "ออฟไลน์อยู่ — ต่อเน็ตก่อนแล้วลองอีกครั้ง";
@@ -770,7 +771,7 @@ export default function FillWizard(props: Props) {
       if (!kase) void clearDraftAfterSubmit(); // ร่างของขั้นแรกกลายเป็นงานแล้ว
       const nxt = segEnd + 1;
       setCaseModal(null);
-      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, handoff: { step: `${nxt + 1}. ${schema.steps[nxt]?.title ?? ""}`, team: r.teamName ?? teamName(stepTeam(schema, nxt)) } });
+      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, handoff: { step: `${nxt + 1}. ${schema.steps[nxt]?.title ?? ""}`, team: r.holder || (r.teamName ? `ทีม ${r.teamName}` : whoOf(nxt)) } });
       window.scrollTo(0, 0);
     } catch (e) {
       submitLock.current = false;
@@ -888,7 +889,7 @@ export default function FillWizard(props: Props) {
 
   // ฟอร์มกรอกหลายคนที่ขั้นแรกจำกัดทีม — ผู้ใช้นี้เริ่มงานไม่ได้
   if (wf && !kase && viewOnly) {
-    const tn = teamName(stepTeam(schema, 0));
+    const tn = whoOf(0);
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "36px 20px", textAlign: "center", boxShadow: "var(--shadow)", maxWidth: 480, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={Users} className="h-11 w-11" strokeWidth={1.5} /></div>
@@ -1056,9 +1057,9 @@ export default function FillWizard(props: Props) {
   // ---------- งาน: แถบสถานะ + ปุ่มส่งต่อ/ส่งกลับ ----------
   const canCancelCase = !!kase && kase.status === "open" &&
     (!!props.workflow?.manager || (caseMine && kase.createdBy === props.userId && !kase.history.some((h) => h.action === "advance")));
-  const nextTeam = wf && !viewOnly && !isLastSeg ? teamName(stepTeam(schema, segEnd + 1)) : null;
+  const nextTeam = wf && !viewOnly && !isLastSeg ? whoOf(segEnd + 1) : null;
   const banner = wf ? (
-    <CaseBanner schema={schema} kase={kase} teams={props.workflow!.teams} userId={props.userId} segStart={segStart} segEnd={segEnd}
+    <CaseBanner schema={schema} kase={kase} teams={props.workflow!.teams} users={props.workflow!.users} userId={props.userId} segStart={segStart} segEnd={segEnd}
       canClaim={!!props.workflow?.canClaim} claiming={caseBusy} onClaim={doClaim} />
   ) : null;
   const handoffLabel = (

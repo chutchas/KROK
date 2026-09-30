@@ -172,13 +172,13 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                 <div style={{ flex: 1, fontWeight: 600, color: a.fail ? "var(--fail)" : "var(--ink)" }}>
                   {a.src && (
                     <span
-                      title={a.src === "scan" ? "ค่านี้มาจากการสแกนบาร์โค้ด/QR" : "ค่านี้ AI อ่านจากเอกสาร แล้วผู้กรอกยืนยัน"}
+                      title={a.src === "scan" ? "ค่านี้มาจากการสแกนบาร์โค้ด/QR" : a.src === "api" ? "ค่านี้ระบบภายนอกส่งมาทาง API" : "ค่านี้ AI อ่านจากเอกสาร แล้วผู้กรอกยืนยัน"}
                       style={{
                         fontSize: ".68rem", fontWeight: 700, padding: "1px 7px", borderRadius: 999, marginRight: 7,
                         verticalAlign: "middle", whiteSpace: "nowrap",
                         border: "1px solid var(--line)",
-                        background: a.src === "scan" ? "var(--code-bg)" : "var(--accent-soft)",
-                        color: a.src === "scan" ? "var(--ink-3)" : "var(--accent)",
+                        background: a.src === "scan" || a.src === "api" ? "var(--code-bg)" : "var(--accent-soft)",
+                        color: a.src === "scan" || a.src === "api" ? "var(--ink-3)" : "var(--accent)",
                       }}
                     >
                       {SRC_LABEL[a.src]}

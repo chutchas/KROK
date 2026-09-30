@@ -57,7 +57,7 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
 
   const [drafts, cases] = await Promise.all([
     loadDrafts(supabase, session.tenantId, session.userId),
-    loadCases(supabase, session.tenantId, session.userId, [...myTeams]),
+    loadCases(supabase, session.tenantId, session.userId, [...myTeams], manager),
   ]);
 
   return (
@@ -133,15 +133,20 @@ async function loadDrafts(supabase: ServerClient, tenantId: string, userId: stri
  *  - watch: ฉันเคยทำ แต่ตอนนี้อยู่กับคนอื่น (ติดตามสถานะ)
  * (ยังไม่ได้รัน migration 0033 → คืนลิสต์ว่าง)
  */
-async function loadCases(supabase: ServerClient, tenantId: string, userId: string, myTeams: string[]): Promise<CaseListItem[]> {
+async function loadCases(supabase: ServerClient, tenantId: string, userId: string, myTeams: string[], manager: boolean): Promise<CaseListItem[]> {
   try {
     const cols = "id, form_id, form_title, form_icon, title, step_idx, schema, assignee_team, claimed_by, claimed_name, history, updated_at";
     const base = () => supabase.from("form_cases").select(cols).eq("tenant_id", tenantId).eq("status", "open");
-    const [mine, pool, watch, teamRows] = await Promise.all([
+    const empty = Promise.resolve({ data: [] as Record<string, unknown>[], error: null });
+    const [mine, pool, orphan, watch, teamRows] = await Promise.all([
       base().eq("claimed_by", userId).order("updated_at", { ascending: false }).limit(100),
       myTeams.length
         ? base().is("claimed_by", null).in("assignee_team", myTeams).order("updated_at", { ascending: false }).limit(100)
-        : Promise.resolve({ data: [] as Record<string, unknown>[], error: null }),
+        : empty,
+      // งานที่ไม่มีทีม/คนรับ (เช่น ผู้รับผิดชอบออกจาก workspace, งานจาก API ที่ไม่ได้ตั้งผู้รับ) → ผู้ดูแลเห็นในกองงาน
+      manager
+        ? base().is("claimed_by", null).is("assignee_team", null).order("updated_at", { ascending: false }).limit(100)
+        : empty,
       base().contains("participants", [userId]).order("updated_at", { ascending: false }).limit(50),
       supabase.from("teams").select("id, name").eq("tenant_id", tenantId),
     ]);
@@ -178,6 +183,7 @@ async function loadCases(supabase: ServerClient, tenantId: string, userId: strin
     };
     push(mine.data as Record<string, unknown>[] | null, "mine");
     push(pool.data as Record<string, unknown>[] | null, "pool");
+    push(orphan.data as Record<string, unknown>[] | null, "pool");
     push(watch.data as Record<string, unknown>[] | null, "watch");
     return out;
   } catch {

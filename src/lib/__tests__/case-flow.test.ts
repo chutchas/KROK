@@ -1,13 +1,18 @@
 import { describe, it, expect } from "vitest";
-import { isWorkflowSchema, lastReturn, segmentEnd, segments, stepTeam, type CaseHistoryItem } from "@/lib/case-flow";
+import { assigneeLabel, isWorkflowSchema, lastReturn, segmentEnd, segments, stepTeam, stepUser, type CaseHistoryItem } from "@/lib/case-flow";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 
 const T1 = "20000000-0000-0000-0000-000000000001";
 const T2 = "20000000-0000-0000-0000-000000000002";
 const f = (id: string) => ({ id, type: "text" as const, label: id, required: false });
+const U1 = "10000000-0000-0000-0000-00000000000d";
+// "u:<id>" = รายบุคคล, อย่างอื่น = ทีม
 const schema = (teams: (string | null)[]): FormSchema => ({
   title: "x", description: "", icon: "📋", flow: "sequential",
-  steps: teams.map((t, i) => ({ id: `s${i + 1}`, title: `S${i + 1}`, fields: [f(`f${i}`)], ...(t ? { assignee: { team_id: t } } : {}) })),
+  steps: teams.map((t, i) => ({
+    id: `s${i + 1}`, title: `S${i + 1}`, fields: [f(`f${i}`)],
+    ...(t ? { assignee: t.startsWith("u:") ? { user_id: t.slice(2) } : { team_id: t } } : {}),
+  })),
 });
 
 describe("case-flow segments (ต้องตรงกับ SQL case_segment_end)", () => {
@@ -32,6 +37,22 @@ describe("case-flow segments (ต้องตรงกับ SQL case_segment_en
   });
 });
 
+describe("ผู้รับผิดชอบรายบุคคล", () => {
+  it("ขั้นรายบุคคลเป็นจุดเริ่มช่วงใหม่เหมือนทีม", () => {
+    const s = schema([null, `u:${U1}`, null, T1]);
+    expect(isWorkflowSchema(s)).toBe(true);
+    expect(segments(s)).toEqual([[0, 0], [1, 2], [3, 3]]);
+    expect(stepUser(s, 1)).toBe(U1);
+    expect(stepTeam(s, 1)).toBeNull();
+  });
+  it("ชื่อที่แสดง", () => {
+    const s = schema([T1, `u:${U1}`, null]);
+    expect(assigneeLabel(s, 0, { [T1]: "QA" }, {})).toBe("ทีม QA");
+    expect(assigneeLabel(s, 1, {}, { [U1]: "สมชาย" })).toBe("สมชาย");
+    expect(assigneeLabel(s, 2, {}, {})).toBeNull();
+  });
+});
+
 describe("lastReturn", () => {
   const h = (action: CaseHistoryItem["action"], step: number, to?: number, note?: string): CaseHistoryItem => ({ action, step, to, by: "u", name: "B", at: "", note });
   it("แสดงเหตุผลเมื่อถูกส่งกลับมาที่ขั้นปัจจุบัน", () => {
@@ -49,8 +70,10 @@ describe("sanitizeSchema: assignee", () => {
         { title: "1", fields: [f("a")], assignee: { team_id: T1.toUpperCase() } },
         { title: "2", fields: [f("b")], assignee: { team_id: "not-a-uuid" } },
         { title: "3", fields: [f("c")], assignee: "x" },
+        { title: "4", fields: [f("d")], assignee: { user_id: U1 } },
       ],
     });
+    expect(s.steps[3].assignee).toEqual({ user_id: U1 });
     expect(s.steps[0].assignee).toEqual({ team_id: T1 });
     expect(s.steps[1].assignee).toBeUndefined();
     expect(s.steps[2].assignee).toBeUndefined();

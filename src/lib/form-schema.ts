@@ -149,9 +149,8 @@ export interface FormStep {
   assignee?: StepAssignee;
 }
 
-export interface StepAssignee {
-  team_id: string;
-}
+/** ผู้รับผิดชอบขั้นตอน: ทีม (ใครในทีมก็กดรับได้) หรือรายบุคคล (ส่งถึงคนนั้นโดยตรง) — ตั้งได้อย่างใดอย่างหนึ่ง */
+export type StepAssignee = { team_id: string; user_id?: undefined } | { user_id: string; team_id?: undefined };
 
 export interface PaperBox {
   x: number;
@@ -393,6 +392,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
       };
       const asg = so.assignee as Record<string, unknown> | undefined;
       if (asg && typeof asg.team_id === "string" && UUID_RE.test(asg.team_id)) step.assignee = { team_id: asg.team_id.toLowerCase() };
+      else if (asg && typeof asg.user_id === "string" && UUID_RE.test(asg.user_id)) step.assignee = { user_id: asg.user_id.toLowerCase() };
 
       // ฟิลด์ barcode เดิม → scan source อัตโนมัติ (1 ฟิลด์ต่อ 1 ปุ่ม)
       const auto: FillSource[] = [];

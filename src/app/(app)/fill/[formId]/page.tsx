@@ -7,7 +7,7 @@ import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import { resolveFormOptions } from "@/lib/datasets-server";
 import type { DraftData } from "@/lib/drafts";
 import { canManage } from "@/lib/session";
-import { isWorkflowSchema, rowToCase, stepTeam, type CaseData } from "@/lib/case-flow";
+import { isWorkflowSchema, rowToCase, stepTeam, stepUser, type CaseData } from "@/lib/case-flow";
 import FillWizard from "./FillWizard";
 
 export const dynamic = "force-dynamic";
@@ -89,20 +89,25 @@ export default async function FillPage({
   } catch { /* ใช้ schema เดิม */ }
 
   // ทีม (ชื่อทีมของแต่ละขั้น + ทีมที่ผู้ใช้อยู่) — ใช้เฉพาะฟอร์มกรอกหลายคน
-  const workflow = isWorkflowSchema(schema);
+  // งานที่เปิดจาก API ของฟอร์มคนเดียวก็ใช้โหมดงาน (มีผู้ถือ + ปิดงานตอนส่ง)
+  const workflow = isWorkflowSchema(schema) || !!caseData;
   let teams: Record<string, string> = {};
+  let users: Record<string, string> = {};
   let myTeams: string[] = [];
   if (workflow) {
-    const [{ data: tRows }, { data: mine }] = await Promise.all([
+    const [{ data: tRows }, { data: mine }, { data: mRows }] = await Promise.all([
       supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId),
       supabase.rpc("my_team_ids"),
+      supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
     ]);
     teams = Object.fromEntries(((tRows || []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
+    users = Object.fromEntries(((mRows || []) as { user_id: string; name: string | null; email: string | null }[]).map((r) => [r.user_id, r.name || r.email || "สมาชิก"]));
     myTeams = ((mine as string[] | null) || []).map(String);
   }
   const manager = canManage(session.role);
   const t0 = stepTeam(schema, 0);
-  const canStart = !t0 || manager || myTeams.includes(t0);
+  const u0 = stepUser(schema, 0);
+  const canStart = manager || (t0 ? myTeams.includes(t0) : u0 ? u0 === session.userId : true);
   const canClaim = !!caseData && caseData.status === "open" && !caseData.claimedBy &&
     (manager || (!!caseData.assigneeTeam && myTeams.includes(caseData.assigneeTeam)));
 
@@ -137,7 +142,7 @@ export default async function FillPage({
       key={caseData ? `case:${caseData.id}:${caseData.updatedAt}` : draft?.id ?? "new"}
       draft={draft}
       caseData={caseData}
-      workflow={workflow ? { teams, canStart, canClaim, manager } : null}
+      workflow={workflow ? { teams, users, canStart, canClaim, manager } : null}
       formId={data.id as string}
       title={data.title as string}
       icon={data.icon as string}

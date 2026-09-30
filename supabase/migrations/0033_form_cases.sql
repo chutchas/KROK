@@ -3,11 +3,13 @@
 -- ฟอร์มที่กรอกหลายคนต่อกันเป็นขั้น ๆ (workflow การกรอก)
 --
 -- แนวคิด "งาน" (case):
---   - ฟอร์มที่มีขั้นตอนตั้ง "ผู้รับผิดชอบ" เป็นทีม (schema.steps[i].assignee.team_id)
+--   - ฟอร์มที่มีขั้นตอนตั้ง "ผู้รับผิดชอบ" เป็นทีมหรือรายบุคคล
+--     (schema.steps[i].assignee.team_id | assignee.user_id)
 --     = ฟอร์มแบบหลายคน — เริ่มกรอกแล้วกด "ส่งต่อ" จะเกิดงานหนึ่งชิ้น
 --   - ช่วงของงาน (segment) = ขั้นตอนต่อเนื่องที่คนเดียวถือ: เริ่มจากขั้นปัจจุบัน
---     ไปจนก่อนถึงขั้นถัดไปที่ตั้งทีมไว้ (ขั้นที่ไม่ตั้งทีม = คนเดิมกรอกต่อ)
---   - จบช่วง → ส่งต่อไปกองงานของทีมขั้นถัดไป ใครในทีมก็กดรับได้ (รับได้ทีละคน)
+--     ไปจนก่อนถึงขั้นถัดไปที่ตั้งผู้รับผิดชอบไว้ (ขั้นที่ไม่ตั้ง = คนเดิมกรอกต่อ)
+--   - จบช่วง → ขั้นถัดไปเป็นทีม: เข้ากองงานของทีม ใครในทีมก็กดรับได้ (รับได้ทีละคน)
+--             ขั้นถัดไปเป็นรายบุคคล: ส่งถึงคนนั้นโดยตรง
 --   - ขั้นหลังส่งกลับไปขั้นก่อนหน้าได้พร้อมเหตุผล → กลับไปหาคนที่กรอกขั้นนั้น
 --   - ขั้นที่เสร็จแล้ว ล็อก: บันทึกได้เฉพาะฟิลด์ในช่วงที่ตัวเองถืออยู่ (ตรวจฝั่ง server)
 --   - ขั้นสุดท้ายส่งฟอร์ม → เกิด submission ปกติ 1 รายการ (dashboard/รายงาน/อนุมัติ/webhook เดิมใช้ได้)
@@ -74,31 +76,61 @@ returns uuid language sql immutable as $$
   end
 $$;
 
--- ขั้นสุดท้ายของช่วงที่เริ่มจาก p_idx: ต่อไปเรื่อย ๆ จนกว่าขั้นถัดไปจะตั้งทีมไว้
+-- คนที่รับผิดชอบขั้น p_idx (null = ไม่ได้ตั้งเป็นรายบุคคล)
+create or replace function public.case_step_user(p_schema jsonb, p_idx int)
+returns uuid language sql immutable as $$
+  select case
+    when (p_schema->'steps'->p_idx->'assignee'->>'user_id') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+    then (p_schema->'steps'->p_idx->'assignee'->>'user_id')::uuid
+  end
+$$;
+
+-- ขั้นนี้ตั้งผู้รับผิดชอบไว้ไหม (ทีมหรือรายบุคคล) = จุดเริ่มช่วงใหม่
+create or replace function public.case_step_assigned(p_schema jsonb, p_idx int)
+returns boolean language sql immutable as $$
+  select public.case_step_team(p_schema, p_idx) is not null or public.case_step_user(p_schema, p_idx) is not null
+$$;
+
+-- ขั้นสุดท้ายของช่วงที่เริ่มจาก p_idx: ต่อไปเรื่อย ๆ จนกว่าขั้นถัดไปจะตั้งผู้รับผิดชอบไว้
 create or replace function public.case_segment_end(p_schema jsonb, p_idx int)
 returns int language plpgsql immutable as $$
 declare
   n int := coalesce(jsonb_array_length(p_schema->'steps'), 0);
   i int := p_idx;
 begin
-  while i + 1 < n and public.case_step_team(p_schema, i + 1) is null loop
+  while i + 1 < n and not public.case_step_assigned(p_schema, i + 1) loop
     i := i + 1;
   end loop;
   return i;
 end $$;
 
--- ทีมเจ้าของช่วงที่มีขั้น p_idx อยู่ (ย้อนหาขั้นที่ตั้งทีมไว้ใกล้สุด)
-create or replace function public.case_owner_team(p_schema jsonb, p_idx int)
-returns uuid language plpgsql immutable as $$
-declare i int := p_idx; t uuid;
+-- ขั้นต้นช่วงที่มีขั้น p_idx อยู่ (ย้อนหาขั้นที่ตั้งผู้รับผิดชอบไว้ใกล้สุด; -1 = ไม่มี)
+create or replace function public.case_owner_idx(p_schema jsonb, p_idx int)
+returns int language plpgsql immutable as $$
+declare i int := p_idx;
 begin
   while i >= 0 loop
-    t := public.case_step_team(p_schema, i);
-    if t is not null then return t; end if;
+    if public.case_step_assigned(p_schema, i) then return i; end if;
     i := i - 1;
   end loop;
-  return null;
+  return -1;
 end $$;
+
+-- ทีม / คน เจ้าของช่วงที่มีขั้น p_idx อยู่
+create or replace function public.case_owner_team(p_schema jsonb, p_idx int)
+returns uuid language sql immutable as $$
+  select public.case_step_team(p_schema, public.case_owner_idx(p_schema, p_idx))
+$$;
+create or replace function public.case_owner_user(p_schema jsonb, p_idx int)
+returns uuid language sql immutable as $$
+  select public.case_step_user(p_schema, public.case_owner_idx(p_schema, p_idx))
+$$;
+
+-- เป็นสมาชิก workspace อยู่ไหม
+create or replace function public.case_is_member(p_tenant uuid, p_user uuid)
+returns boolean language sql stable security definer set search_path = public as $$
+  select p_user is not null and exists (select 1 from public.memberships where tenant_id = p_tenant and user_id = p_user)
+$$;
 
 -- field id ทั้งหมดของขั้น p_from..p_to
 create or replace function public.case_field_ids(p_schema jsonb, p_from int, p_to int)
@@ -162,6 +194,7 @@ create policy cases_select on public.form_cases
       auth.uid() = any(participants)
       or claimed_by = auth.uid()
       or assignee_team in (select public.my_team_ids())
+      or public.case_owner_user(schema, step_idx) = auth.uid()
       or public.can_manage(tenant_id)
     )
   );
@@ -179,6 +212,7 @@ declare
   f record;
   c public.form_cases;
   t0 uuid;
+  u0 uuid;
   nm text;
 begin
   if uid is null then raise exception 'unauthorized'; end if;
@@ -197,8 +231,12 @@ begin
   if f.status::text <> 'published' then raise exception 'ฟอร์มนี้ยังไม่เปิดให้กรอก'; end if;
 
   t0 := public.case_step_team(f.schema, 0);
+  u0 := public.case_step_user(f.schema, 0);
   if t0 is not null and not (t0 in (select public.my_team_ids()) or public.can_manage(f.tenant_id)) then
     raise exception 'ขั้นแรกของฟอร์มนี้กรอกได้เฉพาะทีมที่กำหนด';
+  end if;
+  if u0 is not null and u0 <> uid and not public.can_manage(f.tenant_id) then
+    raise exception 'ขั้นแรกของฟอร์มนี้กรอกได้เฉพาะผู้รับผิดชอบที่กำหนด';
   end if;
 
   nm := public.case_member_name(f.tenant_id, uid);
@@ -280,7 +318,7 @@ language plpgsql security definer set search_path = public as $$
 declare
   uid uuid := auth.uid();
   c public.form_cases;
-  n int; seg_end int; nxt int; t uuid; nm text; meta jsonb; i int;
+  n int; seg_end int; nxt int; t uuid; u uuid; nm text; meta jsonb; i int;
 begin
   select * into c from public.form_cases where id = p_case for update;
   if not found then raise exception 'ไม่พบงาน'; end if;
@@ -298,11 +336,16 @@ begin
   end loop;
   nxt := seg_end + 1;
   t := public.case_step_team(c.schema, nxt);
+  u := public.case_step_user(c.schema, nxt);
+  -- ขั้นรายบุคคล: ส่งถึงคนนั้นโดยตรง (ออกจาก workspace แล้ว = ค้างให้ผู้ดูแลจัดการ)
+  if u is not null and not public.case_is_member(c.tenant_id, u) then u := null; end if;
 
   update public.form_cases set
     step_idx = nxt,
     assignee_team = t,
-    claimed_by = null, claimed_name = null, claimed_at = null,
+    claimed_by = u,
+    claimed_name = case when u is null then null else public.case_member_name(c.tenant_id, u) end,
+    claimed_at = case when u is null then null else now() end,
     step_meta = meta,
     participants = case when uid = any(participants) then participants else participants || uid end,
     history = history || jsonb_build_array(jsonb_build_object(
@@ -313,7 +356,7 @@ begin
   returning * into c;
 
   perform public.case_notify_next(c.id, 'case_assigned',
-    'งานรอรับ: ' || c.form_title,
+    case when u is null then 'งานรอรับ: ' else 'งานส่งถึงคุณ: ' end || c.form_title,
     nm || ' ส่งต่อให้ขั้น "' || public.case_step_title(c.schema, nxt) || '"'
       || case when c.title <> '' then ' · ' || c.title else '' end);
   return c;
@@ -340,8 +383,10 @@ begin
   nm := public.case_member_name(c.tenant_id, uid);
   prev := nullif(c.step_meta->(p_to::text)->>'by', '')::uuid;
   -- คนเดิมยังอยู่ในองค์กร → ส่งกลับให้คนนั้นโดยตรง; ไม่อยู่แล้ว → เข้ากองงานของทีม
-  if prev is not null and exists (select 1 from public.memberships where tenant_id = c.tenant_id and user_id = prev) then
+  if public.case_is_member(c.tenant_id, prev) then
     holder := prev;
+  elsif public.case_is_member(c.tenant_id, public.case_owner_user(c.schema, p_to)) then
+    holder := public.case_owner_user(c.schema, p_to);
   end if;
   t := public.case_owner_team(c.schema, p_to);
 
@@ -378,6 +423,7 @@ begin
     raise exception 'มีคนรับงานนี้ไปแล้ว (%)', coalesce(c.claimed_name, '');
   end if;
   if not ((c.assignee_team is not null and c.assignee_team in (select public.my_team_ids()))
+          or public.case_owner_user(c.schema, c.step_idx) is not distinct from uid
           or public.can_manage(c.tenant_id)) then
     raise exception 'งานนี้เป็นของทีมอื่น';
   end if;
@@ -506,6 +552,7 @@ revoke all on function public.case_release(uuid) from public, anon;
 revoke all on function public.case_cancel(uuid, text) from public, anon;
 revoke all on function public.case_complete(uuid, uuid) from public, anon;
 revoke all on function public.case_notify_next(uuid, text, text, text) from public, anon, authenticated;
+grant execute on function public.case_notify_next(uuid, text, text, text) to service_role;
 grant execute on function public.case_start(uuid, uuid) to authenticated;
 grant execute on function public.case_save(uuid, jsonb, jsonb, jsonb, text, int, int) to authenticated;
 grant execute on function public.case_advance(uuid, text) to authenticated;
@@ -528,7 +575,9 @@ begin
     where c.id = parts[2]::uuid and c.tenant_id::text = parts[1]
       and c.tenant_id in (select public.my_tenant_ids())
       and (auth.uid() = any(c.participants) or c.claimed_by = auth.uid()
-           or c.assignee_team in (select public.my_team_ids()) or public.can_manage(c.tenant_id))
+           or c.assignee_team in (select public.my_team_ids())
+           or public.case_owner_user(c.schema, c.step_idx) = auth.uid()
+           or public.can_manage(c.tenant_id))
   );
 end $$;
 

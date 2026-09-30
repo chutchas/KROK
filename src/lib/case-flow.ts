@@ -4,21 +4,40 @@
 // ============================================================
 import type { FormSchema } from "@/lib/form-schema";
 
-/** ทีมที่รับผิดชอบขั้น i (null = ไม่ได้ตั้ง → คนเดิมกรอกต่อ) */
+/** ทีมที่รับผิดชอบขั้น i (null = ไม่ได้ตั้งเป็นทีม) */
 export function stepTeam(schema: FormSchema, i: number): string | null {
   return schema.steps[i]?.assignee?.team_id ?? null;
 }
 
-/** ฟอร์มนี้กรอกหลายคนไหม: มีขั้นหลังขั้นแรกที่ตั้งทีมไว้ */
-export function isWorkflowSchema(schema: FormSchema): boolean {
-  return schema.steps.some((s, i) => i > 0 && !!s.assignee?.team_id);
+/** คนที่รับผิดชอบขั้น i (null = ไม่ได้ตั้งเป็นรายบุคคล) */
+export function stepUser(schema: FormSchema, i: number): string | null {
+  return schema.steps[i]?.assignee?.user_id ?? null;
 }
 
-/** ขั้นสุดท้ายของช่วงที่เริ่มจาก i — ต่อไปจนกว่าขั้นถัดไปจะตั้งทีมไว้ */
+/** ขั้น i ตั้งผู้รับผิดชอบไว้ไหม (ทีมหรือรายบุคคล) — ไม่ตั้ง = คนเดิมกรอกต่อ */
+export function stepAssigned(schema: FormSchema, i: number): boolean {
+  return !!(stepTeam(schema, i) || stepUser(schema, i));
+}
+
+/** ฟอร์มนี้กรอกหลายคนไหม: มีขั้นหลังขั้นแรกที่ตั้งผู้รับผิดชอบไว้ */
+export function isWorkflowSchema(schema: FormSchema): boolean {
+  return schema.steps.some((_, i) => i > 0 && stepAssigned(schema, i));
+}
+
+/** ขั้นสุดท้ายของช่วงที่เริ่มจาก i — ต่อไปจนกว่าขั้นถัดไปจะตั้งผู้รับผิดชอบไว้ */
 export function segmentEnd(schema: FormSchema, i: number): number {
   let j = i;
-  while (j + 1 < schema.steps.length && !stepTeam(schema, j + 1)) j++;
+  while (j + 1 < schema.steps.length && !stepAssigned(schema, j + 1)) j++;
   return j;
+}
+
+/** ชื่อผู้รับผิดชอบขั้น i สำหรับแสดงผล */
+export function assigneeLabel(schema: FormSchema, i: number, teams: Record<string, string>, users: Record<string, string>): string | null {
+  const t = stepTeam(schema, i);
+  if (t) return teams[t] ? `ทีม ${teams[t]}` : "ทีมที่ถูกลบ";
+  const u = stepUser(schema, i);
+  if (u) return users[u] || "ผู้ใช้ที่ไม่อยู่ใน workspace";
+  return null;
 }
 
 /** ช่วงทั้งหมดของฟอร์ม [เริ่ม, จบ] — ใช้แสดงภาพรวมว่าใครทำขั้นไหน */

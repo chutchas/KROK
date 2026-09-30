@@ -3,10 +3,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Check, Lock, Zap } from "lucide-react";
+import { Check, Lock, Zap, Bell, Webhook, CloudDownload } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { createWebhook, toggleWebhook, deleteWebhook, testWebhookById } from "./actions";
 import NotifyPanel from "./NotifyPanel";
+import IntakePanel, { type IntakeConfig } from "./IntakePanel";
 
 export interface NotifySettings {
   line_enabled: boolean;
@@ -26,7 +27,7 @@ export interface NotifySettings {
   on_case: boolean;
 }
 
-export interface FormField { id: string; label: string; type: string }
+export interface FormField { id: string; label: string; type: string; required?: boolean }
 export interface FormOption { id: string; title: string; icon: string; fields: FormField[] }
 export interface WebhookItem {
   id: string;
@@ -44,9 +45,24 @@ export interface WebhookItem {
 
 const ALL_EVENTS = ["submission.created", "submission.approved", "submission.rejected"] as const;
 
-export default function IntegrationsClient({ webhooks, forms, notify }: { webhooks: WebhookItem[]; forms: FormOption[]; notify: NotifySettings }) {
+type IntgTab = "notify" | "webhooks" | "intake";
+
+export default function IntegrationsClient({ webhooks, forms, notify, intake, teams, members, initialTab = "notify" }: {
+  webhooks: WebhookItem[];
+  forms: FormOption[];
+  notify: NotifySettings;
+  intake: Record<string, IntakeConfig>;
+  teams: { id: string; name: string }[];
+  members: { user_id: string; name: string }[];
+  initialTab?: IntgTab;
+}) {
   const router = useRouter();
   const { t } = useT();
+  const [tab, setTab] = useState<IntgTab>(initialTab);
+  function switchTab(next: IntgTab) {
+    setTab(next);
+    router.replace(next === "notify" ? "/settings/integrations" : `/settings/integrations?tab=${next}`, { scroll: false });
+  }
   const [name, setName] = useState("");
   const [url, setUrl] = useState("");
   const [secret, setSecret] = useState("");
@@ -92,8 +108,28 @@ export default function IntegrationsClient({ webhooks, forms, notify }: { webhoo
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("intg.subtitle")}</p>
       </div>
 
-      <NotifyPanel initial={notify} />
+      {/* แท็บ: แจ้งเตือน | Webhook ขาออก | API รับข้อมูลเข้า */}
+      <div role="tablist" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
+        {([
+          { k: "notify" as const, label: t("intg.tabNotify"), icon: Bell },
+          { k: "webhooks" as const, label: t("intg.tabWebhooks"), icon: Webhook },
+          { k: "intake" as const, label: t("intg.tabIntake"), icon: CloudDownload },
+        ]).map((x) => {
+          const on = tab === x.k;
+          return (
+            <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>
+              <Icon icon={x.icon} className="h-4 w-4" /> {x.label}
+            </button>
+          );
+        })}
+      </div>
 
+      {tab === "notify" && <NotifyPanel initial={notify} />}
+
+      {tab === "intake" && <IntakePanel forms={forms} intake={intake} teams={teams} members={members} />}
+
+      {tab === "webhooks" && (<>
       <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intg.addTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("intg.addSub")}</p>
@@ -277,6 +313,7 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
   }
 }`}</pre>
       </Card>
+      </>)}
     </div>
   );
 }
