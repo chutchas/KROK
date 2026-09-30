@@ -6,6 +6,8 @@ import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import { resolveFormOptions } from "@/lib/datasets-server";
 import type { DraftData } from "@/lib/drafts";
+import { canManage } from "@/lib/session";
+import { isWorkflowSchema, rowToCase, stepTeam, type CaseData } from "@/lib/case-flow";
 import FillWizard from "./FillWizard";
 
 export const dynamic = "force-dynamic";
@@ -15,10 +17,10 @@ export default async function FillPage({
   searchParams,
 }: {
   params: Promise<{ formId: string }>;
-  searchParams: Promise<{ draft?: string }>;
+  searchParams: Promise<{ draft?: string; case?: string }>;
 }) {
   const { formId } = await params;
-  const { draft: draftParam } = await searchParams;
+  const { draft: draftParam, case: caseParam } = await searchParams;
   const session = await getSession();
   if (!session) redirect(`/login?next=/fill/${formId}`);
 
@@ -62,14 +64,51 @@ export default async function FillPage({
 
   // ตัวเลือก dropdown จากข้อมูลอ้างอิง — ฝังมากับหน้าเพื่อให้กรอกออฟไลน์ได้ด้วยข้อมูลรอบล่าสุด
   // (ยังไม่ได้รัน migration 0030 → ใช้ตัวเลือกที่พิมพ์ไว้ในฟอร์มตามเดิม)
-  let schema = readSchema(data.schema);
+  // งาน (ฟอร์มกรอกหลายคน) — ใช้ schema ของฟอร์ม ณ ตอนเริ่มงาน (แก้ฟอร์มกลางทางไม่กระทบงานที่ค้าง)
+  let caseData: CaseData | null = null;
+  let caseSchemaRaw: unknown = null;
+  if (caseParam && /^[0-9a-f-]{36}$/i.test(caseParam)) {
+    try {
+      const { data: c } = await supabase
+        .from("form_cases")
+        .select("*")
+        .eq("id", caseParam)
+        .eq("form_id", formId)
+        .maybeSingle();
+      if (c) {
+        caseData = rowToCase(c as Record<string, unknown>);
+        caseSchemaRaw = (c as { schema: unknown }).schema;
+      }
+    } catch { /* ยังไม่ได้รัน migration 0033 */ }
+    if (!caseData) notFound();
+  }
+
+  let schema = readSchema(caseSchemaRaw ?? data.schema);
   try {
     schema = await resolveFormOptions(schema, supabase, session.tenantId);
   } catch { /* ใช้ schema เดิม */ }
 
+  // ทีม (ชื่อทีมของแต่ละขั้น + ทีมที่ผู้ใช้อยู่) — ใช้เฉพาะฟอร์มกรอกหลายคน
+  const workflow = isWorkflowSchema(schema);
+  let teams: Record<string, string> = {};
+  let myTeams: string[] = [];
+  if (workflow) {
+    const [{ data: tRows }, { data: mine }] = await Promise.all([
+      supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId),
+      supabase.rpc("my_team_ids"),
+    ]);
+    teams = Object.fromEntries(((tRows || []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
+    myTeams = ((mine as string[] | null) || []).map(String);
+  }
+  const manager = canManage(session.role);
+  const t0 = stepTeam(schema, 0);
+  const canStart = !t0 || manager || myTeams.includes(t0);
+  const canClaim = !!caseData && caseData.status === "open" && !caseData.claimedBy &&
+    (manager || (!!caseData.assigneeTeam && myTeams.includes(caseData.assigneeTeam)));
+
   // กรอกต่อจากแบบร่าง (ของผู้ใช้คนนี้เท่านั้น — RLS)
   let draft: DraftData | null = null;
-  if (draftParam && /^[0-9a-f-]{36}$/i.test(draftParam)) {
+  if (!caseData && draftParam && /^[0-9a-f-]{36}$/i.test(draftParam)) {
     try {
       const { data: d } = await supabase
         .from("submission_drafts")
@@ -95,12 +134,14 @@ export default async function FillPage({
 
   return (
     <FillWizard
-      key={draft?.id ?? "new"}
+      key={caseData ? `case:${caseData.id}:${caseData.updatedAt}` : draft?.id ?? "new"}
       draft={draft}
+      caseData={caseData}
+      workflow={workflow ? { teams, canStart, canClaim, manager } : null}
       formId={data.id as string}
       title={data.title as string}
       icon={data.icon as string}
-      version={(data.version as number) ?? 1}
+      version={caseData ? caseData.formVersion : (data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
       approvalChain={(data.approval_chain as unknown[]) || []}
       schema={schema}

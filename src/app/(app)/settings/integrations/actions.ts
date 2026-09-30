@@ -122,6 +122,7 @@ export interface NotifyInput {
   on_approved: boolean;
   on_rejected: boolean;
   fail_only: boolean;
+  on_case?: boolean;
 }
 
 export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { error: string }> {
@@ -157,10 +158,17 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
     on_approved: !!input.on_approved,
     on_rejected: !!input.on_rejected,
     fail_only: !!input.fail_only,
+    on_case: input.on_case !== false,
     updated_at: new Date().toISOString(),
   };
 
-  const { error } = await supabase.from("tenant_notify").upsert(row, { onConflict: "tenant_id" });
+  let { error } = await supabase.from("tenant_notify").upsert(row, { onConflict: "tenant_id" });
+  // ยังไม่ได้รัน migration 0033 (ไม่มีคอลัมน์ on_case) → บันทึกส่วนที่เหลือตามเดิม
+  if (error && /on_case/.test(error.message)) {
+    const { on_case: _drop, ...rest } = row;
+    void _drop;
+    ({ error } = await supabase.from("tenant_notify").upsert(rest, { onConflict: "tenant_id" }));
+  }
   if (error) return { error: error.message };
   revalidatePath("/settings/integrations");
   return { ok: true };

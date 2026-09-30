@@ -34,6 +34,7 @@ export default function FieldSettingsPanel({
   onSelect,
   formId = null,
   tenantId = "",
+  teams = [],
 }: {
   schema: FormSchema;
   selectedKey: string | null;
@@ -42,6 +43,8 @@ export default function FieldSettingsPanel({
   /** ฟอร์มที่บันทึกแล้วเท่านั้นจึงแนบเอกสารระดับฟิลด์ได้ */
   formId?: string | null;
   tenantId?: string;
+  /** ทีมใน workspace — ใช้ตั้งผู้รับผิดชอบขั้นตอน (ฟอร์มกรอกหลายคน) */
+  teams?: { id: string; name: string }[];
 }) {
   const { t } = useT();
 
@@ -72,6 +75,27 @@ export default function FieldSettingsPanel({
       <Shell title={`${t("editor.step")} ${si + 1}`} onClose={() => onSelect(null)}>
         <label style={lbl}>{t("editor.stepTitle")}</label>
         <Field value={step.title} onChange={(e) => patchStep({ title: e.target.value })} placeholder={t("editor.stepTitle")} />
+
+        <label style={lbl}>{t("wf.assignee")}</label>
+        <select
+          style={sel}
+          value={step.assignee?.team_id ?? ""}
+          onChange={(e) => {
+            const v = e.target.value;
+            const n = { ...step };
+            if (v) n.assignee = { team_id: v }; else delete n.assignee;
+            setSteps(schema.steps.map((s, i) => (i === si ? n : s)));
+          }}
+        >
+          <option value="">{si === 0 ? t("wf.assigneeAnyone") : t("wf.assigneeSame")}</option>
+          {teams.map((tm) => <option key={tm.id} value={tm.id}>{t("wf.team")}: {tm.name}</option>)}
+          {step.assignee && !teams.some((tm) => tm.id === step.assignee!.team_id) && (
+            <option value={step.assignee.team_id}>{t("wf.teamMissing")}</option>
+          )}
+        </select>
+        <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "5px 0 0", lineHeight: 1.45 }}>
+          {teams.length === 0 ? t("wf.noTeams") : si === 0 ? t("wf.hintFirst") : t("wf.hintNext")}
+        </p>
         <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           <button style={iconBtn} disabled={si === 0} onClick={() => setSteps(move(schema.steps, si, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
           <button style={iconBtn} disabled={si === schema.steps.length - 1} onClick={() => setSteps(move(schema.steps, si, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>

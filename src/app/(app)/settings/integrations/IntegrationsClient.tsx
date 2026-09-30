@@ -23,6 +23,7 @@ export interface NotifySettings {
   on_approved: boolean;
   on_rejected: boolean;
   fail_only: boolean;
+  on_case: boolean;
 }
 
 export interface FormField { id: string; label: string; type: string }

@@ -42,6 +42,7 @@ export default async function IntegrationsPage() {
     on_approved: !!n.on_approved,
     on_rejected: n.on_rejected !== false,
     fail_only: !!n.fail_only,
+    on_case: n.on_case !== false,
   };
 
   // ฟอร์ม + รายการฟิลด์ (id/label) จาก schema สำหรับตัวเลือก payload

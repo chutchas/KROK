@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate, FilePen, Trash2, Clock } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate, FilePen, Trash2, Clock, ClipboardList, Users } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
 import { deleteDraftAction, deleteSubmittedDrafts } from "./actions";
+import CasesList, { type CaseListItem } from "./CasesList";
 
 export interface FormListItem {
   id: string;
@@ -17,6 +18,8 @@ export interface FormListItem {
   steps: number;
   fields: number;
   category?: string;
+  /** ฟอร์มกรอกหลายคน (มีขั้นที่ตั้งทีมรับผิดชอบ) */
+  workflow?: boolean;
 }
 
 export interface DraftListItem {
@@ -35,18 +38,20 @@ export interface DraftListItem {
   expiresAt: string;
 }
 
-type Tab = "all" | "drafts";
+type Tab = "all" | "tasks" | "drafts";
 const SUBMITTED_DRAFTS_KEY = "krok_submitted_drafts";
 
 export default function FormsListClient({
   forms,
   drafts = [],
+  cases = [],
   initialTab = "all",
   highlightId,
   canCreate = false,
 }: {
   forms: FormListItem[];
   drafts?: DraftListItem[];
+  cases?: CaseListItem[];
   initialTab?: Tab;
   highlightId?: string;
   canCreate?: boolean;
@@ -72,7 +77,7 @@ export default function FormsListClient({
 
   function switchTab(next: Tab) {
     setTab(next);
-    router.replace(next === "drafts" ? "/forms?tab=drafts" : "/forms", { scroll: false });
+    router.replace(next === "all" ? "/forms" : `/forms?tab=${next}`, { scroll: false });
   }
 
   async function removeDraft(id: string) {
@@ -112,6 +117,7 @@ export default function FormsListClient({
       <div role="tablist" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px" }}>
         {([
           { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
+          { k: "tasks" as const, label: t("wf.tabTasks"), n: cases.filter((c) => c.kind !== "watch").length },
           { k: "drafts" as const, label: t("forms.tabDrafts"), n: shownDrafts.length },
         ]).map((x) => {
           const on = tab === x.k;
@@ -119,6 +125,7 @@ export default function FormsListClient({
             <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3 }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
+              {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.label}
               <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent)" : "var(--ink-3)" }}>{x.n}</span>
             </button>
@@ -128,6 +135,8 @@ export default function FormsListClient({
 
       {tab === "drafts" ? (
         <DraftsList drafts={shownDrafts} busyId={busyId} onDelete={removeDraft} />
+      ) : tab === "tasks" ? (
+        <CasesList cases={cases} />
       ) : (<>
       {forms.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
@@ -204,6 +213,7 @@ export default function FormsListClient({
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
                   {f.category && <span style={{ display: "inline-block", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "0 6px", marginRight: 6, color: "var(--ink-2)" }}>{categoryLabel(f.category, lang)}</span>}
                   {tt("forms.stepsFields", { steps: f.steps, fields: f.fields })}
+                  {f.workflow && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 6, color: "var(--accent)" }}><Icon icon={Users} className="h-3 w-3" /> {t("wf.multiBadge")}</span>}
                 </small>
               </div>
               <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}>{t("forms.start")} <Icon icon={ArrowRight} className="h-4 w-4" /></span>

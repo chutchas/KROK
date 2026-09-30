@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
@@ -14,6 +14,10 @@ import OptionPicker from "@/components/OptionPicker";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
+import { advanceCaseAction, cancelCaseAction, claimCaseAction, completeCaseAction, releaseCaseAction, returnCaseAction } from "./case-actions";
+import { CaseBanner, HandoffModal, ReadonlyField, ReturnModal } from "./CaseParts";
+import { segmentEnd, stepTeam, type CaseData, type CaseDocExtract } from "@/lib/case-flow";
+import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import LiveScanner from "@/components/LiveScanner";
 import FillSourceBar, { type AppliedValue, type DocExtractRecord, type FillSrcTag } from "@/components/FillSourceBar";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
@@ -52,7 +56,12 @@ type Props = {
   requireDevice?: boolean;
   /** กรอกต่อจากแบบร่าง */
   draft?: DraftData | null;
+  /** งานที่เปิดอยู่ (ฟอร์มกรอกหลายคน) */
+  caseData?: CaseData | null;
+  /** ฟอร์มนี้กรอกหลายคน: ชื่อทีม + สิทธิ์ของผู้ใช้ (null = ฟอร์มคนเดียวแบบเดิม) */
+  workflow?: { teams: Record<string, string>; canStart: boolean; canClaim: boolean; manager: boolean } | null;
 };
+type DocRec = DocExtractRecord & { step?: number; path?: string | null };
 
 // ---- client image shrink to jpeg data-url ----
 function shrinkImage(file: File): Promise<string> {
@@ -97,12 +106,29 @@ export default function FillWizard(props: Props) {
   const { t } = useT();
   const router = useRouter();
   const supabase = createClient();
-  const initialDraft = props.publicMode ? null : props.draft ?? null;
-  const [idx, setIdx] = useState(() => Math.min(Math.max(initialDraft?.stepIdx ?? 0, 0), schema.steps.length - 1));
-  // เริ่มจากคำตอบในร่าง (ตั้งก่อน render แรก — FieldControl อ่านค่าเริ่มต้นตอน mount)
-  const answers = useRef<Record<string, Answer>>((initialDraft?.answers as Record<string, Answer>) ?? {});
+  const nSteps = schema.steps.length;
+  // ---- งาน (ฟอร์มกรอกหลายคน) ----
+  // ช่วงที่ผู้ใช้คนนี้แก้ได้ [segStart, segEnd] — ขั้นอื่นแสดงแบบอ่านอย่างเดียว; -1 = ดูอย่างเดียวทั้งฟอร์ม
+  const wf = !props.publicMode && !!props.workflow;
+  const kase = wf ? props.caseData ?? null : null;
+  const caseMine = !!kase && kase.status === "open" && kase.claimedBy === props.userId;
+  const [segStart, segEnd] = !wf
+    ? [0, nSteps - 1]
+    : kase
+    ? (caseMine ? [kase.stepIdx, segmentEnd(schema, kase.stepIdx)] : [-1, -1])
+    : (props.workflow!.canStart ? [0, segmentEnd(schema, 0)] : [-1, -1]);
+  const viewOnly = segStart < 0;
+  const maxIdx = viewOnly ? nSteps - 1 : segEnd;
+  const lockedStep = (i: number) => viewOnly || i < segStart || i > segEnd;
+  const initialDraft = props.publicMode || kase ? null : props.draft ?? null;
+  const [idx, setIdx] = useState(() => {
+    const start = kase ? (viewOnly ? Math.min(kase.stepIdx, nSteps - 1) : segStart) : initialDraft?.stepIdx ?? 0;
+    return Math.min(Math.max(start, 0), maxIdx);
+  });
+  // เริ่มจากคำตอบในร่าง/งาน (ตั้งก่อน render แรก — FieldControl อ่านค่าเริ่มต้นตอน mount)
+  const answers = useRef<Record<string, Answer>>(((kase?.answers ?? initialDraft?.answers) as Record<string, Answer>) ?? {});
   const [photos, setPhotos] = useState<Record<string, string>>({}); // fieldId -> dataUrl
-  const docExtracts = useRef<DocExtractRecord[]>((initialDraft?.docExtracts as DocExtractRecord[]) ?? []); // หลักฐานการอ่านเอกสารด้วย AI
+  const docExtracts = useRef<DocRec[]>(((kase?.docExtracts ?? initialDraft?.docExtracts) as DocRec[]) ?? []); // หลักฐานการอ่านเอกสารด้วย AI
   const [sigs, setSigs] = useState<Record<string, string>>({});
   const [, force] = useState(0);
   const rerender = useCallback(() => force((n) => n + 1), []);
@@ -110,7 +136,14 @@ export default function FillWizard(props: Props) {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [mode, setMode] = useState<"mobile" | "paper">(initialDraft?.mode ?? "mobile");
-  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean } | null>(null);
+  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
+  const [caseModal, setCaseModal] = useState<null | "handoff" | "return">(null);
+  const [caseBusy, setCaseBusy] = useState(false);
+  const [caseErr, setCaseErr] = useState<string | undefined>();
+  const newCaseId = useRef<string | null>(null); // id ของงานที่กำลังเริ่ม (เรียกซ้ำได้ถ้าส่งต่อไม่สำเร็จ)
+  const stepOfField = useMemo(() => fieldStepMap(schema), [schema]);
+  // คำตอบของขั้นที่ล็อก (ไม่เปลี่ยนระหว่างเปิดหน้านี้) — ใช้แสดงแบบอ่านอย่างเดียว
+  const [lockedAnswers] = useState<Record<string, Answer>>(() => ({ ...((kase?.answers as Record<string, Answer>) ?? {}) }));
 
   // ---- เอกสารที่เกี่ยวข้อง ----
   const [attForm, attByField] = (() => {
@@ -195,24 +228,45 @@ export default function FillWizard(props: Props) {
   // ================= แบบร่าง (บันทึกไว้ก่อน ยังไม่ส่ง) =================
   // บันทึกเมื่อ: กดปุ่ม "บันทึกร่าง", เปลี่ยนขั้นตอน, กดออก, สลับแอป/ปิดแท็บ (หน้าถูกซ่อน)
   // บันทึกอัตโนมัติเฉพาะเมื่อมีคำตอบจริงและมีการเปลี่ยนตั้งแต่บันทึกล่าสุด → ไม่เกิดร่างขยะ
-  const draftsOn = !props.publicMode;
+  const draftsOn = !props.publicMode && !viewOnly && (!kase || caseMine);
   const dirty = useRef(0);          // นับการแก้ไข
   const savedAt = useRef(0);        // ค่า dirty ตอนบันทึกล่าสุด
   const draftId = useRef<string | null>(initialDraft?.id ?? null);
-  const draftMedia = useRef<Record<string, string>>(initialDraft?.media ?? {});
+  // งาน: media ของทั้งงาน (key → path ใน bucket 'cases') / ร่าง: media ของร่าง
+  const draftMedia = useRef<Record<string, string>>(kase?.media ?? initialDraft?.media ?? {});
   const uploadedMedia = useRef(new Map<string, string>());
   const saving = useRef<Promise<boolean> | null>(null);
   const submitLock = useRef(false); // กำลังส่ง/ส่งแล้ว → ห้ามบันทึกร่าง (กันร่างค้างหลังส่ง)
   const [draftState, setDraftState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; at?: number; msg?: string }>(
     initialDraft ? { kind: "saved", at: new Date(initialDraft.updatedAt).getTime() } : { kind: "idle" }
   );
-  const [mediaLoading, setMediaLoading] = useState(!!initialDraft && Object.keys(initialDraft.media || {}).length > 0);
+  const [mediaLoading, setMediaLoading] = useState(
+    kase ? Object.keys(kase.media || {}).length > 0 || kase.docExtracts.some((d) => !!d.path)
+      : !!initialDraft && Object.keys(initialDraft.media || {}).length > 0
+  );
   const versionChanged = !!initialDraft && initialDraft.formVersion !== props.version;
   // state ล่าสุดสำหรับ callback ที่ถูกเรียกนอกรอบ render (visibilitychange)
   const latest = useRef({ idx, mode, photos, sigs });
   useEffect(() => { latest.current = { idx, mode, photos, sigs }; }, [idx, mode, photos, sigs]);
 
   // โหลดรูป/ลายเซ็นของร่างกลับมา
+  // งาน: โหลดรูป/ลายเซ็น/รูปเอกสารของทุกขั้นกลับมา (ขั้นก่อนหน้าไว้ดู, ขั้นสุดท้ายใช้ส่ง submission)
+  useEffect(() => {
+    if (!kase || !mediaLoading) return;
+    let alive = true;
+    loadCaseMedia(supabase, kase.media, docExtracts.current as CaseDocExtract[]).then((m) => {
+      if (!alive) return;
+      setPhotos(m.photos);
+      setSigs(m.sigs);
+      const fpr = (d: string) => `${d.length}:${d.slice(-64)}`;
+      for (const [f, d] of Object.entries(m.photos)) uploadedMedia.current.set(`p:${f}`, fpr(d));
+      for (const [f, d] of Object.entries(m.sigs)) uploadedMedia.current.set(`s:${f}`, fpr(d));
+      setMediaLoading(false);
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     if (!initialDraft || !mediaLoading) return;
     let alive = true;
@@ -268,6 +322,21 @@ export default function FillWizard(props: Props) {
     setDraftState({ kind: "saving" });
     const job = (async () => {
       try {
+        if (kase) {
+          // งาน: บันทึกเฉพาะช่วงที่ถืออยู่ลง form_cases (ไม่ใช่แบบร่าง)
+          const res = await saveCase(supabase, {
+            tenantId: props.tenantId, caseId: kase.id, schema, segStart, segEnd, title,
+            answers: answers.current, photos: ph, sigs: sg, docExtracts: docExtracts.current as CaseDocExtract[], filled, total,
+          }, uploadedMedia.current, draftMedia.current);
+          const keep = Object.fromEntries(Object.entries(draftMedia.current).filter(([k]) => {
+            const st = stepOfField.get(k.slice(2));
+            return st === undefined || st < segStart || st > segEnd;
+          }));
+          draftMedia.current = { ...keep, ...res.media };
+          savedAt.current = mark;
+          setDraftState({ kind: "saved", at: Date.now() });
+          return true;
+        }
         const res = await saveDraft(supabase, draftId.current, {
           tenantId: props.tenantId, userId: props.userId, formId: props.formId, formVersion: props.version,
           title, stepIdx: si, mode: md, answers: answers.current, photos: ph, sigs: sg,
@@ -295,7 +364,7 @@ export default function FillWizard(props: Props) {
     })();
     saving.current = job;
     return job;
-  }, [draftsOn, hasContent, mediaLoading, schema, supabase, props.tenantId, props.userId, props.formId, props.version]);
+  }, [draftsOn, hasContent, mediaLoading, schema, supabase, props.tenantId, props.userId, props.formId, props.version, kase, segStart, segEnd, stepOfField]);
 
   // สลับแอป / ปิดแท็บ / ล็อกจอ → บันทึกร่างอัตโนมัติ
   useEffect(() => {
@@ -316,7 +385,7 @@ export default function FillWizard(props: Props) {
       const ok = await saveDraftNow("auto");
       if (!ok && !confirm("บันทึกร่างไม่สำเร็จ — ออกจากหน้านี้เลยไหม? (คำตอบที่ยังไม่บันทึกจะหายไป)")) return;
     }
-    router.push("/forms");
+    router.push(kase ? "/forms?tab=tasks" : "/forms");
   }
 
   /** ส่งฟอร์มสำเร็จแล้ว → ลบร่างทิ้ง */
@@ -429,9 +498,30 @@ export default function FillWizard(props: Props) {
     return Object.keys(errs).length === 0;
   }
 
+  /** ฟิลด์ของช่วงที่ผู้ใช้คนนี้กรอก */
+  const segFields = () => (viewOnly ? [] : schema.steps.slice(segStart, segEnd + 1).flatMap((s) => s.fields));
+  const isLastSeg = !viewOnly && segEnd === nSteps - 1;
+
+  /** จบช่วงของตัวเอง: ตรวจครบแล้วเปิดหน้าต่างยืนยันส่งต่อ */
+  function openHandoff() {
+    const fs = segFields();
+    if (!validate(fs)) {
+      const firstErr = fs.find((f) => !answers.current[f.id] && f.required);
+      if (firstErr && typeof document !== "undefined") document.getElementById("fld-" + firstErr.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    setCaseErr(undefined);
+    setCaseModal("handoff");
+  }
+
   async function next() {
-    if (!validate()) return;
-    if (idx < schema.steps.length - 1) {
+    if (!validate(lockedStep(idx) ? [] : step.fields)) return;
+    if (viewOnly) {
+      if (idx < maxIdx) { setIdx(idx + 1); window.scrollTo(0, 0); }
+      return;
+    }
+    if (wf && !isLastSeg && idx === segEnd) { openHandoff(); return; }
+    if (idx < maxIdx) {
       setIdx(idx + 1);
       latest.current.idx = idx + 1;
       window.scrollTo(0, 0);
@@ -443,7 +533,8 @@ export default function FillWizard(props: Props) {
 
   // โหมดกระดาษ: ตรวจทุกฟิลด์ทั้งฟอร์มแล้วส่งครั้งเดียว
   async function submitPaper() {
-    const all = schema.steps.flatMap((s) => s.fields);
+    if (wf && !isLastSeg) { openHandoff(); return; }
+    const all = segFields();
     if (!validate(all)) {
       const firstErr = all.find((f) => errors[f.id]);
       if (firstErr && typeof document !== "undefined") document.getElementById("fld-" + firstErr.id)?.scrollIntoView({ behavior: "smooth", block: "center" });
@@ -527,7 +618,8 @@ export default function FillWizard(props: Props) {
         }
 
       const result: "pass" | "fail" = fails.length ? "fail" : "pass";
-      const dur = Math.round((Date.now() - startedAt) / 1000);
+      // งาน: นับเวลาตั้งแต่เริ่มงาน (ขั้นแรก) จนส่งขั้นสุดท้าย
+      const dur = Math.round((Date.now() - (kase ? new Date(kase.createdAt).getTime() : startedAt)) / 1000);
 
       // โหมดสาธารณะ (ไม่ล็อกอิน) → ส่งผ่าน API ที่ตรวจสิทธิ์ฝั่ง server
       if (props.publicMode) {
@@ -577,6 +669,18 @@ export default function FillWizard(props: Props) {
         queuedAt: 0,
       };
 
+      // งาน (ฟอร์มกรอกหลายคน): ขั้นสุดท้ายต้องออนไลน์ — ส่ง submission แล้วปิดงานทันที (ไม่เข้าคิวออฟไลน์)
+      if (wf) {
+        if (!kase) throw new Error("ไม่พบงาน");
+        if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error("ออฟไลน์อยู่ — ต่อเน็ตก่อนส่งงานขั้นสุดท้าย");
+        await pushSubmission(supabase, payload);
+        const r = await completeCaseAction(kase.id, subId);
+        void notifySubmission(subId).catch(() => {});
+        setDone({ result, fails, dur, pending: props.requiresApproval, offline: false, caseWarn: "error" in r ? r.error : undefined });
+        window.scrollTo(0, 0);
+        return;
+      }
+
       // ออฟไลน์ → เข้าคิวไว้ก่อน แล้ว sync ทีหลัง
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
         await enqueue({ ...payload, queuedAt: Date.now() });
@@ -608,10 +712,121 @@ export default function FillWizard(props: Props) {
       setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
       window.scrollTo(0, 0);
     } catch (e) {
-      setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
+      const fid = (lockedStep(idx) ? segFields()[0] : step.fields[0])?.id ?? step.fields[0].id;
+      setErrors({ [fid]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
       setSubmitting(false);
       submitLock.current = false;
     }
+  }
+
+  // ================= งาน: ส่งต่อ / ส่งกลับ / รับงาน / คืนงาน / ยกเลิก =================
+  const teamName = (id: string | null) => (id ? props.workflow?.teams[id] ?? null : null);
+  const netErr = (e: unknown) => {
+    const raw = e instanceof Error ? e.message : String(e ?? "");
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return "ออฟไลน์อยู่ — ต่อเน็ตก่อนแล้วลองอีกครั้ง";
+    return /fetch|network/i.test(raw) ? "เชื่อมต่อ server ไม่ได้ — ลองอีกครั้ง" : raw || "ทำรายการไม่สำเร็จ";
+  };
+
+  /** บันทึกช่วงของตัวเองลงงาน (งานใหม่ = เริ่มงานก่อน) คืน id งาน */
+  async function persistSegment(): Promise<string> {
+    let caseId = kase?.id ?? null;
+    if (!caseId) {
+      caseId = newCaseId.current ?? crypto.randomUUID();
+      newCaseId.current = caseId;
+      const { error } = await supabase.rpc("case_start", { p_id: caseId, p_form: props.formId });
+      if (error) throw new Error(error.message);
+    }
+    const { photos: ph, sigs: sg } = latest.current;
+    let filled = 0, total = 0, title = "";
+    for (const st of schema.steps)
+      for (const fl of st.fields) {
+        total++;
+        const v = answers.current[fl.id]?.value;
+        const has = fl.type === "photo" ? !!ph[fl.id] : fl.type === "signature" ? !!sg[fl.id] : Array.isArray(v) ? v.length > 0 : v != null && v !== "";
+        if (has) filled++;
+        if (!title && has && ["text", "select", "number"].includes(fl.type) && typeof v === "string") {
+          const l = fl.option_labels && fl.options ? fl.option_labels[fl.options.indexOf(v)] : "";
+          title = `${fl.label}: ${l || v}`;
+        }
+      }
+    if (saving.current) await saving.current.catch(() => false);
+    const res = await saveCase(supabase, {
+      tenantId: props.tenantId, caseId, schema, segStart, segEnd, title,
+      answers: answers.current, photos: ph, sigs: sg, docExtracts: docExtracts.current as CaseDocExtract[], filled, total,
+    }, uploadedMedia.current, draftMedia.current);
+    draftMedia.current = { ...draftMedia.current, ...res.media };
+    savedAt.current = dirty.current;
+    return caseId;
+  }
+
+  async function doHandoff(note: string) {
+    setCaseBusy(true);
+    setCaseErr(undefined);
+    submitLock.current = true;
+    try {
+      const caseId = await persistSegment();
+      const r = await advanceCaseAction(caseId, note || null);
+      if ("error" in r) throw new Error(r.error);
+      if (!kase) void clearDraftAfterSubmit(); // ร่างของขั้นแรกกลายเป็นงานแล้ว
+      const nxt = segEnd + 1;
+      setCaseModal(null);
+      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, handoff: { step: `${nxt + 1}. ${schema.steps[nxt]?.title ?? ""}`, team: r.teamName ?? teamName(stepTeam(schema, nxt)) } });
+      window.scrollTo(0, 0);
+    } catch (e) {
+      submitLock.current = false;
+      setCaseErr(netErr(e));
+    } finally {
+      setCaseBusy(false);
+    }
+  }
+
+  async function doReturn(toStep: number, note: string) {
+    if (!kase) return;
+    setCaseBusy(true);
+    setCaseErr(undefined);
+    try {
+      // เก็บสิ่งที่แก้ในขั้นนี้ไว้ก่อน (ขั้นนี้กลับมาทำต่อได้หลังอีกฝั่งแก้เสร็จ)
+      if (dirty.current !== savedAt.current) await persistSegment().catch(() => null);
+      submitLock.current = true;
+      const r = await returnCaseAction(kase.id, toStep, note);
+      if ("error" in r) throw new Error(r.error);
+      setCaseModal(null);
+      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, returned: r.holder || (r.teamName ? `ทีม ${r.teamName}` : `${toStep + 1}. ${schema.steps[toStep]?.title ?? ""}`) });
+      window.scrollTo(0, 0);
+    } catch (e) {
+      submitLock.current = false;
+      setCaseErr(netErr(e));
+    } finally {
+      setCaseBusy(false);
+    }
+  }
+
+  async function doClaim() {
+    if (!kase) return;
+    setCaseBusy(true);
+    const r = await claimCaseAction(kase.id).catch((e) => ({ error: netErr(e) }));
+    setCaseBusy(false);
+    if ("error" in r) { alert(r.error); router.refresh(); return; }
+    router.refresh();
+  }
+
+  async function doRelease() {
+    if (!kase || !confirm("คืนงานนี้เข้ากองงานของทีม? คนอื่นในทีมจะกดรับไปทำต่อได้")) return;
+    if (dirty.current !== savedAt.current) await persistSegment().catch(() => null);
+    submitLock.current = true;
+    const r = await releaseCaseAction(kase.id).catch((e) => ({ error: netErr(e) }));
+    if ("error" in r) { submitLock.current = false; alert(r.error); return; }
+    router.push("/forms?tab=tasks");
+  }
+
+  async function doCancelCase() {
+    if (!kase) return;
+    const note = prompt("ยกเลิกงานนี้? ระบุเหตุผล (ไม่บังคับ)");
+    if (note === null) return;
+    submitLock.current = true;
+    const r = await cancelCaseAction(kase.id, note).catch((e) => ({ error: netErr(e) }));
+    if ("error" in r) { submitLock.current = false; alert(r.error); return; }
+    router.push("/forms?tab=tasks");
   }
 
   // ---- ประตูตรวจอุปกรณ์: ฟอร์มที่ล็อค ต้องเป็นเครื่องที่อนุมัติแล้วเท่านั้น ----
@@ -671,6 +886,39 @@ export default function FillWizard(props: Props) {
     );
   }
 
+  // ฟอร์มกรอกหลายคนที่ขั้นแรกจำกัดทีม — ผู้ใช้นี้เริ่มงานไม่ได้
+  if (wf && !kase && viewOnly) {
+    const tn = teamName(stepTeam(schema, 0));
+    return (
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "36px 20px", textAlign: "center", boxShadow: "var(--shadow)", maxWidth: 480, margin: "0 auto" }}>
+        <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={Users} className="h-11 w-11" strokeWidth={1.5} /></div>
+        <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("wf.startTeamOnly")}</h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>{t("wf.startTeamOnlySub").replace("{team}", tn || "-")}</p>
+        <Button onClick={() => router.push("/forms")} style={{ marginTop: 12 }}>{t("fill.backToList")}</Button>
+      </div>
+    );
+  }
+
+  if (done && (done.handoff || done.returned)) {
+    return (
+      <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
+        <div style={{ display: "flex", justifyContent: "center", color: done.returned ? "#d97706" : "var(--pass)" }}>
+          <Icon icon={done.returned ? CornerUpLeft : Send} className="h-12 w-12" strokeWidth={1.6} />
+        </div>
+        <h2 style={{ margin: "10px 0 4px" }}>{done.returned ? t("wf.doneReturned") : t("wf.doneHandoff")}</h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>
+          {done.returned
+            ? t("wf.doneReturnedSub").replace("{to}", done.returned)
+            : t("wf.doneHandoffSub").replace("{step}", done.handoff!.step).replace("{team}", done.handoff!.team || "-")}
+        </p>
+        <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
+          <Button variant="primary" onClick={() => router.push("/forms?tab=tasks")}>{t("wf.backToTasks")}</Button>
+          <Button onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
+        </div>
+      </div>
+    );
+  }
+
   if (done) {
     return (
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
@@ -689,6 +937,9 @@ export default function FillWizard(props: Props) {
             ? t("fill.doneOfflineSub")
             : `${props.title} · ใช้เวลา ${done.dur} วินาที · ${done.pending ? "หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติ" : "ขึ้น dashboard แล้ว"}`}
         </p>
+        {done.caseWarn && (
+          <p style={{ color: "#d97706", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
+        )}
         {done.fails.length > 0 && (
           <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>
             {done.fails.map((f, i) => (
@@ -711,6 +962,15 @@ export default function FillWizard(props: Props) {
   }
 
   const renderField = (f: FormField, paper = false, compact = false) => {
+    const fStep = stepOfField.get(f.id) ?? 0;
+    if (wf && lockedStep(fStep)) {
+      return (
+        <div id={"fld-" + f.id} key={f.id}>
+          <ReadonlyField field={f} answer={lockedAnswers[f.id]} photo={photos[f.id]} sig={sigs[f.id]} paper={paper} compact={compact}
+            pending={kase ? kase.status === "open" && fStep > segmentEnd(schema, kase.stepIdx) : fStep > segEnd} />
+        </div>
+      );
+    }
     const parentId = f.options_parents ? f.options_source?.parent?.field_id : undefined;
     // key ผูกกับเวอร์ชันของฟิลด์แม่ → แม่เปลี่ยน ฟิลด์ลูก mount ใหม่และอ่านคำตอบที่ถูกตัดแล้ว
     const k = parentId ? `${f.id}|${depVer[parentId] ?? 0}` : f.id;
@@ -758,7 +1018,7 @@ export default function FillWizard(props: Props) {
 
   const draftBtn = draftsOn ? (
     <Button onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title="บันทึกไว้ก่อน แล้วกลับมากรอกต่อได้จากแท็บ แบบร่าง">
-      <Icon icon={Save} className="h-4 w-4" /> {t("draft.save")}
+      <Icon icon={Save} className="h-4 w-4" /> {kase ? t("common.save") : t("draft.save")}
     </Button>
   ) : null;
 
@@ -767,7 +1027,7 @@ export default function FillWizard(props: Props) {
       {draftState.kind === "saving" && <span>{t("draft.saving")}</span>}
       {draftState.kind === "saved" && draftState.at && (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Icon icon={Check} className="h-3.5 w-3.5" /> {t("draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }))}
+          <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }))}
         </span>
       )}
       {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}
@@ -793,6 +1053,45 @@ export default function FillWizard(props: Props) {
     </div>
   );
 
+  // ---------- งาน: แถบสถานะ + ปุ่มส่งต่อ/ส่งกลับ ----------
+  const canCancelCase = !!kase && kase.status === "open" &&
+    (!!props.workflow?.manager || (caseMine && kase.createdBy === props.userId && !kase.history.some((h) => h.action === "advance")));
+  const nextTeam = wf && !viewOnly && !isLastSeg ? teamName(stepTeam(schema, segEnd + 1)) : null;
+  const banner = wf ? (
+    <CaseBanner schema={schema} kase={kase} teams={props.workflow!.teams} userId={props.userId} segStart={segStart} segEnd={segEnd}
+      canClaim={!!props.workflow?.canClaim} claiming={caseBusy} onClaim={doClaim} />
+  ) : null;
+  const handoffLabel = (
+    <><Icon icon={Send} className="h-[18px] w-[18px]" /> {nextTeam ? t("wf.handoffTo").replace("{team}", nextTeam) : t("wf.handoff")}</>
+  );
+  const caseTools = kase && (caseMine || canCancelCase) ? (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10 }}>
+      {caseMine && segStart > 0 && (
+        <Button onClick={() => { setCaseErr(undefined); setCaseModal("return"); }} style={{ fontSize: ".85rem", padding: "8px 14px" }}>
+          <Icon icon={CornerUpLeft} className="h-4 w-4" /> {t("wf.return")}
+        </Button>
+      )}
+      {caseMine && kase.assigneeTeam && (
+        <Button variant="ghost" onClick={doRelease} style={{ fontSize: ".85rem", padding: "8px 14px" }}>{t("wf.release")}</Button>
+      )}
+      {canCancelCase && (
+        <Button variant="ghost" onClick={doCancelCase} style={{ fontSize: ".85rem", padding: "8px 14px", color: "var(--fail)" }}>{t("wf.cancelCase")}</Button>
+      )}
+    </div>
+  ) : null;
+  const caseModals = (
+    <>
+      {caseModal === "handoff" && (
+        <HandoffModal nextTitle={`${segEnd + 2}. ${schema.steps[segEnd + 1]?.title ?? ""}`} teamName={nextTeam} busy={caseBusy} error={caseErr}
+          onCancel={() => setCaseModal(null)} onConfirm={doHandoff} />
+      )}
+      {caseModal === "return" && kase && (
+        <ReturnModal schema={schema} kase={kase} maxStep={segStart} busy={caseBusy} error={caseErr}
+          onCancel={() => setCaseModal(null)} onConfirm={doReturn} />
+      )}
+    </>
+  );
+
   // ---------- โหมดกระดาษ: กรอกบนกระดาษ A4 จริง ตามตำแหน่งที่ออกแบบไว้ ----------
   if (mode === "paper") {
     return (
@@ -808,10 +1107,11 @@ export default function FillWizard(props: Props) {
         </div>
 
         {draftNotice}
+        {banner}
         {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
-        {schema.steps.map((st) => (
-          <div key={st.id}>{fillBar(st)}</div>
+        {schema.steps.map((st, si) => (
+          lockedStep(si) ? null : <div key={st.id}>{fillBar(st)}</div>
         ))}
 
         <FormPaperFill
@@ -822,11 +1122,15 @@ export default function FillWizard(props: Props) {
           renderField={(f) => renderField(f, true, true)}
         />
 
-        <div style={{ marginTop: 14 }}>
-          <Button variant="primary" onClick={submitPaper} loading={submitting} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
-            {submitting ? t("fill.submitting") : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
-          </Button>
-        </div>
+        {!viewOnly && (
+          <div style={{ marginTop: 14 }}>
+            <Button variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
+              {submitting ? t("fill.submitting") : wf && !isLastSeg ? handoffLabel : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
+            </Button>
+          </div>
+        )}
+        {caseTools}
+        {caseModals}
       </div>
     );
   }
@@ -844,11 +1148,12 @@ export default function FillWizard(props: Props) {
       </div>
 
       {draftNotice}
+      {banner}
       {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>
         {schema.steps.map((s, i) => (
-          <span key={s.id} style={{ flex: 1, height: 6, borderRadius: 3, background: i < idx ? "var(--pass)" : i === idx ? "var(--accent)" : "var(--line)" }} />
+          <span key={s.id} style={{ flex: 1, height: 6, borderRadius: 3, background: i === idx ? "var(--accent)" : i < idx || (wf && kase && (kase.status === "done" || i < kase.stepIdx)) ? "var(--pass)" : "var(--line)", opacity: wf && lockedStep(i) && i !== idx ? 0.55 : 1 }} />
         ))}
       </div>
 
@@ -859,16 +1164,28 @@ export default function FillWizard(props: Props) {
         <h3 style={{ fontSize: "1.05rem" }}>{step.title}</h3>
       </div>
 
-      {fillBar(step)}
+      {wf && lockedStep(idx) && !viewOnly && (
+        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 6, margin: "0 0 8px" }}>
+          <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("wf.stepLocked")}
+        </div>
+      )}
+      {!lockedStep(idx) && fillBar(step)}
 
       {step.fields.map((f) => renderField(f))}
 
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); latest.current.idx = idx - 1; window.scrollTo(0, 0); void saveDraftNow("auto"); }}>{t("fill.prev")}</Button>}
-        <Button variant="primary" onClick={next} loading={submitting} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
-          {submitting ? t("fill.submitting") : idx === schema.steps.length - 1 ? <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</> : t("fill.next")}
-        </Button>
+        {!(viewOnly && idx >= maxIdx) && (
+          <Button variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
+            {submitting ? t("fill.submitting")
+              : idx < maxIdx || viewOnly ? t("fill.next")
+              : wf && !isLastSeg ? handoffLabel
+              : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
+          </Button>
+        )}
       </div>
+      {caseTools}
+      {caseModals}
       <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
         <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("fill.locked")}
       </div>

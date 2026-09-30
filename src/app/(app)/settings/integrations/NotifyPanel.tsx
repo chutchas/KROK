@@ -48,6 +48,7 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
       on_approved: s.on_approved,
       on_rejected: s.on_rejected,
       fail_only: s.fail_only,
+      on_case: s.on_case,
     };
   }
 
@@ -144,6 +145,7 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
           <Check on={s.on_created} onChange={(v) => set("on_created", v)}>{t("notify.evCreated")}</Check>
           <Check on={s.on_approved} onChange={(v) => set("on_approved", v)}>{t("notify.evApproved")}</Check>
           <Check on={s.on_rejected} onChange={(v) => set("on_rejected", v)}>{t("notify.evRejected")}</Check>
+          <Check on={s.on_case} onChange={(v) => set("on_case", v)}>{t("notify.evCase")}</Check>
         </div>
         <div style={{ marginTop: 8 }}>
           <Check on={s.fail_only} onChange={(v) => set("fail_only", v)}>{t("notify.failOnly")}</Check>

@@ -142,6 +142,15 @@ export interface FormStep {
   fields: FormField[];
   /** แหล่งเติมข้อมูลของขั้นตอนนี้ */
   fill_sources?: FillSource[];
+  /**
+   * ผู้รับผิดชอบขั้นนี้ (ฟอร์มกรอกหลายคน) — ไม่ตั้ง = คนเดิมจากขั้นก่อนหน้ากรอกต่อ
+   * ขั้นแรก: จำกัดว่าใครเริ่มงานได้ / ขั้นอื่น: จบขั้นก่อนหน้าแล้วงานไปกองงานของทีมนี้
+   */
+  assignee?: StepAssignee;
+}
+
+export interface StepAssignee {
+  team_id: string;
 }
 
 export interface PaperBox {
@@ -382,6 +391,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
         title: str(so.title, 120, `ขั้นตอนที่ ${si + 1}`),
         fields,
       };
+      const asg = so.assignee as Record<string, unknown> | undefined;
+      if (asg && typeof asg.team_id === "string" && UUID_RE.test(asg.team_id)) step.assignee = { team_id: asg.team_id.toLowerCase() };
 
       // ฟิลด์ barcode เดิม → scan source อัตโนมัติ (1 ฟิลด์ต่อ 1 ปุ่ม)
       const auto: FillSource[] = [];

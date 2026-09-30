@@ -2,7 +2,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import { getAdminClient } from "@/lib/supabase/admin";
 
-export type NotifyEvent = "submission.created" | "submission.approved" | "submission.rejected";
+export type NotifyEvent = "submission.created" | "submission.approved" | "submission.rejected" | "case.assigned" | "case.returned";
 
 export interface NotifyConfig {
   line_enabled: boolean;
@@ -19,6 +19,8 @@ export interface NotifyConfig {
   on_approved: boolean;
   on_rejected: boolean;
   fail_only: boolean;
+  /** งานส่งต่อ/ส่งกลับ (ฟอร์มกรอกหลายคน) — ไม่มีคอลัมน์ (ยังไม่รัน 0033) = แจ้ง */
+  on_case?: boolean;
 }
 
 export interface NotifyInfo {
@@ -31,6 +33,11 @@ export interface NotifyInfo {
   reviewer?: string;
   note?: string;
   appUrl?: string; // ลิงก์ไปหน้ารายละเอียด (ถ้ามี)
+  /** งาน: ขั้นที่ต้องทำต่อ / ทีมที่ต้องรับ / คนที่ต้องแก้ */
+  stepTitle?: string;
+  teamName?: string;
+  assignee?: string;
+  caseTitle?: string;
 }
 
 const LINE_PUSH = "https://api.line.me/v2/bot/message/push";
@@ -94,6 +101,8 @@ export async function sendEmail(cfg: SmtpCfg, subject: string, text: string): Pr
 function eventLabel(ev: NotifyEvent): string {
   if (ev === "submission.approved") return "อนุมัติแล้ว";
   if (ev === "submission.rejected") return "ถูกตีกลับ";
+  if (ev === "case.assigned") return "มีงานรอรับ";
+  if (ev === "case.returned") return "งานถูกส่งกลับให้แก้ไข";
   return "มีการส่งฟอร์มใหม่";
 }
 
@@ -103,13 +112,18 @@ function buildMessage(ev: NotifyEvent, info: NotifyInfo): { subject: string; tex
     `[KROK] ${head}`,
     `ฟอร์ม: ${info.formIcon ? info.formIcon + " " : ""}${info.formTitle}`,
   ];
-  if (info.userName) lines.push(`ผู้กรอก: ${info.userName}`);
+  const isCase = ev === "case.assigned" || ev === "case.returned";
+  if (isCase && info.caseTitle) lines.push(`งาน: ${info.caseTitle}`);
+  if (isCase && info.stepTitle) lines.push(`ขั้นที่ต้องทำ: ${info.stepTitle}`);
+  if (isCase && info.teamName) lines.push(`ทีม: ${info.teamName}`);
+  if (isCase && info.assignee) lines.push(`ผู้รับผิดชอบ: ${info.assignee}`);
+  if (info.userName) lines.push(`${isCase ? (ev === "case.returned" ? "ส่งกลับโดย" : "ส่งต่อโดย") : "ผู้กรอก"}: ${info.userName}`);
   if (ev === "submission.created" && info.result) {
     lines.push(`ผล: ${info.result === "fail" ? `ไม่ผ่าน (${info.failCount ?? 0} รายการ)` : "ครบถ้วน"}`);
   }
   if (info.reviewer) lines.push(`ผู้ตรวจ: ${info.reviewer}`);
   if (info.note) lines.push(`หมายเหตุ: ${info.note}`);
-  lines.push(`เลขที่: ${info.submissionId.slice(0, 8).toUpperCase()}`);
+  lines.push(`${isCase ? "เลขที่งาน" : "เลขที่"}: ${info.submissionId.slice(0, 8).toUpperCase()}`);
   if (info.appUrl) lines.push(info.appUrl);
   const text = lines.join("\n");
   return { subject: `[KROK] ${head} — ${info.formTitle}`, text };
@@ -119,6 +133,7 @@ function wanted(cfg: NotifyConfig, ev: NotifyEvent): boolean {
   if (ev === "submission.created") return cfg.on_created;
   if (ev === "submission.approved") return cfg.on_approved;
   if (ev === "submission.rejected") return cfg.on_rejected;
+  if (ev === "case.assigned" || ev === "case.returned") return cfg.on_case !== false;
   return false;
 }
 

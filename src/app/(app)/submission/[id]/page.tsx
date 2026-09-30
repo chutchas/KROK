@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
 import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
@@ -38,6 +39,19 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
     .eq("id", id)
     .maybeSingle();
   if (!sub) notFound();
+
+  // มาจากงาน (ฟอร์มกรอกหลายคน) → ผู้กรอกแต่ละขั้น
+  // อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
+  let caseSteps: { title: string; name: string; at: string }[] = [];
+  if (sub.case_id) {
+    const db = getAdminClient() ?? supabase;
+    const { data: c } = await db.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle();
+    if (c) {
+      const steps = ((c.schema as { steps?: { title?: string }[] })?.steps) || [];
+      const meta = (c.step_meta as Record<string, { name?: string; at?: string }>) || {};
+      caseSteps = steps.map((st, i) => ({ title: `${i + 1}. ${st.title || ""}`, name: meta[String(i)]?.name || "—", at: meta[String(i)]?.at || "" }));
+    }
+  }
 
   const { data: photoRows } = await supabase
     .from("submission_photos")
@@ -113,6 +127,18 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           <div><span style={{ color: "var(--ink-3)" }}>ใช้เวลา: </span>{sub.duration_s ?? "—"} วินาที</div>
           <div><span style={{ color: "var(--ink-3)" }}>เวอร์ชันฟอร์ม: </span>v{sub.form_version ?? 1}</div>
         </div>
+        {caseSteps.length > 0 && (
+          <div style={{ fontSize: ".84rem", margin: "4px 0 8px", padding: "8px 12px", border: "1px solid var(--line)", borderRadius: 8 }}>
+            <div style={{ color: "var(--ink-3)", marginBottom: 4 }}>ผู้กรอกแต่ละขั้น · งาน #{String(sub.case_id).slice(0, 8).toUpperCase()}</div>
+            {caseSteps.map((c, i) => (
+              <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <span style={{ minWidth: 140 }}>{c.title}</span>
+                <b>{c.name}</b>
+                {c.at && <span style={{ color: "var(--ink-3)" }}>{fmt(c.at)}</span>}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* answers */}
         <div style={{ marginTop: 12 }}>
