@@ -10,6 +10,7 @@ import { FIELD_TYPE_LABELS, labelMap, type FormField, type FormSchema, type Form
 import { tableCodeKey } from "@/lib/answer-item";
 import FormPaperFill from "@/components/FormPaperFill";
 import OptionPicker from "@/components/OptionPicker";
+import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
@@ -574,6 +575,7 @@ export default function FillWizard(props: Props) {
         getInitial={() => answers.current[f.id] || {}}
         photo={photos[f.id]}
         hasSig={!!sigs[f.id]}
+        sigUrl={sigs[f.id]}
         error={errors[f.id]}
         onPatch={(patch, render) => {
           patchAnswer(f.id, patch, render);
@@ -822,6 +824,7 @@ function FieldControl({
   getInitial,
   photo,
   hasSig,
+  sigUrl,
   error,
   onPatch,
   setPhoto,
@@ -840,6 +843,8 @@ function FieldControl({
   getInitial: () => Answer;
   photo?: string;
   hasSig: boolean;
+  /** รูปลายเซ็นที่เซ็นแล้ว (โหมดกระดาษแสดงในกล่อง) */
+  sigUrl?: string;
   error?: string;
   onPatch: (patch: Partial<Answer>, render?: boolean) => void;
   setPhoto: (d: string | null) => void;
@@ -915,6 +920,7 @@ function FieldControl({
   const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
   const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) && typeof initial.value[0] === "string" ? (initial.value as string[]) : []);
   const [selVal, setSelVal] = useState<string>(typeof initial.value === "string" ? initial.value : "");
+  const [sigOpen, setSigOpen] = useState(false);
   // ตัวเลือกจากข้อมูลอ้างอิง (ดึงไม่ได้ → ใช้ตัวเลือกที่พิมพ์ไว้แทน)
   const parentValue = getParentValue?.();
   const optLabels = useMemo(() => labelMap(f.options, f.option_labels), [f.options, f.option_labels]);
@@ -931,6 +937,86 @@ function FieldControl({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ---------- โหมดกระดาษ (compact): ใช้ชิ้นส่วนเดียวกับ Editor ให้พอดีกล่องที่ออกแบบ ----------
+  // เนื้อหาที่งอกเกินกล่อง (หมายเหตุตอนไม่ผ่าน, error, เอกสารแนบ, แถวตารางที่เพิ่ม)
+  // จะดันช่องด้านล่างลงเอง (FormPaperFill.reflow) — ไม่ทับกัน
+  if (compact) {
+    const staticOpts = f.options || [];
+    return (
+      <div>
+        {f.type !== "table" && <PaperLabel label={f.label} required={f.required} right={f.type === "number" && f.unit ? <span style={{ fontSize: ".72rem", color: "#666", fontWeight: 400 }}>{f.unit}</span> : undefined} />}
+        {f.type === "text" && (
+          <input type="text" style={paperInputStyle} defaultValue={String(initial.value ?? "")} placeholder={f.example ? "เช่น " + f.example : ""} onChange={(e) => onPatch({ value: e.target.value })} />
+        )}
+        {f.type === "number" && (
+          <input type="number" inputMode="decimal" style={{ ...paperInputStyle, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? `ช่วงที่ยอมรับ ${f.min ?? "–"} ถึง ${f.max ?? "–"}` : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+        )}
+        {f.type === "datetime" && (
+          <input type="datetime-local" style={paperInputStyle} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
+        )}
+        {(f.type === "select" || f.type === "checkbox") && (
+          dsBound ? (
+            waitParent || dsOptions.length === 0 ? (
+              <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#888", background: "#f7f7f8" }}>
+                {waitParent ? `เลือก “${parentLabel || "ช่องก่อนหน้า"}” ก่อน` : "ไม่มีตัวเลือก"}
+              </div>
+            ) : dsOptions.length <= 6 ? (
+              <PaperChoices name={"r_" + f.id} options={dsOptions} labels={optLabels.size ? optLabels : undefined} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
+                onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } else { setSelVal(v); onPatch({ value: v || undefined }); } }} />
+            ) : f.type === "select" ? (
+              // รายการยาว + เลือกข้อเดียว: dropdown บรรทัดเดียวพอดีกล่อง
+              <select style={paperInputStyle} value={selVal} onChange={(e) => { setSelVal(e.target.value); onPatch({ value: e.target.value || undefined }); }}>
+                <option value="">— เลือก —</option>
+                {dsOptions.map((o) => { const l = optLabels.get(o); return <option key={o} value={o}>{l ? `${l} · ${o}` : o}</option>; })}
+              </select>
+            ) : (
+              <OptionPicker name={"r_" + f.id} options={dsOptions} labels={optLabels.size ? optLabels : undefined} multiple value={cbVals} paper compact
+                onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } }} />
+            )
+          ) : (
+            <PaperChoices name={"r_" + f.id} options={staticOpts} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
+              onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } else { setSelVal(v); onPatch({ value: v }); } }} />
+          )
+        )}
+        {f.type === "pass_fail" && (
+          <>
+            <PaperPassFail value={pf} onChange={(v) => { setPf(v); onPatch({ value: v }, true); }} />
+            {pf === "fail" && (
+              <textarea style={{ ...paperInputStyle, height: 44, padding: "4px 8px", marginTop: 4, resize: "vertical" }} defaultValue={initial.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => onPatch({ note: e.target.value })} />
+            )}
+          </>
+        )}
+        {f.type === "photo" && (
+          <>
+            <PaperPhoto photo={photo} onPick={() => photoRef.current?.click()}
+              extra={photo && !publicMode ? (
+                <button type="button" onClick={aiCheck} disabled={aiBusy} title={aiResult || "ให้ AI ตรวจรูป"} style={{ height: 28, display: "inline-flex", alignItems: "center", gap: 4, border: "1px solid #b9bec4", borderRadius: 4, background: "#fff", color: "#333", fontFamily: "inherit", fontSize: ".74rem", padding: "0 8px", cursor: "pointer", maxWidth: 160, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                  <Icon icon={Sparkles} className="h-3.5 w-3.5" /> {aiBusy ? "กำลังดู..." : aiResult || "AI ตรวจรูป"}
+                </button>
+              ) : undefined} />
+            <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
+          </>
+        )}
+        {f.type === "signature" && (
+          <>
+            <PaperSignature url={sigUrl} onOpen={() => setSigOpen(true)} />
+            {sigOpen && <SignatureModal label={f.label} initialUrl={sigUrl} onClose={() => setSigOpen(false)} onSave={(d) => { setSig(d); setSigOpen(false); }} />}
+          </>
+        )}
+        {f.type === "table" && (
+          <PaperTableField field={f}
+            initial={Array.isArray(initial.value) && typeof initial.value[0] === "object" ? (initial.value as TableRow[]) : []}
+            onChange={(rows) => onPatch({ value: rows }, false)} />
+        )}
+        {f.options_error && (f.type === "select" || f.type === "checkbox") && (
+          <div style={{ fontSize: ".7rem", color: "#b45309", marginTop: 2 }}>⚠ {f.options_error}</div>
+        )}
+        {attachments.length > 0 && <AttachmentChips items={attachments} paper />}
+        {error && <div style={{ fontSize: ".72rem", color: "#dc2626", marginTop: 2 }}>{error}</div>}
+      </div>
+    );
+  }
 
   return (
     <div style={{ ...box, ...(error ? (paper ? { borderBottomColor: "var(--fail)" } : { borderColor: "var(--fail)" }) : {}) }}>
@@ -1178,3 +1264,57 @@ function toCode(f: FormField | undefined, value: string): string {
   const i = f.option_labels.findIndex((l) => l && l.trim().toLowerCase() === v);
   return i >= 0 ? f.options[i] : value;
 }
+
+/** ค่าตัวเลขนอกช่วงที่กำหนด */
+function numOut(f: FormField, value: string): boolean {
+  const v = parseFloat(value);
+  return Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max));
+}
+
+/** ตารางในโหมดกระดาษ: ชื่อช่อง + ปุ่ม "+ แถว" ในบรรทัดเดียว แล้วตารางจริงแถวสูงเท่าที่ออกแบบ */
+function PaperTableField({ field: f, initial, onChange }: { field: FormField; initial: TableRow[]; onChange: (rows: TableRow[]) => void }) {
+  const [rows, setRows] = useState<TableRow[]>(() => {
+    const base = initial.length ? initial.map((r) => ({ ...r })) : [];
+    while (base.length < Math.max(1, f.min_rows || 1)) base.push({});
+    return base;
+  });
+  const commit = (next: TableRow[]) => { setRows(next); onChange(next); };
+  return (
+    <>
+      <PaperLabel label={f.label} required={f.required} right={<PaperAddRow onClick={() => commit([...rows, {}])} />} />
+      <PaperTable
+        columns={f.columns || []}
+        rows={rows}
+        onCell={(ri, cid, v) => commit(rows.map((r, i) => (i === ri ? { ...r, [cid]: v } : r)))}
+        onDelete={rows.length > 1 ? (ri) => commit(rows.filter((_, i) => i !== ri)) : undefined}
+      />
+    </>
+  );
+}
+
+/** แผ่นเซ็นเต็มจอ (โหมดกระดาษ) — กดบันทึกจึงเขียนลงฟอร์ม */
+function SignatureModal({ label, initialUrl, onSave, onClose }: { label: string; initialUrl?: string; onSave: (d: string | null) => void; onClose: () => void }) {
+  const [temp, setTemp] = useState<string | null>(null);
+  const [cleared, setCleared] = useState(false);
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`เซ็น ${label}`} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+      <div style={{ width: "min(640px, 100%)", background: "#fff", color: "#111", borderRadius: 12, padding: 16, boxShadow: "0 10px 40px rgba(0,0,0,.3)" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+          <b style={{ fontSize: "1rem" }}>เซ็น: {label}</b>
+          <button type="button" onClick={onClose} aria-label="ปิด" style={{ border: "none", background: "none", cursor: "pointer", color: "#666", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>
+        </div>
+        {initialUrl && !temp && !cleared && (
+          <div style={{ fontSize: ".78rem", color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
+            ลายเซ็นเดิม: <img src={initialUrl} alt="ลายเซ็นเดิม" style={{ height: 32, border: "1px solid #eee", borderRadius: 4 }} /> — เซ็นใหม่ด้านล่างเพื่อแทนที่
+          </div>
+        )}
+        <SignaturePad hasSig={!!temp} paper onSave={(d) => { setTemp(d); if (!d) setCleared(true); }} />
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+          <Button onClick={onClose}>ยกเลิก</Button>
+          <Button variant="primary" disabled={!temp && !cleared} onClick={() => onSave(temp)}>บันทึกลายเซ็น</Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+

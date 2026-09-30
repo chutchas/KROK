@@ -16,6 +16,17 @@ export const GAP_Y = 10;
 export const START_Y = 96; // ใต้หัวกระดาษ
 export const PAD = 40;
 
+// ---- ขนาดภายในกล่อง (ใช้ร่วม Editor / หน้ากรอก ให้ตรงกันทุกพิกเซล) ----
+// กล่องฟิลด์: box-sizing border-box, ขอบ 1px, padding ตามนี้
+export const BOX_PAD_Y = 6;
+export const BOX_PAD_X = 10;
+export const BOX_BORDER = 1;
+export const LABEL_H = 18;   // บรรทัดชื่อช่อง
+export const LABEL_GAP = 4;  // ระหว่างชื่อช่องกับตัวกรอก
+export const CONTROL_H = 26; // ความสูงตัวกรอกบรรทัดเดียว (input / ปุ่ม / แถวตัวเลือก) — ขอบ 2 + pad 12 + 18 + 4 + 26 = FIELD_H 62
+export const TABLE_HEAD_H = 22;
+export const TABLE_ROW_H = 26;
+
 // หัวเอกสารแยกเป็น 2 บล็อกอิสระ: ชื่อเอกสาร + วันที่/เลขที่ (ลาก/ปรับขนาด/ซ่อนแยกกัน)
 export const HEADER_KEY = "header"; // ชื่อเอกสาร
 export const META_KEY = "meta";     // วันที่ / เลขที่
@@ -37,12 +48,46 @@ export function snap(n: number) {
 }
 
 // ความสูงของกล่องฟิลด์: ตารางสูงตามจำนวนแถวเริ่มต้น, ที่เหลือคงที่
+// FIELD_H (62) = ขอบ 2 + padding 12 + ชื่อช่อง 18 + ช่องไฟ 4 + ตัวกรอก 28
 export function fieldBoxHeight(f?: FormField): number {
   if (f?.type === "table") {
     const rows = Math.min(Math.max(f.min_rows ?? 1, 1), 6);
     return 44 + rows * 26 + 20; // หัวตาราง + แถว + ป้ายชื่อ
   }
   return FIELD_H;
+}
+
+/**
+ * หน้ากรอกแบบกระดาษ: เมื่อเนื้อหาของช่องสูงเกินกล่องที่ออกแบบ (เช่น ใส่หมายเหตุตอนไม่ผ่าน,
+ * เพิ่มแถวตาราง, ตัวเลือกขึ้นหลายบรรทัด) → ดันเฉพาะบล็อกที่อยู่ "ใต้" และ "ซ้อนแนวนอน" ลงมา
+ * เท่ากับส่วนที่งอกออก โดยรักษาระยะห่างเดิมไว้ — ไม่มีช่องทับกัน และช่องที่ไม่เกี่ยวไม่ขยับ
+ *
+ * measured = ความสูงจริง (px ก่อนย่อ/ขยาย) ของแต่ละบล็อก · คืน top ใหม่ของทุกบล็อก
+ */
+export function reflowTops(
+  blocks: Block[],
+  layout: Record<string, PaperBox>,
+  measured: Record<string, number>
+): Record<string, number> {
+  const items = blocks
+    .filter((b) => layout[b.key])
+    .map((b) => ({ key: b.key, box: layout[b.key], designedH: blockHeight(b) }))
+    .sort((a, b) => a.box.y - b.box.y || a.box.x - b.box.x);
+  const top: Record<string, number> = {};
+  const push: Record<string, number> = {}; // ระยะที่ขอบล่างของบล็อกเลื่อนไปจากที่ออกแบบ
+  for (const it of items) {
+    let shift = 0;
+    for (const prev of items) {
+      if (prev === it) break;
+      if (prev.box.y >= it.box.y) continue;
+      const overlapX = prev.box.x < it.box.x + it.box.w && it.box.x < prev.box.x + prev.box.w;
+      if (overlapX) shift = Math.max(shift, push[prev.key] ?? 0);
+    }
+    top[it.key] = it.box.y + shift;
+    const h = measured[it.key] ?? it.designedH;
+    push[it.key] = shift + Math.max(0, h - it.designedH);
+  }
+  return top;
 }
 
 export function blockHeight(b: Block): number {

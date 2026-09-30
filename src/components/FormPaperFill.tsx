@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema } from "@/lib/form-schema";
-import { CANVAS_W, buildBlocks, resolveLayout, canvasHeight } from "@/lib/paper-layout";
+import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLayout, blockHeight } from "@/lib/paper-layout";
+import { usePaperReflow } from "@/components/paper/usePaperReflow";
+import { PaperHeaderContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 
 // ============================================================
@@ -26,7 +28,10 @@ export default function FormPaperFill({
   const { t } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const layout = useMemo(() => resolveLayout(schema, blocks), [schema, blocks]);
-  const canvasH = useMemo(() => canvasHeight(blocks, layout), [blocks, layout]);
+  // ความสูงจริงของแต่ละบล็อก → ดันบล็อกด้านล่างลงเมื่อเนื้อหางอกเกินกล่องที่ออกแบบ (ไม่ให้ทับกัน)
+  const { measureRef, tops, height: canvasH } = usePaperReflow(blocks, layout);
+  const headerBox = schema.layout?.header ?? DEFAULT_HEADER_BOX;
+  const metaBox = schema.layout?.meta ?? DEFAULT_META_BOX;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);
   const [fitScale, setFitScale] = useState(0.5);
@@ -67,15 +72,14 @@ export default function FormPaperFill({
           >
             {/* ชื่อเอกสาร (ซ่อน/ย้ายได้) */}
             {schema.show_header !== false && (
-              <div style={{ position: "absolute", top: (schema.layout?.header?.y ?? 26), left: (schema.layout?.header?.x ?? 32), width: (schema.layout?.header?.w ?? 500), borderBottom: "2px solid #111", paddingBottom: 6 }}>
-                <div style={{ fontSize: "1.2rem", fontWeight: 700 }}>{icon} {title}</div>
-                {schema.description && <div style={{ fontSize: ".72rem", color: "#555", marginTop: 2 }}>{schema.description}</div>}
+              <div style={{ ...paperHeaderBoxStyle, top: headerBox.y, left: headerBox.x, width: headerBox.w }}>
+                <PaperHeaderContent icon={icon} title={title} description={schema.description} />
               </div>
             )}
             {/* วันที่/ผู้กรอก (ซ่อน/ย้ายได้) */}
             {schema.show_meta !== false && (
-              <div style={{ position: "absolute", top: (schema.layout?.meta?.y ?? 26), left: (schema.layout?.meta?.x ?? 596), width: (schema.layout?.meta?.w ?? CANVAS_W - 32 - 596), fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>
-                ผู้กรอก: {userName || "__________"}<br />วันที่: {today}
+              <div style={{ ...paperHeaderBoxStyle, top: metaBox.y, left: metaBox.x, width: metaBox.w }}>
+                <PaperMetaContent filler={userName} date={today} />
               </div>
             )}
 
@@ -83,16 +87,17 @@ export default function FormPaperFill({
             {blocks.map((b) => {
               const box = layout[b.key];
               if (!box) return null;
+              const top = tops[b.key] ?? box.y;
               if (b.kind === "step") {
                 return (
-                  <div key={b.key} style={{ position: "absolute", left: box.x, top: box.y, width: box.w, fontWeight: 700, background: "#eef0f2", padding: "6px 10px", borderRadius: 3, fontSize: ".92rem" }}>
+                  <div key={b.key} style={{ ...paperStepStyle, left: box.x, top, width: box.w }}>
                     {b.label}
                   </div>
                 );
               }
               const f = b.field!;
               return (
-                <div key={b.key} style={{ position: "absolute", left: box.x, top: box.y, width: box.w }}>
+                <div key={b.key} ref={measureRef(b.key)} style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
                   {renderField(f)}
                 </div>
               );

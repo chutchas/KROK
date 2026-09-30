@@ -1,7 +1,9 @@
 "use client";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, HEADER_H, FIELD_H, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, canvasHeight, fieldBoxHeight } from "@/lib/paper-layout";
+import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { CANVAS_W, GRID, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, fieldBoxHeight } from "@/lib/paper-layout";
+import { usePaperReflow } from "@/components/paper/usePaperReflow";
+import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus } from "lucide-react";
@@ -15,33 +17,25 @@ const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
 // ตรรกะการจัดวางอยู่ที่ @/lib/paper-layout (ใช้ร่วมกับหน้ากรอก)
 // ============================================================
 
-function BlankPreview({ f }: { f: FormField }) {
-  if (f.type === "pass_fail") return <div style={{ fontSize: ".72rem", color: "#555" }}>☐ ผ่าน ☐ ไม่ผ่าน</div>;
-  if (f.type === "signature") return <div style={{ borderBottom: "1px solid #333", height: 20, marginTop: 4 }} />;
-  if (f.type === "photo") return <div style={{ border: "1px dashed #999", height: 22, borderRadius: 3, marginTop: 4 }} />;
+// ตัวอย่างช่องบนกระดาษ — ใช้ชิ้นส่วนเดียวกับหน้ากรอก (โหมดกระดาษ) ในสถานะ disabled
+// จึงเห็นขนาด/ระยะตรงกับตอนกรอกจริง
+function FieldPreview({ f }: { f: FormField }) {
+  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{FIELD_TYPE_LABELS[f.type]}{f.unit ? ` (${f.unit})` : ""}</span>;
+  const label = <PaperLabel label={f.label || "(ไม่มีชื่อ)"} required={f.required} right={badge} />;
+  const inputLike = (text = "") => <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#aaa" }}>{text}</div>;
   if (f.type === "table") {
-    const cols = f.columns?.length ? f.columns : [{ id: "c0", label: "รายการ" }];
-    const rows = Math.min(Math.max(f.min_rows ?? 1, 1), 4);
-    return (
-      <div style={{ marginTop: 4, border: "1px solid #bbb", borderRadius: 3, overflow: "hidden" }}>
-        <div style={{ display: "flex", background: "#eee", borderBottom: "1px solid #bbb" }}>
-          {cols.map((c) => (
-            <div key={c.id} style={{ flex: 1, fontSize: ".62rem", color: "#333", padding: "2px 5px", borderRight: "1px solid #ddd", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{c.label}</div>
-          ))}
-        </div>
-        {Array.from({ length: rows }).map((_, ri) => (
-          <div key={ri} style={{ display: "flex", borderBottom: ri < rows - 1 ? "1px solid #eee" : "none" }}>
-            {cols.map((c) => <div key={c.id} style={{ flex: 1, height: 18, borderRight: "1px solid #eee" }} />)}
-          </div>
-        ))}
-      </div>
-    );
+    const rows = Array.from({ length: Math.min(Math.max(f.min_rows ?? 1, 1), 6) }, () => ({}));
+    return <>{label}<PaperTable columns={f.columns || []} rows={rows} disabled /></>;
   }
-  if ((f.type === "select" || f.type === "checkbox") && f.options_source)
-    return <div style={{ fontSize: ".68rem", color: "#555" }}>▾ ตัวเลือกจากข้อมูลอ้างอิง</div>;
-  if ((f.type === "select" || f.type === "checkbox") && f.options?.length)
-    return <div style={{ fontSize: ".68rem", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.options.map((o) => `☐ ${o}`).join("  ")}</div>;
-  return <div style={{ borderBottom: "1px dotted #999", height: 14, marginTop: 6 }} />;
+  let body: React.ReactNode;
+  if (f.type === "pass_fail") body = <PaperPassFail disabled />;
+  else if (f.type === "photo") body = <PaperPhoto disabled />;
+  else if (f.type === "signature") body = <PaperSignature disabled />;
+  else if ((f.type === "select" || f.type === "checkbox") && f.options_source) body = inputLike("▾ ตัวเลือกจากข้อมูลอ้างอิง");
+  else if (f.type === "select" || f.type === "checkbox") body = <PaperChoices name={`p_${f.id}`} options={f.options || []} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? [] : ""} disabled />;
+  else if (f.type === "datetime") body = inputLike("วว/ดด/ปปปป --:--");
+  else body = inputLike(f.example ? `เช่น ${f.example}` : "");
+  return <>{label}{body}</>;
 }
 
 export default function FormPaperEditor({
@@ -86,7 +80,8 @@ export default function FormPaperEditor({
     return merged;
   }, [blocks, schema.layout]);
 
-  const canvasH = useMemo(() => canvasHeight(blocks, layout), [blocks, layout]);
+  // กติกาเดียวกับหน้ากรอก: เนื้อหาเกินกล่อง → ดันบล็อกด้านล่างลง (แสดงผลเท่านั้น ไม่แก้ตำแหน่งที่ออกแบบ)
+  const { measureRef, tops, height: canvasH, overflows } = usePaperReflow(blocks, layout);
 
   const drag = useRef<{ key: string; mode: "move" | "resize"; sx: number; sy: number; ox: number; oy: number; ow: number } | null>(null);
 
@@ -229,7 +224,7 @@ export default function FormPaperEditor({
       </div>
 
       {/* กรอบเลื่อน + แคนวาส A4 (โฟกัสได้เพื่อใช้คีย์บอร์ด) */}
-      <div ref={scrollRef} tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 16, outline: "none", WebkitOverflowScrolling: "touch" }}>
+      <div ref={scrollRef} tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: "16px 16px 16px 30px", outline: "none", WebkitOverflowScrolling: "touch" }}>
         <div
           ref={canvasRef}
           onPointerMove={onPointerMove}
@@ -252,10 +247,10 @@ export default function FormPaperEditor({
           {/* ชื่อเอกสาร + วันที่/เลขที่ — บล็อกลากวาง/ปรับขนาด/ซ่อนแยกกัน */}
           {([
             { key: HEADER_KEY, hidden: schema.show_header === false, hiddenLabel: t("editor.headerHidden"), content: (
-              <div style={{ fontSize: "1.2rem", fontWeight: 700, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", borderBottom: "2px solid #111", paddingBottom: 4 }}>{schema.icon} {schema.title}</div>
+              <PaperHeaderContent icon={schema.icon} title={schema.title} description={schema.description} />
             ) },
             { key: META_KEY, hidden: schema.show_meta === false, hiddenLabel: t("editor.metaHidden"), content: (
-              <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>วันที่: __________<br />เลขที่: __________</div>
+              <PaperMetaContent />
             ) },
           ] as const).map((blk) => {
             const bx = layout[blk.key];
@@ -265,18 +260,15 @@ export default function FormPaperEditor({
                 onClick={() => select(blk.key)}
                 onPointerDown={(e) => onPointerDown(e, blk.key, "move")}
                 style={{
-                  position: "absolute", left: bx.x, top: bx.y, width: bx.w, boxSizing: "border-box",
-                  cursor: "grab", userSelect: "none", padding: "6px 10px 6px 28px", borderRadius: 4,
+                  ...paperHeaderBoxStyle, left: bx.x, top: bx.y, width: bx.w,
+                  cursor: "grab", userSelect: "none",
                   opacity: blk.hidden ? 0.4 : 1,
-                  border: on ? "1.5px solid var(--accent)" : "1px solid transparent",
+                  borderColor: on ? "var(--accent)" : "transparent",
                   outline: on ? "none" : "1px dashed #d0d0d0",
                   boxShadow: on ? "0 2px 10px rgba(0,0,0,.15)" : "none",
                 }}
               >
-                <div onPointerDown={(e) => onPointerDown(e, blk.key, "move", true)} title={t("paper.drag")}
-                  style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 24, display: "flex", alignItems: "center", justifyContent: "center", cursor: "grab", touchAction: "none", background: on ? "var(--accent)" : "#eceef0", color: on ? "#fff" : "#9aa0a6", borderRadius: "4px 0 0 4px" }}>
-                  <Icon icon={GripVertical} className="h-4 w-4" />
-                </div>
+                <Grip on={on} title={t("paper.drag")} onPointerDown={(e) => onPointerDown(e, blk.key, "move", true)} />
                 {blk.hidden ? <div style={{ fontSize: ".78rem", color: "#777" }}>{blk.hiddenLabel}</div> : blk.content}
                 <div onPointerDown={(e) => onPointerDown(e, blk.key, "resize", true)} title={t("paper.resize")}
                   style={{ position: "absolute", right: -3, top: 0, bottom: 0, width: 16, cursor: "ew-resize", touchAction: "none" }}>
@@ -295,52 +287,31 @@ export default function FormPaperEditor({
             return (
               <div
                 key={b.key}
+                ref={isStep ? undefined : measureRef(b.key)}
                 data-krok-keep=""
                 onClick={() => select(b.key)}
                 onPointerDown={(e) => onPointerDown(e, b.key, "move")}
+                title={!isStep && overflows(b) ? "เนื้อหาเกินกล่อง — ช่องด้านล่างจะถูกดันลง (ขยายความกว้างเพื่อให้พอดี)" : undefined}
                 style={{
-                  position: "absolute",
+                  ...(isStep ? paperStepStyle : paperBoxStyle),
                   left: box.x,
-                  top: box.y,
+                  top: tops[b.key] ?? box.y,
                   width: box.w,
-                  minHeight: isStep ? HEADER_H : fieldBoxHeight(b.field),
-                  boxSizing: "border-box",
+                  ...(isStep ? { overflow: "visible" } : { minHeight: fieldBoxHeight(b.field), background: "#fff" }),
                   cursor: "grab",
                   userSelect: "none",
-                  border: on ? "1.5px solid var(--accent)" : "1px solid transparent",
-                  outline: on ? "none" : "1px dashed #d0d0d0",
-                  borderRadius: 4,
-                  background: isStep ? "#f0f0f0" : "#fff",
-                  padding: isStep ? "7px 10px 7px 28px" : "6px 10px 6px 28px",
+                  borderColor: on ? "var(--accent)" : "transparent",
+                  outline: on ? "none" : !isStep && overflows(b) ? "1px dashed #f59e0b" : "1px dashed #d0d0d0",
                   boxShadow: on ? "0 2px 10px rgba(0,0,0,.15)" : "none",
                 }}
               >
-                {/* ที่จับสำหรับลากย้าย (แถบซ้าย) — ลากด้วยนิ้วได้บนมือถือ */}
-                <div
-                  onPointerDown={(e) => onPointerDown(e, b.key, "move", true)}
-                  title={t("paper.drag")}
-                  style={{
-                    position: "absolute", left: 0, top: 0, bottom: 0, width: 24,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    cursor: "grab", touchAction: "none",
-                    background: on ? "var(--accent)" : "#eceef0",
-                    color: on ? "#fff" : "#9aa0a6",
-                    borderRadius: "4px 0 0 4px",
-                  }}
-                >
-                  <Icon icon={GripVertical} className="h-4 w-4" />
-                </div>
+                {/* ที่จับสำหรับลากย้าย — อยู่นอกกล่องด้านซ้าย จึงไม่กินพื้นที่ภายใน (ตรงกับหน้ากรอก) */}
+                <Grip on={on} title={t("paper.drag")} onPointerDown={(e) => onPointerDown(e, b.key, "move", true)} />
 
                 {isStep ? (
-                  <div style={{ fontWeight: 700, fontSize: ".92rem" }}>{b.label}</div>
+                  <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</span>
                 ) : (
-                  <>
-                    <div style={{ fontSize: ".8rem", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                      {b.label}{b.field?.required && <span style={{ color: "#c00" }}> *</span>}
-                    </div>
-                    <div style={{ fontSize: ".64rem", color: "#999" }}>{b.sub}</div>
-                    {b.field && <BlankPreview f={b.field} />}
-                  </>
+                  b.field && <div style={{ pointerEvents: "none" }}><FieldPreview f={b.field} /></div>
                 )}
                 {/* จับปรับความกว้าง (ลากด้วยนิ้วได้) */}
                 <div
@@ -365,3 +336,24 @@ export default function FormPaperEditor({
     </div>
   );
 }
+
+// ที่จับลาก: ยื่นออกนอกขอบซ้ายของกล่อง (กล่องจึงมีพื้นที่ภายในเท่ากับหน้ากรอกพอดี)
+function Grip({ on, title, onPointerDown }: { on: boolean; title: string; onPointerDown: (e: React.PointerEvent) => void }) {
+  return (
+    <div
+      onPointerDown={onPointerDown}
+      title={title}
+      style={{
+        position: "absolute", left: -21, top: -1, bottom: -1, width: 20,
+        display: "flex", alignItems: "center", justifyContent: "center",
+        cursor: "grab", touchAction: "none",
+        background: on ? "var(--accent)" : "#eceef0",
+        color: on ? "#fff" : "#9aa0a6",
+        borderRadius: "4px 0 0 4px",
+      }}
+    >
+      <Icon icon={GripVertical} className="h-3.5 w-3.5" />
+    </div>
+  );
+}
+
