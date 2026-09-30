@@ -1,12 +1,14 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate, FilePen, Trash2, Clock } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
+import { deleteDraftAction, deleteSubmittedDrafts } from "./actions";
 
 export interface FormListItem {
   id: string;
@@ -17,8 +19,70 @@ export interface FormListItem {
   category?: string;
 }
 
-export default function FormsListClient({ forms, highlightId, canCreate = false }: { forms: FormListItem[]; highlightId?: string; canCreate?: boolean }) {
+export interface DraftListItem {
+  id: string;
+  formId: string;
+  formTitle: string;
+  formIcon: string;
+  /** ฟอร์มยังเปิดให้กรอกอยู่ไหม (ถูกปิด/ลบ = กรอกต่อไม่ได้ ลบได้อย่างเดียว) */
+  available: boolean;
+  title: string;
+  stepIdx: number;
+  steps: number;
+  filled: number;
+  total: number;
+  updatedAt: string;
+  expiresAt: string;
+}
+
+type Tab = "all" | "drafts";
+const SUBMITTED_DRAFTS_KEY = "krok_submitted_drafts";
+
+export default function FormsListClient({
+  forms,
+  drafts = [],
+  initialTab = "all",
+  highlightId,
+  canCreate = false,
+}: {
+  forms: FormListItem[];
+  drafts?: DraftListItem[];
+  initialTab?: Tab;
+  highlightId?: string;
+  canCreate?: boolean;
+}) {
   const { t, tt, lang } = useT();
+  const router = useRouter();
+  const [tab, setTab] = useState<Tab>(initialTab);
+  const [hidden, setHidden] = useState<Set<string>>(new Set());
+  const [busyId, setBusyId] = useState<string | null>(null);
+  const shownDrafts = drafts.filter((d) => !hidden.has(d.id));
+
+  // ร่างที่ส่งไปแล้วตอนออฟไลน์ (เครื่องจำ id ไว้) → ซ่อนทันที แล้วลบบน server เมื่อออนไลน์
+  useEffect(() => {
+    let ids: string[] = [];
+    try { ids = JSON.parse(localStorage.getItem(SUBMITTED_DRAFTS_KEY) || "[]"); } catch { /* ignore */ }
+    if (!ids.length) return;
+    setHidden(new Set(ids));
+    if (navigator.onLine === false) return;
+    deleteSubmittedDrafts(ids).then(() => {
+      try { localStorage.removeItem(SUBMITTED_DRAFTS_KEY); } catch { /* ignore */ }
+    }).catch(() => {});
+  }, []);
+
+  function switchTab(next: Tab) {
+    setTab(next);
+    router.replace(next === "drafts" ? "/forms?tab=drafts" : "/forms", { scroll: false });
+  }
+
+  async function removeDraft(id: string) {
+    if (!confirm(t("draft.deleteConfirm"))) return;
+    setBusyId(id);
+    const res = await deleteDraftAction(id);
+    setBusyId(null);
+    if ("error" in res) alert(res.error);
+    else setHidden((h) => new Set([...h, id]));
+  }
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [hl, setHl] = useState<string | null>(highlightId || null);
@@ -44,6 +108,27 @@ export default function FormsListClient({ forms, highlightId, canCreate = false 
       <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("forms.title")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("forms.subtitle")}</p>
 
+      {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
+      <div role="tablist" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px" }}>
+        {([
+          { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
+          { k: "drafts" as const, label: t("forms.tabDrafts"), n: shownDrafts.length },
+        ]).map((x) => {
+          const on = tab === x.k;
+          return (
+            <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3 }}>
+              {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
+              {x.label}
+              <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent)" : "var(--ink-3)" }}>{x.n}</span>
+            </button>
+          );
+        })}
+      </div>
+
+      {tab === "drafts" ? (
+        <DraftsList drafts={shownDrafts} busyId={busyId} onDelete={removeDraft} />
+      ) : (<>
       {forms.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
           <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
@@ -126,6 +211,62 @@ export default function FormsListClient({ forms, highlightId, canCreate = false 
           );
         })}
       </div>
+      </>)}
     </Card>
+  );
+}
+
+function fmtWhen(s: string): string {
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+}
+
+function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; busyId: string | null; onDelete: (id: string) => void }) {
+  const { t, tt } = useT();
+  const [now] = useState(() => Date.now());
+  if (drafts.length === 0)
+    return <Card><EmptyState icon={<Icon icon={FilePen} className="h-7 w-7" />} title={t("draft.empty")} hint={t("draft.emptyHint")} /></Card>;
+  return (
+    <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
+      {drafts.map((d) => {
+        const pct = d.total ? Math.round((d.filled / d.total) * 100) : 0;
+        const days = Math.max(0, Math.ceil((new Date(d.expiresAt).getTime() - now) / 864e5));
+        return (
+          <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: 14, background: "var(--surface)", flexWrap: "wrap", opacity: d.available ? 1 : 0.65 }}>
+            <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flex: "0 0 auto" }}>{d.formIcon}</div>
+            <div style={{ flex: 1, minWidth: 180 }}>
+              <b style={{ fontFamily: "var(--font-anuphan)" }}>{d.formTitle}</b>
+              <div style={{ fontSize: ".85rem", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title || t("draft.untitled")}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <div style={{ flex: "0 1 140px", height: 6, borderRadius: 3, background: "var(--line)", overflow: "hidden" }}>
+                  <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)" }} />
+                </div>
+                <small style={{ color: "var(--ink-3)", fontSize: ".74rem" }}>
+                  {tt("draft.progress", { n: d.filled, total: d.total })} · {tt("draft.step", { n: Math.min(d.stepIdx + 1, d.steps), total: d.steps })}
+                </small>
+              </div>
+              <small style={{ display: "flex", alignItems: "center", gap: 4, color: days <= 3 ? "#d97706" : "var(--ink-3)", fontSize: ".72rem", marginTop: 4 }}>
+                <Icon icon={Clock} className="h-3 w-3" /> {tt("draft.updated", { t: fmtWhen(d.updatedAt) })} · {tt("draft.expires", { d: days })}
+              </small>
+              {!d.available && <small style={{ display: "block", color: "var(--fail)", fontSize: ".74rem" }}>{t("draft.formGone")}</small>}
+            </div>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <button onClick={() => onDelete(d.id)} disabled={busyId === d.id} aria-label={t("draft.delete")} title={t("draft.delete")}
+                style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--fail)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+                <Icon icon={Trash2} className="h-4 w-4" />
+              </button>
+              {d.available && (
+                <Link href={`/fill/${d.formId}?draft=${d.id}`} style={{ textDecoration: "none" }}>
+                  <Button variant="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: ".88rem" }}>
+                    {t("draft.continue")} <Icon icon={ArrowRight} className="h-4 w-4" />
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }

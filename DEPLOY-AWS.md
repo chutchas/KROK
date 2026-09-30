@@ -130,6 +130,8 @@ dataset แบบ "ดึงจาก API" ที่ตั้งเวลาไ�
 
 ทดสอบเอง: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<โดเมน>/api/cron/datasets` ต้องได้ `{"ok":true,...}`
 
+เพิ่มอีกตัว (วันละครั้ง): `/api/cron/cleanup` ลบแบบร่างการกรอกฟอร์มที่หมดอายุ (เกิน 30 วัน) พร้อมรูป — ใช้ connection/secret เดียวกัน ตั้ง Scheduler เป็น rate `1 day`
+
 > ถ้ายังอยู่บน Vercel: ใส่ `CRON_SECRET` ใน env แล้วเพิ่ม `"crons": [{ "path": "/api/cron/datasets", "schedule": "*/15 * * * *" }]` ใน `vercel.json`
 > (แผน Hobby ตั้ง cron ได้วันละครั้ง ถี่กว่านั้นต้องใช้แผน Pro ไม่งั้น deploy ไม่ผ่าน)
 

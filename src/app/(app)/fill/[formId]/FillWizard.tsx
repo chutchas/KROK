@@ -4,10 +4,11 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw } from "lucide-react";
+import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
+import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import FormPaperFill from "@/components/FormPaperFill";
 import OptionPicker from "@/components/OptionPicker";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
@@ -49,6 +50,8 @@ type Props = {
   attachments?: Attachment[];
   /** ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว */
   requireDevice?: boolean;
+  /** กรอกต่อจากแบบร่าง */
+  draft?: DraftData | null;
 };
 
 // ---- client image shrink to jpeg data-url ----
@@ -94,17 +97,19 @@ export default function FillWizard(props: Props) {
   const { t } = useT();
   const router = useRouter();
   const supabase = createClient();
-  const [idx, setIdx] = useState(0);
-  const answers = useRef<Record<string, Answer>>({});
+  const initialDraft = props.publicMode ? null : props.draft ?? null;
+  const [idx, setIdx] = useState(() => Math.min(Math.max(initialDraft?.stepIdx ?? 0, 0), schema.steps.length - 1));
+  // เริ่มจากคำตอบในร่าง (ตั้งก่อน render แรก — FieldControl อ่านค่าเริ่มต้นตอน mount)
+  const answers = useRef<Record<string, Answer>>((initialDraft?.answers as Record<string, Answer>) ?? {});
   const [photos, setPhotos] = useState<Record<string, string>>({}); // fieldId -> dataUrl
-  const docExtracts = useRef<DocExtractRecord[]>([]); // หลักฐานการอ่านเอกสารด้วย AI
+  const docExtracts = useRef<DocExtractRecord[]>((initialDraft?.docExtracts as DocExtractRecord[]) ?? []); // หลักฐานการอ่านเอกสารด้วย AI
   const [sigs, setSigs] = useState<Record<string, string>>({});
   const [, force] = useState(0);
   const rerender = useCallback(() => force((n) => n + 1), []);
   const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<"mobile" | "paper">("mobile");
+  const [mode, setMode] = useState<"mobile" | "paper">(initialDraft?.mode ?? "mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean } | null>(null);
 
   // ---- เอกสารที่เกี่ยวข้อง ----
@@ -183,8 +188,145 @@ export default function FillWizard(props: Props) {
       next.src = prev.src === "ai" || prev.src === "ai_edited" ? "ai_edited" : undefined;
     }
     answers.current[id] = next;
+    dirty.current++;
     if (render) rerender();
   }, [rerender]);
+
+  // ================= แบบร่าง (บันทึกไว้ก่อน ยังไม่ส่ง) =================
+  // บันทึกเมื่อ: กดปุ่ม "บันทึกร่าง", เปลี่ยนขั้นตอน, กดออก, สลับแอป/ปิดแท็บ (หน้าถูกซ่อน)
+  // บันทึกอัตโนมัติเฉพาะเมื่อมีคำตอบจริงและมีการเปลี่ยนตั้งแต่บันทึกล่าสุด → ไม่เกิดร่างขยะ
+  const draftsOn = !props.publicMode;
+  const dirty = useRef(0);          // นับการแก้ไข
+  const savedAt = useRef(0);        // ค่า dirty ตอนบันทึกล่าสุด
+  const draftId = useRef<string | null>(initialDraft?.id ?? null);
+  const draftMedia = useRef<Record<string, string>>(initialDraft?.media ?? {});
+  const uploadedMedia = useRef(new Map<string, string>());
+  const saving = useRef<Promise<boolean> | null>(null);
+  const submitLock = useRef(false); // กำลังส่ง/ส่งแล้ว → ห้ามบันทึกร่าง (กันร่างค้างหลังส่ง)
+  const [draftState, setDraftState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; at?: number; msg?: string }>(
+    initialDraft ? { kind: "saved", at: new Date(initialDraft.updatedAt).getTime() } : { kind: "idle" }
+  );
+  const [mediaLoading, setMediaLoading] = useState(!!initialDraft && Object.keys(initialDraft.media || {}).length > 0);
+  const versionChanged = !!initialDraft && initialDraft.formVersion !== props.version;
+  // state ล่าสุดสำหรับ callback ที่ถูกเรียกนอกรอบ render (visibilitychange)
+  const latest = useRef({ idx, mode, photos, sigs });
+  useEffect(() => { latest.current = { idx, mode, photos, sigs }; }, [idx, mode, photos, sigs]);
+
+  // โหลดรูป/ลายเซ็นของร่างกลับมา
+  useEffect(() => {
+    if (!initialDraft || !mediaLoading) return;
+    let alive = true;
+    loadDraftMedia(supabase, initialDraft.media).then((m) => {
+      if (!alive) return;
+      setPhotos(m.photos);
+      setSigs(m.sigs);
+      for (const [i, d] of Object.entries(m.docs)) if (docExtracts.current[Number(i)]) docExtracts.current[Number(i)].dataUrl = d;
+      // ไฟล์ที่โหลดมาคือไฟล์ที่อยู่บน server แล้ว → ไม่ต้องอัปโหลดซ้ำตอนบันทึกครั้งถัดไป
+      const fpr = (d: string) => `${d.length}:${d.slice(-64)}`;
+      for (const [f, d] of Object.entries(m.photos)) uploadedMedia.current.set(`p:${f}`, fpr(d));
+      for (const [f, d] of Object.entries(m.sigs)) uploadedMedia.current.set(`s:${f}`, fpr(d));
+      for (const [i, d] of Object.entries(m.docs)) uploadedMedia.current.set(`d:${i}`, fpr(d));
+      setMediaLoading(false);
+    });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /** มีอะไรที่ผู้กรอกใส่จริงไหม (ไม่นับวันเวลาที่ระบบเติมให้เอง) */
+  const hasContent = useCallback(() => {
+    const { photos: ph, sigs: sg } = latest.current;
+    if (Object.keys(ph).length || Object.keys(sg).length) return true;
+    return schema.steps.some((st) => st.fields.some((fl) => {
+      if (fl.type === "datetime") return false;
+      const v = answers.current[fl.id]?.value;
+      if (Array.isArray(v)) return v.some((x) => (typeof x === "string" ? x !== "" : x && Object.values(x).some((c) => String(c ?? "").trim() !== "")));
+      return v != null && v !== "";
+    }));
+  }, [schema]);
+
+  const saveDraftNow = useCallback(async (reason: "manual" | "auto"): Promise<boolean> => {
+    if (!draftsOn || submitLock.current) return false;
+    if (reason === "auto" && (dirty.current === savedAt.current || !hasContent())) return true;
+    if (mediaLoading) return false; // ยังโหลดรูปของร่างไม่เสร็จ — อย่าเขียนทับด้วยข้อมูลไม่ครบ
+    if (saving.current) return saving.current;
+    const mark = dirty.current;
+    const { idx: si, mode: md, photos: ph, sigs: sg } = latest.current;
+    let filled = 0, total = 0;
+    let title = "";
+    for (const st of schema.steps)
+      for (const fl of st.fields) {
+        total++;
+        const v = answers.current[fl.id]?.value;
+        const has = fl.type === "photo" ? !!ph[fl.id] : fl.type === "signature" ? !!sg[fl.id]
+          : Array.isArray(v) ? v.length > 0 : v != null && v !== "";
+        if (has) filled++;
+        if (!title && has && ["text", "select", "number"].includes(fl.type) && typeof v === "string") {
+          const l = fl.option_labels && fl.options ? fl.option_labels[fl.options.indexOf(v)] : "";
+          title = `${fl.label}: ${l || v}`;
+        }
+      }
+    setDraftState({ kind: "saving" });
+    const job = (async () => {
+      try {
+        const res = await saveDraft(supabase, draftId.current, {
+          tenantId: props.tenantId, userId: props.userId, formId: props.formId, formVersion: props.version,
+          title, stepIdx: si, mode: md, answers: answers.current, photos: ph, sigs: sg,
+          docExtracts: docExtracts.current, filled, total,
+        }, uploadedMedia.current, draftMedia.current);
+        draftId.current = res.id;
+        draftMedia.current = res.media;
+        savedAt.current = mark;
+        setDraftState({ kind: "saved", at: Date.now() });
+        return true;
+      } catch (e) {
+        const offline = typeof navigator !== "undefined" && navigator.onLine === false;
+        const raw = e instanceof Error ? e.message : "";
+        const network = /fetch|network|timeout/i.test(raw);
+        setDraftState({
+          kind: "error",
+          msg: offline ? "ออฟไลน์อยู่ — บันทึกร่างไม่ได้ กรอกต่อได้ตามปกติ"
+            : network ? "เชื่อมต่อ server ไม่ได้ — บันทึกร่างไม่สำเร็จ ลองกดบันทึกอีกครั้ง"
+            : `บันทึกร่างไม่สำเร็จ${raw ? ` (${raw})` : ""}`,
+        });
+        return false;
+      } finally {
+        saving.current = null;
+      }
+    })();
+    saving.current = job;
+    return job;
+  }, [draftsOn, hasContent, mediaLoading, schema, supabase, props.tenantId, props.userId, props.formId, props.version]);
+
+  // สลับแอป / ปิดแท็บ / ล็อกจอ → บันทึกร่างอัตโนมัติ
+  useEffect(() => {
+    if (!draftsOn) return;
+    const onHide = () => { if (document.visibilityState === "hidden") void saveDraftNow("auto"); };
+    document.addEventListener("visibilitychange", onHide);
+    return () => document.removeEventListener("visibilitychange", onHide);
+  }, [draftsOn, saveDraftNow]);
+
+  // เปิดจากร่าง: สิ่งที่โหลดมา (คำตอบ/รูป) ถือว่าบันทึกแล้ว ยังไม่ต้องบันทึกซ้ำจนกว่าจะแก้
+  useEffect(() => {
+    if (initialDraft && !mediaLoading) savedAt.current = dirty.current;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mediaLoading]);
+
+  async function exitForm() {
+    if (draftsOn && dirty.current !== savedAt.current && hasContent()) {
+      const ok = await saveDraftNow("auto");
+      if (!ok && !confirm("บันทึกร่างไม่สำเร็จ — ออกจากหน้านี้เลยไหม? (คำตอบที่ยังไม่บันทึกจะหายไป)")) return;
+    }
+    router.push("/forms");
+  }
+
+  /** ส่งฟอร์มสำเร็จแล้ว → ลบร่างทิ้ง */
+  async function clearDraftAfterSubmit() {
+    if (saving.current) await saving.current.catch(() => false); // รอบันทึกร่างที่ค้างอยู่ให้จบก่อน จะได้ลบถูกตัว
+    if (!draftId.current) return;
+    const id = draftId.current;
+    draftId.current = null;
+    try { await deleteDraft(supabase, id, draftMedia.current); } catch { /* ร่างค้าง = หมดอายุเองใน 30 วัน */ }
+  }
 
   // ---- dropdown ที่กรองตามกัน (ตัวเลือกจากข้อมูลอ้างอิง) ----
   // parent field id → ฟิลด์ลูกที่ตัวเลือกขึ้นกับค่าของมัน
@@ -291,7 +433,9 @@ export default function FillWizard(props: Props) {
     if (!validate()) return;
     if (idx < schema.steps.length - 1) {
       setIdx(idx + 1);
+      latest.current.idx = idx + 1;
       window.scrollTo(0, 0);
+      void saveDraftNow("auto");
     } else {
       await submit();
     }
@@ -309,6 +453,7 @@ export default function FillWizard(props: Props) {
   }
 
   async function submit() {
+    submitLock.current = true;
     setSubmitting(true);
     try {
       const subId = crypto.randomUUID();
@@ -403,6 +548,7 @@ export default function FillWizard(props: Props) {
         } catch (e) {
           setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
           setSubmitting(false);
+          submitLock.current = false;
           return;
         }
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
@@ -435,6 +581,9 @@ export default function FillWizard(props: Props) {
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
         await enqueue({ ...payload, queuedAt: Date.now() });
         window.dispatchEvent(new Event("krok-queue-changed"));
+        // ออฟไลน์ลบร่างบน server ไม่ได้ตอนนี้ — ร่างจะถูกลบเมื่อกลับมาออนไลน์ครั้งถัดไปที่เปิดหน้าแบบร่าง
+        // (ถือว่าส่งแล้ว: เก็บ id ไว้ให้หน้าแบบร่างซ่อน/ลบ)
+        rememberSubmittedDraft(draftId.current);
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
         window.scrollTo(0, 0);
         return;
@@ -446,6 +595,7 @@ export default function FillWizard(props: Props) {
         // ส่งไม่ผ่าน (เครือข่ายหลุด) → เก็บเข้าคิวออฟไลน์
         await enqueue({ ...payload, queuedAt: Date.now() });
         window.dispatchEvent(new Event("krok-queue-changed"));
+        rememberSubmittedDraft(draftId.current);
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
         window.scrollTo(0, 0);
         return;
@@ -453,12 +603,14 @@ export default function FillWizard(props: Props) {
 
       // แจ้ง webhook ภายนอก (best-effort, ไม่บล็อกผู้ใช้)
       void notifySubmission(subId).catch(() => {});
+      void clearDraftAfterSubmit();
 
       setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
       window.scrollTo(0, 0);
     } catch (e) {
       setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
       setSubmitting(false);
+      submitLock.current = false;
     }
   }
 
@@ -591,6 +743,7 @@ export default function FillWizard(props: Props) {
           patchAnswer(f.id, { ai: undefined });
         }}
         setSig={(d) => {
+          dirty.current++; // ลายเซ็นเปลี่ยน = มีการแก้ไข (รูปถ่ายนับผ่าน patchAnswer แล้ว)
           setSigs((prev) => {
             const nextS = { ...prev };
             if (d) nextS[f.id] = d;
@@ -602,6 +755,26 @@ export default function FillWizard(props: Props) {
     </div>
     );
   };
+
+  const draftBtn = draftsOn ? (
+    <Button onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title="บันทึกไว้ก่อน แล้วกลับมากรอกต่อได้จากแท็บ แบบร่าง">
+      <Icon icon={Save} className="h-4 w-4" /> {t("draft.save")}
+    </Button>
+  ) : null;
+
+  const draftNotice = draftsOn && (draftState.kind !== "idle" || versionChanged || mediaLoading) ? (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", alignItems: "center", fontSize: ".78rem", margin: "6px 0 2px", color: draftState.kind === "error" ? "var(--fail)" : "var(--ink-3)" }}>
+      {draftState.kind === "saving" && <span>{t("draft.saving")}</span>}
+      {draftState.kind === "saved" && draftState.at && (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Icon icon={Check} className="h-3.5 w-3.5" /> {t("draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }))}
+        </span>
+      )}
+      {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}
+      {mediaLoading && <span>{t("draft.loadingMedia")}</span>}
+      {versionChanged && <span style={{ color: "var(--amber)" }}>⚠ {t("draft.versionChanged")}</span>}
+    </div>
+  ) : null;
 
   const viewToggle = (
     <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
@@ -629,10 +802,12 @@ export default function FillWizard(props: Props) {
           <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
             {viewToggle}
-            {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
+            {draftBtn}
+            {!props.publicMode && <Button variant="ghost" onClick={exitForm} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
           </div>
         </div>
 
+        {draftNotice}
         {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
         {schema.steps.map((st) => (
@@ -663,10 +838,12 @@ export default function FillWizard(props: Props) {
         <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {viewToggle}
-          {!props.publicMode && <Button variant="ghost" onClick={() => router.push("/forms")} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
+          {draftBtn}
+          {!props.publicMode && <Button variant="ghost" onClick={exitForm} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
         </div>
       </div>
 
+      {draftNotice}
       {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>
@@ -687,7 +864,7 @@ export default function FillWizard(props: Props) {
       {step.fields.map((f) => renderField(f))}
 
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-        {idx > 0 && <Button onClick={() => { setIdx(idx - 1); window.scrollTo(0, 0); }}>{t("fill.prev")}</Button>}
+        {idx > 0 && <Button onClick={() => { setIdx(idx - 1); latest.current.idx = idx - 1; window.scrollTo(0, 0); void saveDraftNow("auto"); }}>{t("fill.prev")}</Button>}
         <Button variant="primary" onClick={next} loading={submitting} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
           {submitting ? t("fill.submitting") : idx === schema.steps.length - 1 ? <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</> : t("fill.next")}
         </Button>
@@ -1316,5 +1493,18 @@ function SignatureModal({ label, initialUrl, onSave, onClose }: { label: string;
       </div>
     </div>
   );
+}
+
+/**
+ * ส่งแบบออฟไลน์ (เข้าคิว) → ลบร่างบน server ทันทีไม่ได้
+ * จำ id ไว้ในเครื่อง หน้าแบบร่างจะซ่อนและลบให้เมื่อออนไลน์
+ */
+const SUBMITTED_DRAFTS_KEY = "krok_submitted_drafts";
+function rememberSubmittedDraft(id: string | null) {
+  if (!id) return;
+  try {
+    const cur = JSON.parse(localStorage.getItem(SUBMITTED_DRAFTS_KEY) || "[]") as string[];
+    localStorage.setItem(SUBMITTED_DRAFTS_KEY, JSON.stringify([...new Set([...cur, id])].slice(-100)));
+  } catch { /* ไม่มี localStorage = ร่างจะหมดอายุเองใน 30 วัน */ }
 }
 
