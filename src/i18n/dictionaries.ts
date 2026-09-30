@@ -5,6 +5,7 @@ export const DICT = {
   th: {
     // nav / common
     "nav.studio": "สร้างฟอร์ม",
+    "nav.datasets": "ข้อมูลอ้างอิง",
     "nav.fill": "กรอกฟอร์ม",
     "nav.approvals": "อนุมัติ",
     "nav.dashboard": "แดชบอร์ด",
@@ -787,6 +788,7 @@ export const DICT = {
   },
   en: {
     "nav.studio": "Build",
+    "nav.datasets": "Datasets",
     "nav.fill": "Fill",
     "nav.approvals": "Approvals",
     "nav.dashboard": "Dashboard",

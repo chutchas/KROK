@@ -3,6 +3,7 @@ import type { MessageKey } from "@/i18n/dictionaries";
 
 export type MenuKey =
   | "studio"
+  | "datasets"
   | "forms"
   | "approvals"
   | "dashboard"
@@ -22,6 +23,7 @@ export interface MenuDef {
 
 export const MENUS: MenuDef[] = [
   { key: "studio", href: "/studio", labelKey: "nav.studio" },
+  { key: "datasets", href: "/datasets", labelKey: "nav.datasets" },
   { key: "forms", href: "/forms", labelKey: "nav.fill" },
   { key: "approvals", href: "/approvals", labelKey: "nav.approvals" },
   { key: "dashboard", href: "/dashboard", labelKey: "nav.dashboard" },

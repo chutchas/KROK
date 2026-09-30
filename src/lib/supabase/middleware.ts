@@ -6,8 +6,10 @@ import { NextResponse, type NextRequest } from "next/server";
 // - /api/health: health check ของ ALB/ECS
 // - /f: หน้ากรอกฟอร์มสาธารณะ (QR / ลิงก์แชร์) — กรอก+ส่งได้โดยไม่ต้องล็อกอิน
 // - /api/public: API รับการส่งฟอร์มสาธารณะ (ตรวจสิทธิ์ฟอร์ม public ในตัว)
+// - /api/v1: API สำหรับระบบภายนอก (ตรวจ API key ในตัว เช่น push ข้อมูลเข้า dataset)
+// - /api/cron: งานตั้งเวลา (ตรวจ CRON_SECRET ในตัว)
 // - /sw.js, /offline, /manifest: ไฟล์ PWA/ออฟไลน์
-const PUBLIC_PATHS = ["/login", "/auth", "/api/health", "/f/", "/api/public", "/sw.js", "/offline", "/manifest"];
+const PUBLIC_PATHS = ["/login", "/auth", "/api/health", "/f/", "/api/public", "/api/v1/", "/api/cron/", "/sw.js", "/offline", "/manifest"];
 
 export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });

@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
@@ -8,6 +8,8 @@ import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLi
 import { useT } from "@/i18n/LanguageProvider";
 import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import FormPaperFill from "@/components/FormPaperFill";
+import OptionPicker from "@/components/OptionPicker";
+import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
 import FillSourceBar, { type AppliedValue, type DocExtractRecord, type FillSrcTag } from "@/components/FillSourceBar";
@@ -182,18 +184,68 @@ export default function FillWizard(props: Props) {
     if (render) rerender();
   }, [rerender]);
 
+  // ---- dropdown ที่กรองตามกัน (ตัวเลือกจากข้อมูลอ้างอิง) ----
+  // parent field id → ฟิลด์ลูกที่ตัวเลือกขึ้นกับค่าของมัน
+  const { fieldById, childrenOf } = useMemo(() => {
+    const byId = new Map<string, FormField>();
+    const kids = new Map<string, FormField[]>();
+    for (const st of schema.steps)
+      for (const fl of st.fields) {
+        byId.set(fl.id, fl);
+        const pid = fl.options_source?.parent?.field_id;
+        if (pid && fl.options_parents) kids.set(pid, [...(kids.get(pid) || []), fl]);
+      }
+    return { fieldById: byId, childrenOf: kids };
+  }, [schema]);
+
+  // เวอร์ชันของฟิลด์แม่ — เพิ่มทุกครั้งที่ค่าเปลี่ยน ใช้เป็น key ให้ฟิลด์ลูก mount ใหม่
+  const [depVer, setDepVer] = useState<Record<string, number>>({});
+
+  /**
+   * ค่าฟิลด์แม่เปลี่ยน → ตัดคำตอบของฟิลด์ลูก (และหลาน) ที่ไม่อยู่ในตัวเลือกใหม่ทิ้ง
+   * แล้วเพิ่มเวอร์ชันของแม่และลูกหลานทั้งหมด เพื่อให้ช่องที่เกี่ยวข้องแสดงตัวเลือกใหม่
+   */
+  const pruneChildren = useCallback((rootId: string) => {
+    if (!childrenOf.has(rootId)) return;
+    const touched: string[] = [];
+    const walk = (parentId: string, depth: number) => {
+      touched.push(parentId);
+      const kids = childrenOf.get(parentId);
+      if (!kids || depth > 10) return;
+      const pv = answers.current[parentId]?.value;
+      for (const c of kids) {
+        const allowed = new Set(filterOptions(c.options || [], c.options_parents, pv));
+        const cur = answers.current[c.id]?.value;
+        if (Array.isArray(cur)) {
+          const keep = (cur as unknown[]).filter((x): x is string => typeof x === "string" && allowed.has(x));
+          if (keep.length !== cur.length) answers.current[c.id] = { ...answers.current[c.id], value: keep };
+        } else if (typeof cur === "string" && cur && !allowed.has(cur)) {
+          answers.current[c.id] = { ...answers.current[c.id], value: undefined, src: undefined };
+        }
+        walk(c.id, depth + 1);
+      }
+    };
+    walk(rootId, 0);
+    setDepVer((v) => {
+      const n = { ...v };
+      for (const id of touched) n[id] = (n[id] ?? 0) + 1;
+      return n;
+    });
+  }, [childrenOf]);
+
   /** เติมค่าจากแหล่งเติมข้อมูล (สแกน / อ่านเอกสาร) ลงหลายฟิลด์พร้อมกัน */
   const applyFill = useCallback((values: AppliedValue[]) => {
     for (const v of values) {
       answers.current[v.field_id] = { ...answers.current[v.field_id], value: v.value, src: v.src };
     }
+    for (const v of values) pruneChildren(v.field_id);
     setErrors((e) => {
       const next = { ...e };
       for (const v of values) delete next[v.field_id];
       return next;
     });
     rerender();
-  }, [rerender]);
+  }, [rerender, pruneChildren]);
 
   const fillBar = (st: FormStep) => (
     <FillSourceBar
@@ -289,7 +341,7 @@ export default function FillWizard(props: Props) {
           } else if (f.type === "checkbox") {
             const vals = (Array.isArray(a.value) ? a.value : []).filter((v): v is string => typeof v === "string");
             item.display = vals.join(", ") || "—";
-            if (f.options && vals.length < f.options.length)
+            if (f.options && !f.options_source && vals.length < f.options.length)
               item.note = "ไม่ได้เลือก: " + f.options.filter((o) => !vals.includes(o)).join(", ");
           } else if (f.type === "number") {
             item.display = String(a.value ?? "—") + (f.unit ? " " + f.unit : "");
@@ -485,10 +537,16 @@ export default function FillWizard(props: Props) {
     );
   }
 
-  const renderField = (f: FormField, paper = false, compact = false) => (
-    <div id={"fld-" + f.id} key={f.id}>
+  const renderField = (f: FormField, paper = false, compact = false) => {
+    const parentId = f.options_parents ? f.options_source?.parent?.field_id : undefined;
+    // key ผูกกับเวอร์ชันของฟิลด์แม่ → แม่เปลี่ยน ฟิลด์ลูก mount ใหม่และอ่านคำตอบที่ถูกตัดแล้ว
+    const k = parentId ? `${f.id}|${depVer[parentId] ?? 0}` : f.id;
+    return (
+    <div id={"fld-" + f.id} key={k}>
       <FieldControl
         field={f}
+        getParentValue={parentId ? () => answers.current[parentId]?.value : undefined}
+        parentLabel={parentId ? fieldById.get(parentId)?.label : undefined}
         paper={paper}
         compact={compact}
         attachments={attByField[f.id] || []}
@@ -497,7 +555,10 @@ export default function FillWizard(props: Props) {
         photo={photos[f.id]}
         hasSig={!!sigs[f.id]}
         error={errors[f.id]}
-        onPatch={(patch, render) => patchAnswer(f.id, patch, render)}
+        onPatch={(patch, render) => {
+          patchAnswer(f.id, patch, render);
+          if ("value" in patch) pruneChildren(f.id);
+        }}
         setPhoto={(d) => {
           setPhotos((prev) => {
             const nextP = { ...prev };
@@ -517,7 +578,8 @@ export default function FillWizard(props: Props) {
         }}
       />
     </div>
-  );
+    );
+  };
 
   const viewToggle = (
     <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
@@ -744,8 +806,13 @@ function FieldControl({
   paper = false,
   compact = false,
   publicMode = false,
+  getParentValue,
+  parentLabel,
 }: {
   field: FormField;
+  /** อ่านค่าของฟิลด์แม่ (dropdown ที่กรองตามกัน) */
+  getParentValue?: () => unknown;
+  parentLabel?: string;
   attachments?: Attachment[];
   getInitial: () => Answer;
   photo?: string;
@@ -824,6 +891,12 @@ function FieldControl({
   const [numValue, setNumValue] = useState(String(initial.value ?? ""));
   const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
   const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) && typeof initial.value[0] === "string" ? (initial.value as string[]) : []);
+  const [selVal, setSelVal] = useState<string>(typeof initial.value === "string" ? initial.value : "");
+  // ตัวเลือกจากข้อมูลอ้างอิง (ดึงไม่ได้ → ใช้ตัวเลือกที่พิมพ์ไว้แทน)
+  const parentValue = getParentValue?.();
+  const dsBound = !!f.options_source && !f.options_error && (f.type === "select" || f.type === "checkbox");
+  const dsOptions = dsBound ? filterOptions(f.options || [], f.options_parents, parentValue) : [];
+  const waitParent = dsBound && !!f.options_parents && (parentValue == null || parentValue === "" || (Array.isArray(parentValue) && parentValue.length === 0));
   const [dtDefault] = useState(() =>
     new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
   );
@@ -878,14 +951,44 @@ function FieldControl({
         {f.type === "datetime" && (
           <input type="datetime-local" style={input} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
-        {f.type === "select" &&
+        {dsBound && (
+          waitParent ? (
+            <div style={{ fontSize: compact ? ".78rem" : ".88rem", color: paper ? "#777" : "var(--ink-3)", padding: compact ? "2px 0" : "8px 2px" }}>
+              เลือก “{parentLabel || "ช่องก่อนหน้า"}” ก่อน
+            </div>
+          ) : dsOptions.length === 0 ? (
+            <div style={{ fontSize: compact ? ".78rem" : ".88rem", color: paper ? "#777" : "var(--ink-3)", padding: compact ? "2px 0" : "8px 2px" }}>
+              ไม่มีตัวเลือก{f.options_parents ? `สำหรับ “${Array.isArray(parentValue) ? parentValue.join(", ") : String(parentValue)}”` : ""}
+            </div>
+          ) : (
+            <OptionPicker
+              name={"r_" + f.id}
+              options={dsOptions}
+              multiple={f.type === "checkbox"}
+              value={f.type === "checkbox" ? cbVals : selVal}
+              paper={paper}
+              compact={compact}
+              onChange={(v) => {
+                if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); }
+                else { setSelVal(v); onPatch({ value: v || undefined }); }
+              }}
+            />
+          )
+        )}
+        {dsBound && f.options_truncated && !compact && (
+          <div style={{ fontSize: ".74rem", color: paper ? "#888" : "var(--ink-3)", margin: "4px 0" }}>ข้อมูลอ้างอิงมีรายการมากเกินกว่าที่แสดงได้ — บางตัวเลือกอาจไม่ปรากฏ</div>
+        )}
+        {f.options_error && (f.type === "select" || f.type === "checkbox") && (
+          <div style={{ fontSize: ".76rem", color: "var(--amber)", margin: "4px 0" }}>⚠ {f.options_error}</div>
+        )}
+        {f.type === "select" && !dsBound &&
           (f.options || []).map((o) => (
             <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
               <input type="radio" name={"r_" + f.id} value={o} defaultChecked={initial.value === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => onPatch({ value: o })} />
               {o}
             </label>
           ))}
-        {f.type === "checkbox" &&
+        {f.type === "checkbox" && !dsBound &&
           (f.options || []).map((o) => (
             <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
               <input

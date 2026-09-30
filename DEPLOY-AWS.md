@@ -119,6 +119,20 @@ Environment variables ใน task definition:
 - กลับไป Supabase → **Authentication → URL Configuration** ใส่โดเมนใหม่ใน Site URL / Redirect URLs
 - (ทีหลัง) วาง **CloudFront** หน้า ALB เพื่อ cache static asset ให้เร็วและถูกลง
 
+### 5) ตั้งเวลา sync ข้อมูลอ้างอิง (dataset ที่ดึงจาก API)
+
+dataset แบบ "ดึงจาก API" ที่ตั้งเวลาไว้ จะ sync ได้ก็ต่อเมื่อมีตัวตั้งเวลายิง `/api/cron/datasets` เป็นระยะ
+
+1. สร้างค่าลับยาว ≥ 16 ตัว เช่น `openssl rand -hex 24` แล้วใส่เป็น env `CRON_SECRET` ใน task definition (ผูก Secrets Manager เหมือน service role key)
+2. **EventBridge → API destinations** → สร้าง connection แบบ *API key* ชื่อ header `Authorization` ค่า `Bearer <CRON_SECRET>`
+3. สร้าง API destination: `https://<โดเมน>/api/cron/datasets` method `POST`
+4. **EventBridge Scheduler** → rate `5 minutes` → target เป็น API destination ข้อ 3
+
+ทดสอบเอง: `curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://<โดเมน>/api/cron/datasets` ต้องได้ `{"ok":true,...}`
+
+> ถ้ายังอยู่บน Vercel: ใส่ `CRON_SECRET` ใน env แล้วเพิ่ม `"crons": [{ "path": "/api/cron/datasets", "schedule": "*/15 * * * *" }]` ใน `vercel.json`
+> (แผน Hobby ตั้ง cron ได้วันละครั้ง ถี่กว่านั้นต้องใช้แผน Pro ไม่งั้น deploy ไม่ผ่าน)
+
 ---
 
 ## ค่าใช้จ่ายคร่าว ๆ ต่อเดือน

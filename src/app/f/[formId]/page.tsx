@@ -2,6 +2,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
+import { resolveFormOptions } from "@/lib/datasets-server";
 import PublicFillClient from "./PublicFillClient";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,13 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
     loggedIn = !!u.user;
   } catch { /* ไม่รู้สถานะล็อกอิน = ถือว่าไม่ล็อกอิน */ }
 
+  // ตัวเลือกจากข้อมูลอ้างอิง: อ่านด้วย service role จึงต้องจำกัดเฉพาะ dataset ของ tenant เจ้าของฟอร์ม
+  // (resolveFormOptions กรอง tenant ให้) — ค่าในคอลัมน์ที่ใช้จะมองเห็นได้โดยทุกคนที่มีลิงก์
+  let schema = readSchema(data.schema);
+  try {
+    schema = await resolveFormOptions(schema, admin, data.tenant_id as string);
+  } catch { /* ใช้ schema เดิม */ }
+
   return (
     <PublicFillClient
       formId={data.id as string}
@@ -59,7 +67,7 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       version={(data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
       approvalChain={(data.approval_chain as unknown[]) || []}
-      schema={readSchema(data.schema)}
+      schema={schema}
       tenantId={data.tenant_id as string}
       loggedIn={loggedIn}
       attachments={attachments}

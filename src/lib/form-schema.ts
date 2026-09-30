@@ -18,6 +18,24 @@ export const FIELD_TYPES = [
 
 export type FieldType = (typeof FIELD_TYPES)[number];
 
+// ============================================================
+// ตัวเลือกจาก dataset (ข้อมูลอ้างอิง)
+// ใช้กับ select / checkbox / คอลัมน์ select ของตาราง
+// ตัวเลือกจริงถูกดึงฝั่ง server ตอนเปิดหน้ากรอก (resolveFormOptions) แล้วฝังมากับหน้า
+// จึงใช้ออฟไลน์ได้ด้วยข้อมูลรอบล่าสุดที่โหลดไว้ — ไม่เก็บตัวเลือกไว้ใน schema
+// ============================================================
+export interface OptionsSource {
+  dataset_id: string;
+  /** คอลัมน์ที่เอาค่ามาเป็นตัวเลือก */
+  column: string;
+  /**
+   * dropdown ที่กรองตามกัน: เหลือเฉพาะแถวที่ค่า "column" ของ dataset
+   * ตรงกับคำตอบของฟิลด์ field_id (ต้องเป็น select/checkbox ที่อยู่ก่อนหน้าในฟอร์ม)
+   * ใช้กับฟิลด์เท่านั้น ไม่ใช้กับคอลัมน์ตาราง
+   */
+  parent?: { column: string; field_id: string };
+}
+
 // คอลัมน์ของฟิลด์ตาราง
 export type TableColType = "text" | "number" | "select";
 export interface TableColumn {
@@ -25,6 +43,7 @@ export interface TableColumn {
   label: string;
   type: TableColType;
   options?: string[]; // เฉพาะ select
+  options_source?: OptionsSource; // เฉพาะ select — ตัวเลือกจาก dataset
   width?: number;     // น้ำหนักความกว้างสัมพัทธ์ (>=1) default 1
 }
 
@@ -41,6 +60,17 @@ export interface FormField {
   unit?: string;
   // select / checkbox
   options?: string[];
+  /** ตัวเลือกจาก dataset แทน options ที่พิมพ์เอง */
+  options_source?: OptionsSource;
+  /**
+   * runtime เท่านั้น (ไม่บันทึก): ค่าคอลัมน์กรองของแต่ละตัวเลือก ขนานกับ options
+   * ใส่มาเมื่อ options_source มี parent
+   */
+  options_parents?: string[];
+  /** runtime เท่านั้น: ข้อความเตือนเมื่อดึงตัวเลือกจาก dataset ไม่ได้ */
+  options_error?: string;
+  /** runtime เท่านั้น: ตัวเลือกจาก dataset มีมากกว่าที่ส่งมาให้ (ถูกตัดที่เพดาน) */
+  options_truncated?: boolean;
   // ความกว้างในหน้ากระดาษ: full = เต็มแถว, half = ครึ่งแถว (default ปฏิบัติเหมือน half)
   width?: "full" | "half";
   // photo
@@ -139,6 +169,26 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   datetime: "วันเวลา",
   table: "ตาราง",
 };
+
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DS_COL_RE = /^[a-z_][a-z0-9_]{0,39}$/;
+
+/** ทำความสะอาด options_source (ไม่ตรวจว่า dataset มีจริง — ตรวจตอน resolve) */
+export function sanitizeOptionsSource(raw: unknown, allowParent: boolean): OptionsSource | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const dataset_id = String(o.dataset_id ?? "");
+  const column = String(o.column ?? "");
+  if (!UUID_RE.test(dataset_id) || !DS_COL_RE.test(column)) return undefined;
+  const out: OptionsSource = { dataset_id, column };
+  if (allowParent && o.parent && typeof o.parent === "object") {
+    const p = o.parent as Record<string, unknown>;
+    const pc = String(p.column ?? "");
+    const pf = String(p.field_id ?? "").replace(/[^\w-]/g, "_").slice(0, 40);
+    if (DS_COL_RE.test(pc) && pf) out.parent = { column: pc, field_id: pf };
+  }
+  return out;
+}
 
 const str = (v: unknown, max: number, fallback = ""): string => {
   const s = v == null ? fallback : String(v);
@@ -284,6 +334,10 @@ export function sanitizeSchema(raw: unknown): FormSchema {
           if ((type === "select" || type === "checkbox") && Array.isArray(fo.options)) {
             o.options = fo.options.slice(0, 12).map((x) => str(x, 80));
           }
+          if (type === "select" || type === "checkbox") {
+            const os = sanitizeOptionsSource(fo.options_source, true);
+            if (os) o.options_source = os;
+          }
           if (type === "photo" && fo.photo_hint) o.photo_hint = str(fo.photo_hint, 200);
           if (type === "pass_fail") o.on_fail_require_note = fo.on_fail_require_note !== false;
           if (type === "table") {
@@ -299,6 +353,10 @@ export function sanitizeSchema(raw: unknown): FormSchema {
                   type: ct,
                 };
                 if (ct === "select" && Array.isArray(co.options)) col.options = co.options.slice(0, 20).map((x) => str(x, 60));
+                if (ct === "select") {
+                  const os = sanitizeOptionsSource(co.options_source, false);
+                  if (os) col.options_source = os;
+                }
                 const w = num(co.width);
                 if (w !== undefined && w > 0) col.width = Math.min(6, Math.max(1, Math.round(w)));
                 return col;
@@ -342,6 +400,16 @@ export function sanitizeSchema(raw: unknown): FormSchema {
 
   if (steps.length === 0) throw new Error("ฟอร์มไม่มีฟิลด์ที่ใช้งานได้");
 
+  // ฟิลด์แม่ของ dropdown ที่กรองตามกัน ต้องเป็น select/checkbox ที่อยู่ "ก่อนหน้า" ในฟอร์ม
+  // (กันวงวน และให้การกรอกทีละขั้นตอนมีค่าแม่ก่อนถึงฟิลด์ลูกเสมอ)
+  const seenChoice = new Set<string>();
+  for (const s of steps)
+    for (const f of s.fields) {
+      const p = f.options_source?.parent;
+      if (p && !seenChoice.has(p.field_id)) delete f.options_source!.parent;
+      if (f.type === "select" || f.type === "checkbox") seenChoice.add(f.id);
+    }
+
   // เก็บ layout กระดาษ (ลากวาง) เฉพาะ key ที่ตรงกับ field id / "s:<stepId>" ที่มีจริง
   const validKeys = new Set<string>(["header", "meta"]);
   for (const s of steps) {
@@ -379,6 +447,17 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (r.show_meta === false) schema.show_meta = false;
   if (layout) schema.layout = layout;
   return schema;
+}
+
+/** dataset ทั้งหมดที่ฟอร์มนี้อ้างอิง (ฟิลด์ + คอลัมน์ตาราง) */
+export function datasetIdsOf(schema: FormSchema): string[] {
+  const ids = new Set<string>();
+  for (const s of schema.steps)
+    for (const f of s.fields) {
+      if (f.options_source) ids.add(f.options_source.dataset_id);
+      for (const c of f.columns || []) if (c.options_source) ids.add(c.options_source.dataset_id);
+    }
+  return [...ids];
 }
 
 export function countFields(schema: FormSchema): number {

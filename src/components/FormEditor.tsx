@@ -17,6 +17,7 @@ import {
   type FormStep,
 } from "@/lib/form-schema";
 import FillSourcesPanel from "@/components/FillSourcesPanel";
+import OptionsSourceEditor from "@/components/OptionsSourceEditor";
 
 // ตัวช่วย: ย้ายสมาชิกใน array ขึ้น/ลง (คืน array ใหม่)
 function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
@@ -226,11 +227,18 @@ export default function FormEditor({
                       )}
 
                       {(field.type === "select" || field.type === "checkbox") && (
-                        <OptionsEditor
-                          options={field.options || []}
-                          onChange={(options) => patchField(si, fi, { options })}
-                          addLabel={t("editor.addOption")}
-                          placeholder={t("editor.option")}
+                        <OptionsSourceEditor
+                          schema={value}
+                          field={field}
+                          onPatch={(p) => patchField(si, fi, p)}
+                          staticEditor={
+                            <OptionsEditor
+                              options={field.options || []}
+                              onChange={(options) => patchField(si, fi, { options })}
+                              addLabel={t("editor.addOption")}
+                              placeholder={t("editor.option")}
+                            />
+                          }
                         />
                       )}
 

@@ -37,6 +37,8 @@ function BlankPreview({ f }: { f: FormField }) {
       </div>
     );
   }
+  if ((f.type === "select" || f.type === "checkbox") && f.options_source)
+    return <div style={{ fontSize: ".68rem", color: "#555" }}>▾ ตัวเลือกจากข้อมูลอ้างอิง</div>;
   if ((f.type === "select" || f.type === "checkbox") && f.options?.length)
     return <div style={{ fontSize: ".68rem", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.options.map((o) => `☐ ${o}`).join("  ")}</div>;
   return <div style={{ borderBottom: "1px dotted #999", height: 14, marginTop: 6 }} />;

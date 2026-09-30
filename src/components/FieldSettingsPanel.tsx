@@ -4,6 +4,7 @@ import Icon from "@/components/Icon";
 import { ArrowUp, ArrowDown, Trash2, Copy, Plus, X } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
+import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
 import {
   FIELD_TYPES,
   FIELD_TYPE_LABELS,
@@ -165,6 +166,7 @@ export default function FieldSettingsPanel({
       {(field.type === "select" || field.type === "checkbox") && (
         <div style={{ marginTop: 8 }}>
           <label style={lbl}>{t("editor.option")}</label>
+          <OptionsSourceEditor schema={schema} field={field} onPatch={patchField} staticEditor={
           <div style={{ display: "grid", gap: 6 }}>
             {(field.options || []).map((op, i) => (
               <div key={i} style={{ display: "flex", gap: 6 }}>
@@ -178,6 +180,7 @@ export default function FieldSettingsPanel({
               </button>
             )}
           </div>
+          } />
         </div>
       )}
 
@@ -216,7 +219,9 @@ export default function FieldSettingsPanel({
                 </div>
                 {c.type === "select" && (
                   <div style={{ marginTop: 6 }}>
-                    <Field value={(c.options || []).join(", ")} onChange={(e) => patchCol(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder={t("editor.tableOptHint")} />
+                    <ColumnSourceEditor col={c} onPatch={(p) => patchCol(i, p)} staticEditor={
+                      <Field value={(c.options || []).join(", ")} onChange={(e) => patchCol(i, { options: e.target.value.split(",").map((s) => s.trim()).filter(Boolean) })} placeholder={t("editor.tableOptHint")} />
+                    } />
                   </div>
                 )}
               </div>

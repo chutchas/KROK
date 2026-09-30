@@ -145,7 +145,10 @@ export default function FillSourceBar({
       const photo = await shrinkImage(file);
       const keys = src.map.map((m) => {
         const f = byId.get(m.field_id);
-        return { key: m.key, hint: m.hint, type: f?.type ?? "text", options: f?.options };
+        // dropdown จากข้อมูลอ้างอิงที่ตัวเลือกเยอะ: ส่งเป็นข้อความ (ไม่ยัดหลายร้อยตัวเลือกลง prompt)
+        // ให้คนหน้างานยืนยัน/แก้ในหน้าต่างยืนยันตามปกติ
+        const big = !!f?.options_source && (f.options?.length ?? 0) > 20;
+        return { key: m.key, hint: m.hint, type: big ? "text" : f?.type ?? "text", options: big ? undefined : f?.options };
       });
 
       const fd = new FormData();

@@ -13,7 +13,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet, TabletSmartphone } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet, TabletSmartphone, Database } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -26,6 +26,7 @@ const PRIMARY: NavEntry[] = [
 
 // เมนูรอง — อยู่ในเมนู hamburger; ตัวที่กำลังเปิดจะโผล่มาเป็นแท็บ active บน navbar
 const SECONDARY: NavEntry[] = [
+  { href: "/datasets", key: "nav.datasets", icon: Database, menu: "datasets" },
   { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
   { href: "/reports", key: "nav.reports", icon: FileSpreadsheet, menu: "reports" },
   { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
@@ -48,6 +49,7 @@ const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
       { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
       { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
       { href: "/forms", key: "nav.fill", icon: Smartphone, menu: "forms" },
+      { href: "/datasets", key: "nav.datasets", icon: Database, menu: "datasets" },
       { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
       { href: "/reports", key: "nav.reports", icon: FileSpreadsheet, menu: "reports" },
     ],

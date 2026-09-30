@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
+import { resolveFormOptions } from "@/lib/datasets-server";
 import FillWizard from "./FillWizard";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +52,13 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
     attachments = (att || []).map((r) => rowToAttachment(r as Record<string, unknown>));
   } catch { /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
 
+  // ตัวเลือก dropdown จากข้อมูลอ้างอิง — ฝังมากับหน้าเพื่อให้กรอกออฟไลน์ได้ด้วยข้อมูลรอบล่าสุด
+  // (ยังไม่ได้รัน migration 0030 → ใช้ตัวเลือกที่พิมพ์ไว้ในฟอร์มตามเดิม)
+  let schema = readSchema(data.schema);
+  try {
+    schema = await resolveFormOptions(schema, supabase, session.tenantId);
+  } catch { /* ใช้ schema เดิม */ }
+
   return (
     <FillWizard
       formId={data.id as string}
@@ -59,7 +67,7 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
       version={(data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
       approvalChain={(data.approval_chain as unknown[]) || []}
-      schema={readSchema(data.schema)}
+      schema={schema}
       tenantId={session.tenantId}
       userId={session.userId}
       userName={session.displayName}
