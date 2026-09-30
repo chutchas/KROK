@@ -33,7 +33,8 @@ export async function previewReport(
   const supabase = await createClient();
 
   // นับทั้งหมดตามเงื่อนไข
-  let cq = supabase.from("submissions").select("id", { count: "exact", head: true });
+  // กรองตาม workspace ที่เปิดอยู่ — RLS อย่างเดียวจะคืน submission ของทุก workspace ที่ผู้ใช้เป็นสมาชิก
+  let cq = supabase.from("submissions").select("id", { count: "exact", head: true }).eq("tenant_id", session.tenantId);
   if (f.formId && f.formId !== "all") cq = cq.eq("form_id", f.formId);
   if (f.from) cq = cq.gte("submitted_at", f.from + "T00:00:00");
   if (f.to) cq = cq.lte("submitted_at", f.to + "T23:59:59");
@@ -45,6 +46,7 @@ export async function previewReport(
   let q = supabase
     .from("submissions")
     .select("id, form_title, form_icon, user_name, result, approval_status, fails, submitted_at")
+    .eq("tenant_id", session.tenantId)
     .order("submitted_at", { ascending: false })
     .limit(PREVIEW_LIMIT);
   if (f.formId && f.formId !== "all") q = q.eq("form_id", f.formId);

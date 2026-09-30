@@ -28,6 +28,7 @@ export async function GET(req: Request) {
   let q = supabase
     .from("submissions")
     .select("form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id")
+    .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
     .order("submitted_at", { ascending: false })
     .limit(5000);
   if (from) q = q.gte("submitted_at", from + "T00:00:00");

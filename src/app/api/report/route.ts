@@ -52,6 +52,7 @@ export async function GET(req: Request) {
     let q = supabase
       .from("submissions")
       .select(selectCols)
+      .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
       .order("submitted_at", { ascending: false })
       .range(offset, offset + PAGE - 1);
     if (formId && formId !== "all") q = q.eq("form_id", formId);

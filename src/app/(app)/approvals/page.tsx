@@ -16,6 +16,7 @@ export default async function ApprovalsPage() {
     .from("submissions")
     .select("id, form_title, form_icon, user_name, result, fails, answers, submitted_at, approval_step, approval_chain")
     .eq("approval_status", "pending")
+    .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (อนุมัติได้เฉพาะที่นี่อยู่แล้ว)
     .order("submitted_at", { ascending: true });
 
   const all = (data || []) as PendingSub[];

@@ -96,7 +96,8 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   const PAGE = 1000;
   const rows: SRow[] = [];
   for (let off = 0; off < CAP; off += PAGE) {
-    let q = supabase.from("submissions").select(cols).order("submitted_at", { ascending: false }).range(off, off + PAGE - 1);
+    // เฉพาะ workspace ที่เปิดอยู่ — RLS อย่างเดียวจะรวมทุก workspace ที่ผู้ใช้เป็นสมาชิก
+    let q = supabase.from("submissions").select(cols).eq("tenant_id", session.tenantId).order("submitted_at", { ascending: false }).range(off, off + PAGE - 1);
     if (scoped) q = q.eq("form_id", scoped);
     if (startIso) q = q.gte("submitted_at", startIso);
     const { data, error } = await q;
