@@ -22,6 +22,8 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
   const { f: highlightId, tab } = await searchParams;
 
   const supabase = await createClient();
+  // แบบร่างไม่ต้องรอข้อมูลทีม — เริ่มโหลดพร้อมกันเลย
+  const draftsP = loadDrafts(supabase, session.tenantId, session.userId);
   const [{ data }, { data: teamIdRows }] = await Promise.all([
     supabase
       .from("forms")
@@ -56,7 +58,7 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
   }));
 
   const [drafts, cases] = await Promise.all([
-    loadDrafts(supabase, session.tenantId, session.userId),
+    draftsP,
     loadCases(supabase, session.tenantId, session.userId, [...myTeams], manager),
   ]);
 

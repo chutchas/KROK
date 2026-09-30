@@ -40,50 +40,50 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
     .maybeSingle();
   if (!sub) notFound();
 
-  // มาจากงาน (ฟอร์มกรอกหลายคน) → ผู้กรอกแต่ละขั้น
-  // อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
+  // งาน (ผู้กรอกแต่ละขั้น) + รูป + หลักฐาน AI อ่านเอกสาร — ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
+  // งาน: อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
+  const caseDb = getAdminClient() ?? supabase;
+  const [caseRes, { data: photoRows }, { data: extractRows }] = await Promise.all([
+    sub.case_id
+      ? caseDb.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase.from("submission_photos").select("field_id, storage_path").eq("submission_id", id),
+    // เอกสารต้นฉบับที่ AI อ่าน (ถ้ามี) — เก็บไว้ให้ตรวจย้อนหลังได้ว่าค่ามาจากไหน
+    supabase
+      .from("submission_doc_extracts")
+      .select("id, source_id, storage_path, accepted, created_at")
+      .eq("submission_id", id)
+      .order("created_at", { ascending: true }),
+  ]);
+
   let caseSteps: { title: string; name: string; at: string }[] = [];
-  if (sub.case_id) {
-    const db = getAdminClient() ?? supabase;
-    const { data: c } = await db.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle();
-    if (c) {
-      const steps = ((c.schema as { steps?: { title?: string }[] })?.steps) || [];
-      const meta = (c.step_meta as Record<string, { name?: string; at?: string }>) || {};
-      caseSteps = steps.map((st, i) => ({ title: `${i + 1}. ${st.title || ""}`, name: meta[String(i)]?.name || "—", at: meta[String(i)]?.at || "" }));
-    }
+  const c = caseRes.data as { schema?: unknown; step_meta?: unknown } | null;
+  if (c) {
+    const steps = ((c.schema as { steps?: { title?: string }[] })?.steps) || [];
+    const meta = (c.step_meta as Record<string, { name?: string; at?: string }>) || {};
+    caseSteps = steps.map((st, i) => ({ title: `${i + 1}. ${st.title || ""}`, name: meta[String(i)]?.name || "—", at: meta[String(i)]?.at || "" }));
   }
 
-  const { data: photoRows } = await supabase
-    .from("submission_photos")
-    .select("field_id, storage_path")
-    .eq("submission_id", id);
+  const paths = [
+    ...(photoRows || []).map((p) => p.storage_path as string),
+    ...(extractRows || []).map((e) => e.storage_path as string | null).filter((p): p is string => !!p),
+  ];
+  const signedOf = new Map<string, string>();
+  if (paths.length) {
+    const { data: signed } = await supabase.storage.from("submissions").createSignedUrls(paths, 3600);
+    for (const x of signed || []) if (x.path && x.signedUrl) signedOf.set(x.path, x.signedUrl);
+  }
 
   const photoMap: Record<string, string> = {};
   for (const p of photoRows || []) {
-    const { data: signed } = await supabase.storage
-      .from("submissions")
-      .createSignedUrl(p.storage_path as string, 3600);
-    if (signed?.signedUrl) photoMap[p.field_id as string] = signed.signedUrl;
+    const u = signedOf.get(p.storage_path as string);
+    if (u) photoMap[p.field_id as string] = u;
   }
-
-  // เอกสารต้นฉบับที่ AI อ่าน (ถ้ามี) — เก็บไว้ให้ตรวจย้อนหลังได้ว่าค่ามาจากไหน
-  const { data: extractRows } = await supabase
-    .from("submission_doc_extracts")
-    .select("id, source_id, storage_path, accepted, created_at")
-    .eq("submission_id", id)
-    .order("created_at", { ascending: true });
 
   const extracts: { id: string; url: string | null; count: number; edited: number }[] = [];
   for (const ex of extractRows || []) {
-    let url: string | null = null;
-    if (ex.storage_path) {
-      const { data: signed } = await supabase.storage
-        .from("submissions")
-        .createSignedUrl(ex.storage_path as string, 3600);
-      url = signed?.signedUrl ?? null;
-    }
     const acc = (ex.accepted || []) as { edited?: boolean }[];
-    extracts.push({ id: String(ex.id), url, count: acc.length, edited: acc.filter((a) => a.edited).length });
+    extracts.push({ id: String(ex.id), url: ex.storage_path ? signedOf.get(ex.storage_path as string) ?? null : null, count: acc.length, edited: acc.filter((a) => a.edited).length });
   }
 
   const answers = (sub.answers || []) as AnswerItem[];

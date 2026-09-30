@@ -138,7 +138,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
             style={{ marginTop: 12, minHeight: 52 }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>
-            <Button variant="primary" onClick={() => act(s.id, "approved")} disabled={!!busy} loading={busy === s.id + "approved"} style={{ flex: 1, background: "var(--pass)", borderColor: "var(--pass)" }}>
+            <Button variant="primary" onClick={() => act(s.id, "approved")} disabled={!!busy} loading={busy === s.id + "approved"} style={{ flex: 1, background: "var(--pass-solid)", borderColor: "var(--pass-solid)" }}>
               <Icon icon={Check} className="h-4 w-4" /> {chainOf(s).length > 1 && (s.approval_step ?? 0) < chainOf(s).length - 1 ? t("appr.approveNext") : t("appr.approve")}
             </Button>
             <Button variant="danger" onClick={() => act(s.id, "rejected")} disabled={!!busy} loading={busy === s.id + "rejected"} style={{ flex: 1 }}>

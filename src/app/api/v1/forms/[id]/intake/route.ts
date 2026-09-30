@@ -138,7 +138,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     approval_chain: (a.f.approval_chain as unknown[]) || [],
     rawSchema: a.f.schema,
   };
-  void admin.from("form_intake").update({ last_used_at: new Date().toISOString() }).eq("form_id", id);
+  await admin.from("form_intake").update({ last_used_at: new Date().toISOString() }).eq("form_id", id);
 
   if (mode === "submit" || (mode === "auto" && missing.length === 0)) {
     const r = await createIntakeSubmission(admin, form, schema, co.answers, { ref, sourceName });

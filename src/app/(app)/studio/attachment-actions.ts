@@ -76,7 +76,7 @@ export async function addFileAttachment(
 
   if (!isAllowedMime(mime)) return { error: "รองรับเฉพาะ PDF, รูปภาพ, วิดีโอ MP4 และไฟล์ข้อความ" };
   if (size > MAX_ATTACH_BYTES) return { error: "ไฟล์ใหญ่เกินกำหนด" };
-  if (!input.storagePath.startsWith(`${session.tenantId}/${formId}/`))
+  if (!isSafeAttachmentPath(String(input.storagePath || ""), session.tenantId, formId))
     return { error: "path ไม่ถูกต้อง" };
   if ((await slotCount(supabase, formId, fieldId)) >= MAX_ATTACH_PER_SLOT)
     return { error: `แนบได้สูงสุด ${MAX_ATTACH_PER_SLOT} รายการต่อจุด` };
@@ -196,4 +196,15 @@ export async function removeAttachment(id: string): Promise<{ ok: true } | { err
 
   revalidatePath("/studio");
   return { ok: true };
+}
+
+/**
+ * path ต้องเป็นไฟล์เดียวตรงใต้ <tenant>/<form>/ — ห้าม "..", "\", ส่วนว่าง, %-encode
+ * (กัน path traversal ที่ทำให้ service role ออก signed URL ให้ไฟล์ของ bucket/องค์กรอื่น)
+ */
+function isSafeAttachmentPath(p: string, tenantId: string, formId: string): boolean {
+  const prefix = `${tenantId}/${formId}/`;
+  if (!p.startsWith(prefix)) return false;
+  const rest = p.slice(prefix.length);
+  return /^[A-Za-z0-9][A-Za-z0-9._-]{0,150}$/.test(rest) && !rest.includes("..");
 }

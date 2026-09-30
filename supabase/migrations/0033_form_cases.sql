@@ -270,7 +270,8 @@ declare
   new_docs jsonb;
 begin
   select * into c from public.form_cases where id = p_case for update;
-  if not found then raise exception 'ไม่พบงาน'; end if;
+  -- ต้องยังเป็นสมาชิก workspace (คนที่ถูกเอาออกแล้วแก้งานที่ถือค้างไม่ได้)
+  if not found or not public.case_is_member(c.tenant_id, uid) then raise exception 'ไม่พบงาน'; end if;
   if c.status <> 'open' then raise exception 'งานนี้ปิดแล้ว'; end if;
   if c.claimed_by is distinct from uid then raise exception 'คุณไม่ได้ถืองานนี้อยู่ (อาจถูกส่งต่อหรือคืนงานแล้ว)'; end if;
 
@@ -321,7 +322,8 @@ declare
   n int; seg_end int; nxt int; t uuid; u uuid; nm text; meta jsonb; i int;
 begin
   select * into c from public.form_cases where id = p_case for update;
-  if not found then raise exception 'ไม่พบงาน'; end if;
+  -- ต้องยังเป็นสมาชิก workspace (คนที่ถูกเอาออกแล้วแก้งานที่ถือค้างไม่ได้)
+  if not found or not public.case_is_member(c.tenant_id, uid) then raise exception 'ไม่พบงาน'; end if;
   if c.status <> 'open' then raise exception 'งานนี้ปิดแล้ว'; end if;
   if c.claimed_by is distinct from uid then raise exception 'คุณไม่ได้ถืองานนี้อยู่'; end if;
 
@@ -375,7 +377,8 @@ begin
   if note = '' then raise exception 'ต้องระบุเหตุผลที่ส่งกลับ'; end if;
 
   select * into c from public.form_cases where id = p_case for update;
-  if not found then raise exception 'ไม่พบงาน'; end if;
+  -- ต้องยังเป็นสมาชิก workspace (คนที่ถูกเอาออกแล้วแก้งานที่ถือค้างไม่ได้)
+  if not found or not public.case_is_member(c.tenant_id, uid) then raise exception 'ไม่พบงาน'; end if;
   if c.status <> 'open' then raise exception 'งานนี้ปิดแล้ว'; end if;
   if c.claimed_by is distinct from uid then raise exception 'คุณไม่ได้ถืองานนี้อยู่'; end if;
   if p_to is null or p_to < 0 or p_to >= c.step_idx then raise exception 'ส่งกลับได้เฉพาะขั้นก่อนหน้า'; end if;
@@ -504,7 +507,8 @@ declare
   n int; nm text; meta jsonb; i int; lnk text;
 begin
   select * into c from public.form_cases where id = p_case for update;
-  if not found then raise exception 'ไม่พบงาน'; end if;
+  -- ต้องยังเป็นสมาชิก workspace (คนที่ถูกเอาออกแล้วแก้งานที่ถือค้างไม่ได้)
+  if not found or not public.case_is_member(c.tenant_id, uid) then raise exception 'ไม่พบงาน'; end if;
   if c.status = 'done' and c.submission_id = p_submission then return c; end if;
   if c.status <> 'open' then raise exception 'งานนี้ปิดแล้ว'; end if;
   if c.claimed_by is distinct from uid then raise exception 'คุณไม่ได้ถืองานนี้อยู่'; end if;
@@ -553,6 +557,8 @@ revoke all on function public.case_cancel(uuid, text) from public, anon;
 revoke all on function public.case_complete(uuid, uuid) from public, anon;
 revoke all on function public.case_notify_next(uuid, text, text, text) from public, anon, authenticated;
 grant execute on function public.case_notify_next(uuid, text, text, text) to service_role;
+revoke all on function public.case_is_member(uuid, uuid) from public, anon, authenticated;
+revoke all on function public.case_member_name(uuid, uuid) from public, anon, authenticated;
 grant execute on function public.case_start(uuid, uuid) to authenticated;
 grant execute on function public.case_save(uuid, jsonb, jsonb, jsonb, text, int, int) to authenticated;
 grant execute on function public.case_advance(uuid, text) to authenticated;

@@ -11,7 +11,9 @@ const STATUS_TH: Record<string, string> = {
 };
 
 function csvCell(v: unknown): string {
-  const s = v == null ? "" : String(v);
+  let s = v == null ? "" : String(v);
+  // กัน CSV/formula injection: ค่าที่ขึ้นต้นด้วย = + - @ tab CR จะถูก Excel รันเป็นสูตร → เติม ' นำหน้า
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
   // escape สำหรับ CSV: ครอบด้วย " และ escape " เป็น ""
   return `"${s.replace(/"/g, '""')}"`;
 }

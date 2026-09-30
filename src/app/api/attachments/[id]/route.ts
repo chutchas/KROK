@@ -31,13 +31,7 @@ export async function GET(
 
   if (!att) return NextResponse.json({ error: "ไม่พบเอกสาร" }, { status: 404 });
 
-  // ลิงก์ภายนอก — ไม่ต้องออก signed URL
-  if (att.kind === "link") {
-    if (!att.url) return NextResponse.json({ error: "ลิงก์ว่าง" }, { status: 404 });
-    return NextResponse.redirect(att.url as string);
-  }
-
-  // ---- ตรวจสิทธิ์ ----
+  // ---- ตรวจสิทธิ์ (ก่อนทั้งลิงก์และไฟล์) ----
   let allowed = false;
   const session = await getSession();
   if (session && session.tenantId === att.tenant_id) allowed = true;
@@ -52,6 +46,17 @@ export async function GET(
   }
 
   if (!allowed) return NextResponse.json({ error: "ไม่มีสิทธิ์เปิดเอกสารนี้" }, { status: 403 });
+
+  // ลิงก์ภายนอก — ไม่ต้องออก signed URL
+  if (att.kind === "link") {
+    if (!att.url) return NextResponse.json({ error: "ลิงก์ว่าง" }, { status: 404 });
+    return NextResponse.redirect(att.url as string);
+  }
+
+  // path ที่บันทึกไว้ต้องอยู่ใต้ <tenant>/<form>/ ของเอกสารนี้จริง (กันข้อมูลเก่าที่มี ".." หลุดมา)
+  const sp = String(att.storage_path || "");
+  if (!sp.startsWith(`${att.tenant_id}/${att.form_id}/`) || sp.includes("..") || sp.includes("\\") || sp.includes("%"))
+    return NextResponse.json({ error: "เปิดเอกสารไม่ได้" }, { status: 400 });
 
   const signer = admin ?? (await createClient());
   const { data: signed, error } = await signer.storage

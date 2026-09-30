@@ -1,6 +1,6 @@
 "use client";
 // แท็บ "API รับข้อมูลเข้า" — ให้ระบบภายนอกยิงค่ามาเติมฟอร์มแทนการกรอกเอง
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -32,6 +32,11 @@ function sampleValue(type: string): unknown {
     default: return "ตัวอย่าง";
   }
 }
+
+// ค่าที่รู้ได้เฉพาะใน browser (โดเมน, เขตเวลา) — ฝั่ง server ใช้ค่าสำรอง กัน hydration ไม่ตรงกัน
+const noop = () => () => {};
+const useOrigin = () => useSyncExternalStore(noop, () => window.location.origin, () => "https://<โดเมนของคุณ>");
+const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 
 const fmt = (s: string | null) => (s ? new Date(s).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—");
 
@@ -71,7 +76,8 @@ export default function IntakePanel({ forms, intake, teams, members }: {
     return errs;
   }, [form, cfg.fieldKeys, t]);
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "https://<your-domain>";
+  const origin = useOrigin();
+  const mounted = useMounted();
   const endpoint = `${origin}/api/v1/forms/${formId}/intake`;
   const sample = useMemo(() => {
     if (!form) return "";
@@ -120,8 +126,8 @@ export default function IntakePanel({ forms, intake, teams, members }: {
     router.refresh();
   }
 
-  const box: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 10, padding: 12 };
-  const sel: React.CSSProperties = { width: "100%", padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
+  const box: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 10, padding: 12, minWidth: 0, boxSizing: "border-box" };
+  const sel: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
   const pre: React.CSSProperties = { margin: 0, padding: 12, borderRadius: 8, background: "var(--code-bg)", border: "1px solid var(--line)", fontSize: ".76rem", overflowX: "auto", whiteSpace: "pre" };
   const dirty = !!edits[formId];
 
@@ -132,7 +138,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
       <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intake.title")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0, lineHeight: 1.55 }}>{t("intake.sub")}</p>
 
-      <div style={{ display: "grid", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>
         <div>
           <label style={{ fontSize: ".85rem", color: "var(--ink-2)" }}>{t("intake.form")}</label>
           <select value={formId} onChange={(e) => { setFormId(e.target.value); setMsg(null); }} style={{ ...sel, marginTop: 4 }}>
@@ -167,7 +173,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
             </div>
             {saved.keyPrefix && (
               <div style={{ fontSize: ".76rem", color: "var(--ink-3)", marginTop: 6 }}>
-                {t("intake.keyCreated")} {fmt(saved.keyCreatedAt)} · {t("intake.lastUsed")} {fmt(saved.lastUsedAt)}
+                {t("intake.keyCreated")} {mounted ? fmt(saved.keyCreatedAt) : "…"} · {t("intake.lastUsed")} {mounted ? fmt(saved.lastUsedAt) : "…"}
               </div>
             )}
             {newKey?.formId === formId && (
@@ -201,7 +207,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
                     <div>
                       <Field value={cfg.fieldKeys[f.id] ?? ""} disabled={media} placeholder={f.id}
                         onChange={(e) => setCfg({ fieldKeys: { ...cfg.fieldKeys, [f.id]: e.target.value.slice(0, 64) } })}
-                        style={{ width: "100%", fontFamily: "monospace", fontSize: ".82rem", padding: "7px 9px", ...(keyErrors[f.id] ? { borderColor: "var(--fail)" } : {}) }} />
+                        style={{ width: "100%", boxSizing: "border-box", fontFamily: "monospace", fontSize: ".82rem", padding: "7px 9px", ...(keyErrors[f.id] ? { borderColor: "var(--fail)" } : {}) }} />
                       {keyErrors[f.id] && <div style={{ fontSize: ".7rem", color: "var(--fail)" }}>{keyErrors[f.id]}</div>}
                     </div>
                   </div>

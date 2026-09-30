@@ -17,7 +17,8 @@ export default async function ApprovalsPage() {
     .select("id, form_title, form_icon, user_name, result, fails, answers, submitted_at, approval_step, approval_chain")
     .eq("approval_status", "pending")
     .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (อนุมัติได้เฉพาะที่นี่อยู่แล้ว)
-    .order("submitted_at", { ascending: true });
+    .order("submitted_at", { ascending: true })
+    .limit(500); // กันหน้าโหลดทั้งหมดเมื่อค้างสะสมมาก (คิวเก่าสุดขึ้นก่อน)
 
   const all = (data || []) as PendingSub[];
   // แสดงเฉพาะที่ถึงคิวฉัน: ผู้อนุมัติของขั้นปัจจุบันคือฉัน, หรือ chain ว่าง (ใครก็ได้), หรือฉันเป็น owner (เห็นทั้งหมด)

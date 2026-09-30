@@ -51,16 +51,18 @@ export default async function FillPage({
   }
 
   // เอกสารที่เกี่ยวข้อง (ถ้ายังไม่ได้รัน migration 0025 จะได้ลิสต์ว่าง — ฟอร์มยังกรอกได้ตามปกติ)
-  let attachments: Attachment[] = [];
-  try {
-    const { data: att } = await supabase
-      .from("form_attachments")
-      .select("id, field_id, kind, name, mime, size_bytes, url")
-      .eq("form_id", formId)
-      .order("sort", { ascending: true })
-      .order("created_at", { ascending: true });
-    attachments = (att || []).map((r) => rowToAttachment(r as Record<string, unknown>));
-  } catch { /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
+  // เริ่มโหลดพร้อมกับงาน/ตัวเลือก/แบบร่างด้านล่าง แล้วค่อยรอก่อน render
+  const attachmentsP: Promise<Attachment[]> = (async () => {
+    try {
+      const { data: att } = await supabase
+        .from("form_attachments")
+        .select("id, field_id, kind, name, mime, size_bytes, url")
+        .eq("form_id", formId)
+        .order("sort", { ascending: true })
+        .order("created_at", { ascending: true });
+      return (att || []).map((r) => rowToAttachment(r as Record<string, unknown>));
+    } catch { return []; /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
+  })();
 
   // ตัวเลือก dropdown จากข้อมูลอ้างอิง — ฝังมากับหน้าเพื่อให้กรอกออฟไลน์ได้ด้วยข้อมูลรอบล่าสุด
   // (ยังไม่ได้รัน migration 0030 → ใช้ตัวเลือกที่พิมพ์ไว้ในฟอร์มตามเดิม)
@@ -136,6 +138,8 @@ export default async function FillPage({
         };
     } catch { /* ยังไม่ได้รัน migration 0032 = เปิดฟอร์มเปล่า */ }
   }
+
+  const attachments = await attachmentsP;
 
   return (
     <FillWizard

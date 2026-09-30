@@ -146,6 +146,7 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
     });
   }
 
+  // query builder ของ supabase ไม่ยิงจนกว่าจะ await/then — void เฉย ๆ = ไม่ได้บันทึก
   void supabase.from("audit_log").insert({
     tenant_id: p.tenantId,
     actor_id: p.userId,
@@ -153,5 +154,5 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
     target_type: "submission",
     target_id: p.subId,
     meta: { form_id: p.formId, result: p.result, fails: p.fails.length, offline: p.queuedAt > 0 },
-  });
+  }).then(() => {}, () => {});
 }

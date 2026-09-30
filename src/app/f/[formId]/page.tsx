@@ -66,8 +66,9 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       icon={data.icon as string}
       version={(data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
-      approvalChain={(data.approval_chain as unknown[]) || []}
-      schema={schema}
+      // ฟอร์มสาธารณะ: ไม่ส่งรายชื่อผู้อนุมัติ/ผู้รับผิดชอบขั้นตอนไปให้คนนอก (server ใช้ค่าจากฟอร์มเองตอนบันทึก)
+      approvalChain={[]}
+      schema={{ ...schema, steps: schema.steps.map(({ assignee: _a, ...st }) => { void _a; return st; }) }}
       tenantId={data.tenant_id as string}
       loggedIn={loggedIn}
       attachments={attachments}

@@ -1,6 +1,6 @@
 "use client";
 // ชิ้นส่วนหน้าจอของ "งาน" (ฟอร์มกรอกหลายคน): ช่องแบบอ่านอย่างเดียว, แถบสถานะงาน, หน้าต่างส่งต่อ/ส่งกลับ
-import { useState } from "react";
+import { useEffect, useId, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import { Button } from "@/components/ui";
@@ -260,12 +260,12 @@ export function HandoffModal({ nextTitle, teamName, busy, error, onCancel, onCon
   const { t } = useT();
   const [note, setNote] = useState("");
   return (
-    <Modal title={t("wf.handoffTitle")} onClose={onCancel}>
+    <Modal title={t("wf.handoffTitle")} onClose={onCancel} busy={busy} keepOnBackdrop={!!note.trim()}>
       <p style={{ margin: "0 0 10px", fontSize: ".9rem", color: "var(--ink-2)" }}>
         {t("wf.handoffBody").replace("{step}", nextTitle).replace("{team}", teamName || "-")}
       </p>
-      <label style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.noteOptional")}</label>
-      <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} rows={3}
+      <label htmlFor="wf-handoff-note" style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.noteOptional")}</label>
+      <textarea id="wf-handoff-note" value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} rows={3}
         style={{ width: "100%", marginTop: 4, padding: 10, border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", resize: "vertical" }} />
       {error && <div style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 6 }}>{error}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
@@ -295,17 +295,17 @@ export function ReturnModal({ schema, kase, maxStep, busy, error, onCancel, onCo
   const [note, setNote] = useState("");
   const opts = Array.from({ length: maxStep }, (_, i) => i);
   return (
-    <Modal title={t("wf.returnTitle")} onClose={onCancel}>
-      <label style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.returnTo")}</label>
-      <select value={to} onChange={(e) => setTo(Number(e.target.value))}
+    <Modal title={t("wf.returnTitle")} onClose={onCancel} busy={busy} keepOnBackdrop={!!note.trim()}>
+      <label htmlFor="wf-return-to" style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.returnTo")}</label>
+      <select id="wf-return-to" value={to} onChange={(e) => setTo(Number(e.target.value))}
         style={{ width: "100%", marginTop: 4, padding: "9px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }}>
         {opts.map((i) => {
           const who = kase.stepMeta[String(i)]?.name;
           return <option key={i} value={i}>{i + 1}. {schema.steps[i]?.title}{who ? ` — ${who}` : ""}</option>;
         })}
       </select>
-      <label style={{ display: "block", fontSize: ".82rem", color: "var(--ink-2)", marginTop: 10 }}>{t("wf.returnReason")} *</label>
-      <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} rows={3} placeholder={t("wf.returnReasonPh")}
+      <label htmlFor="wf-return-note" style={{ display: "block", fontSize: ".82rem", color: "var(--ink-2)", marginTop: 10 }}>{t("wf.returnReason")} *</label>
+      <textarea id="wf-return-note" value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} rows={3} placeholder={t("wf.returnReasonPh")}
         style={{ width: "100%", marginTop: 4, padding: 10, border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", resize: "vertical" }} />
       {error && <div style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 6 }}>{error}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
@@ -318,20 +318,77 @@ export function ReturnModal({ schema, kase, maxStep, busy, error, onCancel, onCo
   );
 }
 
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
+/**
+ * หน้าต่างกลางจอ: Esc ปิดได้, แตะพื้นหลังปิดได้เฉพาะตอนยังไม่ได้พิมพ์อะไร (กันเหตุผลที่พิมพ์ไว้หาย)
+ */
+function Modal({ title, onClose, children, busy = false, keepOnBackdrop = false }: {
+  title: string;
+  onClose: () => void;
+  children: React.ReactNode;
+  busy?: boolean;
+  keepOnBackdrop?: boolean;
+}) {
+  const { t } = useT();
+  const titleId = useId();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [busy, onClose]);
   return (
-    <div role="dialog" aria-modal="true" onClick={onClose}
+    <div role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={() => { if (!busy && !keepOnBackdrop) onClose(); }}
       style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()}
-        style={{ width: "100%", maxWidth: 440, background: "var(--surface)", color: "var(--ink)", borderRadius: 12, padding: 18, boxShadow: "var(--shadow)" }}>
+        style={{ width: "100%", maxWidth: 440, background: "var(--surface)", color: "var(--ink)", borderRadius: 12, padding: 18, boxShadow: "var(--shadow)", paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
-          <h3 style={{ margin: 0, fontSize: "1.02rem" }}>{title}</h3>
-          <button type="button" onClick={onClose} aria-label="close" style={{ marginLeft: "auto", border: "none", background: "none", color: "var(--ink-3)", cursor: "pointer", display: "inline-flex" }}>
+          <h3 id={titleId} style={{ margin: 0, fontSize: "1.02rem" }}>{title}</h3>
+          <button type="button" onClick={onClose} disabled={busy} aria-label={t("common.close")}
+            style={{ marginLeft: "auto", border: "none", background: "none", color: "var(--ink-3)", cursor: "pointer", display: "inline-flex", minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center" }}>
             <Icon icon={X} className="h-5 w-5" />
           </button>
         </div>
         {children}
       </div>
     </div>
+  );
+}
+
+// ------------------------------------------------------------
+// ยืนยันการกระทำกับงาน (คืนงาน / ยกเลิกงาน) — แทน confirm()/prompt() ของ browser
+// ------------------------------------------------------------
+export function CaseConfirmModal({ title, body, confirmLabel, danger = false, withNote = false, busy, error, onCancel, onConfirm }: {
+  title: string;
+  body: string;
+  confirmLabel: string;
+  danger?: boolean;
+  /** มีช่องหมายเหตุ (ไม่บังคับ) */
+  withNote?: boolean;
+  busy: boolean;
+  error?: string;
+  onCancel: () => void;
+  onConfirm: (note: string) => void;
+}) {
+  const { t } = useT();
+  const [note, setNote] = useState("");
+  const noteId = useId();
+  return (
+    <Modal title={title} onClose={onCancel} busy={busy} keepOnBackdrop={!!note.trim()}>
+      <p style={{ margin: "0 0 10px", fontSize: ".9rem", color: "var(--ink-2)" }}>{body}</p>
+      {withNote && (
+        <>
+          <label htmlFor={noteId} style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.noteOptional2")}</label>
+          <textarea id={noteId} value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} rows={3}
+            style={{ width: "100%", marginTop: 4, padding: 10, border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", resize: "vertical" }} />
+        </>
+      )}
+      {error && <div style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 6 }}>{error}</div>}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
+        <Button onClick={onCancel} disabled={busy}>{t("common.cancel")}</Button>
+        <Button variant="primary" onClick={() => onConfirm(note.trim())} loading={busy}
+          style={danger ? { background: "var(--fail)", borderColor: "var(--fail)" } : undefined}>
+          {confirmLabel}
+        </Button>
+      </div>
+    </Modal>
   );
 }

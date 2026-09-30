@@ -446,6 +446,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
       )}
 
       {tab === "edit" && (draft ? (
+        <div className={selKey ? "krok-editwrap krok-has-sel" : "krok-editwrap"}>
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
             <div>
@@ -697,6 +698,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
+        </div>
       ) : (
         <Card>
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-2)" }}>
@@ -812,6 +814,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
         .krok-settings{ position:fixed; top:74px; right:16px; width:340px; max-width:calc(100vw - 24px);
           max-height:calc(100vh - 96px); overflow:auto; z-index:50; border-radius:14px; background:var(--surface);
           box-shadow:0 14px 44px rgba(10,14,18,.28); }
+        /* จอกลาง ๆ: แผงตั้งค่าทับตัวแก้ไข (ชื่อ/ประเภทฟอร์ม/กระดาษ) → เว้นที่ด้านขวาให้แผงตอนเปิดอยู่ */
+        @media(min-width:1100px) and (max-width:1760px){
+          .krok-editwrap.krok-has-sel{ padding-right:356px; transition:padding .15s; }
+        }
         @media(max-width:640px){
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}

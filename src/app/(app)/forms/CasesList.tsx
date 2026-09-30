@@ -35,12 +35,20 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
   const { t } = useT();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
+  const [err, setErr] = useState<{ id: string; msg: string } | null>(null);
+  // ลิงก์ที่หน้าตาเป็นปุ่ม (ไม่ซ้อน <button> ใน <a>)
+  const linkBtn = (primary: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", gap: 4, minHeight: 40, padding: "8px 14px", borderRadius: 8, fontSize: ".85rem", fontWeight: 600,
+    textDecoration: "none", border: `1px solid ${primary ? "var(--accent)" : "var(--line)"}`,
+    background: primary ? "var(--accent)" : "var(--surface)", color: primary ? "#fff" : "var(--ink)",
+  });
 
   async function claim(c: CaseListItem) {
     setBusy(c.id);
-    const r = await claimCaseAction(c.id);
+    setErr(null);
+    const r = await claimCaseAction(c.id).catch(() => ({ error: t("wf.netError") }));
     setBusy(null);
-    if ("error" in r) { alert(r.error); router.refresh(); return; }
+    if ("error" in r) { setErr({ id: c.id, msg: r.error }); router.refresh(); return; }
     router.push(`/fill/${c.formId}?case=${c.id}`);
   }
 
@@ -81,6 +89,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
                       )}
                       <span>· {fmtWhen(c.updatedAt)}</span>
                     </div>
+                    {err?.id === c.id && <div role="alert" style={{ fontSize: ".8rem", color: "var(--fail)", marginTop: 4 }}>⚠ {err.msg}</div>}
                     {c.returned && (
                       <div style={{ fontSize: ".8rem", color: "#d97706", marginTop: 4, display: "flex", gap: 4, alignItems: "flex-start" }}>
                         <Icon icon={CornerUpLeft} className="h-3.5 w-3.5" />
@@ -91,16 +100,14 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
                   <div style={{ display: "flex", gap: 8 }}>
                     {c.kind === "pool" ? (
                       <>
-                        <Link href={`/fill/${c.formId}?case=${c.id}`} style={{ textDecoration: "none" }}>
-                          <Button style={{ fontSize: ".85rem", padding: "8px 12px" }}><Icon icon={Eye} className="h-4 w-4" /></Button>
+                        <Link href={`/fill/${c.formId}?case=${c.id}`} aria-label={t("wf.view")} title={t("wf.view")} style={{ ...linkBtn(false), padding: "8px 12px" }}>
+                          <Icon icon={Eye} className="h-4 w-4" />
                         </Link>
                         <Button variant="primary" onClick={() => claim(c)} loading={busy === c.id} style={{ fontSize: ".85rem", padding: "8px 14px" }}>{t("wf.claim")}</Button>
                       </>
                     ) : (
-                      <Link href={`/fill/${c.formId}?case=${c.id}`} style={{ textDecoration: "none" }}>
-                        <Button variant={c.kind === "mine" ? "primary" : "default"} style={{ fontSize: ".85rem", padding: "8px 14px", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                      <Link href={`/fill/${c.formId}?case=${c.id}`} style={linkBtn(c.kind === "mine")}>
                           {c.kind === "mine" ? t("wf.continue") : t("wf.view")} <Icon icon={ArrowRight} className="h-4 w-4" />
-                        </Button>
                       </Link>
                     )}
                   </div>

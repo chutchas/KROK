@@ -224,7 +224,7 @@ export default function FormPaperEditor({
       </div>
 
       {/* กรอบเลื่อน + แคนวาส A4 (โฟกัสได้เพื่อใช้คีย์บอร์ด) */}
-      <div ref={scrollRef} tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: "16px 16px 16px 30px", outline: "none", WebkitOverflowScrolling: "touch" }}>
+      <div ref={scrollRef} data-paper="" tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: "16px 16px 16px 30px", outline: "none", WebkitOverflowScrolling: "touch" }}>
         <div
           ref={canvasRef}
           onPointerMove={onPointerMove}

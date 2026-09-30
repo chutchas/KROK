@@ -32,7 +32,7 @@
   /* ---- text ---- */
   --ink: #0f172a;
   --ink-2: #475569;
-  --ink-3: #94a3b8;
+  --ink-3: #64748b; /* เดิม #94a3b8 — ตัวเล็กบนพื้นขาว contrast ไม่ถึง 4.5:1 */
 
   /* ---- lines / accents ---- */
   --line: #cbd5e1;
@@ -44,6 +44,7 @@
 
   /* ---- semantic ---- */
   --pass: #15803d;
+  --pass-solid: #15803d; /* พื้นปุ่มสีเขียว (ตัวอักษรขาว) — ไม่เปลี่ยนตามธีม */
   --pass-soft: #e7f6ec;
   --fail: #dc2626;
   --fail-soft: #fdeaea;
@@ -71,7 +72,7 @@
     --surface-4: #2b3a53;
     --ink: #f8fafc;
     --ink-2: #cbd5e1;
-    --ink-3: #7c8aa0;
+    --ink-3: #8b98ad;
     --line: #2b3a53;
     --border-soft: rgba(148, 163, 184, 0.22);
     --accent: var(--brand-primary);
@@ -98,7 +99,7 @@
   --surface-4: #2b3a53;
   --ink: #f8fafc;
   --ink-2: #cbd5e1;
-  --ink-3: #7c8aa0;
+  --ink-3: #8b98ad;
   --line: #2b3a53;
   --border-soft: rgba(148, 163, 184, 0.22);
   --accent: var(--brand-primary);
@@ -208,5 +209,14 @@ a {
     border: none !important;
     max-width: 100% !important;
     width: 100% !important;
+  }
+}
+
+/* มือถือ: ช่องกรอกตัวเล็กกว่า 16px ทำให้ iOS ซูมหน้าเองตอนแตะ — ยกเว้นมุมมองกระดาษที่ต้องคุมขนาดตามแบบ */
+@media (max-width: 640px) {
+  input:not([data-paper] *):not([type="checkbox"]):not([type="radio"]),
+  select:not([data-paper] *),
+  textarea:not([data-paper] *) {
+    font-size: 16px !important;
   }
 }

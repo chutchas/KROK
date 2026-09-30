@@ -122,8 +122,8 @@ export default function FieldSettingsPanel({
           </Link>
         </p>
         <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
-          <button style={iconBtn} disabled={si === 0} onClick={() => setSteps(move(schema.steps, si, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
-          <button style={iconBtn} disabled={si === schema.steps.length - 1} onClick={() => setSteps(move(schema.steps, si, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
+          <button style={iconBtn} aria-label={t("editor.moveUp")} title={t("editor.moveUp")} disabled={si === 0} onClick={() => setSteps(move(schema.steps, si, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
+          <button style={iconBtn} aria-label={t("editor.moveDown")} title={t("editor.moveDown")} disabled={si === schema.steps.length - 1} onClick={() => setSteps(move(schema.steps, si, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
           <button style={iconBtn} onClick={() => { const fid = newId("f"); patchStep({ fields: [...step.fields, { id: fid, type: "text", label: "", required: true }] }); onSelect(fid); }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
           </button>

@@ -15,7 +15,7 @@ import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, Paper
 import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
 import { advanceCaseAction, cancelCaseAction, claimCaseAction, completeCaseAction, releaseCaseAction, returnCaseAction } from "./case-actions";
-import { CaseBanner, HandoffModal, ReadonlyField, ReturnModal } from "./CaseParts";
+import { CaseBanner, CaseConfirmModal, HandoffModal, ReadonlyField, ReturnModal } from "./CaseParts";
 import { assigneeLabel, segmentEnd, type CaseData, type CaseDocExtract } from "@/lib/case-flow";
 import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import LiveScanner from "@/components/LiveScanner";
@@ -137,7 +137,7 @@ export default function FillWizard(props: Props) {
   const [submitting, setSubmitting] = useState(false);
   const [mode, setMode] = useState<"mobile" | "paper">(initialDraft?.mode ?? "mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
-  const [caseModal, setCaseModal] = useState<null | "handoff" | "return">(null);
+  const [caseModal, setCaseModal] = useState<null | "handoff" | "return" | "release" | "cancel">(null);
   const [caseBusy, setCaseBusy] = useState(false);
   const [caseErr, setCaseErr] = useState<string | undefined>();
   const newCaseId = useRef<string | null>(null); // id ของงานที่กำลังเริ่ม (เรียกซ้ำได้ถ้าส่งต่อไม่สำเร็จ)
@@ -805,28 +805,33 @@ export default function FillWizard(props: Props) {
   async function doClaim() {
     if (!kase) return;
     setCaseBusy(true);
+    setCaseErr(undefined);
     const r = await claimCaseAction(kase.id).catch((e) => ({ error: netErr(e) }));
     setCaseBusy(false);
-    if ("error" in r) { alert(r.error); router.refresh(); return; }
+    if ("error" in r) setCaseErr(r.error);
     router.refresh();
   }
 
   async function doRelease() {
-    if (!kase || !confirm("คืนงานนี้เข้ากองงานของทีม? คนอื่นในทีมจะกดรับไปทำต่อได้")) return;
+    if (!kase) return;
+    setCaseBusy(true);
+    setCaseErr(undefined);
     if (dirty.current !== savedAt.current) await persistSegment().catch(() => null);
     submitLock.current = true;
     const r = await releaseCaseAction(kase.id).catch((e) => ({ error: netErr(e) }));
-    if ("error" in r) { submitLock.current = false; alert(r.error); return; }
+    setCaseBusy(false);
+    if ("error" in r) { submitLock.current = false; setCaseErr(r.error); return; }
     router.push("/forms?tab=tasks");
   }
 
-  async function doCancelCase() {
+  async function doCancelCase(note: string) {
     if (!kase) return;
-    const note = prompt("ยกเลิกงานนี้? ระบุเหตุผล (ไม่บังคับ)");
-    if (note === null) return;
+    setCaseBusy(true);
+    setCaseErr(undefined);
     submitLock.current = true;
-    const r = await cancelCaseAction(kase.id, note).catch((e) => ({ error: netErr(e) }));
-    if ("error" in r) { submitLock.current = false; alert(r.error); return; }
+    const r = await cancelCaseAction(kase.id, note || null).catch((e) => ({ error: netErr(e) }));
+    setCaseBusy(false);
+    if ("error" in r) { submitLock.current = false; setCaseErr(r.error); return; }
     router.push("/forms?tab=tasks");
   }
 
@@ -1059,8 +1064,11 @@ export default function FillWizard(props: Props) {
     (!!props.workflow?.manager || (caseMine && kase.createdBy === props.userId && !kase.history.some((h) => h.action === "advance")));
   const nextTeam = wf && !viewOnly && !isLastSeg ? whoOf(segEnd + 1) : null;
   const banner = wf ? (
-    <CaseBanner schema={schema} kase={kase} teams={props.workflow!.teams} users={props.workflow!.users} userId={props.userId} segStart={segStart} segEnd={segEnd}
-      canClaim={!!props.workflow?.canClaim} claiming={caseBusy} onClaim={doClaim} />
+    <>
+      <CaseBanner schema={schema} kase={kase} teams={props.workflow!.teams} users={props.workflow!.users} userId={props.userId} segStart={segStart} segEnd={segEnd}
+        canClaim={!!props.workflow?.canClaim} claiming={caseBusy} onClaim={doClaim} />
+      {caseErr && !caseModal && <div role="alert" style={{ color: "var(--fail)", fontSize: ".85rem", margin: "-4px 0 8px" }}>⚠ {caseErr}</div>}
+    </>
   ) : null;
   const handoffLabel = (
     <><Icon icon={Send} className="h-[18px] w-[18px]" /> {nextTeam ? t("wf.handoffTo").replace("{team}", nextTeam) : t("wf.handoff")}</>
@@ -1073,10 +1081,10 @@ export default function FillWizard(props: Props) {
         </Button>
       )}
       {caseMine && kase.assigneeTeam && (
-        <Button variant="ghost" onClick={doRelease} style={{ fontSize: ".85rem", padding: "8px 14px" }}>{t("wf.release")}</Button>
+        <Button variant="ghost" onClick={() => { setCaseErr(undefined); setCaseModal("release"); }} style={{ fontSize: ".85rem", padding: "8px 14px" }}>{t("wf.release")}</Button>
       )}
       {canCancelCase && (
-        <Button variant="ghost" onClick={doCancelCase} style={{ fontSize: ".85rem", padding: "8px 14px", color: "var(--fail)" }}>{t("wf.cancelCase")}</Button>
+        <Button variant="ghost" onClick={() => { setCaseErr(undefined); setCaseModal("cancel"); }} style={{ fontSize: ".85rem", padding: "8px 14px", color: "var(--fail)" }}>{t("wf.cancelCase")}</Button>
       )}
     </div>
   ) : null;
@@ -1085,6 +1093,14 @@ export default function FillWizard(props: Props) {
       {caseModal === "handoff" && (
         <HandoffModal nextTitle={`${segEnd + 2}. ${schema.steps[segEnd + 1]?.title ?? ""}`} teamName={nextTeam} busy={caseBusy} error={caseErr}
           onCancel={() => setCaseModal(null)} onConfirm={doHandoff} />
+      )}
+      {caseModal === "release" && kase && (
+        <CaseConfirmModal title={t("wf.release")} body={t("wf.releaseBody")} confirmLabel={t("wf.release")} busy={caseBusy} error={caseErr}
+          onCancel={() => setCaseModal(null)} onConfirm={() => doRelease()} />
+      )}
+      {caseModal === "cancel" && kase && (
+        <CaseConfirmModal title={t("wf.cancelCase")} body={t("wf.cancelBody")} confirmLabel={t("wf.cancelCase")} danger withNote busy={caseBusy} error={caseErr}
+          onCancel={() => setCaseModal(null)} onConfirm={(n) => doCancelCase(n)} />
       )}
       {caseModal === "return" && kase && (
         <ReturnModal schema={schema} kase={kase} maxStep={segStart} busy={caseBusy} error={caseErr}
@@ -1100,7 +1116,7 @@ export default function FillWizard(props: Props) {
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
-          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {viewToggle}
             {draftBtn}
             {!props.publicMode && <Button variant="ghost" onClick={exitForm} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}

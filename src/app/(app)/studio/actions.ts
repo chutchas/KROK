@@ -213,6 +213,8 @@ export async function updateForm(
   const vis = sanitizeVisibility(rawVisibility);
 
   const supabase = await createClient();
+  // ชื่อ/ไอคอนเดิม — ใช้ตัดสินว่าต้องซิงก์ไป submissions เก่าไหม
+  const { data: before } = await supabase.from("forms").select("title, icon").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
   const { data, error } = await supabase
     .from("forms")
     .update({
@@ -237,12 +239,14 @@ export async function updateForm(
   if (error) return { error: error.message };
 
   // ซิงก์ชื่อ/ไอคอนไปยัง submissions เดิม เพื่อให้ทุกหน้า (dashboard/ประวัติ/อนุมัติ) แสดงชื่อใหม่ตรงกัน
-  // เป็นการ update จริง → ส่ง realtime UPDATE ให้ dashboard อัปเดตสด
-  await supabase
-    .from("submissions")
-    .update({ form_title: schema.title, form_icon: schema.icon })
-    .eq("form_id", id)
-    .eq("tenant_id", session.tenantId);
+  // เฉพาะตอนที่ชื่อหรือไอคอนเปลี่ยนจริง — เดิมเขียนทับทุก submission ทุกครั้งที่กดบันทึก (ช้า + realtime ถล่ม dashboard)
+  if (!before || before.title !== schema.title || before.icon !== schema.icon) {
+    await supabase
+      .from("submissions")
+      .update({ form_title: schema.title, form_icon: schema.icon })
+      .eq("form_id", id)
+      .eq("tenant_id", session.tenantId);
+  }
 
   await audit(session.tenantId, session.userId, "form.update", id, {
     title: schema.title,

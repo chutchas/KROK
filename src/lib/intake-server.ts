@@ -66,7 +66,7 @@ export async function createIntakeSubmission(
   });
   if (error) return error.code === "23505" ? { error: "duplicate", duplicate: true } : { error: error.message };
 
-  void admin.from("audit_log").insert({
+  await admin.from("audit_log").insert({
     tenant_id: f.tenant_id,
     actor_id: null,
     action: "submission.create",
