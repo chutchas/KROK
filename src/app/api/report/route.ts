@@ -1,6 +1,8 @@
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ExcelJS from "exceljs";
+import { tableCodeKey, type AnswerItem } from "@/lib/answer-item";
+import { answerCell, answersByKey, collectColumns, sheetName } from "@/lib/report-columns";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -27,6 +29,8 @@ export async function GET(req: Request) {
   const supabase = await createClient();
 
   // ชื่อฟอร์ม (สำหรับหัวรายงาน) เมื่อเลือกฟอร์มเจาะจง
+  // เลือกฟอร์มเดียว → ใส่คำตอบรายช่องด้วย (ทุกฟอร์มมีช่องไม่เหมือนกัน จึงมีแค่สรุป)
+  const withAnswers = !!formId && formId !== "all";
   let formTitle = "ทุกฟอร์ม";
   if (formId && formId !== "all") {
     const { data: f } = await supabase
@@ -40,13 +44,14 @@ export async function GET(req: Request) {
   type Row = {
     form_title: string; user_name: string | null; result: "pass" | "fail";
     approval_status: string; fails: string[] | null; duration_s: number | null;
-    submitted_at: string; id: string;
+    submitted_at: string; id: string; answers?: AnswerItem[] | null;
   };
   const rows: Row[] = [];
+  const selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id${withAnswers ? ", answers" : ""}`;
   for (let offset = 0; offset < MAX_ROWS; offset += PAGE) {
     let q = supabase
       .from("submissions")
-      .select("form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id")
+      .select(selectCols)
       .order("submitted_at", { ascending: false })
       .range(offset, offset + PAGE - 1);
     if (formId && formId !== "all") q = q.eq("form_id", formId);
@@ -57,7 +62,7 @@ export async function GET(req: Request) {
 
     const { data, error } = await q;
     if (error) return new Response(error.message, { status: 500 });
-    const batch = (data || []) as Row[];
+    const batch = (data || []) as unknown as Row[];
     rows.push(...batch);
     if (batch.length < PAGE) break; // ครบแล้ว
   }
@@ -68,7 +73,7 @@ export async function GET(req: Request) {
   wb.created = new Date();
   const ws = wb.addWorksheet("รายงาน", { views: [{ state: "frozen", ySplit: 1 }] });
 
-  ws.columns = [
+  const baseCols = [
     { header: "วันที่ส่ง", key: "when", width: 20 },
     { header: "ฟอร์ม", key: "form", width: 26 },
     { header: "ผู้กรอก", key: "user", width: 20 },
@@ -79,6 +84,18 @@ export async function GET(req: Request) {
     { header: "ใช้เวลา(วินาที)", key: "duration", width: 14 },
     { header: "ลิงก์เอกสาร", key: "link", width: 42 },
   ];
+  ws.columns = baseCols;
+
+  // ---- คำตอบรายช่อง (เฉพาะรายงานของฟอร์มเดียว) ----
+  // คอลัมน์เดิม A–I คงตำแหน่งไว้ ต่อท้ายด้วยช่องของฟอร์ม
+  const answerSets = withAnswers ? rows.map((r) => (Array.isArray(r.answers) ? r.answers : [])) : [];
+  const { columns: ansCols, tables } = withAnswers ? collectColumns(answerSets) : { columns: [], tables: [] };
+  const extraCols: { header: string; key: string; width: number }[] = [];
+  ansCols.forEach((c, i) => {
+    extraCols.push({ header: c.label, key: `a${i}`, width: c.type === "table" ? 10 : Math.min(40, Math.max(12, c.label.length + 4)) });
+    if (c.hasCode) extraCols.push({ header: `${c.label} (รหัส)`, key: `a${i}_code`, width: 14 });
+  });
+  if (extraCols.length) ws.columns = [...baseCols, ...extraCols];
 
   // สไตล์หัวตาราง
   const head = ws.getRow(1);
@@ -96,7 +113,17 @@ export async function GET(req: Request) {
     try {
       when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
     } catch { /* ignore */ }
+    const extra: Record<string, string> = {};
+    if (withAnswers) {
+      const byKey = answersByKey(Array.isArray(s.answers) ? s.answers : []);
+      ansCols.forEach((c, i) => {
+        const a = byKey.get(c.key);
+        extra[`a${i}`] = answerCell(a);
+        if (c.hasCode) extra[`a${i}_code`] = a?.code ?? "";
+      });
+    }
     const row = ws.addRow({
+      ...extra,
       when,
       form: s.form_title,
       user: s.user_name || "-",
@@ -109,6 +136,41 @@ export async function GET(req: Request) {
     });
     // เน้นสีผลลัพธ์
     row.getCell("result").font = { color: { argb: s.result === "fail" ? "FFDC2626" : "FF15803D" }, bold: true };
+  }
+
+  // ---- ช่องแบบตาราง: ชีตละ 1 ตาราง · 1 แถวต่อ 1 แถวในตาราง ----
+  const usedNames = new Set<string>(["รายงาน"]);
+  for (const t of tables) {
+    const tws = wb.addWorksheet(sheetName(t.label, usedNames), { views: [{ state: "frozen", ySplit: 1 }] });
+    const cols: { header: string; key: string; width: number }[] = [
+      { header: "วันที่ส่ง", key: "when", width: 20 },
+      { header: "ผู้กรอก", key: "user", width: 20 },
+      { header: "แถวที่", key: "no", width: 8 },
+    ];
+    t.columns.forEach((c, i) => {
+      cols.push({ header: c.label, key: `c${i}`, width: Math.min(40, Math.max(12, c.label.length + 4)) });
+      if (c.hasCode) cols.push({ header: `${c.label} (รหัส)`, key: `c${i}_code`, width: 14 });
+    });
+    cols.push({ header: "ลิงก์เอกสาร", key: "link", width: 42 });
+    tws.columns = cols;
+    const th = tws.getRow(1);
+    th.font = { bold: true, color: { argb: "FFFFFFFF" } };
+    th.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2F6FE0" } }; });
+
+    for (const s of rows) {
+      const a = answersByKey(Array.isArray(s.answers) ? s.answers : []).get(t.key);
+      if (!a || !Array.isArray(a.rows) || a.rows.length === 0) continue;
+      let when = "";
+      try { when = new Date(s.submitted_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }); } catch { /* ignore */ }
+      a.rows.forEach((r, ri) => {
+        const rec: Record<string, string | number> = { when, user: s.user_name || "-", no: ri + 1, link: `${origin}/submission/${s.id}` };
+        t.columns.forEach((c, i) => {
+          rec[`c${i}`] = r?.[c.id] ?? "";
+          if (c.hasCode) rec[`c${i}_code`] = r?.[tableCodeKey(c.id)] ?? "";
+        });
+        tws.addRow(rec);
+      });
+    }
   }
 
   const buf = await wb.xlsx.writeBuffer();

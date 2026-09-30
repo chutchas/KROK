@@ -132,6 +132,11 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
           <Button variant="primary" onClick={exportXlsx} disabled={!preview || preview.total === 0}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
+          <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
+            {formId === "all"
+              ? (en ? "Pick a single form to include every field's answers in the Excel file" : "เลือกฟอร์มเดียว เพื่อให้ไฟล์ Excel มีคำตอบทุกช่อง (ช่องตารางแยกชีต)")
+              : (en ? "Excel includes every field's answers · table fields get their own sheet" : "ไฟล์ Excel มีคำตอบทุกช่อง · ช่องตารางแยกเป็นชีตของตัวเอง · ช่องที่เก็บรหัสมีคอลัมน์ (รหัส)")}
+          </span>
           {preview && (
             <span style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
               {en ? `Found ${preview.total.toLocaleString()} rows` : `พบ ${preview.total.toLocaleString()} รายการ`}
