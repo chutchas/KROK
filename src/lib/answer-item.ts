@@ -23,7 +23,16 @@ export interface AnswerItem {
   rows?: Record<string, string>[];
   columns?: { id: string; label: string }[];
   src?: AnswerSrc;
+  /**
+   * รหัสของตัวเลือกจากข้อมูลอ้างอิงที่ "แสดงชื่อ เก็บรหัส"
+   * display = ชื่อที่ผู้กรอกเห็น · code = ค่าที่ใช้เชื่อมกับระบบอื่น (เลือกหลายข้อ = คั่นด้วย ", ")
+   * คอลัมน์ select ในตาราง: เก็บเป็น rows[i]["<colId>#code"]
+   */
+  code?: string;
 }
+
+/** key ของรหัสในแถวตาราง */
+export const tableCodeKey = (colId: string) => `${colId}#code`;
 
 export const SRC_LABEL: Record<AnswerSrc, string> = {
   scan: "สแกน",

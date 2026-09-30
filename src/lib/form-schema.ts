@@ -26,8 +26,13 @@ export type FieldType = (typeof FIELD_TYPES)[number];
 // ============================================================
 export interface OptionsSource {
   dataset_id: string;
-  /** คอลัมน์ที่เอาค่ามาเป็นตัวเลือก */
+  /** คอลัมน์ที่เอาค่ามาเป็นตัวเลือก — ค่านี้คือสิ่งที่ถูกบันทึก (เช่น รหัส) */
   column: string;
+  /**
+   * คอลัมน์ที่แสดงให้ผู้กรอกเห็น (เช่น ชื่อ) — ไม่ตั้ง = แสดงค่าของ column ตรง ๆ
+   * ตั้งแล้ว submission เก็บทั้งชื่อ (display) และรหัส (code)
+   */
+  label_column?: string;
   /**
    * dropdown ที่กรองตามกัน: เหลือเฉพาะแถวที่ค่า "column" ของ dataset
    * ตรงกับคำตอบของฟิลด์ field_id (ต้องเป็น select/checkbox ที่อยู่ก่อนหน้าในฟอร์ม)
@@ -44,6 +49,7 @@ export interface TableColumn {
   type: TableColType;
   options?: string[]; // เฉพาะ select
   options_source?: OptionsSource; // เฉพาะ select — ตัวเลือกจาก dataset
+  option_labels?: string[];       // runtime เท่านั้น: ชื่อที่แสดงของแต่ละตัวเลือก (ขนานกับ options)
   width?: number;     // น้ำหนักความกว้างสัมพัทธ์ (>=1) default 1
 }
 
@@ -69,6 +75,8 @@ export interface FormField {
   options_parents?: string[];
   /** runtime เท่านั้น: ข้อความเตือนเมื่อดึงตัวเลือกจาก dataset ไม่ได้ */
   options_error?: string;
+  /** runtime เท่านั้น: ชื่อที่แสดงของแต่ละตัวเลือก ขนานกับ options (options = ค่าที่บันทึก) */
+  option_labels?: string[];
   /** runtime เท่านั้น: ตัวเลือกจาก dataset มีมากกว่าที่ส่งมาให้ (ถูกตัดที่เพดาน) */
   options_truncated?: boolean;
   // ความกว้างในหน้ากระดาษ: full = เต็มแถว, half = ครึ่งแถว (default ปฏิบัติเหมือน half)
@@ -181,6 +189,8 @@ export function sanitizeOptionsSource(raw: unknown, allowParent: boolean): Optio
   const column = String(o.column ?? "");
   if (!UUID_RE.test(dataset_id) || !DS_COL_RE.test(column)) return undefined;
   const out: OptionsSource = { dataset_id, column };
+  const lc = String(o.label_column ?? "");
+  if (lc && lc !== column && DS_COL_RE.test(lc)) out.label_column = lc;
   if (allowParent && o.parent && typeof o.parent === "object") {
     const p = o.parent as Record<string, unknown>;
     const pc = String(p.column ?? "");
@@ -447,6 +457,17 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (r.show_meta === false) schema.show_meta = false;
   if (layout) schema.layout = layout;
   return schema;
+}
+
+/** Map ค่า → ชื่อที่แสดง (เฉพาะตัวเลือกที่มีชื่อ) */
+export function labelMap(options?: string[], labels?: string[]): Map<string, string> {
+  const m = new Map<string, string>();
+  if (!options || !labels) return m;
+  options.forEach((o, i) => {
+    const l = labels[i];
+    if (l && !m.has(o)) m.set(o, l);
+  });
+  return m;
 }
 
 /** dataset ทั้งหมดที่ฟอร์มนี้อ้างอิง (ฟิลด์ + คอลัมน์ตาราง) */

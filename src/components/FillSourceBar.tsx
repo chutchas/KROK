@@ -148,7 +148,9 @@ export default function FillSourceBar({
         // dropdown จากข้อมูลอ้างอิงที่ตัวเลือกเยอะ: ส่งเป็นข้อความ (ไม่ยัดหลายร้อยตัวเลือกลง prompt)
         // ให้คนหน้างานยืนยัน/แก้ในหน้าต่างยืนยันตามปกติ
         const big = !!f?.options_source && (f.options?.length ?? 0) > 20;
-        return { key: m.key, hint: m.hint, type: big ? "text" : f?.type ?? "text", options: big ? undefined : f?.options };
+        // แสดงชื่อ เก็บรหัส → ให้ AI เลือกจาก "ชื่อ" (เอกสารมักพิมพ์ชื่อ) แล้วหน้ากรอกแปลงกลับเป็นรหัสเอง
+        const opts = f?.option_labels?.length ? f.option_labels.map((l, i) => l || f.options![i]) : f?.options;
+        return { key: m.key, hint: m.hint, type: big ? "text" : f?.type ?? "text", options: big ? undefined : opts };
       });
 
       const fd = new FormData();

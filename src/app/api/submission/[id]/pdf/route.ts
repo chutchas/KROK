@@ -68,7 +68,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     label: a.label,
     type: a.type,
     // ที่มาของค่าต้องปรากฏในเอกสารที่พิมพ์ออกไปด้วย ไม่งั้นตรวจย้อนหลังแยกไม่ออก
-    display: a.src ? `${a.display ?? "—"} (${SRC_LABEL[a.src]})` : a.display,
+    // แสดงชื่อ เก็บรหัส → พิมพ์รหัสกำกับไว้ด้วย เพื่อใช้อ้างอิงกับระบบอื่น
+    display: [a.code ? `${a.display ?? "—"} [${a.code}]` : a.display ?? "—", a.src ? `(${SRC_LABEL[a.src]})` : ""].filter(Boolean).join(" "),
     note: a.note,
     fail: a.fail,
     photo: a.photoField ? photoBuf[a.photoField] ?? null : null,

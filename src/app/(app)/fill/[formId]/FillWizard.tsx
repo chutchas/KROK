@@ -6,7 +6,8 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
+import { FIELD_TYPE_LABELS, labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
+import { tableCodeKey } from "@/lib/answer-item";
 import FormPaperFill from "@/components/FormPaperFill";
 import OptionPicker from "@/components/OptionPicker";
 import { filterOptions } from "@/lib/datasets";
@@ -236,7 +237,7 @@ export default function FillWizard(props: Props) {
   /** เติมค่าจากแหล่งเติมข้อมูล (สแกน / อ่านเอกสาร) ลงหลายฟิลด์พร้อมกัน */
   const applyFill = useCallback((values: AppliedValue[]) => {
     for (const v of values) {
-      answers.current[v.field_id] = { ...answers.current[v.field_id], value: v.value, src: v.src };
+      answers.current[v.field_id] = { ...answers.current[v.field_id], value: toCode(fieldById.get(v.field_id), v.value), src: v.src };
     }
     for (const v of values) pruneChildren(v.field_id);
     setErrors((e) => {
@@ -245,7 +246,7 @@ export default function FillWizard(props: Props) {
       return next;
     });
     rerender();
-  }, [rerender, pruneChildren]);
+  }, [rerender, pruneChildren, fieldById]);
 
   const fillBar = (st: FormStep) => (
     <FillSourceBar
@@ -340,7 +341,9 @@ export default function FillWizard(props: Props) {
             }
           } else if (f.type === "checkbox") {
             const vals = (Array.isArray(a.value) ? a.value : []).filter((v): v is string => typeof v === "string");
-            item.display = vals.join(", ") || "—";
+            const names = labelMap(f.options, f.option_labels);
+            item.display = vals.map((v) => names.get(v) ?? v).join(", ") || "—";
+            if (names.size && vals.length) item.code = vals.join(", "); // แสดงชื่อ เก็บรหัส
             if (f.options && !f.options_source && vals.length < f.options.length)
               item.note = "ไม่ได้เลือก: " + f.options.filter((o) => !vals.includes(o)).join(", ");
           } else if (f.type === "number") {
@@ -354,8 +357,25 @@ export default function FillWizard(props: Props) {
             const trows = Array.isArray(a.value) && a.value.length && typeof a.value[0] === "object" ? (a.value as TableRow[]) : [];
             const filled = trows.filter((r) => Object.values(r).some((v) => String(v ?? "").trim() !== ""));
             item.display = `${filled.length} แถว`;
-            item.rows = filled;
+            // คอลัมน์ที่ "แสดงชื่อ เก็บรหัส": ช่องเดิมเก็บชื่อ (หน้าเอกสาร/PDF แสดงได้ทันที) + "<col>#code" เก็บรหัส
+            const labeled = (f.columns || []).filter((c) => c.option_labels?.length);
+            item.rows = labeled.length
+              ? filled.map((r) => {
+                  const out = { ...r };
+                  for (const c of labeled) {
+                    const code = r[c.id];
+                    if (!code) continue;
+                    const name = labelMap(c.options, c.option_labels).get(code);
+                    if (name) { out[c.id] = name; out[tableCodeKey(c.id)] = code; }
+                  }
+                  return out;
+                })
+              : filled;
             item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
+          } else if (f.type === "select" && f.option_labels && typeof a.value === "string" && a.value) {
+            const name = labelMap(f.options, f.option_labels).get(a.value);
+            item.display = name ?? a.value;
+            if (name) item.code = a.value; // แสดงชื่อ เก็บรหัส
           } else item.display = String(a.value ?? "—");
           list.push(item);
         }
@@ -722,7 +742,10 @@ function TableInput({
       return (
         <select value={v} onChange={(e) => setCell(ri, c.id, e.target.value)} style={st}>
           <option value="">—</option>
-          {(c.options || []).map((o, i) => <option key={i} value={o}>{o}</option>)}
+          {(c.options || []).map((o, i) => {
+            const name = c.option_labels?.[i];
+            return <option key={i} value={o}>{name ? `${name} · ${o}` : o}</option>;
+          })}
         </select>
       );
     }
@@ -894,6 +917,7 @@ function FieldControl({
   const [selVal, setSelVal] = useState<string>(typeof initial.value === "string" ? initial.value : "");
   // ตัวเลือกจากข้อมูลอ้างอิง (ดึงไม่ได้ → ใช้ตัวเลือกที่พิมพ์ไว้แทน)
   const parentValue = getParentValue?.();
+  const optLabels = useMemo(() => labelMap(f.options, f.option_labels), [f.options, f.option_labels]);
   const dsBound = !!f.options_source && !f.options_error && (f.type === "select" || f.type === "checkbox");
   const dsOptions = dsBound ? filterOptions(f.options || [], f.options_parents, parentValue) : [];
   const waitParent = dsBound && !!f.options_parents && (parentValue == null || parentValue === "" || (Array.isArray(parentValue) && parentValue.length === 0));
@@ -964,6 +988,7 @@ function FieldControl({
             <OptionPicker
               name={"r_" + f.id}
               options={dsOptions}
+              labels={optLabels.size ? optLabels : undefined}
               multiple={f.type === "checkbox"}
               value={f.type === "checkbox" ? cbVals : selVal}
               paper={paper}
@@ -1141,4 +1166,15 @@ function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasS
       </div>
     </>
   );
+}
+
+/**
+ * ค่าที่สแกน/AI อ่านได้ → ค่าที่ต้องบันทึก สำหรับ dropdown ที่ "แสดงชื่อ เก็บรหัส"
+ * ตรงกับรหัสอยู่แล้ว = ใช้เลย · ตรงกับชื่อ (ไม่สนตัวพิมพ์) = แปลงเป็นรหัส · ไม่ตรง = คงค่าเดิมให้คนแก้
+ */
+function toCode(f: FormField | undefined, value: string): string {
+  if (!f?.option_labels || !f.options || f.options.includes(value)) return value;
+  const v = value.trim().toLowerCase();
+  const i = f.option_labels.findIndex((l) => l && l.trim().toLowerCase() === v);
+  return i >= 0 ? f.options[i] : value;
 }

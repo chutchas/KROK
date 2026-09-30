@@ -16,7 +16,7 @@ import {
   filterOptions,
   coerceCell,
 } from "@/lib/datasets";
-import { sanitizeSchema, datasetIdsOf } from "@/lib/form-schema";
+import { sanitizeSchema, datasetIdsOf, labelMap } from "@/lib/form-schema";
 
 vi.mock("server-only", () => ({}));
 
@@ -177,3 +177,33 @@ describe("form-schema: options_source", () => {
     expect(s.steps[0].fields[0]).not.toHaveProperty("options_error");
   });
 });
+
+describe("แสดงชื่อ เก็บรหัส (label_column)", () => {
+  it("เก็บ label_column ทั้งฟิลด์และคอลัมน์ตาราง แต่ตัดถ้าซ้ำกับ column หรือไม่ถูกต้อง", () => {
+    const s = sanitizeSchema({
+      title: "t",
+      steps: [{ title: "s", fields: [
+        { id: "a", type: "select", label: "a", options_source: { dataset_id: DS, column: "code", label_column: "name" } },
+        { id: "b", type: "select", label: "b", options_source: { dataset_id: DS, column: "code", label_column: "code" } },
+        { id: "c", type: "checkbox", label: "c", options_source: { dataset_id: DS, column: "code", label_column: "Bad Col" } },
+        { id: "t", type: "table", label: "t", columns: [{ id: "x", label: "x", type: "select", options_source: { dataset_id: DS, column: "sku", label_column: "sku_name" } }] },
+      ] }],
+    });
+    const f = s.steps[0].fields;
+    expect(f[0].options_source).toEqual({ dataset_id: DS, column: "code", label_column: "name" });
+    expect(f[1].options_source).toEqual({ dataset_id: DS, column: "code" });
+    expect(f[2].options_source).toEqual({ dataset_id: DS, column: "code" });
+    expect(f[3].columns![0].options_source).toEqual({ dataset_id: DS, column: "sku", label_column: "sku_name" });
+  });
+  it("ไม่บันทึก option_labels (runtime)", () => {
+    const s = sanitizeSchema({ title: "t", steps: [{ title: "s", fields: [{ id: "a", type: "select", label: "a", options: ["C1"], option_labels: ["ชื่อ"] }] }] });
+    expect(s.steps[0].fields[0]).not.toHaveProperty("option_labels");
+  });
+  it("labelMap จับคู่ค่ากับชื่อ ข้ามชื่อว่าง และเก็บตัวแรกเมื่อค่าซ้ำ (cascading)", () => {
+    const m = labelMap(["C1", "C2", "C1"], ["บริษัท ก", "", "อื่น"]);
+    expect(m.get("C1")).toBe("บริษัท ก");
+    expect(m.has("C2")).toBe(false);
+    expect(labelMap(["C1"], undefined).size).toBe(0);
+  });
+});
+

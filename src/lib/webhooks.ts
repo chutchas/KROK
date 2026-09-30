@@ -2,6 +2,7 @@ import "server-only";
 import crypto from "crypto";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { filterAnswersByFields } from "@/lib/webhook-utils";
+import { safeFetch } from "@/lib/safe-fetch";
 
 export type WebhookEvent = "submission.created" | "submission.approved" | "submission.rejected";
 
@@ -18,6 +19,15 @@ interface WebhookRow {
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
 /**
+ * POST ไปยัง URL ที่ผู้ใช้ตั้งไว้ ผ่าน safeFetch (กัน SSRF: ห้ามยิงเข้า IP ภายใน / metadata ของ cloud)
+ * ไม่อ่าน response body เกิน 64KB — สนใจแค่ status
+ */
+async function post(url: string, headers: Record<string, string>, body: string): Promise<number> {
+  const res = await safeFetch(url, { method: "POST", headers, body, timeoutMs: 8000, maxBytes: 64 * 1024 });
+  return res.status;
+}
+
+/**
  * ยิง POST พร้อม retry: ลองสูงสุด 3 ครั้ง (1 + 2 retry)
  * retry เมื่อ network error / timeout / HTTP 5xx / 429 — หยุดทันทีถ้า 2xx-4xx อื่น
  * backoff สั้น (300ms, 1200ms) เพราะรันใน request แบบ serverless
@@ -31,12 +41,9 @@ async function postWithRetry(
   let last = "";
   for (let i = 0; i < attempts; i++) {
     try {
-      const ctrl = new AbortController();
-      const timer = setTimeout(() => ctrl.abort(), 8000);
-      const res = await fetch(url, { method: "POST", headers, body, signal: ctrl.signal });
-      clearTimeout(timer);
-      const retryable = res.status >= 500 || res.status === 429;
-      last = i > 0 ? `${res.status} (attempt ${i + 1})` : `${res.status}`;
+      const status = await post(url, headers, body);
+      const retryable = status >= 500 || status === 429;
+      last = i > 0 ? `${status} (attempt ${i + 1})` : `${status}`;
       if (!retryable) return last; // สำเร็จหรือ error ฝั่ง client → ไม่ลองซ้ำ
     } catch (e) {
       last = "error: " + (e instanceof Error ? e.message.slice(0, 80) : "failed");
@@ -129,11 +136,8 @@ export async function testWebhook(url: string, secret: string | null): Promise<{
       "X-KROK-Event": "test",
     };
     if (secret) headers["X-KROK-Signature"] = "sha256=" + crypto.createHmac("sha256", secret).update(body).digest("hex");
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), 8000);
-    const res = await fetch(url, { method: "POST", headers, body, signal: ctrl.signal });
-    clearTimeout(timer);
-    return { ok: res.ok, status: `HTTP ${res.status}` };
+    const status = await post(url, headers, body);
+    return { ok: status >= 200 && status < 300, status: `HTTP ${status}` };
   } catch (e) {
     return { ok: false, status: e instanceof Error ? e.message.slice(0, 120) : "failed" };
   }

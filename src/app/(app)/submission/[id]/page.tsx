@@ -163,7 +163,10 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                   ) : a.photoField ? (
                     <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(ไม่พบไฟล์)</span>
                   ) : (
-                    a.display ?? "—"
+                    <>
+                      {a.display ?? "—"}
+                      {a.code && <span style={{ marginLeft: 8, fontFamily: "monospace", fontSize: ".78rem", fontWeight: 400, color: "var(--ink-3)" }}>{a.code}</span>}
+                    </>
                   )}
                 </div>
               </div>

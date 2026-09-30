@@ -465,7 +465,12 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
                 {a.photoField ? (
                   photos[a.photoField] ? <img src={photos[a.photoField]} alt={t("dash.photoAlt")} style={{ maxHeight: 110, borderRadius: 6 }} />
                     : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
-                ) : (a.display ?? "—")}
+                ) : (
+                  <>
+                    {a.display ?? "—"}
+                    {a.code && <span style={{ marginLeft: 6, fontFamily: "monospace", fontSize: ".75rem", fontWeight: 400, color: "var(--ink-3)" }}>{a.code}</span>}
+                  </>
+                )}
               </div>
             </div>
           )

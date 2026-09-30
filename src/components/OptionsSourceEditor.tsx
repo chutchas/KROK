@@ -102,10 +102,38 @@ function DatasetColumnPicker({
       {value?.dataset_id && !ds && <p style={{ ...hint, color: "var(--fail)" }}>ไม่พบชุดข้อมูลที่เลือกไว้ (อาจถูกลบ)</p>}
       {ds && (
         <>
-          <label style={lbl}>คอลัมน์ที่ใช้เป็นตัวเลือก</label>
-          <select value={value?.column || ""} onChange={(e) => onChange({ ...value!, column: e.target.value })} style={sel}>
+          <label style={lbl}>คอลัมน์ที่บันทึกเป็นค่า</label>
+          <select
+            value={value?.column || ""}
+            onChange={(e) => {
+              const column = e.target.value;
+              const next: OptionsSource = { ...value!, column };
+              if (next.label_column === column) delete next.label_column;
+              onChange(next);
+            }}
+            style={sel}
+          >
             {ds.columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
+          <label style={lbl}>คอลัมน์ที่แสดงให้ผู้กรอกเห็น</label>
+          <select
+            value={value?.label_column || ""}
+            onChange={(e) => {
+              const next: OptionsSource = { ...value!, label_column: e.target.value || undefined };
+              if (!next.label_column) delete next.label_column;
+              onChange(next);
+            }}
+            style={sel}
+          >
+            <option value="">— แสดงค่าเดียวกับที่บันทึก —</option>
+            {ds.columns.filter((c) => c.key !== value?.column).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
+          </select>
+          {value?.label_column && (
+            <p style={hint}>
+              ผู้กรอกเห็น “{ds.columns.find((c) => c.key === value.label_column)?.label}” พร้อม “{ds.columns.find((c) => c.key === value.column)?.label}” ตัวเล็ก ๆ
+              — submission เก็บทั้งสองค่า (ต้องรัน migration 0031)
+            </p>
+          )}
         </>
       )}
     </>
@@ -162,7 +190,11 @@ export default function OptionsSourceEditor({
                 value={src.parent?.field_id || ""}
                 onChange={(e) => {
                   const pid = e.target.value;
-                  if (!pid) onPatch({ options_source: { dataset_id: src.dataset_id, column: src.column } });
+                  if (!pid) {
+                    const { parent: _drop, ...rest } = src;
+                    void _drop;
+                    onPatch({ options_source: rest });
+                  }
                   else onPatch({ options_source: { ...src, parent: { field_id: pid, column: src.parent?.column || ds.columns.find((c) => c.key !== src.column)?.key || ds.columns[0].key } } });
                 }}
                 style={sel}
@@ -173,7 +205,7 @@ export default function OptionsSourceEditor({
               </select>
               {src.parent && (
                 <>
-                  <label style={lbl}>ค่าของช่องนั้นต้องตรงกับคอลัมน์</label>
+                  <label style={lbl}>ค่าที่บันทึกของช่องนั้นต้องตรงกับคอลัมน์</label>
                   <select value={src.parent.column} onChange={(e) => onPatch({ options_source: { ...src, parent: { ...src.parent!, column: e.target.value } } })} style={sel}>
                     {ds.columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
@@ -212,7 +244,7 @@ export function ColumnSourceEditor({
       <ModeToggle fromDataset={fromDs} onChange={(v) => { setFromDs(v); if (!v) onPatch({ options_source: undefined }); }} />
       <div style={{ marginTop: 6 }}>
         {fromDs ? (
-          <DatasetColumnPicker picks={picks} value={col.options_source} onRefresh={refresh} onChange={(v) => onPatch({ options_source: v ? { dataset_id: v.dataset_id, column: v.column } : undefined })} />
+          <DatasetColumnPicker picks={picks} value={col.options_source} onRefresh={refresh} onChange={(v) => onPatch({ options_source: v ? { dataset_id: v.dataset_id, column: v.column, ...(v.label_column ? { label_column: v.label_column } : {}) } : undefined })} />
         ) : (
           staticEditor
         )}

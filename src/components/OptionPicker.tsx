@@ -7,6 +7,7 @@ import { Search, X, Check } from "lucide-react";
 // OptionPicker — ตัวเลือกแบบค้นหาได้ สำหรับ dropdown ที่ดึงจากข้อมูลอ้างอิง
 // (อาจมีหลายร้อย–หลายพันรายการ ซึ่ง radio list เดิมใช้ไม่ไหว)
 // รายการน้อย (≤ 6) แสดงเป็น radio/checkbox เหมือนฟิลด์ปกติ
+// labels (ถ้ามี) = ชื่อที่แสดงของแต่ละค่า → แสดง "ชื่อ · รหัส" ค้นหาได้ทั้งสองอย่าง แต่ค่าที่ส่งออกเป็นรหัส
 // ============================================================
 
 const SHOW_LIMIT = 60;
@@ -20,8 +21,11 @@ export default function OptionPicker({
   paper = false,
   compact = false,
   name,
+  labels,
 }: {
   options: string[];
+  /** ค่า → ชื่อที่แสดง */
+  labels?: Map<string, string>;
   multiple?: boolean;
   value: string | string[];
   onChange: (v: string | string[]) => void;
@@ -49,8 +53,16 @@ export default function OptionPicker({
 
   const matches = useMemo(() => {
     const s = q.trim().toLowerCase();
-    return s ? options.filter((o) => o.toLowerCase().includes(s)) : options;
-  }, [options, q]);
+    if (!s) return options;
+    return options.filter((o) => o.toLowerCase().includes(s) || (labels?.get(o) ?? "").toLowerCase().includes(s));
+  }, [options, q, labels]);
+
+  const codeStyle: React.CSSProperties = { fontSize: ".72em", color: paper ? "#888" : "var(--ink-3)", fontFamily: "monospace", marginLeft: 6 };
+  // ชื่อ + รหัสเล็ก ๆ (ไม่มีชื่อ = แสดงค่าอย่างเดียว)
+  const text = (o: string) => {
+    const l = labels?.get(o);
+    return l ? <>{l}<span style={codeStyle}>{o}</span></> : o;
+  };
 
   const ink = paper ? "#111" : "var(--ink)";
   const line = paper ? "#b9bec4" : "var(--line)";
@@ -81,7 +93,7 @@ export default function OptionPicker({
               onChange={() => pick(o)}
               style={{ width: compact ? 15 : 20, height: compact ? 15 : 20, accentColor: "var(--accent)" }}
             />
-            {o}
+            <span>{text(o)}</span>
           </label>
         ))}
       </div>
@@ -95,8 +107,8 @@ export default function OptionPicker({
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
           {selected.map((s) => (
             <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 999, padding: compact ? "1px 8px" : "4px 10px", fontSize: compact ? ".78rem" : ".9rem", fontWeight: 600 }}>
-              {s}
-              <button type="button" aria-label={`เอา ${s} ออก`} onClick={() => onChange(multiple ? selected.filter((x) => x !== s) : "")} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}>
+              {text(s)}
+              <button type="button" aria-label={`เอา ${labels?.get(s) ?? s} ออก`} onClick={() => onChange(multiple ? selected.filter((x) => x !== s) : "")} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}>
                 <Icon icon={X} className="h-3.5 w-3.5" />
               </button>
             </span>
@@ -135,7 +147,7 @@ export default function OptionPicker({
                 style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, textAlign: "left", padding: compact ? "6px 10px" : "10px 12px", border: "none", borderBottom: `1px solid ${paper ? "#eee" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "transparent", color: ink, cursor: "pointer", fontFamily: "inherit", fontSize: fs }}
               >
                 <span style={{ width: 16, display: "flex", color: "var(--accent)" }}>{on && <Icon icon={Check} className="h-4 w-4" />}</span>
-                {o}
+                <span>{text(o)}</span>
               </button>
             );
           })}

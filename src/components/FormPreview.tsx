@@ -53,7 +53,7 @@ function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean
       )}
       {f.options_source && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-          ตัวเลือก: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>จากข้อมูลอ้างอิง · {f.options_source.column}{f.options_source.parent ? " (กรองตามช่องก่อนหน้า)" : ""}</code>
+          ตัวเลือก: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>จากข้อมูลอ้างอิง · {f.options_source.label_column ? `${f.options_source.label_column} (เก็บ ${f.options_source.column})` : f.options_source.column}{f.options_source.parent ? " (กรองตามช่องก่อนหน้า)" : ""}</code>
         </div>
       )}
       {f.options && !f.options_source && (

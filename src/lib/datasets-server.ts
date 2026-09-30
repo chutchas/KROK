@@ -39,19 +39,23 @@ export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: s
   const { data: owned } = await db.from("datasets").select("id, name").eq("tenant_id", tenantId).in("id", ids);
   const names = new Map(((owned || []) as { id: string; name: string }[]).map((d) => [d.id, d.name]));
 
-  // ดึงแต่ละคู่ (dataset, column, parent column) ครั้งเดียว แม้หลายฟิลด์ใช้ซ้ำ
-  const cache = new Map<string, Promise<{ v: string; p: string | null }[] | null>>();
+  // ดึงแต่ละชุด (dataset, column, label column, parent column) ครั้งเดียว แม้หลายฟิลด์ใช้ซ้ำ
+  const cache = new Map<string, Promise<OptRow[] | null>>();
   const load = (src: OptionsSource, withParent: boolean) => {
     const pc = withParent ? src.parent?.column ?? null : null;
-    // cascading ต้องได้ทุกคู่ (ตัวเลือก, ค่าแม่) — ขอมากกว่าปกติ ไม่งั้นแม่บางค่าจะไม่มีลูก
-    const key = `${src.dataset_id}|${src.column}|${pc ?? ""}`;
+    const lc = src.label_column ?? null;
+    const key = `${src.dataset_id}|${src.column}|${lc ?? ""}|${pc ?? ""}`;
     if (!cache.has(key)) {
+      // cascading ต้องได้ทุกคู่ (ตัวเลือก, ค่าแม่) — ขอมากกว่าปกติ ไม่งั้นแม่บางค่าจะไม่มีลูก
+      const limit = pc ? MAX_CASCADE_PAIRS : MAX_OPTIONS + 1;
+      // มีคอลัมน์ที่แสดง → ใช้ RPC ใหม่ (0031) · ไม่มี → ตัวเดิม (ใช้ได้แม้ยังไม่รัน 0031)
+      const call = lc
+        ? db.rpc("dataset_option_rows", { p_dataset: src.dataset_id, p_column: src.column, p_label_column: lc, p_parent_column: pc, p_limit: limit })
+        : db.rpc("dataset_options", { p_dataset: src.dataset_id, p_column: src.column, p_parent_column: pc, p_limit: limit });
       cache.set(
         key,
         names.has(src.dataset_id)
-          ? Promise.resolve(
-              db.rpc("dataset_options", { p_dataset: src.dataset_id, p_column: src.column, p_parent_column: pc, p_limit: pc ? MAX_CASCADE_PAIRS : MAX_OPTIONS + 1 })
-            ).then(({ data, error }) => (error ? null : ((data || []) as { v: string; p: string | null }[])))
+          ? Promise.resolve(call).then(({ data, error }) => (error ? null : ((data || []) as OptRow[])))
           : Promise.resolve(null)
       );
     }
@@ -66,7 +70,7 @@ export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: s
       if (f.options_source && (f.type === "select" || f.type === "checkbox")) {
         const src = f.options_source;
         jobs.push(
-          load(src, !!src.parent).then((rows) => applyToField(f, rows, names.get(src.dataset_id), !!src.parent))
+          load(src, !!src.parent).then((rows) => applyToField(f, rows, names.get(src.dataset_id), !!src.parent, !!src.label_column))
         );
       }
       for (const c of f.columns || []) {
@@ -74,7 +78,10 @@ export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: s
         const src = c.options_source;
         jobs.push(
           load(src, false).then((rows) => {
-            if (rows) c.options = uniq(rows.map((r) => r.v)).slice(0, MAX_OPTIONS);
+            if (!rows) return;
+            const list = uniqRows(rows).slice(0, MAX_OPTIONS);
+            c.options = list.map((r) => r.v);
+            if (src.label_column) c.option_labels = list.map((r) => r.l || "");
           })
         );
       }
@@ -86,37 +93,40 @@ export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: s
   for (const s of out.steps)
     for (const f of s.fields) {
       const pid = f.options_source?.parent?.field_id;
-      if (pid && byId.get(pid)?.options_error && f.options_parents) {
+      if (pid && byId.get(pid)?.options_error && f.options_parents && f.options) {
+        const list = uniqRows(f.options.map((v, i) => ({ v, l: f.option_labels?.[i] ?? null, p: null })));
+        f.options = list.map((r) => r.v);
+        if (f.option_labels) f.option_labels = list.map((r) => r.l || "");
         delete f.options_parents;
-        if (f.options) f.options = uniq(f.options);
       }
     }
   return out;
 }
 
+type OptRow = { v: string; l?: string | null; p: string | null };
+
 /** จำนวนคู่ (ตัวเลือก, ค่าแม่) สูงสุดของ dropdown ที่กรองตามกัน (= เพดานของ RPC) */
 const MAX_CASCADE_PAIRS = 5000;
 
-function uniq(a: string[]): string[] {
-  return [...new Set(a)];
+/** ตัดค่าซ้ำ (เก็บตัวแรก) โดยให้ชื่อที่แสดงยังตรงกับค่า */
+function uniqRows(rows: OptRow[]): OptRow[] {
+  const seen = new Set<string>();
+  return rows.filter((r) => (seen.has(r.v) ? false : (seen.add(r.v), true)));
 }
 
-function applyToField(f: FormField, rows: { v: string; p: string | null }[] | null, dsName: string | undefined, cascading: boolean) {
+function applyToField(f: FormField, rows: OptRow[] | null, dsName: string | undefined, cascading: boolean, labeled: boolean) {
   if (!rows) {
-    // dataset ถูกลบ/ไม่มีสิทธิ์ → ใช้ตัวเลือกที่พิมพ์ไว้ (ถ้ามี) และเตือน
+    // dataset ถูกลบ/ไม่มีสิทธิ์/ยังไม่รัน migration → ใช้ตัวเลือกที่พิมพ์ไว้ (ถ้ามี) และเตือน
     f.options_error = dsName ? "ดึงตัวเลือกจากข้อมูลอ้างอิงไม่ได้" : "ไม่พบข้อมูลอ้างอิงที่ฟิลด์นี้ใช้";
     delete f.options_source?.parent;
     return;
   }
-  if (cascading) {
-    f.options = rows.map((r) => r.v);
-    f.options_parents = rows.map((r) => r.p ?? "");
-    if (rows.length >= MAX_CASCADE_PAIRS) f.options_truncated = true;
-  } else {
-    const all = uniq(rows.map((r) => r.v));
-    f.options = all.slice(0, MAX_OPTIONS);
-    if (all.length > MAX_OPTIONS) f.options_truncated = true;
-  }
+  const list = cascading ? rows : uniqRows(rows);
+  const kept = list.slice(0, cascading ? MAX_CASCADE_PAIRS : MAX_OPTIONS);
+  f.options = kept.map((r) => r.v);
+  if (labeled) f.option_labels = kept.map((r) => r.l || "");
+  if (cascading) f.options_parents = kept.map((r) => r.p ?? "");
+  if (list.length > kept.length || (cascading && rows.length >= MAX_CASCADE_PAIRS)) f.options_truncated = true;
 }
 
 // ============================================================
@@ -315,8 +325,15 @@ export async function formsUsingDataset(db: Db, tenantId: string, datasetId: str
     for (const st of s?.steps || [])
       for (const fl of st.fields || []) {
         const src = fl.options_source;
-        if (src?.dataset_id === datasetId) { cols.add(src.column); if (src.parent) cols.add(src.parent.column); }
-        for (const c of fl.columns || []) if (c.options_source?.dataset_id === datasetId) cols.add(c.options_source.column);
+        if (src?.dataset_id === datasetId) {
+          cols.add(src.column);
+          if (src.label_column) cols.add(src.label_column);
+          if (src.parent) cols.add(src.parent.column);
+        }
+        for (const c of fl.columns || []) {
+          const cs = c.options_source;
+          if (cs?.dataset_id === datasetId) { cols.add(cs.column); if (cs.label_column) cols.add(cs.label_column); }
+        }
       }
     return { id: f.id, title: f.title, icon: f.icon, columns: [...cols] };
   });
