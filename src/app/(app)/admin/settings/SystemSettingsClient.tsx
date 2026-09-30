@@ -2,7 +2,7 @@
 import { useState } from "react";
 import Icon from "@/components/Icon";
 import { Settings, Bot, CreditCard, Package } from "lucide-react";
-import AdminAiClient, { type AiSettings } from "../ai/AdminAiClient";
+import AdminAiClient, { type AiProfiles } from "../ai/AdminAiClient";
 import PaymentClient from "./PaymentClient";
 import PlanClient from "./PlanClient";
 import type { ProviderClientView, PaymentProviderId } from "@/lib/payment-meta";
@@ -11,14 +11,14 @@ import type { Plan, PlanKey } from "@/lib/plans";
 type Tab = "ai" | "payment" | "plans";
 
 export default function SystemSettingsClient({
-  ai,
+  aiProfiles,
   aiConfigured,
   payViews,
   payConfigured,
   plans,
   plansConfigured,
 }: {
-  ai: AiSettings;
+  aiProfiles: AiProfiles;
   aiConfigured: boolean;
   payViews: Record<PaymentProviderId, ProviderClientView>;
   payConfigured: boolean;
@@ -66,7 +66,7 @@ export default function SystemSettingsClient({
       </div>
 
       <div hidden={tab !== "ai"}>
-        <AdminAiClient current={ai} configured={aiConfigured} embedded />
+        <AdminAiClient profiles={aiProfiles} configured={aiConfigured} embedded />
       </div>
       <div hidden={tab !== "payment"}>
         <PaymentClient views={payViews} configured={payConfigured} />

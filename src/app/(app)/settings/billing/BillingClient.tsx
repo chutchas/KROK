@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import { Check, Lock, CreditCard } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey, type Plan } from "@/lib/plans";
+import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { setPlan } from "./actions";
 
@@ -20,7 +21,7 @@ export default function BillingClient({
   isOwner: boolean;
   currentPlan: PlanKey;
   tenantName: string;
-  usage: { forms: number; members: number; ai: number; period: string };
+  usage: { forms: number; members: number; ai: Record<AiPurpose, number>; period: string };
   payMethods?: { id: string; name: string; hint: string }[];
   plans?: Record<PlanKey, Plan>;
 }) {
@@ -60,7 +61,25 @@ export default function BillingClient({
         <div style={{ display: "grid", gap: 14, marginTop: 8 }}>
           <UsageBar label={t("plan.forms")} used={usage.forms} max={plan.maxForms} />
           <UsageBar label={t("plan.members")} used={usage.members} max={plan.maxMembers} />
-          <UsageBar label={t("plan.aiCredits")} used={usage.ai} max={plan.aiCreditsPerMonth} />
+        </div>
+
+        <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+          <div style={{ fontWeight: 600, fontSize: ".95rem" }}>{t("plan.aiCredits")}</div>
+          <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "2px 0 12px" }}>
+            {en
+              ? "Each task has its own monthly allowance — running out on one does not block the others. Barcode / QR scanning is free and uses no credits."
+              : "แต่ละงานมีโควตาของตัวเอง — หมดถังหนึ่งไม่กระทบอีกถัง · การสแกนบาร์โค้ด/QR ไม่ใช้เครดิต"}
+          </p>
+          <div style={{ display: "grid", gap: 14 }}>
+            {AI_PURPOSES.map((p) => (
+              <UsageBar
+                key={p}
+                label={en ? PURPOSE_LABELS_EN[p] : PURPOSE_LABELS[p]}
+                used={usage.ai[p] ?? 0}
+                max={plan.aiCredits[p] ?? 0}
+              />
+            ))}
+          </div>
         </div>
       </Card>
 
@@ -95,7 +114,15 @@ export default function BillingClient({
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8, fontSize: ".88rem", color: "var(--ink-2)" }}>
                 <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.forms")}: <b>{fmtLimit(p.maxForms)}</b></li>
-                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.aiCredits")}: <b>{fmtLimit(p.aiCreditsPerMonth)}</b>/{t("plan.perMonth")}</li>
+                <li style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
+                  <span style={{ marginTop: 2, display: "inline-flex" }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /></span>
+                  <span>
+                    {t("plan.aiCredits")}: <b>{fmtLimit(p.aiCreditsPerMonth)}</b>/{t("plan.perMonth")}
+                    <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem", marginTop: 2 }}>
+                      {AI_PURPOSES.map((k) => `${en ? PURPOSE_LABELS_EN[k] : PURPOSE_LABELS[k]} ${fmtLimit(p.aiCredits[k] ?? 0)}`).join(" · ")}
+                    </span>
+                  </span>
+                </li>
                 <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.members")}: <b>{fmtLimit(p.maxMembers)}</b></li>
                 <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> Workspace: <b>{fmtLimit(p.maxWorkspaces)}</b></li>
               </ul>

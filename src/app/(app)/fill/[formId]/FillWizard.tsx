@@ -6,10 +6,11 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type TableColumn } from "@/lib/form-schema";
+import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import FormPaperFill from "@/components/FormPaperFill";
 import { notifySubmission } from "./actions";
 import LiveScanner from "@/components/LiveScanner";
+import FillSourceBar, { type AppliedValue, type DocExtractRecord, type FillSrcTag } from "@/components/FillSourceBar";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
 import AttachmentChips from "@/components/AttachmentView";
 import { groupAttachments, type Attachment } from "@/lib/attachments";
@@ -27,7 +28,7 @@ import {
 import { registerDevice } from "@/app/(app)/settings/devices/actions";
 
 type TableRow = Record<string, string>;
-type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string };
+type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string; src?: FillSrcTag };
 type Props = {
   formId: string;
   title: string;
@@ -92,6 +93,7 @@ export default function FillWizard(props: Props) {
   const [idx, setIdx] = useState(0);
   const answers = useRef<Record<string, Answer>>({});
   const [photos, setPhotos] = useState<Record<string, string>>({}); // fieldId -> dataUrl
+  const docExtracts = useRef<DocExtractRecord[]>([]); // หลักฐานการอ่านเอกสารด้วย AI
   const [sigs, setSigs] = useState<Record<string, string>>({});
   const [, force] = useState(0);
   const rerender = useCallback(() => force((n) => n + 1), []);
@@ -169,9 +171,44 @@ export default function FillWizard(props: Props) {
 
   // merge a patch into an answer (ref-owned by this component)
   const patchAnswer = useCallback((id: string, patch: Partial<Answer>, render = false) => {
-    answers.current[id] = { ...answers.current[id], ...patch };
+    const prev = answers.current[id] || {};
+    const next: Answer = { ...prev, ...patch };
+    // คนแก้ค่าที่ AI เติมไว้ → เปลี่ยนที่มาเป็น ai_edited (ตัวเลขนี้บอกว่า extraction แม่นแค่ไหน)
+    // ค่าที่มาจากสแกนถือเป็นการกรอกปกติเมื่อถูกแก้
+    if (patch.src === undefined && "value" in patch && prev.src && patch.value !== prev.value) {
+      next.src = prev.src === "ai" || prev.src === "ai_edited" ? "ai_edited" : undefined;
+    }
+    answers.current[id] = next;
     if (render) rerender();
   }, [rerender]);
+
+  /** เติมค่าจากแหล่งเติมข้อมูล (สแกน / อ่านเอกสาร) ลงหลายฟิลด์พร้อมกัน */
+  const applyFill = useCallback((values: AppliedValue[]) => {
+    for (const v of values) {
+      answers.current[v.field_id] = { ...answers.current[v.field_id], value: v.value, src: v.src };
+    }
+    setErrors((e) => {
+      const next = { ...e };
+      for (const v of values) delete next[v.field_id];
+      return next;
+    });
+    rerender();
+  }, [rerender]);
+
+  const fillBar = (st: FormStep) => (
+    <FillSourceBar
+      step={st}
+      publicMode={props.publicMode}
+      shrinkImage={shrinkImage}
+      dataUrlToBlob={dataUrlToBlob}
+      getValue={(id) => {
+        const v = answers.current[id]?.value;
+        return typeof v === "string" ? v : "";
+      }}
+      onApply={applyFill}
+      onExtract={(rec) => docExtracts.current.push(rec)}
+    />
+  );
 
   function validate(fields: FormField[] = step.fields): boolean {
     const errs: Record<string, string> = {};
@@ -229,6 +266,7 @@ export default function FillWizard(props: Props) {
         for (const f of s.fields) {
           const a = answers.current[f.id] || {};
           const item: Record<string, unknown> = { label: f.label, type: f.type };
+          if (a.src) item.src = a.src; // ที่มาของค่า: scan | ai | ai_edited (ไม่มี = คนกรอกเอง)
           if (f.type === "photo") {
             if (photos[f.id]) {
               photoUploads.push({ fieldId: f.id, dataUrl: photos[f.id], ai: a.ai });
@@ -315,6 +353,7 @@ export default function FillWizard(props: Props) {
         answers: list,
         dur,
         photos: photoUploads,
+        docExtracts: docExtracts.current,
         deviceId: device.id,
         queuedAt: 0,
       };
@@ -512,6 +551,10 @@ export default function FillWizard(props: Props) {
 
         {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
+        {schema.steps.map((st) => (
+          <div key={st.id}>{fillBar(st)}</div>
+        ))}
+
         <FormPaperFill
           schema={schema}
           icon={props.icon}
@@ -554,6 +597,8 @@ export default function FillWizard(props: Props) {
         </span>
         <h3 style={{ fontSize: "1.05rem" }}>{step.title}</h3>
       </div>
+
+      {fillBar(step)}
 
       {step.fields.map((f) => renderField(f))}
 

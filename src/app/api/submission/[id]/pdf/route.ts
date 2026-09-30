@@ -2,21 +2,12 @@ import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { buildSubmissionPdf, type PdfAnswer, type SubmissionPdfData } from "@/lib/pdf/submission-pdf";
+import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-interface AnswerItem {
-  label: string;
-  type: string;
-  display?: string;
-  note?: string;
-  fail?: boolean;
-  photoField?: string;
-  rows?: Record<string, string>[];
-  columns?: { id: string; label: string }[];
-}
 
 const STATUS: Record<string, { label: string; color: SubmissionPdfData["statusColor"] }> = {
   none: { label: "ส่งแล้ว", color: "muted" },
@@ -76,7 +67,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const answers: PdfAnswer[] = rawAnswers.map((a) => ({
     label: a.label,
     type: a.type,
-    display: a.display,
+    // ที่มาของค่าต้องปรากฏในเอกสารที่พิมพ์ออกไปด้วย ไม่งั้นตรวจย้อนหลังแยกไม่ออก
+    display: a.src ? `${a.display ?? "—"} (${SRC_LABEL[a.src]})` : a.display,
     note: a.note,
     fail: a.fail,
     photo: a.photoField ? photoBuf[a.photoField] ?? null : null,

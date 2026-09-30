@@ -21,6 +21,13 @@ export interface PendingSubmission {
   answers: Record<string, unknown>[];
   dur: number;
   photos: { fieldId: string; dataUrl: string; ai?: string }[];
+  /** หลักฐานการอ่านเอกสารด้วย AI (fill source kind = "doc") */
+  docExtracts?: {
+    source_id: string;
+    dataUrl?: string;
+    raw: { key: string; value: string; confidence: number }[];
+    accepted: { key: string; field_id: string; value: string; edited: boolean }[];
+  }[];
   deviceId?: string | null;
   queuedAt: number;
 }
@@ -116,6 +123,27 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
         ai_check: ph.ai ?? null,
       });
     }
+  }
+
+  // หลักฐานการอ่านเอกสาร — เก็บรูปต้นฉบับ + ค่าที่ AI อ่านได้ทั้งหมด + ค่าที่คนยืนยัน
+  for (const ex of p.docExtracts ?? []) {
+    let path: string | null = null;
+    if (ex.dataUrl) {
+      const p2 = `${p.tenantId}/${p.subId}/doc_${ex.source_id}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("submissions")
+        .upload(p2, dataUrlToBlob(ex.dataUrl), { contentType: "image/jpeg", upsert: true });
+      if (!upErr) path = p2;
+    }
+    await supabase.from("submission_doc_extracts").insert({
+      tenant_id: p.tenantId,
+      submission_id: p.subId,
+      source_id: ex.source_id,
+      storage_path: path,
+      raw: ex.raw,
+      accepted: ex.accepted,
+      created_by: p.userId,
+    });
   }
 
   void supabase.from("audit_log").insert({

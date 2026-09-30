@@ -14,11 +14,10 @@ import {
   type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import { saveDashboardLayout, computeWidget, type WidgetResult } from "./actions";
+import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
+export type { AnswerItem };
 
-export interface AnswerItem {
-  label: string; type: string; display?: string; note?: string; fail?: boolean; photoField?: string;
-  rows?: Record<string, string>[]; columns?: { id: string; label: string }[];
-}
+
 export interface SubRow {
   id: string; form_title: string; form_icon: string; user_name: string;
   result: "pass" | "fail"; fails: string[]; answers: AnswerItem[];

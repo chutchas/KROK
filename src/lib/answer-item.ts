@@ -1,0 +1,32 @@
+// ============================================================
+// KROK · รูปแบบคำตอบที่เก็บใน submissions.answers
+// แหล่งเดียวของความจริง — เดิมประกาศซ้ำอยู่ 4 ที่ (dashboard / submission / pdf / fill)
+// ============================================================
+
+/**
+ * ที่มาของค่าในฟิลด์หนึ่ง (ไม่มีค่านี้ = คนกรอกเอง)
+ *   scan      = ถอดรหัสจากบาร์โค้ด/QR บนเครื่องผู้ใช้ — แม่นตามมาตรฐาน ไม่ใช้ AI
+ *   ai        = AI อ่านจากเอกสาร แล้วคนหน้างานยืนยันตามที่อ่านได้
+ *   ai_edited = AI อ่านมาแล้วคนหน้างานแก้ก่อนยืนยัน (ใช้วัดความแม่นของ extraction)
+ *
+ * แยกไว้เพื่อให้ตรวจสอบย้อนหลังได้ว่าค่าไหนคนกรอกเอง ค่าไหนเครื่องช่วยเติม
+ */
+export type AnswerSrc = "scan" | "ai" | "ai_edited";
+
+export interface AnswerItem {
+  label: string;
+  type: string;
+  display?: string;
+  note?: string;
+  fail?: boolean;
+  photoField?: string;
+  rows?: Record<string, string>[];
+  columns?: { id: string; label: string }[];
+  src?: AnswerSrc;
+}
+
+export const SRC_LABEL: Record<AnswerSrc, string> = {
+  scan: "สแกน",
+  ai: "AI อ่าน",
+  ai_edited: "AI อ่าน · แก้แล้ว",
+};

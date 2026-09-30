@@ -30,17 +30,17 @@ export async function POST(req: Request) {
     if (total > 20 * 1024 * 1024)
       return NextResponse.json({ error: "รวมไฟล์ใหญ่เกิน 20MB" }, { status: 400 });
 
-    const credit = await consumeAiCredit(session.tenantId);
+    const credit = await consumeAiCredit(session.tenantId, "form_from_image");
     if (!credit.ok)
       return NextResponse.json(
-        { error: `ใช้เครดิต AI ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
+        { error: `ใช้เครดิต “${credit.label}” ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
         { status: 402 }
       );
 
     const images = await Promise.all(
       files.map(async (f) => ({ base64: Buffer.from(await f.arrayBuffer()).toString("base64"), mediaType: f.type }))
     );
-    const schema = await formFromImage(session.tenantId, images);
+    const schema = await formFromImage(images);
     return NextResponse.json({ schema });
   } catch (e) {
     console.error("ai/from-image", e);

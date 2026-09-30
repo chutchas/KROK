@@ -52,10 +52,58 @@ export interface FormField {
   min_rows?: number; // จำนวนแถวเริ่มต้นที่แสดงตอนกรอก (default 1)
 }
 
+// ============================================================
+// แหล่งเติมข้อมูล (fill source)
+// "ข้อมูล 1 แหล่ง → เติมได้หลายฟิลด์" — ถ่าย/สแกนครั้งเดียว ไม่ต้องทำซ้ำรายช่อง
+//
+//   kind = "scan" : บาร์โค้ด/QR — ถอดรหัสบนเครื่องผู้ใช้
+//                   ฟรี ไม่ใช้ AI ไม่หักเครดิต ใช้งานออฟไลน์ได้ แม่น 100% จึงไม่ต้องให้ยืนยัน
+//   kind = "doc"  : อ่านเอกสารด้วย vision model — หักเครดิต 1 ต่อการถ่าย 1 ครั้ง
+//                   ต้องให้คนหน้างานยืนยันเสมอ และใช้ไม่ได้ตอนออฟไลน์
+//
+// อยู่ที่ "ระดับ step" โดยตั้งใจ: ฟิลด์ปลายทางต้องอยู่ step เดียวกันเท่านั้น
+// จึงเติมข้ามขั้นตอนไม่ได้ และการล็อกลำดับงานไม่พังโดยไม่ต้องเขียน logic กันเพิ่ม
+// ============================================================
+
+export type FillSourceKind = "scan" | "doc";
+export type FillParse = "raw" | "json" | "regex";
+
+/** ชนิดฟิลด์ที่ยอมให้เติมอัตโนมัติได้ — ผลตรวจ/รูป/ลายเซ็นต้องทำจริงหน้างาน */
+export const FILL_TARGET_TYPES: FieldType[] = ["text", "number", "datetime", "select"];
+
+export interface FillMapEntry {
+  /** ฟิลด์ปลายทาง (ต้องอยู่ step เดียวกัน) */
+  field_id: string;
+  /** ชื่อค่าที่จะดึง — doc: ชื่อที่ให้ AI หา · scan json: ชื่อ property · scan regex: ชื่อ named group */
+  key: string;
+  hint?: string;
+}
+
+export interface FillSource {
+  id: string;
+  label: string;
+  kind: FillSourceKind;
+  /** เฉพาะ kind=scan (default "raw") */
+  parse?: FillParse;
+  /** เฉพาะ parse=regex — ต้องมี named group ตรงกับ key */
+  pattern?: string;
+  /** เฉพาะ kind=doc — อธิบายเอกสารให้ AI */
+  doc_hint?: string;
+  /** เฉพาะ kind=doc — เก็บรูปต้นฉบับแนบ submission (default true) */
+  keep_photo?: boolean;
+  map: FillMapEntry[];
+}
+
+export const MAX_FILL_MAP = 12;
+export const MAX_DOC_SOURCES_PER_STEP = 4;
+export const MAX_SCAN_SOURCES_PER_STEP = 12;
+
 export interface FormStep {
   id: string;
   title: string;
   fields: FormField[];
+  /** แหล่งเติมข้อมูลของขั้นตอนนี้ */
+  fill_sources?: FillSource[];
 }
 
 export interface PaperBox {
@@ -102,6 +150,94 @@ const num = (v: unknown): number | undefined => {
 };
 
 /**
+ * ทำความสะอาด fill_sources ของหนึ่ง step
+ * กติกา: ฟิลด์ปลายทางต้องอยู่ step เดียวกัน, ชนิดต้องอยู่ใน FILL_TARGET_TYPES,
+ *        หนึ่งฟิลด์ถูกเติมได้จากแหล่งเดียวเท่านั้น, regex ที่คอมไพล์ไม่ผ่านถูกตัดทิ้ง
+ */
+export function sanitizeFillSources(raw: unknown, fields: FormField[]): FillSource[] {
+  if (!Array.isArray(raw)) return [];
+  const byId = new Map(fields.map((f) => [f.id, f]));
+  const usedField = new Set<string>();
+  const usedId = new Set<string>();
+  const out: FillSource[] = [];
+  let docCount = 0;
+  let scanCount = 0;
+
+  raw.forEach((item, i) => {
+    if (!item || typeof item !== "object") return;
+    const o = item as Record<string, unknown>;
+    const kind: FillSourceKind = o.kind === "scan" ? "scan" : o.kind === "doc" ? "doc" : "doc";
+
+    if (kind === "doc" && docCount >= MAX_DOC_SOURCES_PER_STEP) return;
+    if (kind === "scan" && scanCount >= MAX_SCAN_SOURCES_PER_STEP) return;
+
+    let id = str(o.id, 40, `fs${i}`).replace(/[^\w-]/g, "_") || `fs${i}`;
+    while (usedId.has(id)) id = `${id}_`;
+
+    const parse: FillParse =
+      kind === "scan" && (o.parse === "json" || o.parse === "regex") ? o.parse : "raw";
+
+    let pattern: string | undefined;
+    if (kind === "scan" && parse === "regex") {
+      const p = str(o.pattern, 300);
+      if (!p) return;
+      try {
+        new RegExp(p);
+      } catch {
+        return; // regex ใช้ไม่ได้ → ตัดทิ้งทั้งแหล่ง ดีกว่าปล่อยให้พังตอนกรอก
+      }
+      pattern = p;
+    }
+
+    const rawMap = Array.isArray(o.map) ? o.map : [];
+    const map: FillMapEntry[] = [];
+    for (const m of rawMap) {
+      if (map.length >= MAX_FILL_MAP) break;
+      if (!m || typeof m !== "object") continue;
+      const mo = m as Record<string, unknown>;
+      const fieldId = str(mo.field_id, 40);
+      const target = byId.get(fieldId);
+      if (!target) continue;                                  // ไม่มีฟิลด์นี้ใน step
+      if (!FILL_TARGET_TYPES.includes(target.type)) continue;  // ชนิดไม่อนุญาต
+      if (usedField.has(fieldId)) continue;                    // ถูกจองโดยแหล่งอื่นแล้ว
+      const key = str(mo.key, 60, target.label) || target.label;
+      const entry: FillMapEntry = { field_id: fieldId, key };
+      const hint = str(mo.hint, 200);
+      if (hint) entry.hint = hint;
+      map.push(entry);
+      usedField.add(fieldId);
+    }
+
+    // scan แบบ raw ได้ค่าเดียว → ผูกได้ฟิลด์เดียว
+    const finalMap = kind === "scan" && parse === "raw" ? map.slice(0, 1) : map;
+    for (const dropped of map.slice(finalMap.length)) usedField.delete(dropped.field_id);
+    if (finalMap.length === 0) return;
+
+    const src: FillSource = {
+      id,
+      label: str(o.label, 80, kind === "scan" ? "สแกนรหัส" : "ถ่ายเอกสาร"),
+      kind,
+      map: finalMap,
+    };
+    if (kind === "scan") {
+      src.parse = parse;
+      if (pattern) src.pattern = pattern;
+    } else {
+      const dh = str(o.doc_hint, 300);
+      if (dh) src.doc_hint = dh;
+      src.keep_photo = o.keep_photo !== false;
+    }
+
+    usedId.add(id);
+    if (kind === "doc") docCount++;
+    else scanCount++;
+    out.push(src);
+  });
+
+  return out;
+}
+
+/**
  * รับ object ดิบ (จาก AI หรือ client) → คืน FormSchema ที่สะอาดและปลอดภัย
  * throw ถ้าไม่มี field ใช้งานได้เลย
  */
@@ -114,6 +250,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
     .map((s: unknown, si: number): FormStep => {
       const so = (s ?? {}) as Record<string, unknown>;
       const rawFields = Array.isArray(so.fields) ? so.fields : [];
+      const legacyScan: string[] = []; // label ของฟิลด์ที่มาจาก type "barcode" เดิม
       const fields: FormField[] = rawFields
         .filter(
           (f: unknown) =>
@@ -123,7 +260,11 @@ export function sanitizeSchema(raw: unknown): FormSchema {
         )
         .map((f: unknown, fi: number): FormField => {
           const fo = f as Record<string, unknown>;
-          const type = fo.type as FieldType;
+          // barcode เป็น alias ของ "text ที่สแกนได้" — แปลงตอนอ่าน
+          // ฟอร์มเก่าและคำตอบจาก AI ยังส่ง type:"barcode" มาได้เหมือนเดิม
+          const rawType = fo.type as FieldType;
+          const type: FieldType = rawType === "barcode" ? "text" : rawType;
+          if (rawType === "barcode") legacyScan.push(str(fo.label, 200, "ไม่ระบุ"));
           const o: FormField = {
             id: str(fo.id, 40, `f${si}_${fi}`).replace(/[^\w-]/g, "_") || `f${si}_${fi}`,
             type,
@@ -168,11 +309,34 @@ export function sanitizeSchema(raw: unknown): FormSchema {
           }
           return o;
         });
-      return {
+      const step: FormStep = {
         id: `s${si + 1}`,
         title: str(so.title, 120, `ขั้นตอนที่ ${si + 1}`),
         fields,
       };
+
+      // ฟิลด์ barcode เดิม → scan source อัตโนมัติ (1 ฟิลด์ต่อ 1 ปุ่ม)
+      const auto: FillSource[] = [];
+      let li = 0;
+      for (const f of fields) {
+        const label = legacyScan[li];
+        if (label !== undefined && f.label === label && f.type === "text") {
+          auto.push({
+            id: `sc_${f.id}`,
+            label: `สแกน ${f.label}`,
+            kind: "scan",
+            parse: "raw",
+            map: [{ field_id: f.id, key: "value" }],
+          });
+          li++;
+        }
+      }
+
+      const declared = sanitizeFillSources(so.fill_sources, fields);
+      const taken = new Set(declared.flatMap((x) => x.map.map((m) => m.field_id)));
+      const merged = [...declared, ...auto.filter((a) => !taken.has(a.map[0].field_id))];
+      if (merged.length) step.fill_sources = merged;
+      return step;
     })
     .filter((s) => s.fields.length > 0);
 
@@ -220,3 +384,34 @@ export function sanitizeSchema(raw: unknown): FormSchema {
 export function countFields(schema: FormSchema): number {
   return schema.steps.reduce((n, s) => n + s.fields.length, 0);
 }
+
+// ---- helper เกี่ยวกับ fill source ----
+
+/** แหล่งเติมข้อมูลที่ผูกกับฟิลด์นี้ (ถ้ามี) */
+export function fillSourceOf(step: FormStep, fieldId: string): FillSource | undefined {
+  return step.fill_sources?.find((s) => s.map.some((m) => m.field_id === fieldId));
+}
+
+/** จำนวนฟิลด์ที่ถูกเติมอัตโนมัติ (นับเฉพาะ kind ที่ระบุ ถ้าไม่ระบุ = ทุกแบบ) */
+export function countDerivedFields(schema: FormSchema, kind?: FillSourceKind): number {
+  return schema.steps.reduce(
+    (n, s) =>
+      n +
+      (s.fill_sources ?? [])
+        .filter((src) => !kind || src.kind === kind)
+        .reduce((m, src) => m + src.map.length, 0),
+    0
+  );
+}
+
+/**
+ * สัดส่วนฟิลด์ที่มาจาก AI อ่านเอกสาร เทียบกับฟิลด์ทั้งฟอร์ม
+ * ใช้เตือนคนออกแบบฟอร์ม: ถ้าสูงเกินไปแปลว่าฟอร์มกำลังกลายเป็น "กล่องรับรูป"
+ * ไม่ใช่ฟอร์มที่คุมกระบวนการ — เตือนเฉย ๆ ไม่บล็อก
+ */
+export function docDerivedRatio(schema: FormSchema): number {
+  const total = countFields(schema);
+  return total === 0 ? 0 : countDerivedFields(schema, "doc") / total;
+}
+
+export const DOC_DERIVED_WARN_RATIO = 0.5;

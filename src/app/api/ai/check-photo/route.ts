@@ -20,15 +20,15 @@ export async function POST(req: Request) {
     if (!ALLOWED.includes(file.type))
       return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
 
-    const credit = await consumeAiCredit(session.tenantId);
+    const credit = await consumeAiCredit(session.tenantId, "photo_check");
     if (!credit.ok)
       return NextResponse.json(
-        { error: `ใช้เครดิต AI ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max})`, ok: true, pass: true, note: "" },
+        { error: `ใช้เครดิต “${credit.label}” ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max})`, ok: true, pass: true, note: "" },
         { status: 402 }
       );
 
     const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const result = await checkPhoto(session.tenantId, b64, file.type, hint, label);
+    const result = await checkPhoto(b64, file.type, hint, label);
     return NextResponse.json(result);
   } catch (e) {
     console.error("ai/check-photo", e);

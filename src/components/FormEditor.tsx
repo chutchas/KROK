@@ -2,16 +2,21 @@
 import { useState } from "react";
 import { Field } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowUp, ArrowDown, Trash2, Settings2, ChevronUp, Plus, X, GripVertical } from "lucide-react";
+import { ArrowUp, ArrowDown, Trash2, Settings2, ChevronUp, Plus, X, GripVertical, TriangleAlert } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import {
+  DOC_DERIVED_WARN_RATIO,
   FIELD_TYPES,
   FIELD_TYPE_LABELS,
+  FILL_TARGET_TYPES,
+  docDerivedRatio,
   type FieldType,
+  type FillSource,
   type FormField,
   type FormSchema,
   type FormStep,
 } from "@/lib/form-schema";
+import FillSourcesPanel from "@/components/FillSourcesPanel";
 
 // ตัวช่วย: ย้ายสมาชิกใน array ขึ้น/ลง (คืน array ใหม่)
 function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
@@ -68,6 +73,30 @@ export default function FormEditor({
     });
   }
 
+  /** ถอดฟิลด์ออกจากแหล่งเติมข้อมูลทุกกลุ่มของขั้นตอนนั้น (ทิ้งกลุ่มที่ว่างเปล่า) */
+  function dropFromSources(si: number, fieldId: string) {
+    const cur = value.steps[si].fill_sources;
+    if (!cur?.length) return;
+    const next = cur
+      .map((s) => ({ ...s, map: s.map.filter((m) => m.field_id !== fieldId) }))
+      .filter((s) => s.map.length > 0);
+    patchStep(si, { fill_sources: next.length ? next : undefined });
+  }
+
+  function deleteField(si: number, fi: number) {
+    const step = value.steps[si];
+    const target = step.fields[fi];
+    const fields = step.fields.filter((_, i) => i !== fi);
+    const sources = (step.fill_sources ?? [])
+      .map((s) => ({ ...s, map: s.map.filter((m) => m.field_id !== target.id) }))
+      .filter((s) => s.map.length > 0);
+    patchStep(si, { fields, fill_sources: sources.length ? sources : undefined });
+  }
+
+  function setFillSources(si: number, sources: FillSource[]) {
+    patchStep(si, { fill_sources: sources.length ? sources : undefined });
+  }
+
   const iconBtn: React.CSSProperties = {
     width: 30, height: 30, borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)",
     color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", padding: 0, lineHeight: 1,
@@ -78,8 +107,20 @@ export default function FormEditor({
     color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem",
   };
 
+  const derivedRatio = docDerivedRatio(value);
+
   return (
     <div style={{ display: "grid", gap: 14 }}>
+      {derivedRatio > DOC_DERIVED_WARN_RATIO && (
+        <div style={{ border: "1px solid var(--warn, #f59e0b)", background: "color-mix(in srgb, var(--warn, #f59e0b) 10%, transparent)", borderRadius: 10, padding: "10px 12px", fontSize: ".85rem", color: "var(--ink-2)", display: "flex", gap: 8 }}>
+          <Icon icon={TriangleAlert} className="h-4 w-4 shrink-0 text-amber-500" />
+          <span>
+            ฟิลด์ในฟอร์มนี้มาจากการอ่านเอกสารด้วย AI มากกว่าครึ่ง — ระวังฟอร์มกลายเป็นแค่กล่องรับรูป
+            สิ่งที่ลูกค้าจ่ายเงินซื้อคือกระบวนการที่คนทำจริงหน้างาน ไม่ใช่ข้อมูลที่ดึงจากกระดาษ
+          </span>
+        </div>
+      )}
+
       {/* หัวฟอร์ม */}
       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "56px 1fr", alignItems: "start" }}>
         <input
@@ -147,8 +188,17 @@ export default function FormEditor({
                       <Icon icon={GripVertical} className="h-4 w-4" />
                     </span>
                     <Field value={field.label} onChange={(e) => patchField(si, fi, { label: e.target.value })} placeholder={t("editor.fieldLabel")} style={{ flex: 1, minWidth: 140 }} />
-                    <select value={field.type} onChange={(e) => patchField(si, fi, { type: e.target.value as FieldType })} style={sel}>
-                      {FIELD_TYPES.map((ft) => (
+                    <select
+                      value={field.type}
+                      onChange={(e) => {
+                        const next = e.target.value as FieldType;
+                        patchField(si, fi, { type: next });
+                        // ชนิดใหม่เติมอัตโนมัติไม่ได้ → ถอดออกจากแหล่งเติมข้อมูล
+                        if (!FILL_TARGET_TYPES.includes(next)) dropFromSources(si, field.id);
+                      }}
+                      style={sel}
+                    >
+                      {FIELD_TYPES.filter((ft) => ft !== "barcode" || field.type === "barcode").map((ft) => (
                         <option key={ft} value={ft}>{FIELD_TYPE_LABELS[ft]}</option>
                       ))}
                     </select>
@@ -159,7 +209,7 @@ export default function FormEditor({
                     <button style={iconBtn} title={t("editor.more")} onClick={() => setOpenField(isOpen ? null : field.id)}><Icon icon={isOpen ? ChevronUp : Settings2} className="h-4 w-4" /></button>
                     <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStep(si, { fields: move(step.fields, fi, -1) })}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
                     <button style={iconBtn} title={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStep(si, { fields: move(step.fields, fi, 1) })}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
-                    <button style={{ ...iconBtn, color: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => patchStep(si, { fields: step.fields.filter((_, i) => i !== fi) })}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                    <button style={{ ...iconBtn, color: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => deleteField(si, fi)}><Icon icon={Trash2} className="h-4 w-4" /></button>
                   </div>
 
                   {isOpen && (
@@ -212,6 +262,8 @@ export default function FormEditor({
               <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
             </button>
           </div>
+
+          <FillSourcesPanel step={step} onChange={(srcs) => setFillSources(si, srcs)} />
         </div>
       ))}
 

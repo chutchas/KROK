@@ -1,6 +1,7 @@
 "use server";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { AI_PURPOSES } from "@/lib/ai-purpose";
 import { PAYMENT_PROVIDERS, PAYMENT_PROVIDER_IDS, type PaymentProviderId } from "@/lib/payment-meta";
 import { PLAN_ORDER, type PlanKey, type PlanOverrides } from "@/lib/plans";
 
@@ -99,11 +100,22 @@ export async function savePlanSettings(
     const raw = (input as Record<string, unknown>)[k];
     if (!raw || typeof raw !== "object") continue;
     const o = raw as Record<string, unknown>;
-    const entry: Record<string, number | string> = {};
+    const entry: Record<string, number | string | Record<string, number>> = {};
     for (const f of FIELDS) {
       const v = o[f];
       if (typeof v === "number" && Number.isFinite(v) && v >= 0) entry[f] = Math.floor(v);
     }
+    // โควตา AI แยกต่อ purpose
+    const rawCredits = o.aiCredits;
+    if (rawCredits && typeof rawCredits === "object") {
+      const credits: Record<string, number> = {};
+      for (const purpose of AI_PURPOSES) {
+        const v = (rawCredits as Record<string, unknown>)[purpose];
+        if (typeof v === "number" && Number.isFinite(v) && v >= 0) credits[purpose] = Math.floor(v);
+      }
+      if (Object.keys(credits).length) (entry as Record<string, unknown>).aiCredits = credits;
+    }
+
     // ชื่อแพ็กเกจ (ตัวเลือก) — เก็บเป็น string สั้นๆ
     for (const nf of ["name", "nameEn"] as const) {
       const v = o[nf];

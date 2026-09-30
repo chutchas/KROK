@@ -1,6 +1,6 @@
 import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
-import type { FormSchema } from "@/lib/form-schema";
+import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import PublicFillClient from "./PublicFillClient";
 
@@ -59,10 +59,23 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       version={(data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
       approvalChain={(data.approval_chain as unknown[]) || []}
-      schema={data.schema as FormSchema}
+      schema={readSchema(data.schema)}
       tenantId={data.tenant_id as string}
       loggedIn={loggedIn}
       attachments={attachments}
     />
   );
+}
+
+/**
+ * อ่าน schema จาก DB ผ่าน sanitizeSchema เสมอ
+ * นอกจากกันข้อมูลเพี้ยนแล้ว ยังแปลงฟิลด์ชนิด "barcode" ของเดิม
+ * ให้เป็น text + แหล่งเติมข้อมูลแบบสแกน เพื่อให้ฟอร์มเก่ายังมีปุ่มสแกนเหมือนเดิม
+ */
+function readSchema(raw: unknown): FormSchema {
+  try {
+    return sanitizeSchema(raw);
+  } catch {
+    return raw as FormSchema;
+  }
 }

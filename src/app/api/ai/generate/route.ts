@@ -19,19 +19,19 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "bad request" }, { status: 400 });
   }
 
-  const credit = await consumeAiCredit(session.tenantId);
+  const credit = await consumeAiCredit(session.tenantId, "form_gen");
   if (!credit.ok)
     return NextResponse.json(
-      { error: `ใช้เครดิต AI ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
+      { error: `ใช้เครดิต “${credit.label}” ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
       { status: 402 }
     );
 
   try {
     let schema: FormSchema;
     if (body.instruction && body.schema) {
-      schema = await refineForm(session.tenantId, sanitizeSchema(body.schema), body.instruction.slice(0, 500));
+      schema = await refineForm(sanitizeSchema(body.schema), body.instruction.slice(0, 500));
     } else if (body.prompt) {
-      schema = await generateForm(session.tenantId, body.prompt.slice(0, 2000));
+      schema = await generateForm(body.prompt.slice(0, 2000));
     } else {
       return NextResponse.json({ error: "ต้องมี prompt หรือ instruction" }, { status: 400 });
     }

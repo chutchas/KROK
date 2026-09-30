@@ -4,19 +4,11 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
+import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
 
 export const dynamic = "force-dynamic";
 
-interface AnswerItem {
-  label: string;
-  type: string;
-  display?: string;
-  note?: string;
-  fail?: boolean;
-  photoField?: string;
-  rows?: Record<string, string>[];
-  columns?: { id: string; label: string }[];
-}
+
 
 const STATUS_LABEL: Record<string, { t: string; c: string }> = {
   none: { t: "ส่งแล้ว", c: "var(--ink-2)" },
@@ -58,6 +50,26 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
       .from("submissions")
       .createSignedUrl(p.storage_path as string, 3600);
     if (signed?.signedUrl) photoMap[p.field_id as string] = signed.signedUrl;
+  }
+
+  // เอกสารต้นฉบับที่ AI อ่าน (ถ้ามี) — เก็บไว้ให้ตรวจย้อนหลังได้ว่าค่ามาจากไหน
+  const { data: extractRows } = await supabase
+    .from("submission_doc_extracts")
+    .select("id, source_id, storage_path, accepted, created_at")
+    .eq("submission_id", id)
+    .order("created_at", { ascending: true });
+
+  const extracts: { id: string; url: string | null; count: number; edited: number }[] = [];
+  for (const ex of extractRows || []) {
+    let url: string | null = null;
+    if (ex.storage_path) {
+      const { data: signed } = await supabase.storage
+        .from("submissions")
+        .createSignedUrl(ex.storage_path as string, 3600);
+      url = signed?.signedUrl ?? null;
+    }
+    const acc = (ex.accepted || []) as { edited?: boolean }[];
+    extracts.push({ id: String(ex.id), url, count: acc.length, edited: acc.filter((a) => a.edited).length });
   }
 
   const answers = (sub.answers || []) as AnswerItem[];
@@ -132,6 +144,20 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                   {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
                 </div>
                 <div style={{ flex: 1, fontWeight: 600, color: a.fail ? "var(--fail)" : "var(--ink)" }}>
+                  {a.src && (
+                    <span
+                      title={a.src === "scan" ? "ค่านี้มาจากการสแกนบาร์โค้ด/QR" : "ค่านี้ AI อ่านจากเอกสาร แล้วผู้กรอกยืนยัน"}
+                      style={{
+                        fontSize: ".68rem", fontWeight: 700, padding: "1px 7px", borderRadius: 999, marginRight: 7,
+                        verticalAlign: "middle", whiteSpace: "nowrap",
+                        border: "1px solid var(--line)",
+                        background: a.src === "scan" ? "var(--code-bg)" : "var(--accent-soft)",
+                        color: a.src === "scan" ? "var(--ink-3)" : "var(--accent)",
+                      }}
+                    >
+                      {SRC_LABEL[a.src]}
+                    </span>
+                  )}
                   {a.photoField && photoMap[a.photoField] ? (
                     <img src={photoMap[a.photoField]} alt={a.label} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
                   ) : a.photoField ? (
@@ -144,6 +170,30 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
             )
           )}
         </div>
+
+        {/* เอกสารต้นฉบับที่ AI อ่าน */}
+        {extracts.length > 0 && (
+          <div style={{ marginTop: 20 }}>
+            <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 2 }}>เอกสารที่ AI อ่าน</div>
+            <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "0 0 10px" }}>
+              รูปต้นฉบับที่ผู้กรอกถ่ายไว้ — ใช้ตรวจสอบย้อนหลังว่าค่าที่เติมตรงกับเอกสารจริง
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
+              {extracts.map((ex) => (
+                <div key={ex.id} style={{ border: "1px solid var(--line)", borderRadius: 9, padding: 8, background: "var(--surface)" }}>
+                  {ex.url ? (
+                    <img src={ex.url} alt="เอกสารต้นฉบับ" style={{ width: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 6, background: "var(--code-bg)" }} />
+                  ) : (
+                    <div style={{ color: "var(--ink-3)", fontSize: ".82rem", padding: "18px 0", textAlign: "center" }}>(ไม่ได้เก็บรูปต้นฉบับ)</div>
+                  )}
+                  <div style={{ fontSize: ".76rem", color: "var(--ink-3)", marginTop: 6 }}>
+                    เติม {ex.count} ช่อง{ex.edited > 0 && ` · ผู้กรอกแก้ ${ex.edited}`}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* approval history timeline */}
         {Array.isArray(sub.approval_history) && sub.approval_history.length > 0 && (

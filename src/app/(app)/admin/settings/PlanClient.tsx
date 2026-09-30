@@ -2,18 +2,22 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Notice } from "@/components/ui";
-import { PLAN_ORDER, UNLIMITED, type Plan, type PlanKey, type PlanOverrides } from "@/lib/plans";
+import { PLAN_ORDER, UNLIMITED, type AiCredits, type Plan, type PlanKey, type PlanOverrides } from "@/lib/plans";
+import { AI_PURPOSES, PURPOSE_LABELS, type AiPurpose } from "@/lib/ai-purpose";
 import { savePlanSettings } from "./actions";
 
-type QuotaField = "maxForms" | "aiCreditsPerMonth" | "maxMembers" | "maxWorkspaces";
+type QuotaField = "maxForms" | "maxMembers" | "maxWorkspaces";
 const QUOTA_FIELDS: { key: QuotaField; label: string }[] = [
   { key: "maxForms", label: "จำนวนฟอร์ม" },
-  { key: "aiCreditsPerMonth", label: "เครดิต AI / เดือน" },
   { key: "maxMembers", label: "จำนวนผู้ใช้" },
   { key: "maxWorkspaces", label: "จำนวน Workspace" },
 ];
 
-interface Row { name: string; nameEn: string; priceThb: number; maxForms: number; aiCreditsPerMonth: number; maxMembers: number; maxWorkspaces: number }
+interface Row {
+  name: string; nameEn: string; priceThb: number;
+  maxForms: number; maxMembers: number; maxWorkspaces: number;
+  aiCredits: AiCredits;
+}
 
 export default function PlanClient({ plans, configured }: { plans: Record<PlanKey, Plan>; configured: boolean }) {
   const router = useRouter();
@@ -23,8 +27,9 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
       const p = plans[k];
       init[k] = {
         name: p.name, nameEn: p.nameEn,
-        priceThb: p.priceThb, maxForms: p.maxForms, aiCreditsPerMonth: p.aiCreditsPerMonth,
+        priceThb: p.priceThb, maxForms: p.maxForms,
         maxMembers: p.maxMembers, maxWorkspaces: p.maxWorkspaces,
+        aiCredits: { ...p.aiCredits },
       };
     }
     return init;
@@ -34,6 +39,10 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
 
   function set(k: PlanKey, field: keyof Row, value: number | string) {
     setRows((s) => ({ ...s, [k]: { ...s[k], [field]: value } }));
+  }
+
+  function setCredit(k: PlanKey, purpose: AiPurpose, value: number) {
+    setRows((s) => ({ ...s, [k]: { ...s[k], aiCredits: { ...s[k].aiCredits, [purpose]: value } } }));
   }
 
   async function save() {
@@ -51,6 +60,11 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
     <div style={{ display: "grid", gap: 16 }}>
       <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
         ตั้งราคาและโควตาของแต่ละแพ็กเกจ — มีผลกับการจำกัดการใช้งานและหน้าแผน/โควตาของทุก workspace (ติ๊ก “ไม่จำกัด” เพื่อปลดเพดาน)
+        <br />
+        <span style={{ color: "var(--ink-3)", fontSize: ".85rem" }}>
+          เครดิต AI แยกถังต่องาน — ใช้งานหน้างานจนหมดถังจะไม่ทำให้สร้างฟอร์มด้วย AI ไม่ได้
+          · การสแกนบาร์โค้ด/QR ไม่ใช้เครดิต (ทำงานบนเครื่องผู้ใช้)
+        </span>
       </p>
 
       {!configured && (
@@ -108,6 +122,37 @@ export default function PlanClient({ plans, configured }: { plans: Record<PlanKe
                   </div>
                 );
               })}
+            </div>
+
+            {/* เครดิต AI แยกต่องาน */}
+            <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
+              <div style={{ fontWeight: 600, fontSize: ".9rem", marginBottom: 2 }}>เครดิต AI / เดือน (แยกต่องาน)</div>
+              <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "0 0 10px" }}>
+                รวม {Object.values(r.aiCredits).reduce((a, b) => a + b, 0).toLocaleString()} ครั้ง/เดือน
+              </p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12 }}>
+                {AI_PURPOSES.map((purpose) => {
+                  const val = r.aiCredits[purpose];
+                  const unlimited = val >= UNLIMITED;
+                  return (
+                    <div key={purpose}>
+                      <label style={labelStyle}>{PURPOSE_LABELS[purpose]}</label>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          <Field type="number" min={0} value={unlimited ? "" : String(val)} disabled={unlimited}
+                            placeholder={unlimited ? "ไม่จำกัด" : ""}
+                            onChange={(e) => setCredit(k, purpose, Math.max(0, parseInt(e.target.value || "0", 10) || 0))} />
+                        </div>
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".8rem", color: "var(--ink-2)", whiteSpace: "nowrap", cursor: "pointer" }}>
+                          <input type="checkbox" checked={unlimited} style={{ accentColor: "var(--accent)" }}
+                            onChange={(e) => setCredit(k, purpose, e.target.checked ? UNLIMITED : 100)} />
+                          ไม่จำกัด
+                        </label>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </Card>
         );

@@ -2,7 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
-import type { FormSchema } from "@/lib/form-schema";
+import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import FillWizard from "./FillWizard";
 
@@ -59,7 +59,7 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
       version={(data.version as number) ?? 1}
       requiresApproval={!!data.requires_approval}
       approvalChain={(data.approval_chain as unknown[]) || []}
-      schema={data.schema as FormSchema}
+      schema={readSchema(data.schema)}
       tenantId={session.tenantId}
       userId={session.userId}
       userName={session.displayName}
@@ -67,4 +67,17 @@ export default async function FillPage({ params }: { params: Promise<{ formId: s
       requireDevice={!!data.require_approved_device}
     />
   );
+}
+
+/**
+ * อ่าน schema จาก DB ผ่าน sanitizeSchema เสมอ
+ * นอกจากกันข้อมูลเพี้ยนแล้ว ยังแปลงฟิลด์ชนิด "barcode" ของเดิม
+ * ให้เป็น text + แหล่งเติมข้อมูลแบบสแกน เพื่อให้ฟอร์มเก่ายังมีปุ่มสแกนเหมือนเดิม
+ */
+function readSchema(raw: unknown): FormSchema {
+  try {
+    return sanitizeSchema(raw);
+  } catch {
+    return raw as FormSchema;
+  }
 }

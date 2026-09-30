@@ -3,6 +3,8 @@ import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { sanitizeSchema, type FormSchema } from "./form-schema";
 import { getAdminClient } from "./supabase/admin";
+import { PURPOSE_NEEDS_VISION as PURPOSE_NEEDS_VISION_MAP, type AiPurpose } from "./ai-purpose";
+import { parseExtractResult as parseExtract, type ExtractKey as EK } from "./doc-extract";
 
 // ============================================================
 // Provider-agnostic LLM layer
@@ -61,28 +63,66 @@ function envConfig(): ProviderConfig {
   };
 }
 
-// config ระดับแพลตฟอร์ม: อ่านจาก platform_ai_settings (service role) ก่อน
-// ถ้ายังไม่มีคีย์ค่อย fallback ไป env — ทุก tenant ใช้คีย์กลางชุดเดียวกัน
-// (พารามิเตอร์ tenantId คงไว้เพื่อความเข้ากันได้ แต่ไม่ได้ใช้เลือกคีย์อีกต่อไป)
-async function resolveConfig(_tenantId?: string): Promise<ProviderConfig> {
+// ============================================================
+// purpose — งานแต่ละชนิดตั้งค่า provider/model/key แยกกันได้
+//   form_gen        สร้าง/แก้ฟอร์มจาก prompt   (ไม่ต้อง vision, ปริมาณต่ำ, ฉลาด)
+//   form_from_image สร้างฟอร์มจากรูปฟอร์มเดิม  (vision, ปริมาณต่ำ, ฉลาด)
+//   photo_check     ตรวจรูปหน้างาน             (vision, ปริมาณสูง, ถูก)
+//   doc_extract     ดึงข้อมูลจากเอกสาร         (vision, ปริมาณสูง, ถูก + OCR ไทย)
+// ============================================================
+export {
+  AI_PURPOSES,
+  PURPOSE_NEEDS_VISION,
+  PURPOSE_LABELS,
+  PURPOSE_HINTS,
+  isAiPurpose,
+  type AiPurpose,
+} from "./ai-purpose";
+
+const PROFILE_COLS = "provider, model, base_url, azure_endpoint, azure_api_version, api_key, enabled";
+
+function rowToConfig(data: Record<string, unknown>): ProviderConfig {
+  const provider = ((data.provider as string) || "qwen") as Provider;
+  return {
+    provider,
+    apiKey: (data.api_key as string) || "",
+    model: (data.model as string) || DEFAULTS[provider].model,
+    baseURL: (data.base_url as string) || DEFAULTS[provider].baseURL,
+    azureEndpoint: (data.azure_endpoint as string) || undefined,
+    azureApiVersion: (data.azure_api_version as string) || "2024-08-01-preview",
+  };
+}
+
+// ลำดับการเลือกคีย์:
+//   profile ของ purpose → profile 'form_gen' (ตัวตั้งต้น)
+//   → platform_ai_settings (ของเดิม เผื่อยังไม่ได้รัน migration) → env
+// ตั้งค่าตัวเดียวก็ใช้ได้ทั้งระบบ แล้วค่อยแยกเฉพาะ purpose ที่อยากประหยัด
+export async function resolveConfig(purpose: AiPurpose = "form_gen"): Promise<ProviderConfig> {
   const admin = getAdminClient();
   if (admin) {
     const { data } = await admin
+      .from("platform_ai_profiles")
+      .select(PROFILE_COLS)
+      .eq("purpose", purpose)
+      .maybeSingle();
+    if (data && data.enabled !== false && data.api_key) return rowToConfig(data);
+
+    if (purpose !== "form_gen") {
+      const { data: def } = await admin
+        .from("platform_ai_profiles")
+        .select(PROFILE_COLS)
+        .eq("purpose", "form_gen")
+        .maybeSingle();
+      if (def && def.enabled !== false && def.api_key) return rowToConfig(def);
+    }
+
+    // ของเดิม (0017) — เผื่อ deploy โค้ดก่อนรัน migration 0027
+    const { data: legacy } = await admin
       .from("platform_ai_settings")
       .select("provider, model, base_url, azure_endpoint, azure_api_version, api_key")
       .eq("id", true)
       .maybeSingle();
-    if (data && data.api_key) {
-      const provider = (data.provider || "qwen") as Provider;
-      return {
-        provider,
-        apiKey: data.api_key as string,
-        model: (data.model as string) || DEFAULTS[provider].model,
-        baseURL: (data.base_url as string) || DEFAULTS[provider].baseURL,
-        azureEndpoint: (data.azure_endpoint as string) || undefined,
-        azureApiVersion: (data.azure_api_version as string) || "2024-08-01-preview",
-      };
-    }
+    if (legacy && legacy.api_key) return rowToConfig(legacy);
   }
   return envConfig();
 }
@@ -94,12 +134,12 @@ export interface ImageInput {
 
 // ---- ตัวเรียกกลาง: ส่ง prompt (+รูป 0..n) แล้วได้ text กลับ ----
 async function complete(
-  tenantId: string | undefined,
+  purpose: AiPurpose,
   userText: string,
   image: ImageInput | ImageInput[] | null,
   maxTokens = 3000
 ): Promise<string> {
-  const cfg = await resolveConfig(tenantId);
+  const cfg = await resolveConfig(purpose);
   if (!cfg.apiKey)
     throw new Error("ระบบยังไม่ได้ตั้งค่า AI — โปรดให้ผู้ดูแลแพลตฟอร์มตั้งค่าที่เมนู Platform → AI");
 
@@ -212,9 +252,9 @@ export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เด
 ปิดท้ายด้วย signature ถ้าเหมาะสม,
 สำคัญ: เขียนทุกข้อความในฟอร์ม (title, label, tooltip, example, options) ด้วยภาษาเดียวกับคำขอของผู้ใช้ (ไทยหรืออังกฤษ) ห้ามปนภาษาอื่นเช่นจีนเด็ดขาด`;
 
-export async function generateForm(tenantId: string, prompt: string): Promise<FormSchema> {
+export async function generateForm(prompt: string): Promise<FormSchema> {
   const text = await complete(
-    tenantId,
+    "form_gen",
     "คุณคือผู้เชี่ยวชาญออกแบบฟอร์มตรวจสอบสำหรับคลังสินค้าและโรงงานผลิต จงออกแบบฟอร์มดิจิทัลจากคำขอนี้:\n\n" +
       prompt +
       "\n\n" +
@@ -224,9 +264,9 @@ export async function generateForm(tenantId: string, prompt: string): Promise<Fo
   return sanitizeSchema(extractJson(text));
 }
 
-export async function refineForm(tenantId: string, schema: FormSchema, instruction: string): Promise<FormSchema> {
+export async function refineForm(schema: FormSchema, instruction: string): Promise<FormSchema> {
   const text = await complete(
-    tenantId,
+    "form_gen",
     "นี่คือ schema ฟอร์มปัจจุบัน:\n" +
       JSON.stringify(schema) +
       "\n\nจงแก้ไขตามคำสั่งนี้: " +
@@ -266,12 +306,11 @@ export const REPLICATE_SPEC = `ตอบกลับเป็น JSON object เ
 สำคัญ: ผลลัพธ์ต้องใกล้เคียงฟอร์มเดิม 90%+ ทั้งจำนวนฟิลด์และโครงสร้าง เพื่อให้ผู้ใช้แก้ต่อได้ง่าย`;
 
 export async function formFromImage(
-  tenantId: string,
   images: ImageInput[] | { base64: string; mediaType: string }
 ): Promise<FormSchema> {
   const imgs = Array.isArray(images) ? images : [images];
   const text = await complete(
-    tenantId,
+    "form_from_image",
     "รูป/ไฟล์ที่แนบคือฟอร์มเดิมที่ใช้จริง (กระดาษ/เอกสาร/PDF) หน้าที่ของคุณคือทำ 'สำเนาดิจิทัล' ให้เหมือนของเดิมมากที่สุด " +
       (imgs.length > 1 ? `เอกสารมี ${imgs.length} หน้า (แนบมาตามลำดับ) ` : "") +
       "อ่านทุกหัวข้อและช่องกรอกทั้งหมดในทุกหน้า แล้วสร้าง schema ที่มีฟิลด์ครบและโครงสร้างใกล้เคียงของเดิม\n\n" +
@@ -287,14 +326,13 @@ export interface PhotoCheck {
   reason: string;
 }
 export async function checkPhoto(
-  tenantId: string,
   base64: string,
   mediaType: string,
   hint: string,
   label: string
 ): Promise<PhotoCheck> {
   const text = await complete(
-    tenantId,
+    "photo_check",
     `รูปที่แนบถูกถ่ายเพื่อตอบข้อ "${label}" ในฟอร์มตรวจสอบหน้างาน เงื่อนไขรูปที่ต้องการ: "${
       hint || "เห็นสิ่งที่ตรวจชัดเจน"
     }"\nจงตัดสินว่ารูปนี้ใช้ได้หรือไม่ ตอบเป็น JSON เดียว: {"ok":true/false,"reason":"เหตุผลสั้นๆ ภาษาไทย"}`,
@@ -303,4 +341,101 @@ export async function checkPhoto(
   );
   const r = extractJson(text) as Record<string, unknown>;
   return { ok: !!r.ok, reason: String(r.reason || "") };
+}
+
+// ============================================================
+// ดึงข้อมูลจากเอกสาร (doc extract)
+// ใช้กับ "เอกสารภายนอก" ที่เราคุมต้นทางไม่ได้ เช่น ใบส่งของ/COA/ใบรับรอง
+// ไม่ใช่การสแกนฟอร์มของเราที่กรอกด้วยมือย้อนเข้าระบบ
+//
+// หมายเหตุ: บาร์โค้ด/QR ไม่ผ่านทางนี้ — ถอดรหัสบนเครื่องผู้ใช้ ไม่มีค่าใช้จ่าย
+// ============================================================
+
+export {
+  parseExtractResult,
+  type DocExtractResult,
+  type ExtractKey,
+  type ExtractedValue,
+} from "./doc-extract";
+
+export async function extractDoc(
+  keys: EK[],
+  docHint: string,
+  image: ImageInput
+): Promise<import("./doc-extract").DocExtractResult> {
+  if (keys.length === 0) return { values: [], not_found: [] };
+
+  const spec = keys
+    .map((k) => {
+      const bits = [`- "${k.key}"`];
+      if (k.hint) bits.push(`(${k.hint})`);
+      if (k.type === "number") bits.push("[ตัวเลขล้วน ไม่ต้องมีหน่วยหรือคอมมา]");
+      if (k.type === "datetime") bits.push("[รูปแบบ YYYY-MM-DD หรือ YYYY-MM-DDTHH:mm]");
+      if (k.type === "select") bits.push(`[เลือกจาก: ${(k.options ?? []).join(" | ")}]`);
+      return bits.join(" ");
+    })
+    .join("\n");
+
+  const text = await complete(
+    "doc_extract",
+    `รูปที่แนบคือเอกสารจริงจากหน้างาน${docHint ? ` (${docHint})` : ""}\n` +
+      `จงอ่านเอกสารแล้วดึงเฉพาะค่าต่อไปนี้:\n${spec}\n\n` +
+      `กติกาเด็ดขาด:\n` +
+      `1. คัดค่าตามที่พิมพ์/เขียนบนเอกสารเป๊ะ ๆ ห้ามแปล ห้ามเรียบเรียง ห้ามเติมข้อมูลที่ไม่มี\n` +
+      `2. ห้ามเดา — ถ้าอ่านไม่ออกหรือไม่มีในเอกสาร ให้ใส่ชื่อค่านั้นใน not_found แทน\n` +
+      `3. confidence = ความมั่นใจจริง 0.0-1.0 (อ่านชัดเจน=สูง, เบลอ/ลายมือ/คลุมเครือ=ต่ำ)\n` +
+      `4. ห้ามคืน key อื่นนอกเหนือจากรายการข้างบน\n\n` +
+      `ตอบเป็น JSON object เดียวเท่านั้น:\n` +
+      `{"values":[{"key":"ชื่อค่า","value":"ค่าที่อ่านได้","confidence":0.95}],"not_found":["ชื่อค่าที่ไม่เจอ"]}`,
+    image,
+    2000
+  );
+
+  return parseExtract(extractJson(text), keys);
+}
+
+// ============================================================
+// ทดสอบคีย์/รุ่นของ purpose หนึ่ง ๆ (ใช้ในหน้า Platform → AI)
+// purpose ที่ต้อง vision จะแนบรูปทดสอบไปด้วย เพื่อให้จับได้ทันที
+// ถ้าเผลอตั้งรุ่นที่ไม่รองรับรูป (เช่น qwen-plus จะตอบ 403 Model access denied)
+// ============================================================
+const TEST_IMAGE_B64 =
+  "iVBORw0KGgoAAAANSUhEUgAAAEAAAABACAIAAAAlC+aJAAAAeUlEQVR4nO3PQQkAMAzAwKqpf0ETMxF7HINABFzm7H7dcEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFDWhBA1rQgBY0oAUNaEEDWtCAFjSgBQ1oQQNa0IAWNKAFj125G4EPHrsLDgAAAABJRU5ErkJggg==";
+
+export interface PingResult {
+  ok: boolean;
+  provider: Provider;
+  model: string;
+  vision: boolean;
+  reply?: string;
+  error?: string;
+}
+
+export async function pingModel(purpose: AiPurpose): Promise<PingResult> {
+  const cfg = await resolveConfig(purpose);
+  const vision = PURPOSE_NEEDS_VISION_MAP[purpose];
+  const base = { provider: cfg.provider, model: cfg.model, vision };
+
+  if (!cfg.apiKey) return { ...base, ok: false, error: "ยังไม่ได้ตั้ง API key" };
+
+  try {
+    const reply = vision
+      ? await complete(
+          purpose,
+          'รูปที่แนบเป็นสี่เหลี่ยมสีเดียว ตอบชื่อสีนั้นเป็นคำเดียว',
+          { base64: TEST_IMAGE_B64, mediaType: "image/png" },
+          50
+        )
+      : await complete(purpose, 'ตอบกลับคำเดียวว่า "พร้อม"', null, 50);
+    return { ...base, ok: true, reply: reply.trim().slice(0, 120) };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "เรียก LLM ไม่สำเร็จ";
+    return {
+      ...base,
+      ok: false,
+      error: vision && /denied|not support|invalid.*image|vision/i.test(msg)
+        ? `รุ่นนี้ไม่รองรับรูปภาพ — งานนี้ต้องใช้โมเดลแบบ vision (${msg})`
+        : msg,
+    };
+  }
 }

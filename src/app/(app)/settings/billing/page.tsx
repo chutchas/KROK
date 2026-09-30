@@ -23,7 +23,7 @@ export default async function BillingPage() {
       usage={{
         forms: snap.formsUsed,
         members: snap.membersUsed,
-        ai: snap.aiUsed,
+        ai: snap.aiByPurpose,
         period: snap.period,
       }}
       payMethods={payMethods}

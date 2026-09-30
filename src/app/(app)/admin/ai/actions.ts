@@ -1,8 +1,10 @@
 "use server";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { isAiPurpose } from "@/lib/ai-purpose";
 
 export interface SavePlatformAiInput {
+  purpose: string;
   provider: string;
   model: string;
   base_url: string;
@@ -11,7 +13,7 @@ export interface SavePlatformAiInput {
   api_key: string; // ว่าง = คงคีย์เดิม
 }
 
-// บันทึกการตั้งค่า AI ระดับแพลตฟอร์ม — เฉพาะ Platform Admin / Developer
+// บันทึกการตั้งค่า AI ของ purpose หนึ่ง ๆ (ระดับแพลตฟอร์ม) — เฉพาะ Platform Admin / Developer
 export async function savePlatformAi(input: SavePlatformAiInput): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -21,16 +23,20 @@ export async function savePlatformAi(input: SavePlatformAiInput): Promise<{ ok: 
   const admin = getAdminClient();
   if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
 
+  if (!isAiPurpose(input.purpose)) return { error: "purpose ไม่ถูกต้อง" };
+  const purpose = input.purpose;
+
   const provider = ["qwen", "openai", "azure", "anthropic"].includes(input.provider) ? input.provider : "qwen";
   const newKey = (input.api_key || "").trim();
 
-  // ต้องมีคีย์เดิมหรือคีย์ใหม่
+  // ต้องมีคีย์เดิมของ purpose นี้ หรือคีย์ใหม่
   const { data: existing } = await admin
-    .from("platform_ai_settings").select("api_key").eq("id", true).maybeSingle();
-  if (!newKey && !(existing?.api_key)) return { error: "กรุณาใส่ API key" };
+    .from("platform_ai_profiles").select("api_key").eq("purpose", purpose).maybeSingle();
+  if (!newKey && !existing?.api_key) return { error: "กรุณาใส่ API key" };
 
   const patch: Record<string, unknown> = {
-    id: true,
+    purpose,
+    enabled: true,
     provider,
     model: (input.model || "").trim(),
     base_url: input.base_url?.trim() || null,
@@ -44,7 +50,7 @@ export async function savePlatformAi(input: SavePlatformAiInput): Promise<{ ok: 
     patch.key_last4 = newKey.slice(-4);
   }
 
-  const { error } = await admin.from("platform_ai_settings").upsert(patch, { onConflict: "id" });
+  const { error } = await admin.from("platform_ai_profiles").upsert(patch, { onConflict: "purpose" });
   if (error) return { error: error.message };
 
   // audit (ระดับแพลตฟอร์ม: tenant_id = null)
@@ -52,8 +58,8 @@ export async function savePlatformAi(input: SavePlatformAiInput): Promise<{ ok: 
     tenant_id: null,
     actor_id: session.userId,
     action: "platform.ai.update",
-    target_type: "platform_ai_settings",
-    meta: { provider, model: patch.model, key_changed: !!newKey },
+    target_type: "platform_ai_profiles",
+    meta: { purpose, provider, model: patch.model, key_changed: !!newKey },
   });
 
   return { ok: true };
