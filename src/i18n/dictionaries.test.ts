@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { DICT } from "./dictionaries";
+import { th } from "./th";
+import { en } from "./en";
+const DICT = { th, en } as const;
 
 describe("dictionaries TH/EN parity", () => {
   it("ชุด key ของ th และ en ต้องตรงกัน (กันคำแปลตกหล่น)", () => {

@@ -548,12 +548,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
               />
               <span>
                 <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon icon={TabletSmartphone} className="h-4 w-4" /> เฉพาะเครื่องที่อนุมัติแล้ว
+                  <Icon icon={TabletSmartphone} className="h-4 w-4" /> {t("studio.devLock")}
                 </b>
                 <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
                   {visMode === "public"
-                    ? "ฟอร์มสาธารณะเปิดจาก QR โดยคนนอกองค์กร จึงล็อคเครื่องไม่ได้"
-                    : "เครื่องที่ยังไม่ได้รับอนุมัติจะเปิดกรอกฟอร์มนี้ไม่ได้ — อนุมัติเครื่องที่ ตั้งค่า → อุปกรณ์"}
+                    ? t("studio.devLockPublic")
+                    : t("studio.devLockHint")}
                 </span>
               </span>
             </label>
@@ -562,8 +562,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
                 <div style={{ display: "grid", gap: 6 }}>
                   {([
-                    { v: "any" as const, label: "ทุกเครื่องที่อนุมัติแล้วในองค์กร", sub: "เครื่องใหม่ที่อนุมัติทีหลังใช้ฟอร์มนี้ได้ทันที" },
-                    { v: "selected" as const, label: "เฉพาะเครื่องที่เลือกไว้", sub: "อนุมัติเครื่องแล้วยังไม่พอ ต้องผูกกับฟอร์มนี้ด้วย" },
+                    { v: "any" as const, label: t("studio.devAny"), sub: t("studio.devAnySub") },
+                    { v: "selected" as const, label: t("studio.devSelected"), sub: t("studio.devSelectedSub") },
                   ]).map((o) => (
                     <label key={o.v} style={{ display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer", padding: "8px 10px", borderRadius: 8, border: `1px solid ${deviceScope === o.v ? "var(--accent)" : "var(--line)"}`, background: deviceScope === o.v ? "var(--accent-soft)" : "var(--surface)" }}>
                       <input type="checkbox" checked={deviceScope === o.v} onChange={() => setDeviceScope(o.v)} style={{ width: 17, height: 17, marginTop: 2, accentColor: "var(--accent)" }} />

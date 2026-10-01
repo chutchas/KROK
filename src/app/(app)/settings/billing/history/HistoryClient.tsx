@@ -18,9 +18,9 @@ export interface InvoiceRow {
   issuedAt: string;
 }
 
-function fmt(ts: string) {
+function fmt(ts: string, lang: string) {
   try {
-    return new Date(ts).toLocaleString("th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }
@@ -58,7 +58,7 @@ export default function HistoryClient({ events, invoices }: { events: PlanEvent[
                     <b style={{ fontSize: ".9rem" }}>{iv.number}</b>{" "}
                     {iv.status === "paid" ? <Pill kind="pass">{stLabel(iv.status)}</Pill> : iv.status === "failed" || iv.status === "void" ? <Pill kind="fail">{stLabel(iv.status)}</Pill> : <Pill kind="na">{stLabel(iv.status)}</Pill>}
                     <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>
-                      {lang === "en" ? p.nameEn : p.name} · {iv.period} · {fmt(iv.issuedAt)}
+                      {lang === "en" ? p.nameEn : p.name} · {iv.period} · {fmt(iv.issuedAt, lang)}
                     </small>
                   </div>
                   <span className="tabnum" style={{ fontWeight: 600 }}>฿{iv.amount.toLocaleString()}</span>
@@ -84,7 +84,7 @@ export default function HistoryClient({ events, invoices }: { events: PlanEvent[
                 <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderBottom: "1px solid var(--line)" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <b style={{ fontSize: ".9rem" }}>{t("bill.histChanged")} {lang === "en" ? p.nameEn : p.name}</b>
-                    <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{fmt(e.at)}</small>
+                    <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{fmt(e.at, lang)}</small>
                   </div>
                 </div>
               );

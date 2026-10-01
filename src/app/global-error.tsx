@@ -1,8 +1,11 @@
 "use client";
 // Global error boundary — จับ error ที่หลุดจาก root layout เอง (ต้อง render html/body ของตัวเอง)
 import { useEffect } from "react";
+// อยู่นอก root layout → ไม่มี LanguageProvider: useT คืนค่า default (ภาษาไทย) ไม่ throw
+import { useT } from "@/i18n/LanguageProvider";
 
 export default function GlobalError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const { t, lang } = useT();
   useEffect(() => {
     console.error("[krok] global error boundary:", error);
   }, [error]);
@@ -31,11 +34,15 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
             }}
           >
             <div style={{ fontSize: "2rem", marginBottom: 12 }} aria-hidden>⚠️</div>
-            <h2 style={{ margin: "0 0 6px", fontSize: "1.2rem" }}>เกิดข้อผิดพลาด</h2>
+            <h2 style={{ margin: "0 0 6px", fontSize: "1.2rem" }}>{t("err.title")}</h2>
             <p style={{ margin: "0 0 20px", color: "#666", fontSize: ".9rem", lineHeight: 1.6 }}>
-              ระบบทำงานผิดพลาด ลองใหม่อีกครั้ง
-              <br />
-              <span style={{ color: "#999", fontSize: ".82rem" }}>Something went wrong.</span>
+              {t("err.globalBody")}
+              {lang !== "en" && (
+                <>
+                  <br />
+                  <span style={{ color: "#999", fontSize: ".82rem" }}>Something went wrong.</span>
+                </>
+              )}
             </p>
             <button
               onClick={reset}
@@ -50,7 +57,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
                 background: "#2563eb",
               }}
             >
-              ลองใหม่
+              {t("err.retry")}
             </button>
             {error?.digest && (
               <p style={{ margin: "16px 0 0", color: "#999", fontSize: ".72rem", fontFamily: "monospace" }}>

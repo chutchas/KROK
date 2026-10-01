@@ -10,6 +10,7 @@ import {
   isVideo,
   type Attachment,
 } from "@/lib/attachments";
+import { useT } from "@/i18n/LanguageProvider";
 
 function iconFor(a: Attachment) {
   if (a.kind === "link") return Link2;
@@ -32,6 +33,7 @@ export default function AttachmentChips({
   variant?: "form" | "field";
   paper?: boolean;
 }) {
+  const { t } = useT();
   const [open, setOpen] = useState<Attachment | null>(null);
   if (!items.length) return null;
 
@@ -76,7 +78,7 @@ export default function AttachmentChips({
     >
       {variant === "form" && (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".8rem", color: paper ? "#555" : "var(--ink-2)", fontWeight: 600, marginRight: 2 }}>
-          <Icon icon={Paperclip} className="h-3.5 w-3.5" /> เอกสารที่เกี่ยวข้อง
+          <Icon icon={Paperclip} className="h-3.5 w-3.5" /> {t("att.headForm")}
         </span>
       )}
       {items.map(chip)}
@@ -86,6 +88,7 @@ export default function AttachmentChips({
 }
 
 function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => void }) {
+  const { t } = useT();
   const href = attachmentHref(item);
 
   useEffect(() => {
@@ -114,9 +117,9 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid var(--line)" }}>
           <Icon icon={iconFor(item)} className="h-4 w-4" />
           <b style={{ flex: 1, fontSize: ".92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-anuphan)" }}>{item.name}</b>
-          <a href={href} target="_blank" rel="noopener noreferrer" style={btn}><Icon icon={ExternalLink} className="h-3.5 w-3.5" /> แท็บใหม่</a>
-          <a href={`${href}?download=1`} style={btn}><Icon icon={Download} className="h-3.5 w-3.5" /> ดาวน์โหลด</a>
-          <button onClick={onClose} style={{ ...btn, padding: "6px 8px" }} aria-label="ปิด"><Icon icon={X} className="h-4 w-4" /></button>
+          <a href={href} target="_blank" rel="noopener noreferrer" style={btn}><Icon icon={ExternalLink} className="h-3.5 w-3.5" /> {t("att.newTab")}</a>
+          <a href={`${href}?download=1`} style={btn}><Icon icon={Download} className="h-3.5 w-3.5" /> {t("att.download")}</a>
+          <button onClick={onClose} style={{ ...btn, padding: "6px 8px" }} aria-label={t("common.close")}><Icon icon={X} className="h-4 w-4" /></button>
         </div>
 
         <div style={{ flex: 1, minHeight: 0, background: "var(--code-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -128,9 +131,9 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
             <video src={href} controls style={{ maxWidth: "100%", maxHeight: "100%" }} />
           ) : (
             <div style={{ textAlign: "center", color: "var(--ink-2)", padding: 24 }}>
-              <p style={{ marginBottom: 12 }}>ไฟล์ชนิดนี้เปิดดูในหน้านี้ไม่ได้</p>
+              <p style={{ marginBottom: 12 }}>{t("att.noPreview")}</p>
               <a href={`${href}?download=1`} style={{ ...btn, borderColor: "var(--accent)", color: "var(--accent)" }}>
-                <Icon icon={Download} className="h-4 w-4" /> ดาวน์โหลดเพื่อเปิด
+                <Icon icon={Download} className="h-4 w-4" /> {t("att.downloadToOpen")}
               </a>
             </div>
           )}

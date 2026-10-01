@@ -25,7 +25,7 @@ export default function FormPaperFill({
   userName?: string;
   renderField: (f: FormField) => React.ReactNode;
 }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const layout = useMemo(() => resolveLayout(schema, blocks), [schema, blocks]);
   // ความสูงจริงของแต่ละบล็อก → ดันบล็อกด้านล่างลงเมื่อเนื้อหางอกเกินกล่องที่ออกแบบ (ไม่ให้ทับกัน)
@@ -35,7 +35,7 @@ export default function FormPaperFill({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);
   const [fitScale, setFitScale] = useState(0.5);
-  const today = new Date().toLocaleDateString("th-TH", { year: "numeric", month: "short", day: "numeric" });
+  const today = new Date().toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { year: "numeric", month: "short", day: "numeric" });
 
   // ปรับให้พอดีความกว้างจอครั้งแรก + เมื่อ resize (ถ้าผู้ใช้ยังไม่ได้ซูมเอง)
   const userZoomed = useRef(false);

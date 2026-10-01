@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useMemo, useRef, useState } from "react";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
 import { CANVAS_W, GRID, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, fieldBoxHeight } from "@/lib/paper-layout";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
@@ -20,8 +20,9 @@ const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
 // ตัวอย่างช่องบนกระดาษ — ใช้ชิ้นส่วนเดียวกับหน้ากรอก (โหมดกระดาษ) ในสถานะ disabled
 // จึงเห็นขนาด/ระยะตรงกับตอนกรอกจริง
 function FieldPreview({ f }: { f: FormField }) {
-  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{FIELD_TYPE_LABELS[f.type]}{f.unit ? ` (${f.unit})` : ""}</span>;
-  const label = <PaperLabel label={f.label || "(ไม่มีชื่อ)"} required={f.required} right={badge} />;
+  const { t, tt } = useT();
+  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{t(`ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}</span>;
+  const label = <PaperLabel label={f.label || t("fw.noName")} required={f.required} right={badge} />;
   const inputLike = (text = "") => <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#aaa" }}>{text}</div>;
   if (f.type === "table") {
     const rows = Array.from({ length: Math.min(Math.max(f.min_rows ?? 1, 1), 6) }, () => ({}));
@@ -31,10 +32,10 @@ function FieldPreview({ f }: { f: FormField }) {
   if (f.type === "pass_fail") body = <PaperPassFail disabled />;
   else if (f.type === "photo") body = <PaperPhoto disabled />;
   else if (f.type === "signature") body = <PaperSignature disabled />;
-  else if ((f.type === "select" || f.type === "checkbox") && f.options_source) body = inputLike("▾ ตัวเลือกจากข้อมูลอ้างอิง");
+  else if ((f.type === "select" || f.type === "checkbox") && f.options_source) body = inputLike(t("fw.dsOptionsPh"));
   else if (f.type === "select" || f.type === "checkbox") body = <PaperChoices name={`p_${f.id}`} options={f.options || []} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? [] : ""} disabled />;
-  else if (f.type === "datetime") body = inputLike("วว/ดด/ปปปป --:--");
-  else body = inputLike(f.example ? `เช่น ${f.example}` : "");
+  else if (f.type === "datetime") body = inputLike(t("fw.datePh"));
+  else body = inputLike(f.example ? tt("fw.examplePh", { ex: f.example }) : "");
   return <>{label}{body}</>;
 }
 
@@ -291,7 +292,7 @@ export default function FormPaperEditor({
                 data-krok-keep=""
                 onClick={() => select(b.key)}
                 onPointerDown={(e) => onPointerDown(e, b.key, "move")}
-                title={!isStep && overflows(b) ? "เนื้อหาเกินกล่อง — ช่องด้านล่างจะถูกดันลง (ขยายความกว้างเพื่อให้พอดี)" : undefined}
+                title={!isStep && overflows(b) ? t("fw.overflowTitle") : undefined}
                 style={{
                   ...(isStep ? paperStepStyle : paperBoxStyle),
                   left: box.x,

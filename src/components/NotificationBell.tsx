@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2, FilePlus2, Inbox, CornerUpLeft, CheckCheck } from "lucide-react";
 import Icon, { type IconType } from "@/components/Icon";
+import { useT } from "@/i18n/LanguageProvider";
 
 interface Notif {
   id: string;
@@ -15,9 +16,9 @@ interface Notif {
   created_at: string;
 }
 
-function fmt(ts: string) {
+function fmt(ts: string, lang: string) {
   try {
-    return new Date(ts).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }
@@ -26,6 +27,7 @@ const ICON: Record<string, IconType> = { approval_request: Clock, fail_alert: Al
 
 export default function NotificationBell({ userId }: { userId: string }) {
   const router = useRouter();
+  const { t, lang } = useT();
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -87,7 +89,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
     <div ref={ref} style={{ position: "relative" }}>
       <button
         onClick={() => setOpen((o) => !o)}
-        aria-label="การแจ้งเตือน"
+        aria-label={t("bell.title")}
         className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border text-rose-400 shadow-sm"
         style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
       >
@@ -102,15 +104,15 @@ export default function NotificationBell({ userId }: { userId: string }) {
       {open && (
         <div style={{ position: "absolute", right: 0, top: 42, width: 320, maxWidth: "85vw", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow)", zIndex: 40, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)" }}>
-            <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".95rem" }}>การแจ้งเตือน</b>
+            <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".95rem" }}>{t("bell.title")}</b>
             {unread > 0 && (
               <button onClick={markAllRead} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: ".8rem", fontFamily: "inherit" }}>
-                อ่านทั้งหมด
+                {t("bell.markAllRead")}
               </button>
             )}
           </div>
           <div style={{ maxHeight: 380, overflowY: "auto" }}>
-            {items.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--ink-3)", fontSize: ".85rem" }}>ยังไม่มีการแจ้งเตือน</div>}
+            {items.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--ink-3)", fontSize: ".85rem" }}>{t("bell.empty")}</div>}
             {items.map((n) => (
               <button
                 key={n.id}
@@ -121,7 +123,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
                 <span style={{ flex: 1, minWidth: 0 }}>
                   <span style={{ display: "block", fontWeight: 600, fontSize: ".86rem", color: "var(--ink)" }}>{n.title}</span>
                   <span style={{ display: "block", fontSize: ".8rem", color: "var(--ink-2)" }}>{n.body}</span>
-                  <span style={{ display: "block", fontSize: ".72rem", color: "var(--ink-3)", marginTop: 2 }}>{fmt(n.created_at)}</span>
+                  <span style={{ display: "block", fontSize: ".72rem", color: "var(--ink-3)", marginTop: 2 }}>{fmt(n.created_at, lang)}</span>
                 </span>
               </button>
             ))}

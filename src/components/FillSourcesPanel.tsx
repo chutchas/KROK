@@ -12,6 +12,7 @@ import {
   type FillSource,
   type FormStep,
 } from "@/lib/form-schema";
+import { useT } from "@/i18n/LanguageProvider";
 
 let sc = 0;
 const newSrcId = (p: string) => `${p}_${Date.now().toString(36)}${(sc++).toString(36)}`;
@@ -42,6 +43,7 @@ export default function FillSourcesPanel({
   step: FormStep;
   onChange: (sources: FillSource[]) => void;
 }) {
+  const { t } = useT();
   const sources = step.fill_sources ?? [];
   const eligible = step.fields.filter((f) => FILL_TARGET_TYPES.includes(f.type));
   const docCount = sources.filter((s) => s.kind === "doc").length;
@@ -73,10 +75,10 @@ export default function FillSourcesPanel({
     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
         <Icon icon={ScanLine} className="h-4 w-4 text-[var(--accent)]" />
-        <b style={{ fontSize: ".9rem" }}>แหล่งเติมข้อมูล</b>
+        <b style={{ fontSize: ".9rem" }}>{t("fs.panelTitle")}</b>
       </div>
       <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "0 0 10px" }}>
-        จัดฟิลด์ที่มาจากรหัส/เอกสารใบเดียวกันไว้ด้วยกัน — หน้างานสแกนหรือถ่ายครั้งเดียว เติมได้ทุกฟิลด์ในกลุ่ม
+        {t("fs.panelSub")}
       </p>
 
       <div style={{ display: "grid", gap: 10 }}>
@@ -98,15 +100,15 @@ export default function FillSourcesPanel({
           disabled={scanCount >= MAX_SCAN_SOURCES_PER_STEP || eligible.every((f) => takenBy.has(f.id))}
           onClick={() => add("scan")}
         >
-          <Icon icon={Plus} className="h-3.5 w-3.5" /> สแกนบาร์โค้ด/QR
-          <span style={{ color: "var(--pass, #10b981)", fontWeight: 700 }}>ฟรี</span>
+          <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fs.addScan")}
+          <span style={{ color: "var(--pass, #10b981)", fontWeight: 700 }}>{t("fs.free")}</span>
         </button>
         <button
           style={smallBtn}
           disabled={docCount >= MAX_DOC_SOURCES_PER_STEP || eligible.every((f) => takenBy.has(f.id))}
           onClick={() => add("doc")}
         >
-          <Icon icon={Plus} className="h-3.5 w-3.5" /> ถ่ายเอกสาร (AI อ่านให้)
+          <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fs.addDoc")}
         </button>
       </div>
 
@@ -114,7 +116,7 @@ export default function FillSourcesPanel({
         <p style={{ color: "var(--ink-3)", fontSize: ".76rem", margin: "8px 0 0", display: "flex", alignItems: "flex-start", gap: 5 }}>
           <span style={{ marginTop: 1, display: "inline-flex" }}><Icon icon={Info} className="h-3.5 w-3.5 shrink-0" /></span>
           <span>
-            ถ้าข้อมูลนั้นมีบาร์โค้ดหรือ QR ให้สแกนได้ ใช้ “สแกน” ดีกว่า — ฟรี แม่นกว่า และใช้ได้ตอนออฟไลน์
+            {t("fs.preferScan")}
           </span>
         </p>
       )}
@@ -135,6 +137,7 @@ function SourceCard({
   onPatch: (p: Partial<FillSource>) => void;
   onRemove: () => void;
 }) {
+  const { t } = useT();
   const isScan = src.kind === "scan";
   const parse: FillParse = src.parse ?? "raw";
   // scan แบบ raw ได้ค่าเดียว → ผูกได้ฟิลด์เดียว
@@ -157,17 +160,17 @@ function SourceCard({
           }}
         >
           <Icon icon={isScan ? ScanLine : FileText} className="h-3.5 w-3.5" />
-          {isScan ? "สแกน · ฟรี" : "เอกสาร · 1 เครดิต/ครั้ง"}
+          {isScan ? t("fs.badgeScan") : t("fs.badgeDoc")}
         </span>
         <Field
           value={src.label}
           onChange={(e) => onPatch({ label: e.target.value })}
-          placeholder={isScan ? "เช่น สแกน QR พาเลท" : "เช่น ถ่ายใบส่งของ"}
+          placeholder={isScan ? t("fs.labelPhScan") : t("fs.labelPhDoc")}
           style={{ flex: 1, minWidth: 150 }}
         />
         <button
           onClick={onRemove}
-          title="ลบแหล่งนี้"
+          title={t("fs.removeSource")}
           style={{ width: 30, height: 30, borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--fail)", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}
         >
           <Icon icon={Trash2} className="h-4 w-4" />
@@ -185,9 +188,9 @@ function SourceCard({
               onPatch({ parse: next, map: next === "raw" ? src.map.slice(0, 1) : src.map });
             }}
           >
-            <option value="raw">ค่าที่สแกนได้ = ค่าในฟิลด์ (1 ฟิลด์)</option>
-            <option value="json">QR เป็น JSON — แยกตามชื่อ property</option>
-            <option value="regex">มีรูปแบบคงที่ — แยกด้วย regex</option>
+            <option value="raw">{t("fs.parseRaw")}</option>
+            <option value="json">{t("fs.parseJson")}</option>
+            <option value="regex">{t("fs.parseRegex")}</option>
           </select>
           {parse === "regex" && (
             <Field
@@ -203,7 +206,7 @@ function SourceCard({
           <Field
             value={src.doc_hint || ""}
             onChange={(e) => onPatch({ doc_hint: e.target.value })}
-            placeholder="อธิบายเอกสารให้ AI เช่น ใบส่งของของซัพพลายเออร์ มีหัวตารางเป็นภาษาไทย"
+            placeholder={t("fs.docHintPh")}
           />
           <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".82rem", color: "var(--ink-2)", cursor: "pointer" }}>
             <input
@@ -212,7 +215,7 @@ function SourceCard({
               onChange={(e) => onPatch({ keep_photo: e.target.checked })}
               style={{ width: 16, height: 16, accentColor: "var(--accent)" }}
             />
-            เก็บรูปต้นฉบับไว้เป็นหลักฐานกับใบงาน
+            {t("fs.keepPhoto")}
           </label>
         </div>
       )}
@@ -234,7 +237,7 @@ function SourceCard({
                   <Field
                     value={m.key}
                     onChange={(e) => patchMap(i, { key: e.target.value })}
-                    placeholder={isScan ? (parse === "json" ? "ชื่อ property" : "ชื่อ group") : "ชื่อค่าในเอกสาร"}
+                    placeholder={isScan ? (parse === "json" ? t("fs.keyPhProperty") : t("fs.keyPhGroup")) : t("fs.keyPhDoc")}
                     style={{ flex: "1 1 130px", minWidth: 110 }}
                   />
                 </>
@@ -243,7 +246,7 @@ function SourceCard({
                 <Field
                   value={m.hint || ""}
                   onChange={(e) => patchMap(i, { hint: e.target.value })}
-                  placeholder="คำใบ้ (ไม่บังคับ)"
+                  placeholder={t("fs.hintPh")}
                   style={{ flex: "1 1 130px", minWidth: 110 }}
                 />
               )}
@@ -267,7 +270,7 @@ function SourceCard({
               disabled={!free}
               onClick={() => free && onPatch({ map: [...src.map, { field_id: free.id, key: free.label || free.id }] })}
             >
-              <Icon icon={Plus} className="h-3.5 w-3.5" /> เพิ่มฟิลด์ในกลุ่มนี้
+              <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fs.addFieldToGroup")}
             </button>
           );
         })()}
@@ -276,11 +279,11 @@ function SourceCard({
       <p style={{ color: "var(--ink-3)", fontSize: ".74rem", margin: "9px 0 0", display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
         {isScan ? (
           <>
-            <Icon icon={WifiOff} className="h-3.5 w-3.5" /> ถอดรหัสบนเครื่อง ใช้ได้แม้ไม่มีเน็ต · ไม่หักเครดิต
+            <Icon icon={WifiOff} className="h-3.5 w-3.5" /> {t("fs.scanFootnote")}
           </>
         ) : (
           <>
-            <Icon icon={Coins} className="h-3.5 w-3.5" /> หัก 1 เครดิตต่อการถ่าย 1 ครั้ง (ไม่ว่าจะเติมกี่ฟิลด์) · ต้องมีเน็ต · คนหน้างานต้องยืนยันค่าก่อนเสมอ
+            <Icon icon={Coins} className="h-3.5 w-3.5" /> {t("fs.docFootnote")}
           </>
         )}
       </p>

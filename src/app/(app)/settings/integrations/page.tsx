@@ -2,6 +2,7 @@ import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySettings } from "./IntegrationsClient";
 import type { IntakeConfig } from "./IntakePanel";
+import { T } from "@/i18n/T";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   const { tab } = await searchParams;
   const session = await enforceMenu("integrations");
   if (!canManage(session.role))
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin/designer เท่านั้น</div>;
+    return <div style={{ color: "var(--ink-2)" }}><T k="intg.manageOnly" /></div>;
 
   const supabase = await createClient();
   const [{ data: whData }, { data: formData }, { data: nData }] = await Promise.all([

@@ -36,8 +36,8 @@ export async function previewReport(
   // กรองตาม workspace ที่เปิดอยู่ — RLS อย่างเดียวจะคืน submission ของทุก workspace ที่ผู้ใช้เป็นสมาชิก
   let cq = supabase.from("submissions").select("id", { count: "exact", head: true }).eq("tenant_id", session.tenantId);
   if (f.formId && f.formId !== "all") cq = cq.eq("form_id", f.formId);
-  if (f.from) cq = cq.gte("submitted_at", f.from + "T00:00:00");
-  if (f.to) cq = cq.lte("submitted_at", f.to + "T23:59:59");
+  if (f.from) cq = cq.gte("submitted_at", f.from + "T00:00:00+07:00");
+  if (f.to) cq = cq.lte("submitted_at", f.to + "T23:59:59.999+07:00");
   if (f.result === "pass" || f.result === "fail") cq = cq.eq("result", f.result);
   if (f.approval && f.approval !== "all") cq = cq.eq("approval_status", f.approval);
   const { count } = await cq;
@@ -50,21 +50,18 @@ export async function previewReport(
     .order("submitted_at", { ascending: false })
     .limit(PREVIEW_LIMIT);
   if (f.formId && f.formId !== "all") q = q.eq("form_id", f.formId);
-  if (f.from) q = q.gte("submitted_at", f.from + "T00:00:00");
-  if (f.to) q = q.lte("submitted_at", f.to + "T23:59:59");
+  if (f.from) q = q.gte("submitted_at", f.from + "T00:00:00+07:00");
+  if (f.to) q = q.lte("submitted_at", f.to + "T23:59:59.999+07:00");
   if (f.result === "pass" || f.result === "fail") q = q.eq("result", f.result);
   if (f.approval && f.approval !== "all") q = q.eq("approval_status", f.approval);
   const { data, error } = await q;
   if (error) return { error: error.message };
 
   const rows: PreviewRow[] = ((data || []) as Record<string, unknown>[]).map((s) => {
-    let when = "";
-    try {
-      when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
-    } catch { /* ignore */ }
     return {
       id: s.id as string,
-      when,
+      // ส่ง ISO ไป ให้หน้าจอจัดรูปแบบตามภาษาที่เลือก (เวลาไทย)
+      when: (s.submitted_at as string) || "",
       form: (s.form_title as string) || "-",
       icon: (s.form_icon as string) || "📋",
       user: (s.user_name as string) || "-",

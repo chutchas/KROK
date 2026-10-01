@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import { Camera, Check, FileText, ScanLine, Sparkles, WifiOff, X } from "lucide-react";
 import LiveScanner from "@/components/LiveScanner";
 import type { FillSource, FormStep } from "@/lib/form-schema";
+import { useT } from "@/i18n/LanguageProvider";
 
 export type FillSrcTag = "scan" | "ai" | "ai_edited";
 
@@ -52,6 +53,7 @@ export default function FillSourceBar({
   shrinkImage: (f: File) => Promise<string>;
   dataUrlToBlob: (d: string) => Blob;
 }) {
+  const { t, tt } = useT();
   const sources = step.fill_sources ?? [];
   // โหมดสาธารณะไม่มี doc extract (endpoint ต้องล็อกอิน + ใช้เครดิตของ workspace)
   const visible = publicMode ? sources.filter((s) => s.kind === "scan") : sources;
@@ -81,7 +83,7 @@ export default function FillSourceBar({
         obj = JSON.parse(code);
         if (!obj || typeof obj !== "object") throw new Error();
       } catch {
-        setMsg({ t: "โค้ดนี้ไม่ใช่ JSON — กรอกด้วยมือได้ตามปกติ", err: true });
+        setMsg({ t: t("fs.notJson"), err: true });
         return;
       }
       picked = src.map
@@ -95,7 +97,7 @@ export default function FillSourceBar({
         groups = undefined;
       }
       if (!groups) {
-        setMsg({ t: "โค้ดที่สแกนได้ไม่ตรงรูปแบบที่ตั้งไว้ — กรอกด้วยมือได้ตามปกติ", err: true });
+        setMsg({ t: t("fs.patternMismatch"), err: true });
         return;
       }
       const g = groups;
@@ -105,33 +107,33 @@ export default function FillSourceBar({
     }
 
     if (picked.length === 0) {
-      setMsg({ t: "อ่านโค้ดได้ แต่ไม่พบค่าที่ต้องการในนั้น", err: true });
+      setMsg({ t: t("fs.noValuesInCode"), err: true });
       return;
     }
     onApply(picked);
-    setMsg({ t: `เติมแล้ว ${picked.length} ช่อง จาก “${src.label}”` });
+    setMsg({ t: tt("fs.filled", { n: picked.length, src: src.label }) });
   }
 
   async function scanFromImage(src: FillSource, file: File) {
     setBusy(src.id);
-    setMsg({ t: "กำลังอ่านโค้ด..." });
+    setMsg({ t: t("fs.readingCode") });
     try {
       const BD = (window as unknown as {
         BarcodeDetector?: new () => { detect: (b: ImageBitmap) => Promise<{ rawValue: string }[]> };
       }).BarcodeDetector;
       if (!BD) {
-        setMsg({ t: "เบราว์เซอร์นี้อ่านโค้ดจากรูปไม่ได้ — ใช้ปุ่มสแกนสดแทน", err: true });
+        setMsg({ t: t("fs.noBarcodeDetector"), err: true });
         return;
       }
       const codes = await new BD().detect(await createImageBitmap(file));
       const code = codes[0]?.rawValue;
       if (!code) {
-        setMsg({ t: "ไม่พบบาร์โค้ด/QR ในรูปนี้", err: true });
+        setMsg({ t: t("fs.noCodeInImage"), err: true });
         return;
       }
       applyScan(src, code);
     } catch {
-      setMsg({ t: "อ่านโค้ดไม่สำเร็จ", err: true });
+      setMsg({ t: t("fs.readCodeFail"), err: true });
     } finally {
       setBusy(null);
     }
@@ -140,7 +142,7 @@ export default function FillSourceBar({
   // ---------- doc ----------
   async function runExtract(src: FillSource, file: File) {
     setBusy(src.id);
-    setMsg({ t: "AI กำลังอ่านเอกสาร..." });
+    setMsg({ t: t("fs.aiReading") });
     try {
       const photo = await shrinkImage(file);
       const keys = src.map.map((m) => {
@@ -161,7 +163,7 @@ export default function FillSourceBar({
       const res = await fetch("/api/ai/extract-doc", { method: "POST", body: fd });
       const j = await res.json();
       if (!res.ok) {
-        setMsg({ t: j.error || "อ่านเอกสารไม่สำเร็จ — กรอกด้วยมือได้ตามปกติ", err: true });
+        setMsg({ t: j.error || t("fs.readDocFail"), err: true });
         return;
       }
 
@@ -187,7 +189,7 @@ export default function FillSourceBar({
         .filter((r): r is Row => r !== null);
 
       if (rows.length === 0) {
-        setMsg({ t: "อ่านเอกสารแล้วแต่ไม่พบค่าที่ต้องการ — กรอกด้วยมือได้ตามปกติ", err: true });
+        setMsg({ t: t("fs.noValuesInDoc"), err: true });
         onExtract({ source_id: src.id, dataUrl: src.keep_photo !== false ? photo : undefined, raw, accepted: [] });
         return;
       }
@@ -195,7 +197,7 @@ export default function FillSourceBar({
       setMsg(null);
       setReview({ src, rows, photo, raw });
     } catch {
-      setMsg({ t: "อ่านเอกสารไม่สำเร็จ — กรอกด้วยมือได้ตามปกติ", err: true });
+      setMsg({ t: t("fs.readDocFail"), err: true });
     } finally {
       setBusy(null);
     }
@@ -217,7 +219,7 @@ export default function FillSourceBar({
       raw: review.raw,
       accepted: taken.map((r) => ({ key: r.key, field_id: r.field_id, value: r.value, edited: r.value !== r.original })),
     });
-    setMsg({ t: taken.length ? `เติมแล้ว ${taken.length} ช่อง จาก “${review.src.label}”` : "ไม่ได้เติมช่องใด" });
+    setMsg({ t: taken.length ? tt("fs.filled", { n: taken.length, src: review.src.label }) : t("fs.nothingFilled") });
     setReview(null);
   }
 
@@ -239,13 +241,13 @@ export default function FillSourceBar({
                 }}
               >
                 <Icon icon={isScan ? ScanLine : FileText} className="h-4 w-4" />
-                {busy === src.id ? "กำลังอ่าน..." : src.label}
+                {busy === src.id ? t("fs.reading") : src.label}
                 {!isScan && <Icon icon={Sparkles} className="h-3.5 w-3.5" />}
               </Button>
               {isScan && (
                 <Button
                   disabled={disabled}
-                  title="เลือกรูปที่มีบาร์โค้ด/QR"
+                  title={t("fs.pickCodeImage")}
                   onClick={() => { setMsg(null); setDocFor(src); fileRef.current?.click(); }}
                 >
                   <Icon icon={Camera} className="h-4 w-4" />
@@ -276,7 +278,7 @@ export default function FillSourceBar({
       {!online && visible.some((s) => s.kind === "doc") && (
         <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", alignItems: "center", gap: 5 }}>
           <Icon icon={WifiOff} className="h-3.5 w-3.5" />
-          ออฟไลน์อยู่ — ปุ่มอ่านเอกสารใช้ไม่ได้ กรอกช่องเหล่านี้ด้วยมือได้ตามปกติ (การสแกนโค้ดยังใช้ได้)
+          {t("fs.offline")}
         </div>
       )}
 
@@ -297,7 +299,7 @@ export default function FillSourceBar({
         <ReviewModal
           review={review}
           onChange={(rows) => setReview({ ...review, rows })}
-          onCancel={() => { setReview(null); setMsg({ t: "ยกเลิกแล้ว — ไม่ได้เติมช่องใด" }); }}
+          onCancel={() => { setReview(null); setMsg({ t: t("fs.cancelled") }); }}
           onConfirm={confirmReview}
         />
       )}
@@ -316,6 +318,7 @@ function ReviewModal({
   onCancel: () => void;
   onConfirm: () => void;
 }) {
+  const { t, tt } = useT();
   const { rows, photo, src } = review;
   const takeCount = rows.filter((r) => r.take).length;
 
@@ -333,15 +336,15 @@ function ReviewModal({
         style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 18, width: "min(560px, 100%)", maxHeight: "88vh", overflowY: "auto", boxShadow: "var(--shadow)" }}
       >
         <h3 style={{ fontSize: "1.05rem", margin: "0 0 3px", display: "flex", alignItems: "center", gap: 7 }}>
-          <Icon icon={Sparkles} className="h-4 w-4 text-[var(--accent)]" /> ตรวจค่าที่อ่านได้
+          <Icon icon={Sparkles} className="h-4 w-4 text-[var(--accent)]" /> {t("fs.reviewTitle")}
         </h3>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "0 0 12px" }}>
-          จาก “{src.label}” — คุณถือเอกสารจริงอยู่ ตรวจให้ตรงก่อนกดเติม แก้ตรงนี้ได้เลย
+          {tt("fs.reviewSub", { src: src.label })}
         </p>
 
         <img
           src={photo}
-          alt="เอกสารที่ถ่าย"
+          alt={t("fs.photoAlt")}
           style={{ width: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 9, border: "1px solid var(--line)", background: "var(--code-bg)", marginBottom: 12 }}
         />
 
@@ -355,7 +358,7 @@ function ReviewModal({
                   <b style={{ fontSize: ".9rem", flex: 1 }}>{r.label}</b>
                   {low && (
                     <span style={{ fontSize: ".7rem", fontWeight: 700, color: "var(--amber, #f59e0b)", whiteSpace: "nowrap" }}>
-                      ไม่มั่นใจ {Math.round(r.confidence * 100)}%
+                      {tt("fs.lowConfidence", { n: Math.round(r.confidence * 100) })}
                     </span>
                   )}
                 </label>
@@ -366,7 +369,7 @@ function ReviewModal({
                 />
                 {r.occupied && (
                   <div style={{ fontSize: ".74rem", color: "var(--amber, #f59e0b)", marginTop: 5 }}>
-                    ช่องนี้กรอกไว้แล้ว — ติ๊กเพื่อเขียนทับ
+                    {t("fs.occupied")}
                   </div>
                 )}
               </div>
@@ -375,9 +378,9 @@ function ReviewModal({
         </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
-          <Button onClick={onCancel} style={{ flex: 1 }}>ยกเลิก</Button>
+          <Button onClick={onCancel} style={{ flex: 1 }}>{t("common.cancel")}</Button>
           <Button variant="primary" onClick={onConfirm} disabled={takeCount === 0} style={{ flex: 2 }}>
-            <Icon icon={Check} className="h-4 w-4" /> เติม {takeCount} ช่อง
+            <Icon icon={Check} className="h-4 w-4" /> {tt("fs.fillN", { n: takeCount })}
           </Button>
         </div>
       </div>

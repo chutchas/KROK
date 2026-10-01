@@ -1,9 +1,11 @@
 "use client";
 // Error boundary ระดับ (app) — จับ error ที่หลุดจาก page/loader ในโซนล็อกอิน
-// self-contained (ไม่พึ่ง context) เผื่อ provider เองก็ error
+// self-contained (ไม่พึ่ง context) เผื่อ provider เองก็ error — useT ไม่มี provider ก็ไม่ throw (ได้ภาษาไทย)
 import { useEffect } from "react";
+import { useT } from "@/i18n/LanguageProvider";
 
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
+  const { t, lang } = useT();
   useEffect(() => {
     // ส่งเข้า console ให้ตามรอยได้ (Vercel logs)
     console.error("[krok] app error boundary:", error);
@@ -48,12 +50,16 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
           ⚠️
         </div>
         <h2 style={{ margin: "0 0 6px", fontSize: "1.2rem", fontFamily: "var(--font-anuphan)" }}>
-          เกิดข้อผิดพลาด
+          {t("err.title")}
         </h2>
         <p style={{ margin: "0 0 20px", color: "var(--ink-2)", fontSize: ".9rem", lineHeight: 1.6 }}>
-          ระบบทำงานผิดพลาดชั่วคราว ลองใหม่อีกครั้ง — ถ้ายังเป็นอยู่ ลองรีเฟรชหน้า
-          <br />
-          <span style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>Something went wrong. Please try again.</span>
+          {t("err.appBody")}
+          {lang !== "en" && (
+            <>
+              <br />
+              <span style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>Something went wrong. Please try again.</span>
+            </>
+          )}
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
           <button
@@ -70,7 +76,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
               background: "var(--brand-gradient-50, var(--accent))",
             }}
           >
-            ลองใหม่
+            {t("err.retry")}
           </button>
           <a
             href="/dashboard"
@@ -85,7 +91,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
               background: "var(--surface)",
             }}
           >
-            กลับหน้าหลัก
+            {t("err.home")}
           </a>
         </div>
         {error?.digest && (

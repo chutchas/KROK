@@ -7,7 +7,6 @@ import { useT } from "@/i18n/LanguageProvider";
 import {
   DOC_DERIVED_WARN_RATIO,
   FIELD_TYPES,
-  FIELD_TYPE_LABELS,
   FILL_TARGET_TYPES,
   docDerivedRatio,
   type FieldType,
@@ -201,7 +200,7 @@ export default function FormEditor({
                       style={sel}
                     >
                       {FIELD_TYPES.filter((ft) => ft !== "barcode" || field.type === "barcode").map((ft) => (
-                        <option key={ft} value={ft}>{FIELD_TYPE_LABELS[ft]}</option>
+                        <option key={ft} value={ft}>{t(`ftype.${ft}`)}</option>
                       ))}
                     </select>
                     <label style={{ display: "flex", alignItems: "center", gap: 5, fontSize: ".82rem", color: "var(--ink-2)", cursor: "pointer" }}>

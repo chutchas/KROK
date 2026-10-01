@@ -8,7 +8,6 @@ import AttachmentsPanel from "@/components/AttachmentsPanel";
 import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
 import {
   FIELD_TYPES,
-  FIELD_TYPE_LABELS,
   type FieldType,
   type FormField,
   type FormSchema,
@@ -192,7 +191,7 @@ export default function FieldSettingsPanel({
           patchField({ type: nt, columns: [{ id: newId("c"), label: "รายการ", type: "text", width: 3 }, { id: newId("c"), label: "จำนวน", type: "number" }], min_rows: field.min_rows ?? 1 });
         else patchField({ type: nt });
       }} style={sel}>
-        {FIELD_TYPES.map((ft) => <option key={ft} value={ft}>{FIELD_TYPE_LABELS[ft]}</option>)}
+        {FIELD_TYPES.map((ft) => <option key={ft} value={ft}>{t(`ftype.${ft}`)}</option>)}
       </select>
 
       <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".88rem", color: "var(--ink-2)", cursor: "pointer", marginTop: 10 }}>
@@ -260,8 +259,8 @@ export default function FieldSettingsPanel({
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
                   <select value={c.type} onChange={(e) => patchCol(i, { type: e.target.value as TableColType })} style={{ ...sel, width: "auto", flex: "0 0 auto" }}>
-                    <option value="text">{FIELD_TYPE_LABELS.text}</option>
-                    <option value="number">{FIELD_TYPE_LABELS.number}</option>
+                    <option value="text">{t("ftype.text")}</option>
+                    <option value="number">{t("ftype.number")}</option>
                     <option value="select">{t("editor.tableSelect")}</option>
                   </select>
                   <label style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("editor.tableWidth")}</label>

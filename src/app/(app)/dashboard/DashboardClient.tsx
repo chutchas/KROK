@@ -6,15 +6,17 @@ import Icon from "@/components/Icon";
 import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
+  ChevronUp, ChevronDown,
 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import type { MessageKey } from "@/i18n/dictionaries";
 import {
   WIDGET_FORMATS, WIDGET_METRICS, RANGES_BY_FORMAT,
   formatLabel, formatHint, metricLabel, rangeLabel, metricUnit,
   type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import { saveDashboardLayout, computeWidget, type WidgetResult } from "./actions";
-import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
+import { type AnswerItem } from "@/lib/answer-item";
 export type { AnswerItem };
 
 
@@ -34,15 +36,17 @@ export interface Summary {
   period: string;
 }
 
-function fmt(ts: string) {
+type TTFn = (k: MessageKey, vars?: Record<string, string | number>) => string;
+
+function fmt(ts: string, lang: string) {
   try {
-    return new Date(ts).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 }
-function fmtValue(metric: WidgetMetric, v: number, en: boolean): string {
+function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): string {
   if (metric === "avgtime") {
-    if (v >= 60) { const m = Math.floor(v / 60), s = v % 60; return en ? `${m}m ${s}s` : `${m}น ${s}วิ`; }
-    return `${v}${en ? "s" : "วิ"}`;
+    if (v >= 60) { const m = Math.floor(v / 60), s = v % 60; return tt("dash.durMinSec", { m, s }); }
+    return tt("dash.durSec", { s: v });
   }
   const u = metricUnit(metric, en);
   return `${v.toLocaleString()}${u ? (metric === "passrate" ? u : " " + u) : ""}`;
@@ -63,8 +67,8 @@ export default function DashboardClient({
 
   const formName = useMemo(() => {
     const m = new Map(forms.map((f) => [f.id, `${f.icon} ${f.title}`]));
-    return (id: string) => (id === "all" ? (en ? "All forms" : "ทุกฟอร์ม") : m.get(id) || (en ? "(deleted form)" : "(ฟอร์มถูกลบ)"));
-  }, [forms, en]);
+    return (id: string) => (id === "all" ? t("report.allForms") : m.get(id) || t("dash.deletedForm"));
+  }, [forms, t]);
 
   function persist(next: DashWidget[]) {
     setWidgets(next);
@@ -76,6 +80,15 @@ export default function DashboardClient({
     setBuilder(null);
   }
   function removeWidget(id: string) { persist(widgets.filter((x) => x.id !== id)); }
+  /** ปุ่มเลื่อนขึ้น/ลง — ทางเลือกของการลาก (มือถือ/จอสัมผัส/คีย์บอร์ดลากไม่ได้) */
+  function move(id: string, dir: -1 | 1) {
+    const i = widgets.findIndex((x) => x.id === id);
+    const j = i + dir;
+    if (i < 0 || j < 0 || j >= widgets.length) return;
+    const next = [...widgets];
+    [next[i], next[j]] = [next[j], next[i]];
+    persist(next);
+  }
   function onDrop(targetId: string) {
     if (!dragId || dragId === targetId) return;
     const next = widgets.filter((x) => x.id !== dragId);
@@ -122,10 +135,12 @@ export default function DashboardClient({
         <>
           <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 18 }}>
-            {widgets.map((w) => (
+            {widgets.map((w, i) => (
               <div key={w.id} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
                 <WidgetCard w={w} formName={formName} en={en}
-                  onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t} />
+                  onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t}
+                  onUp={i > 0 ? () => move(w.id, -1) : undefined}
+                  onDown={i < widgets.length - 1 ? () => move(w.id, 1) : undefined} />
               </div>
             ))}
           </div>
@@ -147,7 +162,7 @@ export default function DashboardClient({
               <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>{s.form_icon}</div>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: ".93rem" }}>{s.form_title}</b>
-                <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at)}</small>
+                <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at, lang)}</small>
               </div>
               <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                 {s.approval_status === "pending" && <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Clock} className="h-3 w-3" /> {t("dash.pending")}</span></Pill>}
@@ -194,9 +209,9 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
 
 // ---------- การ์ด widget ----------
 type TFn = (k: never) => string;
-function WidgetCard({ w, formName, en, onEdit, onRemove, t }: {
+function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
   w: DashWidget; formName: (id: string) => string; en: boolean;
-  onEdit: () => void; onRemove: () => void; t: TFn;
+  onEdit: () => void; onRemove: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
 }) {
   const [res, setRes] = useState<WidgetResult | null>(null);
   const key = `${w.format}|${w.formId}|${w.metric}|${w.range}`;
@@ -221,12 +236,18 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, t }: {
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".74rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
-        <button onClick={onEdit} title={t("common.edit" as never)} style={iconBtn}><Icon icon={Pencil} className="h-3.5 w-3.5" /></button>
-        <button onClick={onRemove} title={t("common.delete" as never)} style={iconBtn}><Icon icon={Trash2} className="h-3.5 w-3.5" /></button>
+        {(onUp || onDown) && (
+          <span style={{ display: "inline-flex", gap: 2 }}>
+            <button onClick={onUp} disabled={!onUp} title={t("dash.moveUp" as never)} aria-label={t("dash.moveUp" as never)} style={{ ...iconBtn, opacity: onUp ? 1 : 0.35, cursor: onUp ? "pointer" : "default" }}><Icon icon={ChevronUp} className="h-3.5 w-3.5" /></button>
+            <button onClick={onDown} disabled={!onDown} title={t("dash.moveDown" as never)} aria-label={t("dash.moveDown" as never)} style={{ ...iconBtn, opacity: onDown ? 1 : 0.35, cursor: onDown ? "pointer" : "default" }}><Icon icon={ChevronDown} className="h-3.5 w-3.5" /></button>
+          </span>
+        )}
+        <button onClick={onEdit} title={t("common.edit" as never)} aria-label={t("common.edit" as never)} style={iconBtn}><Icon icon={Pencil} className="h-3.5 w-3.5" /></button>
+        <button onClick={onRemove} title={t("common.delete" as never)} aria-label={t("common.delete" as never)} style={iconBtn}><Icon icon={Trash2} className="h-3.5 w-3.5" /></button>
       </div>
 
       <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
-        {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{en ? "Loading…" : "กำลังโหลด…"}</div>}
+        {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
         {res && "error" in res && <div style={{ color: "var(--fail)", fontSize: ".82rem" }}>{res.error}</div>}
         {res && !("error" in res) && (
           <>
@@ -244,13 +265,14 @@ const iconBtn: React.CSSProperties = {
 };
 
 function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "stat" }>; metric: WidgetMetric; en: boolean }) {
+  const { tt } = useT();
   const extra = metric === "passrate" && res.pass != null
-    ? (en ? `pass ${res.pass} · fail ${res.fail}` : `ผ่าน ${res.pass} · ไม่ผ่าน ${res.fail}`)
+    ? tt("dash.passFail", { pass: res.pass, fail: res.fail ?? 0 })
     : "";
   return (
     <div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1, color: "var(--ink)" }}>
-        {fmtValue(metric, res.value, en)}
+        {fmtValue(metric, res.value, en, tt)}
       </div>
       {extra && <div style={{ color: "var(--ink-3)", fontSize: ".78rem", marginTop: 4 }}>{extra}</div>}
     </div>
@@ -258,12 +280,13 @@ function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "sta
 }
 
 function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "trend" }>; metric: WidgetMetric; en: boolean }) {
+  const { tt } = useT();
   const series = res.series;
   const max = Math.max(1, ...series.map((s) => s.v));
   return (
     <div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
-        {fmtValue(metric, res.total, en)}
+        {fmtValue(metric, res.total, en, tt)}
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72 }}>
         {series.map((s) => (
@@ -281,9 +304,10 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
 }
 
 function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "ranking" }>; metric: WidgetMetric; en: boolean }) {
+  const { t, tt } = useT();
   const items = res.items;
   const max = Math.max(1, ...items.map((r) => r.v));
-  if (items.length === 0) return <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{en ? "No data" : "ยังไม่มีข้อมูล"}</div>;
+  if (items.length === 0) return <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.none")}</div>;
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {items.map((r, i) => (
@@ -292,7 +316,7 @@ function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".84rem" }}>
               <b style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.icon} {r.title}</b>
-              <span className="tabnum" style={{ color: "var(--ink-2)", flexShrink: 0 }}>{fmtValue(metric, r.v, en)}</span>
+              <span className="tabnum" style={{ color: "var(--ink-2)", flexShrink: 0 }}>{fmtValue(metric, r.v, en, tt)}</span>
             </span>
             <span style={{ display: "block", height: 5, borderRadius: 4, background: "var(--surface-2)", marginTop: 3, overflow: "hidden" }}>
               <span style={{ display: "block", height: "100%", width: `${Math.round((r.v / max) * 100)}%`, background: "var(--accent)", borderRadius: 4 }} />
@@ -346,7 +370,7 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
           <>
             <Section n={2} label={t("dash.stepForm" as never)} />
             <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
-              <option value="all">{en ? "All forms" : "ทุกฟอร์ม"}</option>
+              <option value="all">{t("report.allForms" as never)}</option>
               {forms.map((f) => <option key={f.id} value={f.id}>{f.icon} {f.title}</option>)}
             </select>
           </>
@@ -412,7 +436,7 @@ function chip(on: boolean): React.CSSProperties {
 
 // ---------- Detail modal (คงเดิม) ----------
 function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string; onClose: () => void }) {
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
   const [photos, setPhotos] = useState<Record<string, string>>({});
   const [loaded, setLoaded] = useState<AnswerItem[] | null>(null);
   const answers = sub.answers ?? loaded;
@@ -453,7 +477,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
           {sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
-          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
+          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at, lang)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
         </p>
         {answers === null && <div style={{ padding: "16px 0", color: "var(--ink-3)", fontSize: ".88rem" }}>{t("common.loading")}</div>}
         {(answers ?? []).map((a, i) =>

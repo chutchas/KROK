@@ -4,6 +4,7 @@ import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import { resolveFormOptions } from "@/lib/datasets-server";
 import PublicFillClient from "./PublicFillClient";
+import { T } from "@/i18n/T";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +16,8 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
     <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "var(--bg, #f8fafc)", textAlign: "center" }}>
       <div style={{ maxWidth: 360 }}>
         <div style={{ fontSize: "2rem", marginBottom: 8 }}>🔒</div>
-        <h1 style={{ fontSize: "1.15rem", margin: "0 0 6px" }}>ฟอร์มนี้ไม่เปิดให้กรอกแบบสาธารณะ</h1>
-        <p style={{ color: "#64748b", fontSize: ".9rem" }}>ลิงก์อาจไม่ถูกต้อง หรือเจ้าของฟอร์มตั้งค่าให้ต้องเข้าสู่ระบบก่อน</p>
+        <h1 style={{ fontSize: "1.15rem", margin: "0 0 6px" }}><T k="fw.pubNotAvailable" /></h1>
+        <p style={{ color: "#64748b", fontSize: ".9rem" }}><T k="fw.pubNotAvailableSub" /></p>
       </div>
     </div>
   );

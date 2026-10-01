@@ -33,8 +33,8 @@ export async function GET(req: Request) {
     .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
     .order("submitted_at", { ascending: false })
     .limit(5000);
-  if (from) q = q.gte("submitted_at", from + "T00:00:00");
-  if (to) q = q.lte("submitted_at", to + "T23:59:59");
+  if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
+  if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
 
   const { data, error } = await q;
   if (error) return new Response(error.message, { status: 500 });

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { FIELD_TYPE_LABELS, labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
+import { labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import FormPaperFill from "@/components/FormPaperFill";
@@ -104,7 +104,7 @@ function dataUrlToBlob(dataUrl: string): Blob {
 
 export default function FillWizard(props: Props) {
   const { schema } = props;
-  const { t } = useT();
+  const { t, tt, lang } = useT();
   const router = useRouter();
   const supabase = createClient();
   const nSteps = schema.steps.length;
@@ -163,11 +163,11 @@ export default function FillWizard(props: Props) {
   // ออฟไลน์/เรียก server ไม่ได้ → ใช้ผลที่แคชไว้ (อนุมัติแล้ว + ผูกกับฟอร์มนี้แล้ว ภายใน 24 ชม.)
   const offlineFallback = useCallback((): { id: string | null; status: DeviceStatus | "error"; msg?: string } => {
     const cached = freshApproved(props.tenantId);
-    if (!cached) return { id: null, status: "error", msg: "ออฟไลน์อยู่ และเครื่องนี้ยังไม่เคยผ่านการอนุมัติ" };
+    if (!cached) return { id: null, status: "error", msg: t("fw.offlineNotApproved") };
     if (!freshFormAllow(props.formId))
-      return { id: cached.deviceId, status: "error", msg: "ออฟไลน์อยู่ และเครื่องนี้ยังไม่เคยกรอกฟอร์มนี้สำเร็จ" };
+      return { id: cached.deviceId, status: "error", msg: t("fw.offlineNoForm") };
     return { id: cached.deviceId, status: "approved" };
-  }, [props.tenantId, props.formId]);
+  }, [props.tenantId, props.formId, t]);
 
   const checkDevice = useCallback(async (name?: string) => {
     if (!deviceLocked) return;
@@ -199,11 +199,11 @@ export default function FillWizard(props: Props) {
       setDevice({ id: res.deviceId, status: res.status });
     } catch {
       const fb = offlineFallback();
-      setDevice(fb.status === "approved" ? fb : { id: null, status: "error", msg: "ตรวจสอบอุปกรณ์ไม่สำเร็จ" });
+      setDevice(fb.status === "approved" ? fb : { id: null, status: "error", msg: t("fw.deviceCheckFailed") });
     } finally {
       setRegistering(false);
     }
-  }, [deviceLocked, offlineFallback, props.formId, props.tenantId, props.userName]);
+  }, [deviceLocked, offlineFallback, props.formId, props.tenantId, props.userName, t]);
 
   useEffect(() => {
     if (!deviceLocked) return;
@@ -354,9 +354,9 @@ export default function FillWizard(props: Props) {
         const network = /fetch|network|timeout/i.test(raw);
         setDraftState({
           kind: "error",
-          msg: offline ? "ออฟไลน์อยู่ — บันทึกร่างไม่ได้ กรอกต่อได้ตามปกติ"
-            : network ? "เชื่อมต่อ server ไม่ได้ — บันทึกร่างไม่สำเร็จ ลองกดบันทึกอีกครั้ง"
-            : `บันทึกร่างไม่สำเร็จ${raw ? ` (${raw})` : ""}`,
+          msg: offline ? t("fw.draftOffline")
+            : network ? t("fw.draftNetwork")
+            : tt("fw.draftFailed", { detail: raw ? ` (${raw})` : "" }),
         });
         return false;
       } finally {
@@ -365,7 +365,7 @@ export default function FillWizard(props: Props) {
     })();
     saving.current = job;
     return job;
-  }, [draftsOn, hasContent, mediaLoading, schema, supabase, props.tenantId, props.userId, props.formId, props.version, kase, segStart, segEnd, stepOfField]);
+  }, [draftsOn, hasContent, mediaLoading, schema, supabase, props.tenantId, props.userId, props.formId, props.version, kase, segStart, segEnd, stepOfField, t, tt]);
 
   // สลับแอป / ปิดแท็บ / ล็อกจอ → บันทึกร่างอัตโนมัติ
   useEffect(() => {
@@ -493,7 +493,7 @@ export default function FillWizard(props: Props) {
         continue;
       }
       if (f.type === "pass_fail" && a.value === "fail" && f.on_fail_require_note && !a.note?.trim())
-        errs[f.id] = "ไม่ผ่าน — ต้องระบุปัญหาที่พบ";
+        errs[f.id] = t("fw.failNoteRequired");
     }
     setErrors(errs);
     return Object.keys(errs).length === 0;
@@ -636,10 +636,10 @@ export default function FillWizard(props: Props) {
           const res = await fetch("/api/public/submit", { method: "POST", body: fd });
           if (!res.ok) {
             const j = await res.json().catch(() => ({}));
-            throw new Error(j.error || "ส่งไม่สำเร็จ");
+            throw new Error(j.error || t("fw.submitFailed"));
           }
         } catch (e) {
-          setErrors({ [step.fields[0].id]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
+          setErrors({ [step.fields[0].id]: tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }) });
           setSubmitting(false);
           submitLock.current = false;
           return;
@@ -672,8 +672,8 @@ export default function FillWizard(props: Props) {
 
       // งาน (ฟอร์มกรอกหลายคน): ขั้นสุดท้ายต้องออนไลน์ — ส่ง submission แล้วปิดงานทันที (ไม่เข้าคิวออฟไลน์)
       if (wf) {
-        if (!kase) throw new Error("ไม่พบงาน");
-        if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error("ออฟไลน์อยู่ — ต่อเน็ตก่อนส่งงานขั้นสุดท้าย");
+        if (!kase) throw new Error(t("fw.caseNotFound"));
+        if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error(t("fw.offlineFinalStep"));
         await pushSubmission(supabase, payload);
         const r = await completeCaseAction(kase.id, subId);
         void notifySubmission(subId).catch(() => {});
@@ -714,7 +714,7 @@ export default function FillWizard(props: Props) {
       window.scrollTo(0, 0);
     } catch (e) {
       const fid = (lockedStep(idx) ? segFields()[0] : step.fields[0])?.id ?? step.fields[0].id;
-      setErrors({ [fid]: "ส่งไม่สำเร็จ: " + (e instanceof Error ? e.message : "ผิดพลาด") });
+      setErrors({ [fid]: tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }) });
       setSubmitting(false);
       submitLock.current = false;
     }
@@ -722,11 +722,11 @@ export default function FillWizard(props: Props) {
 
   // ================= งาน: ส่งต่อ / ส่งกลับ / รับงาน / คืนงาน / ยกเลิก =================
   /** ผู้รับผิดชอบขั้น i: "ทีม X" หรือชื่อคน (null = คนเดิมกรอกต่อ) */
-  const whoOf = (i: number) => assigneeLabel(schema, i, props.workflow?.teams ?? {}, props.workflow?.users ?? {});
+  const whoOf = (i: number) => assigneeLabel(schema, i, props.workflow?.teams ?? {}, props.workflow?.users ?? {}, { team: (name: string) => tt("wf.teamName", { name }), deletedTeam: t("wf.deletedTeam"), goneUser: t("wf.goneUser") });
   const netErr = (e: unknown) => {
     const raw = e instanceof Error ? e.message : String(e ?? "");
-    if (typeof navigator !== "undefined" && navigator.onLine === false) return "ออฟไลน์อยู่ — ต่อเน็ตก่อนแล้วลองอีกครั้ง";
-    return /fetch|network/i.test(raw) ? "เชื่อมต่อ server ไม่ได้ — ลองอีกครั้ง" : raw || "ทำรายการไม่สำเร็จ";
+    if (typeof navigator !== "undefined" && navigator.onLine === false) return t("fw.offlineRetry");
+    return /fetch|network/i.test(raw) ? t("wf.netError") : raw || t("fw.actionFailed");
   };
 
   /** บันทึกช่วงของตัวเองลงงาน (งานใหม่ = เริ่มงานก่อน) คืน id งาน */
@@ -772,7 +772,7 @@ export default function FillWizard(props: Props) {
       if (!kase) void clearDraftAfterSubmit(); // ร่างของขั้นแรกกลายเป็นงานแล้ว
       const nxt = segEnd + 1;
       setCaseModal(null);
-      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, handoff: { step: `${nxt + 1}. ${schema.steps[nxt]?.title ?? ""}`, team: r.holder || (r.teamName ? `ทีม ${r.teamName}` : whoOf(nxt)) } });
+      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, handoff: { step: `${nxt + 1}. ${schema.steps[nxt]?.title ?? ""}`, team: r.holder || (r.teamName ? tt("fw.teamName", { name: r.teamName }) : whoOf(nxt)) } });
       window.scrollTo(0, 0);
     } catch (e) {
       submitLock.current = false;
@@ -793,7 +793,7 @@ export default function FillWizard(props: Props) {
       const r = await returnCaseAction(kase.id, toStep, note);
       if ("error" in r) throw new Error(r.error);
       setCaseModal(null);
-      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, returned: r.holder || (r.teamName ? `ทีม ${r.teamName}` : `${toStep + 1}. ${schema.steps[toStep]?.title ?? ""}`) });
+      setDone({ result: "pass", fails: [], dur: 0, pending: false, offline: false, returned: r.holder || (r.teamName ? tt("fw.teamName", { name: r.teamName }) : `${toStep + 1}. ${schema.steps[toStep]?.title ?? ""}`) });
       window.scrollTo(0, 0);
     } catch (e) {
       submitLock.current = false;
@@ -845,18 +845,18 @@ export default function FillWizard(props: Props) {
       return (
         <div style={box}>
           <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={TabletSmartphone} className="h-10 w-10" strokeWidth={1.5} /></div>
-          <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>กำลังตรวจสอบอุปกรณ์…</h2>
+          <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("fw.device.checking")}</h2>
         </div>
       );
 
-    const title = device.status === "revoked" ? "เครื่องนี้ถูกเพิกถอนสิทธิ์"
-      : device.status === "notlinked" ? "เครื่องนี้ยังไม่ได้ผูกกับฟอร์มนี้"
-      : device.status === "error" ? "ตรวจสอบอุปกรณ์ไม่สำเร็จ"
-      : "เครื่องนี้ยังไม่ได้รับอนุมัติ";
-    const sub = device.status === "revoked" ? "ติดต่อผู้ดูแลเพื่อขอเปิดสิทธิ์ใหม่"
-      : device.status === "notlinked" ? `เครื่องนี้ได้รับอนุมัติแล้ว แต่ฟอร์ม “${props.title}” ตั้งให้ใช้ได้เฉพาะเครื่องที่เลือกไว้ — แจ้งผู้ดูแลให้ผูกเครื่องนี้กับฟอร์มที่ ตั้งค่า → อุปกรณ์`
-      : device.status === "error" ? (device.msg || "ลองใหม่อีกครั้ง")
-      : "ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว — แจ้งรหัสเครื่องด้านล่างให้ผู้ดูแลเพื่ออนุมัติ";
+    const title = device.status === "revoked" ? t("fw.device.revoked")
+      : device.status === "notlinked" ? t("fw.device.notLinked")
+      : device.status === "error" ? t("fw.deviceCheckFailed")
+      : t("fw.device.notApproved");
+    const sub = device.status === "revoked" ? t("fw.device.revokedSub")
+      : device.status === "notlinked" ? tt("fw.device.notLinkedSub", { title: props.title })
+      : device.status === "error" ? (device.msg || t("fw.device.retryAgain"))
+      : t("fw.device.notApprovedSub");
 
     return (
       <div style={box}>
@@ -867,17 +867,17 @@ export default function FillWizard(props: Props) {
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem" }}>{sub}</p>
 
         <div style={{ margin: "16px 0", padding: "12px 14px", borderRadius: 10, background: "var(--code-bg)", border: "1px solid var(--line)" }}>
-          <div style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>รหัสเครื่อง</div>
+          <div style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>{t("fw.device.code")}</div>
           <div style={{ fontFamily: "monospace", fontSize: "1.5rem", letterSpacing: ".18em", fontWeight: 700 }}>{code}</div>
         </div>
 
         {device.status === "pending" && (
           <div style={{ display: "grid", gap: 8, textAlign: "left" }}>
-            <label style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>ชื่อเครื่อง (ให้ผู้ดูแลรู้ว่าเป็นเครื่องไหน)</label>
+            <label style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("fw.device.nameLabel")}</label>
             <input
               value={deviceName}
               onChange={(e) => setDeviceName(e.target.value.slice(0, 80))}
-              placeholder="เช่น iPad ไลน์ผลิต 2"
+              placeholder={t("fw.device.namePh")}
               style={{ width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".95rem" }}
             />
           </div>
@@ -885,7 +885,7 @@ export default function FillWizard(props: Props) {
 
         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
           <Button variant="primary" onClick={() => checkDevice(deviceName)} loading={registering}>
-            <Icon icon={RefreshCw} className="h-4 w-4" /> {device.status === "pending" ? "ส่งคำขอ / ตรวจอีกครั้ง" : "ลองใหม่"}
+            <Icon icon={RefreshCw} className="h-4 w-4" /> {device.status === "pending" ? t("fw.device.requestRecheck") : t("fw.device.retry")}
           </Button>
           <Button onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
         </div>
@@ -937,12 +937,12 @@ export default function FillWizard(props: Props) {
             ? t("fill.donePending")
             : done.result === "pass"
             ? t("fill.doneOk")
-            : `ส่งแล้ว — พบปัญหา ${done.fails.length} รายการ`}
+            : tt("fw.doneIssues", { n: done.fails.length })}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>
           {done.offline
             ? t("fill.doneOfflineSub")
-            : `${props.title} · ใช้เวลา ${done.dur} วินาที · ${done.pending ? "หัวหน้า/QA จะได้รับแจ้งเตือนให้อนุมัติ" : "ขึ้น dashboard แล้ว"}`}
+            : tt("fw.doneSub", { title: props.title, sec: done.dur, next: done.pending ? t("fw.doneNotifyAppr") : t("fw.doneOnDash") })}
         </p>
         {done.caseWarn && (
           <p style={{ color: "#d97706", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
@@ -1024,7 +1024,7 @@ export default function FillWizard(props: Props) {
   };
 
   const draftBtn = draftsOn ? (
-    <Button onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title="บันทึกไว้ก่อน แล้วกลับมากรอกต่อได้จากแท็บ แบบร่าง">
+    <Button onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.draftTitle")}>
       <Icon icon={Save} className="h-4 w-4" /> {kase ? t("common.save") : t("draft.save")}
     </Button>
   ) : null;
@@ -1034,7 +1034,7 @@ export default function FillWizard(props: Props) {
       {draftState.kind === "saving" && <span>{t("draft.saving")}</span>}
       {draftState.kind === "saved" && draftState.at && (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }))}
+          <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { hour: "2-digit", minute: "2-digit" }))}
         </span>
       )}
       {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}
@@ -1234,7 +1234,8 @@ function TableInput({
   onChange: (rows: TableRow[]) => void;
   variant: "normal" | "paper" | "compact";
 }) {
-  const cols = columns.length ? columns : [{ id: "c0", label: "รายการ", type: "text" as const }];
+  const { t, tt } = useT();
+  const cols = columns.length ? columns : [{ id: "c0", label: t("fw.colItem"), type: "text" as const }];
   const [rows, setRows] = useState<TableRow[]>(() => {
     const base = initial.length ? initial.map((r) => ({ ...r })) : [];
     while (base.length < Math.max(1, minRows)) base.push({});
@@ -1272,7 +1273,7 @@ function TableInput({
 
   const addBtn = (
     <button type="button" onClick={addRow} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
-      <Icon icon={Plus} className="h-3.5 w-3.5" /> เพิ่มแถว
+      <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fw.addRow")}
     </button>
   );
 
@@ -1283,8 +1284,8 @@ function TableInput({
           {rows.map((_, ri) => (
             <div key={ri} style={{ border: `1px solid ${ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <b style={{ fontSize: ".78rem", color: ink.muted }}>แถวที่ {ri + 1}</b>
-                <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                <b style={{ fontSize: ".78rem", color: ink.muted }}>{tt("fw.rowN", { n: ri + 1 })}</b>
+                <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
               </div>
               <div style={{ display: "grid", gap: 7 }}>
                 {cols.map((c) => (
@@ -1322,7 +1323,7 @@ function TableInput({
               <tr key={ri}>
                 {cols.map((c) => <td key={c.id} style={{ padding: "3px 5px", verticalAlign: "top" }}>{cellInput(ri, c)}</td>)}
                 <td style={{ padding: "3px 2px", textAlign: "center", verticalAlign: "middle" }}>
-                  <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
                 </td>
               </tr>
             ))}
@@ -1369,7 +1370,7 @@ function FieldControl({
   compact?: boolean;
   publicMode?: boolean;
 }) {
-  const { t } = useT();
+  const { t, tt } = useT();
   const [initial] = useState(getInitial);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState(initial.ai || "");
@@ -1404,7 +1405,7 @@ function FieldControl({
       setAiResult(txt);
       onPatch({ ai: txt });
     } catch {
-      setAiResult("ตรวจรูปไม่ได้");
+      setAiResult(t("fw.ai.failed"));
     } finally {
       setAiBusy(false);
     }
@@ -1412,13 +1413,13 @@ function FieldControl({
   async function onScan(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setScanMsg("กำลังอ่านโค้ด...");
+    setScanMsg(t("fw.scan.reading"));
     const code = await detectBarcode(file);
     if (code) {
       onPatch({ value: code });
       setScanValue(code);
-      setScanMsg("อ่านได้: " + code);
-    } else setScanMsg("อ่านโค้ดจากรูปไม่ได้ — พิมพ์รหัสแทนได้เลย");
+      setScanMsg(tt("fw.scan.read", { code }));
+    } else setScanMsg(t("fw.scan.fail"));
     e.target.value = "";
   }
 
@@ -1463,10 +1464,10 @@ function FieldControl({
       <div>
         {f.type !== "table" && <PaperLabel label={f.label} required={f.required} right={f.type === "number" && f.unit ? <span style={{ fontSize: ".72rem", color: "#666", fontWeight: 400 }}>{f.unit}</span> : undefined} />}
         {f.type === "text" && (
-          <input type="text" style={paperInputStyle} defaultValue={String(initial.value ?? "")} placeholder={f.example ? "เช่น " + f.example : ""} onChange={(e) => onPatch({ value: e.target.value })} />
+          <input type="text" style={paperInputStyle} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : ""} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
         {f.type === "number" && (
-          <input type="number" inputMode="decimal" style={{ ...paperInputStyle, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? `ช่วงที่ยอมรับ ${f.min ?? "–"} ถึง ${f.max ?? "–"}` : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+          <input type="number" inputMode="decimal" style={{ ...paperInputStyle, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? tt("fw.rangeTitle", { min: f.min ?? "–", max: f.max ?? "–" }) : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
         )}
         {f.type === "datetime" && (
           <input type="datetime-local" style={paperInputStyle} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
@@ -1475,7 +1476,7 @@ function FieldControl({
           dsBound ? (
             waitParent || dsOptions.length === 0 ? (
               <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#888", background: "#f7f7f8" }}>
-                {waitParent ? `เลือก “${parentLabel || "ช่องก่อนหน้า"}” ก่อน` : "ไม่มีตัวเลือก"}
+                {waitParent ? tt("fw.pickParentFirst", { label: parentLabel || t("fw.prevField") }) : t("fw.noOptions")}
               </div>
             ) : dsOptions.length <= 6 ? (
               <PaperChoices name={"r_" + f.id} options={dsOptions} labels={optLabels.size ? optLabels : undefined} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
@@ -1483,7 +1484,7 @@ function FieldControl({
             ) : f.type === "select" ? (
               // รายการยาว + เลือกข้อเดียว: dropdown บรรทัดเดียวพอดีกล่อง
               <select style={paperInputStyle} value={selVal} onChange={(e) => { setSelVal(e.target.value); onPatch({ value: e.target.value || undefined }); }}>
-                <option value="">— เลือก —</option>
+                <option value="">{t("fw.selectPh")}</option>
                 {dsOptions.map((o) => { const l = optLabels.get(o); return <option key={o} value={o}>{l ? `${l} · ${o}` : o}</option>; })}
               </select>
             ) : (
@@ -1499,7 +1500,7 @@ function FieldControl({
           <>
             <PaperPassFail value={pf} onChange={(v) => { setPf(v); onPatch({ value: v }, true); }} />
             {pf === "fail" && (
-              <textarea style={{ ...paperInputStyle, height: 44, padding: "4px 8px", marginTop: 4, resize: "vertical" }} defaultValue={initial.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => onPatch({ note: e.target.value })} />
+              <textarea style={{ ...paperInputStyle, height: 44, padding: "4px 8px", marginTop: 4, resize: "vertical" }} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
             )}
           </>
         )}
@@ -1507,8 +1508,8 @@ function FieldControl({
           <>
             <PaperPhoto photo={photo} onPick={() => photoRef.current?.click()}
               extra={photo && !publicMode ? (
-                <button type="button" onClick={aiCheck} disabled={aiBusy} title={aiResult || "ให้ AI ตรวจรูป"} style={{ height: 28, display: "inline-flex", alignItems: "center", gap: 4, border: "1px solid #b9bec4", borderRadius: 4, background: "#fff", color: "#333", fontFamily: "inherit", fontSize: ".74rem", padding: "0 8px", cursor: "pointer", maxWidth: 160, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
-                  <Icon icon={Sparkles} className="h-3.5 w-3.5" /> {aiBusy ? "กำลังดู..." : aiResult || "AI ตรวจรูป"}
+                <button type="button" onClick={aiCheck} disabled={aiBusy} title={aiResult || t("fw.ai.ask")} style={{ height: 28, display: "inline-flex", alignItems: "center", gap: 4, border: "1px solid #b9bec4", borderRadius: 4, background: "#fff", color: "#333", fontFamily: "inherit", fontSize: ".74rem", padding: "0 8px", cursor: "pointer", maxWidth: 160, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>
+                  <Icon icon={Sparkles} className="h-3.5 w-3.5" /> {aiBusy ? t("fw.ai.checking") : aiResult || t("fw.ai.check")}
                 </button>
               ) : undefined} />
             <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
@@ -1541,7 +1542,7 @@ function FieldControl({
         {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
         {!paper && (
           <span style={{ fontFamily: "monospace", fontSize: ".65rem", color: "var(--ink-3)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 6px", marginLeft: "auto" }}>
-            {FIELD_TYPE_LABELS[f.type]}
+            {t(`ftype.${f.type}`)}
           </span>
         )}
       </div>
@@ -1555,15 +1556,15 @@ function FieldControl({
 
       {!compact && f.photo_hint && (
         <div style={{ fontSize: ".8rem", color: paper ? "#777" : "var(--ink-3)", margin: "4px 0" }}>
-          รูปต้องเห็น: <code style={{ background: paper ? "#f4f5f6" : "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
+          {t("fw.photoMustShow")} <code style={{ background: paper ? "#f4f5f6" : "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
         </div>
       )}
 
       <div style={{ marginTop: compact ? 4 : 8 }}>
         {f.type === "text" && (
           compact
-            ? <input type="text" style={input} defaultValue={String(initial.value ?? "")} placeholder={f.example ? "เช่น " + f.example : "พิมพ์คำตอบ..."} onChange={(e) => onPatch({ value: e.target.value })} />
-            : <textarea style={{ ...input, minHeight: 60, resize: "vertical" }} rows={2} defaultValue={String(initial.value ?? "")} placeholder={f.example ? "เช่น " + f.example : "พิมพ์คำตอบ..."} onChange={(e) => onPatch({ value: e.target.value })} />
+            ? <input type="text" style={input} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.answerPh")} onChange={(e) => onPatch({ value: e.target.value })} />
+            : <textarea style={{ ...input, minHeight: 60, resize: "vertical" }} rows={2} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.answerPh")} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
         {f.type === "number" && (
           <>
@@ -1580,11 +1581,11 @@ function FieldControl({
         {dsBound && (
           waitParent ? (
             <div style={{ fontSize: compact ? ".78rem" : ".88rem", color: paper ? "#777" : "var(--ink-3)", padding: compact ? "2px 0" : "8px 2px" }}>
-              เลือก “{parentLabel || "ช่องก่อนหน้า"}” ก่อน
+              {tt("fw.pickParentFirst", { label: parentLabel || t("fw.prevField") })}
             </div>
           ) : dsOptions.length === 0 ? (
             <div style={{ fontSize: compact ? ".78rem" : ".88rem", color: paper ? "#777" : "var(--ink-3)", padding: compact ? "2px 0" : "8px 2px" }}>
-              ไม่มีตัวเลือก{f.options_parents ? `สำหรับ “${Array.isArray(parentValue) ? parentValue.join(", ") : String(parentValue)}”` : ""}
+              {f.options_parents ? tt("fw.noOptionsFor", { v: Array.isArray(parentValue) ? parentValue.join(", ") : String(parentValue) }) : t("fw.noOptions")}
             </div>
           ) : (
             <OptionPicker
@@ -1603,7 +1604,7 @@ function FieldControl({
           )
         )}
         {dsBound && f.options_truncated && !compact && (
-          <div style={{ fontSize: ".74rem", color: paper ? "#888" : "var(--ink-3)", margin: "4px 0" }}>ข้อมูลอ้างอิงมีรายการมากเกินกว่าที่แสดงได้ — บางตัวเลือกอาจไม่ปรากฏ</div>
+          <div style={{ fontSize: ".74rem", color: paper ? "#888" : "var(--ink-3)", margin: "4px 0" }}>{t("fw.truncated")}</div>
         )}
         {f.options_error && (f.type === "select" || f.type === "checkbox") && (
           <div style={{ fontSize: ".76rem", color: "var(--amber)", margin: "4px 0" }}>⚠ {f.options_error}</div>
@@ -1635,25 +1636,25 @@ function FieldControl({
         {f.type === "pass_fail" && (
           <>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <PfBtn active={pf === "pass"} kind="pass" paper={paper} onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> ผ่าน</span></PfBtn>
-              <PfBtn active={pf === "fail"} kind="fail" paper={paper} onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> ไม่ผ่าน</span></PfBtn>
+              <PfBtn active={pf === "pass"} kind="pass" paper={paper} onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> {t("fw.pass")}</span></PfBtn>
+              <PfBtn active={pf === "fail"} kind="fail" paper={paper} onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> {t("fw.fail")}</span></PfBtn>
             </div>
             {pf === "fail" && (
-              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder="พบปัญหาอะไร? (จำเป็นเมื่อไม่ผ่าน)" onChange={(e) => onPatch({ note: e.target.value })} />
+              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
             )}
           </>
         )}
         {f.type === "photo" && (
           <>
             <div onClick={() => photoRef.current?.click()} style={{ border: paper ? "2px dashed #b9bec4" : "2px dashed var(--line)", borderRadius: 10, padding: compact ? 8 : 18, textAlign: "center", color: paper ? "#777" : "var(--ink-3)", fontSize: compact ? ".8rem" : ".9rem", cursor: "pointer" }}>
-              {photo && <img src={photo} alt="รูปที่ถ่าย" style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "0 auto 8px" }} />}
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? "แตะเพื่อถ่ายใหม่" : <><Icon icon={Camera} className="h-4 w-4" /> แตะเพื่อถ่ายรูป / เลือกรูป</>}</div>
+              {photo && <img src={photo} alt={t("fw.photoAlt")} style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "0 auto 8px" }} />}
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? t("fw.retake") : <><Icon icon={Camera} className="h-4 w-4" /> {t("fw.takePhoto")}</>}</div>
             </div>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
             {/* โหมด public: ไม่มี AI ตรวจรูป (endpoint ต้องล็อกอิน + ใช้เครดิต tenant) */}
             {photo && !publicMode && (
               <div style={{ display: "flex", gap: 10, marginTop: 8, alignItems: "center", flexWrap: "wrap" }}>
-                <Button onClick={aiCheck} disabled={aiBusy}>{aiBusy ? "AI กำลังดูรูป..." : <><Icon icon={Sparkles} className="h-4 w-4" /> ให้ AI ตรวจรูป</>}</Button>
+                <Button onClick={aiCheck} disabled={aiBusy}>{aiBusy ? t("fw.ai.checkingLong") : <><Icon icon={Sparkles} className="h-4 w-4" /> {t("fw.ai.ask")}</>}</Button>
                 {aiResult && <span style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{aiResult}</span>}
               </div>
             )}
@@ -1662,7 +1663,7 @@ function FieldControl({
         {f.type === "barcode" && (
           <>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input type="text" style={{ ...input, flex: 1, minWidth: 140 }} value={scanValue} placeholder="รหัส เช่น FL-03" onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <input type="text" style={{ ...input, flex: 1, minWidth: 140 }} value={scanValue} placeholder={t("fw.codePh")} onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
               <Button variant="primary" onClick={() => setLiveOpen(true)}><Icon icon={ScanLine} className="h-4 w-4" /> {t("scan.live")}</Button>
               <Button onClick={() => scanRef.current?.click()}><Icon icon={Camera} className="h-4 w-4" /> {t("scan.fromImage")}</Button>
             </div>
@@ -1671,7 +1672,7 @@ function FieldControl({
             {liveOpen && (
               <LiveScanner
                 onClose={() => setLiveOpen(false)}
-                onResult={(code) => { setLiveOpen(false); setScanValue(code); onPatch({ value: code }); setScanMsg("อ่านได้: " + code); }}
+                onResult={(code) => { setLiveOpen(false); setScanValue(code); onPatch({ value: code }); setScanMsg(tt("fw.scan.read", { code })); }}
               />
             )}
           </>
@@ -1696,10 +1697,11 @@ function FieldControl({
 function NumHint({ field: f, value }: { field: FormField; value?: string }) {
   const v = parseFloat(String(value));
   const out = Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max));
+  const { t, tt } = useT();
   return (
     <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-      ช่วงที่ยอมรับ: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.min ?? "–"} ถึง {f.max ?? "–"} {f.unit || ""}</code>
-      {out && <span style={{ color: "var(--fail)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 4 }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> ค่านอกช่วง! จะถูกแจ้งเป็นปัญหา</span>}
+      {t("fw.rangeLabel")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{tt("fw.rangeVal", { min: f.min ?? "–", max: f.max ?? "–" })} {f.unit || ""}</code>
+      {out && <span style={{ color: "var(--fail)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 4 }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> {t("fw.outOfRange")}</span>}
     </div>
   );
 }
@@ -1719,6 +1721,7 @@ function PfBtn({ active, kind, onClick, children, paper = false }: { active: boo
 }
 
 function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasSig: boolean; onSave: (d: string | null) => void; paper?: boolean; compact?: boolean }) {
+  const { t } = useT();
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
   const last = useRef<[number, number]>([0, 0]);
@@ -1763,8 +1766,8 @@ function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasS
         onPointerCancel={() => { drawing.current = false; }}
       />
       <div style={{ marginTop: 6 }}>
-        <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); onSave(null); }}>ล้างลายเซ็น</Button>
-        {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={Check} className="h-3.5 w-3.5" /> เซ็นแล้ว</span>}
+        <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); onSave(null); }}>{t("fw.sig.clear")}</Button>
+        {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={Check} className="h-3.5 w-3.5" /> {t("fw.sig.signed")}</span>}
       </div>
     </>
   );
@@ -1810,24 +1813,25 @@ function PaperTableField({ field: f, initial, onChange }: { field: FormField; in
 
 /** แผ่นเซ็นเต็มจอ (โหมดกระดาษ) — กดบันทึกจึงเขียนลงฟอร์ม */
 function SignatureModal({ label, initialUrl, onSave, onClose }: { label: string; initialUrl?: string; onSave: (d: string | null) => void; onClose: () => void }) {
+  const { t, tt } = useT();
   const [temp, setTemp] = useState<string | null>(null);
   const [cleared, setCleared] = useState(false);
   return (
-    <div role="dialog" aria-modal="true" aria-label={`เซ็น ${label}`} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    <div role="dialog" aria-modal="true" aria-label={tt("fw.sig.aria", { label })} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div style={{ width: "min(640px, 100%)", background: "#fff", color: "#111", borderRadius: 12, padding: 16, boxShadow: "0 10px 40px rgba(0,0,0,.3)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-          <b style={{ fontSize: "1rem" }}>เซ็น: {label}</b>
-          <button type="button" onClick={onClose} aria-label="ปิด" style={{ border: "none", background: "none", cursor: "pointer", color: "#666", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>
+          <b style={{ fontSize: "1rem" }}>{tt("fw.sig.title", { label })}</b>
+          <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "none", cursor: "pointer", color: "#666", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>
         </div>
         {initialUrl && !temp && !cleared && (
           <div style={{ fontSize: ".78rem", color: "#666", marginBottom: 6, display: "flex", alignItems: "center", gap: 8 }}>
-            ลายเซ็นเดิม: <img src={initialUrl} alt="ลายเซ็นเดิม" style={{ height: 32, border: "1px solid #eee", borderRadius: 4 }} /> — เซ็นใหม่ด้านล่างเพื่อแทนที่
+            {t("fw.sig.prev")} <img src={initialUrl} alt={t("fw.sig.prevAlt")} style={{ height: 32, border: "1px solid #eee", borderRadius: 4 }} /> {t("fw.sig.replaceHint")}
           </div>
         )}
         <SignaturePad hasSig={!!temp} paper onSave={(d) => { setTemp(d); if (!d) setCleared(true); }} />
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
-          <Button onClick={onClose}>ยกเลิก</Button>
-          <Button variant="primary" disabled={!temp && !cleared} onClick={() => onSave(temp)}>บันทึกลายเซ็น</Button>
+          <Button onClick={onClose}>{t("common.cancel")}</Button>
+          <Button variant="primary" disabled={!temp && !cleared} onClick={() => onSave(temp)}>{t("fw.sig.save")}</Button>
         </div>
       </div>
     </div>

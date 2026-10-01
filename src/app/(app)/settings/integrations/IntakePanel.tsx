@@ -39,7 +39,7 @@ const noop = () => () => {};
 const useOrigin = () => useSyncExternalStore(noop, () => window.location.origin, () => "https://<โดเมนของคุณ>");
 const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 
-const fmt = (s: string | null) => (s ? new Date(s).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (s: string | null, lang: string) => (s ? new Date(s).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short" }) : "—");
 
 export default function IntakePanel({ forms, intake, teams, members }: {
   forms: FormOption[];
@@ -47,7 +47,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   teams: { id: string; name: string }[];
   members: { user_id: string; name: string }[];
 }) {
-  const { t } = useT();
+  const { t, lang } = useT();
   const router = useRouter();
   const [formId, setFormId] = useState(forms[0]?.id ?? "");
   const form = forms.find((f) => f.id === formId) ?? null;
@@ -190,7 +190,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
             </div>
             {saved.keyPrefix && (
               <div style={{ fontSize: ".76rem", color: "var(--ink-3)", marginTop: 6 }}>
-                {t("intake.keyCreated")} {mounted ? fmt(saved.keyCreatedAt) : "…"} · {t("intake.lastUsed")} {mounted ? fmt(saved.lastUsedAt) : "…"}
+                {t("intake.keyCreated")} {mounted ? fmt(saved.keyCreatedAt, lang) : "…"} · {t("intake.lastUsed")} {mounted ? fmt(saved.lastUsedAt, lang) : "…"}
               </div>
             )}
             {newKey?.formId === formId && (

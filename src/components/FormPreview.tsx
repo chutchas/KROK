@@ -2,9 +2,10 @@
 import { Lightbulb, Lock, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
+import { type FormField, type FormSchema } from "@/lib/form-schema";
 
 function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean; onSelect?: () => void }) {
+  const { t, tt } = useT();
   return (
     <div
       data-krok-keep=""
@@ -32,7 +33,7 @@ function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean
             whiteSpace: "nowrap",
           }}
         >
-          {FIELD_TYPE_LABELS[f.type]}
+          {t(`ftype.${f.type}`)}
         </span>
       </div>
       {f.tooltip && (
@@ -43,29 +44,29 @@ function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean
       )}
       {f.example && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-          ตัวอย่าง: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.example}</code>
+          {t("fw.prev.example")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.example}</code>
         </div>
       )}
       {f.type === "number" && (f.min != null || f.max != null) && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-          ช่วงที่ยอมรับ: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.min ?? "–"} ถึง {f.max ?? "–"} {f.unit || ""}</code>
+          {t("fw.rangeLabel")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{tt("fw.rangeVal", { min: f.min ?? "–", max: f.max ?? "–" })} {f.unit || ""}</code>
         </div>
       )}
       {f.options_source && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-          ตัวเลือก: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>จากข้อมูลอ้างอิง · {f.options_source.label_column ? `${f.options_source.label_column} (เก็บ ${f.options_source.column})` : f.options_source.column}{f.options_source.parent ? " (กรองตามช่องก่อนหน้า)" : ""}</code>
+          {t("fw.prev.options")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{t("fw.prev.fromDataset")} · {f.options_source.label_column ? tt("fw.prev.stores", { label: f.options_source.label_column, col: f.options_source.column }) : f.options_source.column}{f.options_source.parent ? t("fw.prev.filtered") : ""}</code>
         </div>
       )}
       {f.options && !f.options_source && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-          ตัวเลือก: {f.options.map((o, i) => (
+          {t("fw.prev.options")} {f.options.map((o, i) => (
             <code key={i} style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4, marginRight: 5 }}>{o}</code>
           ))}
         </div>
       )}
       {f.photo_hint && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-          รูปต้องเห็น: <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
+          {t("fw.photoMustShow")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
         </div>
       )}
     </div>
@@ -128,7 +129,7 @@ export default function FormPreview({
       )}
       {!editable && (
         <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
-          <Icon icon={Lock} className="h-3.5 w-3.5" /> โหมดกรอกจริงจะล็อคลำดับ — ต้องทำ step ก่อนหน้าให้ครบจึงไปต่อได้
+          <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("fw.prev.lockHint")}
         </div>
       )}
     </div>

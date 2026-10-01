@@ -31,12 +31,15 @@ export function segmentEnd(schema: FormSchema, i: number): number {
   return j;
 }
 
-/** ชื่อผู้รับผิดชอบขั้น i สำหรับแสดงผล */
-export function assigneeLabel(schema: FormSchema, i: number, teams: Record<string, string>, users: Record<string, string>): string | null {
+export interface AssigneeWords { team: (name: string) => string; deletedTeam: string; goneUser: string }
+const TH_WORDS: AssigneeWords = { team: (n) => `ทีม ${n}`, deletedTeam: "ทีมที่ถูกลบ", goneUser: "ผู้ใช้ที่ไม่อยู่ใน workspace" };
+
+/** ชื่อผู้รับผิดชอบขั้น i สำหรับแสดงผล (words = คำตามภาษาที่เลือก, ไม่ส่ง = ไทย) */
+export function assigneeLabel(schema: FormSchema, i: number, teams: Record<string, string>, users: Record<string, string>, words: AssigneeWords = TH_WORDS): string | null {
   const t = stepTeam(schema, i);
-  if (t) return teams[t] ? `ทีม ${teams[t]}` : "ทีมที่ถูกลบ";
+  if (t) return teams[t] ? words.team(teams[t]) : words.deletedTeam;
   const u = stepUser(schema, i);
-  if (u) return users[u] || "ผู้ใช้ที่ไม่อยู่ใน workspace";
+  if (u) return users[u] || words.goneUser;
   return null;
 }
 

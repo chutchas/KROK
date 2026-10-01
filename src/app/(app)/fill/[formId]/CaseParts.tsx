@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import { Button } from "@/components/ui";
 import { Lock, Users, CornerUpLeft, Send, CheckCircle2, Circle, CircleDot, History, X } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import type { MessageKey } from "@/i18n/dictionaries";
+import type { Lang, MessageKey } from "@/i18n/dictionaries";
 import { labelMap, type FormField, type FormSchema } from "@/lib/form-schema";
 import { assigneeLabel, caseNo, lastReturn, segmentEnd, type CaseData, type CaseHistoryItem } from "@/lib/case-flow";
 import { PaperLabel, paperInputStyle } from "@/components/paper/PaperParts";
@@ -14,17 +14,17 @@ import { PaperLabel, paperInputStyle } from "@/components/paper/PaperParts";
 type TableRow = Record<string, string>;
 type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string };
 
-const fmtTime = (iso: string) => {
+const fmtTime = (iso: string, lang: Lang) => {
   try {
-    return new Date(iso).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 };
 
 /** ค่าที่อ่านง่ายของคำตอบ (ใช้กับช่องที่ล็อก) */
-function textOf(f: FormField, a: Answer | undefined): string {
+function textOf(f: FormField, a: Answer | undefined, t: (k: MessageKey) => string, lang: Lang): string {
   const v = a?.value;
   if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "";
-  if (f.type === "pass_fail") return v === "pass" ? "✓ ผ่าน" : v === "fail" ? `✗ ไม่ผ่าน${a?.note ? ` — ${a.note}` : ""}` : String(v);
+  if (f.type === "pass_fail") return v === "pass" ? t("case.pass") : v === "fail" ? `${t("case.fail")}${a?.note ? ` — ${a.note}` : ""}` : String(v);
   if (f.type === "select" || f.type === "checkbox") {
     const names = labelMap(f.options, f.option_labels);
     const vals = Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : [String(v)];
@@ -33,13 +33,14 @@ function textOf(f: FormField, a: Answer | undefined): string {
   if (f.type === "number") return `${v}${f.unit ? " " + f.unit : ""}`;
   if (f.type === "datetime" && typeof v === "string") {
     const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? v : d.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium", timeStyle: "short" });
   }
   return typeof v === "string" ? v : "";
 }
 
 function MiniTable({ f, rows, paper }: { f: FormField; rows: TableRow[]; paper: boolean }) {
-  const cols = f.columns?.length ? f.columns : [{ id: "c0", label: "รายการ", type: "text" as const }];
+  const { t } = useT();
+  const cols = f.columns?.length ? f.columns : [{ id: "c0", label: t("case.colItem"), type: "text" as const }];
   const filled = rows.filter((r) => r && Object.values(r).some((x) => String(x ?? "").trim() !== ""));
   if (!filled.length) return <span style={{ color: paper ? "#888" : "var(--ink-3)" }}>—</span>;
   const bd = paper ? "1px solid #d4d7db" : "1px solid var(--line)";
@@ -76,8 +77,9 @@ export function ReadonlyField({ field: f, answer, photo, sig, paper = false, com
   /** ขั้นที่ยังมาไม่ถึง */
   pending?: boolean;
 }) {
+  const { t, lang } = useT();
   const muted = paper ? "#888" : "var(--ink-3)";
-  const dash = <span style={{ color: muted }}>{pending ? "รอขั้นถัดไป" : "—"}</span>;
+  const dash = <span style={{ color: muted }}>{pending ? t("case.waitNext") : "—"}</span>;
   const rows = Array.isArray(answer?.value) && typeof answer?.value[0] === "object" ? (answer!.value as TableRow[]) : [];
 
   let body: React.ReactNode;
@@ -85,7 +87,7 @@ export function ReadonlyField({ field: f, answer, photo, sig, paper = false, com
   else if (f.type === "signature") body = sig ? <img src={sig} alt={f.label} style={{ maxHeight: compact ? 40 : 80, maxWidth: "100%", background: "#fff", display: "block" }} /> : dash;
   else if (f.type === "table") body = <MiniTable f={f} rows={rows} paper={paper} />;
   else {
-    const txt = textOf(f, answer);
+    const txt = textOf(f, answer, t, lang);
     const fail = f.type === "pass_fail" && answer?.value === "fail";
     const pass = f.type === "pass_fail" && answer?.value === "pass";
     body = txt ? <span style={{ color: fail ? "#dc2626" : pass ? "#15803d" : undefined, whiteSpace: compact ? "nowrap" : "pre-wrap", overflow: "hidden", textOverflow: "ellipsis" }}>{txt}</span> : dash;
@@ -96,7 +98,7 @@ export function ReadonlyField({ field: f, answer, photo, sig, paper = false, com
   if (compact) {
     const inline = f.type !== "photo" && f.type !== "signature" && f.type !== "table";
     return (
-      <div title="ขั้นนี้ไม่ใช่ของคุณ — ดูได้อย่างเดียว">
+      <div title={t("wf.stepLocked")}>
         <PaperLabel label={f.label} right={<span style={{ color: "#999" }}>{lock}</span>} />
         {inline ? (
           <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", background: "#f3f4f6", borderStyle: "dashed", overflow: "hidden" }}>{body}</div>
@@ -130,9 +132,9 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
   claiming: boolean;
   onClaim: () => void;
 }) {
-  const { t } = useT();
+  const { t, tt, lang } = useT();
   const [showHist, setShowHist] = useState(false);
-  const teamOf = (i: number) => assigneeLabel(schema, i, teams, users);
+  const teamOf = (i: number) => assigneeLabel(schema, i, teams, users, { team: (name: string) => tt("wf.teamName", { name }), deletedTeam: t("wf.deletedTeam"), goneUser: t("wf.goneUser") });
   // กองงานที่รออยู่ตอนนี้ (ทีมของช่วงปัจจุบัน; ไม่มีทีม = ผู้ดูแลจัดการ)
   const poolLabel = kase?.assigneeTeam ? `${t("wf.team")} ${teams[kase.assigneeTeam] || t("wf.teamMissing")}` : t("wf.admins");
   const ret = kase && kase.claimedBy === userId ? lastReturn(kase) : null;
@@ -228,7 +230,7 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
             <ul style={{ margin: "6px 0 0", padding: 0, listStyle: "none", display: "grid", gap: 3 }}>
               {kase.history.map((h, i) => (
                 <li key={i} style={{ fontSize: ".78rem", color: "var(--ink-2)" }}>
-                  <span style={{ color: "var(--ink-3)" }}>{fmtTime(h.at)}</span> · {histText(h, schema, t)}
+                  <span style={{ color: "var(--ink-3)" }}>{fmtTime(h.at, lang)}</span> · {histText(h, schema, t)}
                   {h.note ? <span style={{ color: "var(--ink-3)" }}> — “{h.note}”</span> : null}
                 </li>
               ))}

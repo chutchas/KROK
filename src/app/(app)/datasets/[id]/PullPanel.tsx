@@ -5,11 +5,22 @@ import Icon from "@/components/Icon";
 import { DownloadCloud, Plus, X, PlayCircle, RefreshCw, Save, Clock } from "lucide-react";
 import { SCHEDULE_CHOICES, slugKey, type DatasetColType, type DatasetMeta } from "@/lib/datasets";
 import { getPullConfig, savePullConfig, syncNow, testPull, updateDataset, type PullTestResult } from "../actions";
+import type { MessageKey } from "@/i18n/dictionaries";
+import { useT } from "@/i18n/LanguageProvider";
 import { fmtTime, label, selectStyle, smallBtn, tableWrap, td, th } from "../ui";
+
+const SCHEDULE_KEY: Record<number, MessageKey> = {
+  0: "ds.schedule.off",
+  15: "ds.schedule.m15",
+  60: "ds.schedule.h1",
+  360: "ds.schedule.h6",
+  1440: "ds.schedule.daily",
+};
 
 interface FieldRow { path: string; include: boolean; key: string; label: string; type: DatasetColType }
 
 export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; usedCols: Set<string>; onDone: () => void }) {
+  const { t, tt, lang } = useT();
   const [loaded, setLoaded] = useState(false);
   const [url, setUrl] = useState("");
   const [method, setMethod] = useState<"GET" | "POST">("GET");
@@ -83,7 +94,7 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
     const res = await savePullConfig(ds.id, config(), cols, keyCol && chosen.some((f) => f.key === keyCol) ? keyCol : null);
     setBusy("");
     if ("error" in res) setMsg({ t: res.error, err: true });
-    else { setMsg({ t: "บันทึกการตั้งค่าแล้ว — กด “Sync ตอนนี้” เพื่อดึงข้อมูล" }); onDone(); }
+    else { setMsg({ t: t("ds.pull.savedMsg") }); onDone(); }
   }
 
   async function sync() {
@@ -92,7 +103,7 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
     const res = await syncNow(ds.id);
     setBusy("");
     if ("error" in res) setMsg({ t: res.error, err: true });
-    else { setMsg({ t: `ดึงข้อมูลสำเร็จ · รวม ${res.rows.toLocaleString()} แถว` }); onDone(); }
+    else { setMsg({ t: tt("ds.pull.syncedMsg", { n: res.rows.toLocaleString() }) }); onDone(); }
   }
 
   async function saveSchedule(m: number) {
@@ -102,15 +113,15 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
     else onDone();
   }
 
-  if (!loaded) return <Card><span style={{ color: "var(--ink-3)", fontSize: ".88rem" }}>กำลังโหลดการตั้งค่า...</span></Card>;
+  if (!loaded) return <Card><span style={{ color: "var(--ink-3)", fontSize: ".88rem" }}>{t("ds.pull.loading")}</span></Card>;
 
   return (
     <Card>
       <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <Icon icon={DownloadCloud} className="h-4 w-4" /> ดึงข้อมูลจาก API
+        <Icon icon={DownloadCloud} className="h-4 w-4" /> {t("ds.pull.title")}
       </b>
       <p style={{ fontSize: ".8rem", color: "var(--ink-2)", margin: "4px 0 0" }}>
-        API ต้องตอบกลับเป็น JSON และเข้าถึงได้จากอินเทอร์เน็ต — ระบบที่อยู่ในเครือข่ายภายในบริษัท (IP ภายใน) ให้ใช้แบบ “รับจาก API (push)” แทน
+        {t("ds.pull.hint")}
       </p>
 
       <label style={label}>URL</label>
@@ -122,18 +133,18 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
         <Field value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://erp.example.com/api/customers" style={{ flex: 1, minWidth: 0 }} />
       </div>
 
-      <label style={label}>Header (เช่น Authorization, x-api-key) — ค่าเก็บเป็นความลับ ไม่แสดงกลับ</label>
+      <label style={label}>{t("ds.pull.headers")}</label>
       <div style={{ display: "grid", gap: 6 }}>
         {headers.map((h, i) => (
           <div key={i} style={{ display: "flex", gap: 6 }}>
-            <Field value={h.name} onChange={(e) => setHeaders(headers.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)))} placeholder="ชื่อ header" style={{ flex: "0 1 180px", minWidth: 0 }} />
-            <Field value={h.value} type="password" onChange={(e) => setHeaders(headers.map((x, xi) => (xi === i ? { ...x, value: e.target.value } : x)))} placeholder="ค่า" style={{ flex: 1, minWidth: 0 }} />
+            <Field value={h.name} onChange={(e) => setHeaders(headers.map((x, xi) => (xi === i ? { ...x, name: e.target.value } : x)))} placeholder={t("ds.pull.headerName")} style={{ flex: "0 1 180px", minWidth: 0 }} />
+            <Field value={h.value} type="password" onChange={(e) => setHeaders(headers.map((x, xi) => (xi === i ? { ...x, value: e.target.value } : x)))} placeholder={t("ds.pull.headerValue")} style={{ flex: 1, minWidth: 0 }} />
             <button onClick={() => setHeaders(headers.filter((_, xi) => xi !== i))} style={{ ...smallBtn, color: "var(--fail)" }}><Icon icon={X} className="h-3.5 w-3.5" /></button>
           </div>
         ))}
         {headers.length < 10 && (
           <button onClick={() => setHeaders([...headers, { name: "", value: "" }])} style={{ ...smallBtn, justifySelf: "start" }}>
-            <Icon icon={Plus} className="h-3.5 w-3.5" /> เพิ่ม header
+            <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("ds.pull.addHeader")}
           </button>
         )}
       </div>
@@ -145,12 +156,12 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
         </>
       )}
 
-      <label style={label}>Path ไปยังรายการใน JSON (เว้นว่าง = หาให้อัตโนมัติ)</label>
-      <Field value={path} onChange={(e) => setPath(e.target.value)} placeholder="เช่น data.items" />
+      <label style={label}>{t("ds.pull.path")}</label>
+      <Field value={path} onChange={(e) => setPath(e.target.value)} placeholder={t("ds.pull.pathPlaceholder")} />
 
       <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
         <Button onClick={runTest} loading={busy === "test"} disabled={!url.trim()}>
-          <Icon icon={PlayCircle} className="h-4 w-4" /> ทดสอบเรียก API
+          <Icon icon={PlayCircle} className="h-4 w-4" /> {t("ds.pull.test")}
         </Button>
       </div>
 
@@ -158,23 +169,23 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
 
       {test && (
         <p style={{ fontSize: ".85rem", margin: "10px 0 0" }}>
-          ได้ <b>{test.total.toLocaleString()}</b> รายการ · พบ {test.paths.length} ฟิลด์
+          {t("ds.pull.got")}<b>{test.total.toLocaleString()}</b>{tt("ds.pull.gotItems", { n: test.paths.length })}
         </p>
       )}
 
       {fields.length > 0 && (
         <>
-          <label style={label}>ฟิลด์ที่จะนำเข้า</label>
+          <label style={label}>{t("ds.pull.fields")}</label>
           <div style={tableWrap}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={th}>ใช้</th>
-                  <th style={th}>ฟิลด์ใน API</th>
-                  <th style={th}>ชื่อที่แสดง</th>
-                  <th style={th}>ชนิด</th>
+                  <th style={th}>{t("ds.col.use")}</th>
+                  <th style={th}>{t("ds.pull.apiField")}</th>
+                  <th style={th}>{t("ds.col.label")}</th>
+                  <th style={th}>{t("ds.col.type")}</th>
                   <th style={th}>key</th>
-                  {test && <th style={th}>ตัวอย่าง</th>}
+                  {test && <th style={th}>{t("ds.col.sample")}</th>}
                 </tr>
               </thead>
               <tbody>
@@ -183,14 +194,14 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
                   return (
                     <tr key={f.path} style={{ opacity: f.include ? 1 : 0.55 }}>
                       <td style={td}>
-                        <input type="checkbox" checked={f.include} disabled={locked} title={locked ? "ฟอร์มใช้ฟิลด์นี้อยู่" : ""} onChange={(e) => setFields(fields.map((x, xi) => (xi === i ? { ...x, include: e.target.checked } : x)))} />
+                        <input type="checkbox" checked={f.include} disabled={locked} title={locked ? t("ds.pull.fieldInUse") : ""} onChange={(e) => setFields(fields.map((x, xi) => (xi === i ? { ...x, include: e.target.checked } : x)))} />
                       </td>
                       <td style={td}><code style={{ fontSize: ".78rem" }}>{f.path}</code></td>
                       <td style={{ ...td, minWidth: 140 }}><Field value={f.label} onChange={(e) => setFields(fields.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} style={{ padding: "5px 8px", fontSize: ".84rem" }} /></td>
                       <td style={td}>
                         <select value={f.type} onChange={(e) => setFields(fields.map((x, xi) => (xi === i ? { ...x, type: e.target.value === "number" ? "number" : "text" } : x)))} style={{ ...selectStyle, padding: "4px 6px" }}>
-                          <option value="text">ข้อความ</option>
-                          <option value="number">ตัวเลข</option>
+                          <option value="text">{t("ds.type.text")}</option>
+                          <option value="number">{t("ds.type.number")}</option>
                         </select>
                       </td>
                       <td style={td}><input type="radio" name="pkey" checked={keyCol === f.key} disabled={!f.include} onChange={() => setKeyCol(f.key)} /></td>
@@ -203,23 +214,23 @@ export default function PullPanel({ ds, usedCols, onDone }: { ds: DatasetMeta; u
           </div>
           <div style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap" }}>
             <Button variant="primary" onClick={save} loading={busy === "save"} disabled={!fields.some((f) => f.include)}>
-              <Icon icon={Save} className="h-4 w-4" /> บันทึกการตั้งค่า
+              <Icon icon={Save} className="h-4 w-4" /> {t("ds.pull.save")}
             </Button>
             <Button onClick={sync} loading={busy === "sync"} disabled={!ds.pullHost}>
-              <Icon icon={RefreshCw} className="h-4 w-4" /> Sync ตอนนี้
+              <Icon icon={RefreshCw} className="h-4 w-4" /> {t("ds.pull.syncNow")}
             </Button>
           </div>
         </>
       )}
 
-      <label style={{ ...label, display: "flex", alignItems: "center", gap: 6 }}><Icon icon={Clock} className="h-3.5 w-3.5" /> ตั้งเวลา sync อัตโนมัติ</label>
+      <label style={{ ...label, display: "flex", alignItems: "center", gap: 6 }}><Icon icon={Clock} className="h-3.5 w-3.5" /> {t("ds.pull.schedule")}</label>
       <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
         <select value={schedule} onChange={(e) => void saveSchedule(Number(e.target.value))} disabled={!ds.pullHost} style={selectStyle}>
-          {SCHEDULE_CHOICES.map((c) => <option key={c.minutes} value={c.minutes}>{c.label}</option>)}
+          {SCHEDULE_CHOICES.map((c) => <option key={c.minutes} value={c.minutes}>{SCHEDULE_KEY[c.minutes] ? t(SCHEDULE_KEY[c.minutes]) : c.label}</option>)}
         </select>
-        {ds.scheduleMinutes > 0 && <span style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>รอบถัดไปประมาณ {fmtTime(ds.nextSyncAt)}</span>}
+        {ds.scheduleMinutes > 0 && <span style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{tt("ds.pull.nextRun", { time: fmtTime(ds.nextSyncAt, lang) })}</span>}
       </div>
-      {!ds.pullHost && <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "4px 0 0" }}>บันทึกการตั้งค่า API ก่อนจึงตั้งเวลาได้</p>}
+      {!ds.pullHost && <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "4px 0 0" }}>{t("ds.pull.scheduleNeedsConfig")}</p>}
     </Card>
   );
 }

@@ -5,6 +5,7 @@ import Icon from "@/components/Icon";
 import { Database, RefreshCw, ExternalLink } from "lucide-react";
 import type { FormField, FormSchema, OptionsSource, TableColumn } from "@/lib/form-schema";
 import { listDatasetsForPicker, type DatasetPick } from "@/app/(app)/datasets/actions";
+import { useT } from "@/i18n/LanguageProvider";
 
 // ============================================================
 // เลือกแหล่งตัวเลือกของ dropdown: พิมพ์เอง หรือ ดึงจากข้อมูลอ้างอิง (dataset)
@@ -37,6 +38,7 @@ const hint: React.CSSProperties = { fontSize: ".76rem", color: "var(--ink-3)", m
 const lbl: React.CSSProperties = { display: "block", fontSize: ".76rem", fontWeight: 600, color: "var(--ink-2)", margin: "8px 0 4px" };
 
 function ModeToggle({ fromDataset, onChange }: { fromDataset: boolean; onChange: (v: boolean) => void }) {
+  const { t } = useT();
   const b = (on: boolean): React.CSSProperties => ({
     padding: "5px 11px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem",
     fontWeight: on ? 600 : 400, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)",
@@ -44,9 +46,9 @@ function ModeToggle({ fromDataset, onChange }: { fromDataset: boolean; onChange:
   });
   return (
     <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
-      <button type="button" style={b(!fromDataset)} onClick={() => onChange(false)}>พิมพ์เอง</button>
+      <button type="button" style={b(!fromDataset)} onClick={() => onChange(false)}>{t("opt.manual")}</button>
       <button type="button" style={{ ...b(fromDataset), borderLeft: "1px solid var(--line)" }} onClick={() => onChange(true)}>
-        <Icon icon={Database} className="h-3.5 w-3.5" /> จากข้อมูลอ้างอิง
+        <Icon icon={Database} className="h-3.5 w-3.5" /> {t("opt.fromDataset")}
       </button>
     </div>
   );
@@ -63,20 +65,21 @@ function DatasetColumnPicker({
   onChange: (v: OptionsSource | undefined) => void;
   onRefresh: () => void;
 }) {
-  if (picks === null) return <p style={hint}>กำลังโหลดข้อมูลอ้างอิง...</p>;
+  const { t, tt } = useT();
+  if (picks === null) return <p style={hint}>{t("opt.loading")}</p>;
   if (picks.length === 0)
     return (
       <p style={hint}>
-        ยังไม่มีข้อมูลอ้างอิง — <Link href="/datasets" target="_blank" style={{ color: "var(--accent)" }}>สร้างที่เมนู “ข้อมูลอ้างอิง”</Link>{" "}
+        {t("opt.noDatasets")} <Link href="/datasets" target="_blank" style={{ color: "var(--accent)" }}>{t("opt.createInMenu")}</Link>{" "}
         <button type="button" onClick={onRefresh} style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", padding: 0, fontSize: "inherit" }}>
-          <Icon icon={RefreshCw} className="h-3 w-3" /> โหลดใหม่
+          <Icon icon={RefreshCw} className="h-3 w-3" /> {t("opt.reload")}
         </button>
       </p>
     );
   const ds = picks.find((p) => p.id === value?.dataset_id);
   return (
     <>
-      <label style={lbl}>ชุดข้อมูล</label>
+      <label style={lbl}>{t("opt.dataset")}</label>
       <div style={{ display: "flex", gap: 6 }}>
         <select
           value={value?.dataset_id || ""}
@@ -86,23 +89,23 @@ function DatasetColumnPicker({
           }}
           style={sel}
         >
-          <option value="">— เลือก —</option>
+          <option value="">{t("opt.pick")}</option>
           {picks.map((p) => (
             <option key={p.id} value={p.id} disabled={p.columns.length === 0}>
-              {p.name} ({p.columns.length === 0 ? "ยังไม่มีคอลัมน์" : `${p.rowCount.toLocaleString()} แถว`})
+              {p.name} ({p.columns.length === 0 ? t("opt.noColumns") : tt("opt.rows", { n: p.rowCount.toLocaleString() })})
             </option>
           ))}
         </select>
         {ds && (
-          <Link href={`/datasets/${ds.id}`} target="_blank" title="เปิดชุดข้อมูล" style={{ display: "inline-flex", alignItems: "center", padding: "0 8px", border: "1px solid var(--line)", borderRadius: 8, color: "var(--ink-2)" }}>
+          <Link href={`/datasets/${ds.id}`} target="_blank" title={t("opt.openDataset")} style={{ display: "inline-flex", alignItems: "center", padding: "0 8px", border: "1px solid var(--line)", borderRadius: 8, color: "var(--ink-2)" }}>
             <Icon icon={ExternalLink} className="h-3.5 w-3.5" />
           </Link>
         )}
       </div>
-      {value?.dataset_id && !ds && <p style={{ ...hint, color: "var(--fail)" }}>ไม่พบชุดข้อมูลที่เลือกไว้ (อาจถูกลบ)</p>}
+      {value?.dataset_id && !ds && <p style={{ ...hint, color: "var(--fail)" }}>{t("opt.missingDataset")}</p>}
       {ds && (
         <>
-          <label style={lbl}>คอลัมน์ที่บันทึกเป็นค่า</label>
+          <label style={lbl}>{t("opt.valueColumn")}</label>
           <select
             value={value?.column || ""}
             onChange={(e) => {
@@ -115,7 +118,7 @@ function DatasetColumnPicker({
           >
             {ds.columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
-          <label style={lbl}>คอลัมน์ที่แสดงให้ผู้กรอกเห็น</label>
+          <label style={lbl}>{t("opt.labelColumn")}</label>
           <select
             value={value?.label_column || ""}
             onChange={(e) => {
@@ -125,13 +128,12 @@ function DatasetColumnPicker({
             }}
             style={sel}
           >
-            <option value="">— แสดงค่าเดียวกับที่บันทึก —</option>
+            <option value="">{t("opt.sameAsValue")}</option>
             {ds.columns.filter((c) => c.key !== value?.column).map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
           </select>
           {value?.label_column && (
             <p style={hint}>
-              ผู้กรอกเห็น “{ds.columns.find((c) => c.key === value.label_column)?.label}” พร้อม “{ds.columns.find((c) => c.key === value.column)?.label}” ตัวเล็ก ๆ
-              — submission เก็บทั้งสองค่า (ต้องรัน migration 0031)
+              {tt("opt.labelHint", { label: ds.columns.find((c) => c.key === value.label_column)?.label ?? "", value: ds.columns.find((c) => c.key === value.column)?.label ?? "" })}
             </p>
           )}
         </>
@@ -152,6 +154,7 @@ export default function OptionsSourceEditor({
   onPatch: (p: Partial<FormField>) => void;
   staticEditor: React.ReactNode;
 }) {
+  const { t } = useT();
   const { picks, refresh } = useDatasetPicks();
   // เลือกโหมด "จากข้อมูลอ้างอิง" แล้วแต่ยังไม่ได้เลือกชุดข้อมูล — จำไว้ต่อฟิลด์
   const [wantFor, setWantFor] = useState<string | null>(null);
@@ -185,7 +188,7 @@ export default function OptionsSourceEditor({
           <DatasetColumnPicker picks={picks} value={src} onRefresh={refresh} onChange={(v) => onPatch({ options_source: v })} />
           {ds && src && (
             <>
-              <label style={lbl}>กรองตามคำตอบของช่องก่อนหน้า (ไม่บังคับ)</label>
+              <label style={lbl}>{t("opt.filterByParent")}</label>
               <select
                 value={src.parent?.field_id || ""}
                 onChange={(e) => {
@@ -200,22 +203,22 @@ export default function OptionsSourceEditor({
                 style={sel}
                 disabled={parents.length === 0}
               >
-                <option value="">{parents.length ? "— ไม่กรอง —" : "— ไม่มีช่องเลือกก่อนหน้า —"}</option>
-                {parents.map((p) => <option key={p.id} value={p.id}>{p.label || "(ไม่มีชื่อ)"}</option>)}
+                <option value="">{parents.length ? t("opt.noFilter") : t("opt.noParents")}</option>
+                {parents.map((p) => <option key={p.id} value={p.id}>{p.label || t("opt.untitled")}</option>)}
               </select>
               {src.parent && (
                 <>
-                  <label style={lbl}>ค่าที่บันทึกของช่องนั้นต้องตรงกับคอลัมน์</label>
+                  <label style={lbl}>{t("opt.parentColumn")}</label>
                   <select value={src.parent.column} onChange={(e) => onPatch({ options_source: { ...src, parent: { ...src.parent!, column: e.target.value } } })} style={sel}>
                     {ds.columns.map((c) => <option key={c.key} value={c.key}>{c.label}</option>)}
                   </select>
                   <p style={hint}>
-                    เช่น ช่อง “ลูกค้า” ใช้คอลัมน์ ลูกค้า → ช่องนี้ (สาขา) กรองด้วยคอลัมน์ ลูกค้า — ผู้กรอกจะเห็นเฉพาะสาขาของลูกค้าที่เลือก
+                    {t("opt.parentExample")}
                   </p>
                 </>
               )}
               <p style={hint}>
-                ตัวเลือกดึงตอนเปิดฟอร์ม · ออฟไลน์ใช้ข้อมูลรอบล่าสุดที่เปิดไว้ · ฟอร์มสาธารณะ ทุกคนที่มีลิงก์จะเห็นค่าในคอลัมน์นี้
+                {t("opt.loadNote")}
               </p>
             </>
           )}

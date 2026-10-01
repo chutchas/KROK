@@ -6,6 +6,8 @@ import Icon from "@/components/Icon";
 import { TabletSmartphone, Check, Ban, Trash2, Pencil, ShieldCheck, Clock, Grid3x3, Users } from "lucide-react";
 import { deleteDevice, renameDevice, setDeviceStatus, setFormDeviceScope, toggleFormDevice, type DeviceStatus } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
+import { useT } from "@/i18n/LanguageProvider";
+import type { MessageKey } from "@/i18n/dictionaries";
 
 export interface DeviceRow {
   id: string;
@@ -17,10 +19,10 @@ export interface DeviceRow {
   lastSeenAt: string | null;
 }
 
-const STATUS_LABEL: Record<DeviceStatus, string> = {
-  pending: "รออนุมัติ",
-  approved: "อนุมัติแล้ว",
-  revoked: "เพิกถอน",
+const STATUS_LABEL: Record<DeviceStatus, MessageKey> = {
+  pending: "dev.stPending",
+  approved: "dev.stApproved",
+  revoked: "dev.stRevoked",
 };
 const STATUS_COLOR: Record<DeviceStatus, string> = {
   pending: "var(--amber)",
@@ -28,11 +30,11 @@ const STATUS_COLOR: Record<DeviceStatus, string> = {
   revoked: "var(--fail)",
 };
 
-function fmtTime(s: string | null): string {
+function fmtTime(s: string | null, lang: string): string {
   if (!s) return "—";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short" });
 }
 
 export interface LockedForm {
@@ -53,6 +55,7 @@ export default function DevicesClient({
   linked: string[];
 }) {
   const router = useRouter();
+  const { t, tt, lang } = useT();
   const [busy, setBusy] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [draftName, setDraftName] = useState("");
@@ -94,18 +97,18 @@ export default function DevicesClient({
               style={{ fontSize: ".8rem" }}
               onClick={async () => { await run(d.id, () => renameDevice(d.id, draftName)); setEditing(null); }}
             >
-              บันทึก
+              {t("common.save")}
             </Button>
-            <Button style={{ fontSize: ".8rem" }} onClick={() => setEditing(null)}>ยกเลิก</Button>
+            <Button style={{ fontSize: ".8rem" }} onClick={() => setEditing(null)}>{t("common.cancel")}</Button>
           </div>
         ) : (
           <>
             <b style={{ fontFamily: "var(--font-anuphan)" }}>{d.name}</b>
             <div style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>
-              {[d.platform, d.firstUserName && `ลงทะเบียนโดย ${d.firstUserName}`].filter(Boolean).join(" · ") || "—"}
+              {[d.platform, d.firstUserName && tt("dev.registeredBy", { name: d.firstUserName })].filter(Boolean).join(" · ") || "—"}
             </div>
             <div style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>
-              ใช้งานล่าสุด {fmtTime(d.lastSeenAt)}
+              {tt("dev.lastSeen", { t: fmtTime(d.lastSeenAt, lang) })}
             </div>
           </>
         )}
@@ -113,29 +116,29 @@ export default function DevicesClient({
 
       <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".78rem", color: STATUS_COLOR[d.status], border: `1px solid ${STATUS_COLOR[d.status]}`, borderRadius: 999, padding: "3px 10px" }}>
         <Icon icon={d.status === "approved" ? ShieldCheck : d.status === "pending" ? Clock : Ban} className="h-3.5 w-3.5" />
-        {STATUS_LABEL[d.status]}
+        {t(STATUS_LABEL[d.status])}
       </span>
 
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {d.status !== "approved" && (
           <button disabled={busy === d.id} onClick={() => run(d.id, () => setDeviceStatus(d.id, "approved"))} style={{ ...btn, color: "var(--pass)", borderColor: "var(--pass)" }}>
-            <Icon icon={Check} className="h-3.5 w-3.5" /> อนุมัติ
+            <Icon icon={Check} className="h-3.5 w-3.5" /> {t("dev.approve")}
           </button>
         )}
         {d.status === "approved" && (
           <button disabled={busy === d.id} onClick={() => run(d.id, () => setDeviceStatus(d.id, "revoked"))} style={{ ...btn, color: "var(--fail)" }}>
-            <Icon icon={Ban} className="h-3.5 w-3.5" /> เพิกถอน
+            <Icon icon={Ban} className="h-3.5 w-3.5" /> {t("dev.revoke")}
           </button>
         )}
         <button disabled={busy === d.id} onClick={() => { setEditing(d.id); setDraftName(d.name); }} style={btn}>
-          <Icon icon={Pencil} className="h-3.5 w-3.5" /> เปลี่ยนชื่อ
+          <Icon icon={Pencil} className="h-3.5 w-3.5" /> {t("dev.rename")}
         </button>
         <button
           disabled={busy === d.id}
-          onClick={async () => { if (await confirmDialog({ message: `ลบ “${d.name}” ออกจากทะเบียน? เครื่องนี้จะต้องขออนุมัติใหม่`, danger: true })) void run(d.id, () => deleteDevice(d.id)); }}
+          onClick={async () => { if (await confirmDialog({ message: tt("dev.deleteConfirm", { name: d.name }), danger: true })) void run(d.id, () => deleteDevice(d.id)); }}
           style={{ ...btn, color: "var(--fail)" }}
         >
-          <Icon icon={Trash2} className="h-3.5 w-3.5" /> ลบ
+          <Icon icon={Trash2} className="h-3.5 w-3.5" /> {t("common.delete")}
         </button>
       </div>
     </div>
@@ -145,13 +148,13 @@ export default function DevicesClient({
     <div style={{ display: "grid", gap: 16 }}>
       <Card>
         <h1 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={TabletSmartphone} className="h-5 w-5" /> อุปกรณ์
+          <Icon icon={TabletSmartphone} className="h-5 w-5" /> {t("dev.devicesTitle")}
         </h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 4 }}>
-          ทะเบียนเครื่องที่ใช้กรอกฟอร์ม — ฟอร์มที่เปิด “เฉพาะเครื่องที่อนุมัติแล้ว” จะกรอกได้จากเครื่องในรายการนี้ที่สถานะ <b>อนุมัติแล้ว</b> เท่านั้น
+          {t("dev.devicesSub1")}<b>{t("dev.stApproved")}</b>{t("dev.devicesSub2")}
         </p>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", marginTop: 6 }}>
-          หมายเหตุ: ตัวตนของเครื่องผูกกับข้อมูลในเบราว์เซอร์ — ถ้าล้างข้อมูลเบราว์เซอร์หรือใช้โหมดส่วนตัว เครื่องจะต้องขออนุมัติใหม่
+          {t("dev.browserNote")}
         </p>
 
         {err && <p style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 10 }}>{err}</p>}
@@ -167,19 +170,19 @@ export default function DevicesClient({
       {pending.length > 0 && (
         <Card>
           <h2 style={{ fontSize: "1rem", margin: "0 0 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <Icon icon={Clock} className="h-4 w-4" /> รออนุมัติ ({pending.length})
+            <Icon icon={Clock} className="h-4 w-4" /> {tt("dev.pendingCount", { n: pending.length })}
           </h2>
           <div style={{ display: "grid", gap: 8 }}>{pending.map(row)}</div>
         </Card>
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1rem", margin: "0 0 10px" }}>เครื่องทั้งหมด ({others.length})</h2>
+        <h2 style={{ fontSize: "1rem", margin: "0 0 10px" }}>{tt("dev.allCount", { n: others.length })}</h2>
         {others.length === 0 ? (
           <EmptyState
             icon={<Icon icon={TabletSmartphone} className="h-8 w-8" strokeWidth={1.5} />}
-            title="ยังไม่มีเครื่องในทะเบียน"
-            hint="เครื่องจะเข้ามาอยู่ในรายการนี้อัตโนมัติเมื่อมีคนเปิดฟอร์มที่ล็อคเครื่องเป็นครั้งแรก"
+            title={t("dev.emptyTitle")}
+            hint={t("dev.emptyHint")}
           />
         ) : (
           <div style={{ display: "grid", gap: 8 }}>{others.map(row)}</div>
@@ -206,6 +209,7 @@ function MatrixCard({
   onError: (s: string) => void;
 }) {
   const router = useRouter();
+  const { t } = useT();
   const [links, setLinks] = useState<Set<string>>(() => new Set(linked));
   const [scopes, setScopes] = useState<Record<string, "any" | "selected">>(() =>
     Object.fromEntries(forms.map((f) => [f.id, f.scope]))
@@ -216,10 +220,10 @@ function MatrixCard({
     return (
       <Card>
         <h2 style={{ fontSize: "1rem", margin: "0 0 6px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Icon icon={Grid3x3} className="h-4 w-4" /> เครื่อง × ฟอร์ม
+          <Icon icon={Grid3x3} className="h-4 w-4" /> {t("dev.matrixTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: 0 }}>
-          ยังไม่มีฟอร์มที่เปิด “เฉพาะเครื่องที่อนุมัติแล้ว” — เปิดได้ที่หน้าแก้ฟอร์มใน <b>สร้างฟอร์ม</b>
+          {t("dev.matrixNoForms")}<b>{t("nav.studio")}</b>
         </p>
       </Card>
     );
@@ -261,17 +265,17 @@ function MatrixCard({
   return (
     <Card>
       <h2 style={{ fontSize: "1rem", margin: "0 0 4px", display: "inline-flex", alignItems: "center", gap: 6 }}>
-        <Icon icon={Grid3x3} className="h-4 w-4" /> เครื่อง × ฟอร์ม
+        <Icon icon={Grid3x3} className="h-4 w-4" /> {t("dev.matrixTitle")}
       </h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>
-        ฟอร์มที่ตั้งเป็น <b>เฉพาะเครื่องที่เลือก</b> จะกรอกได้จากเครื่องที่ติ๊กไว้ในคอลัมน์นั้นเท่านั้น — เครื่องที่อนุมัติแล้วแต่ไม่ได้ติ๊ก จะเปิดฟอร์มไม่ได้
+        {t("dev.matrixSub1")}<b>{t("dev.matrixSelectedOnly")}</b>{t("dev.matrixSub2")}
       </p>
 
       {devices.length === 0 ? (
         <EmptyState
           icon={<Icon icon={TabletSmartphone} className="h-8 w-8" strokeWidth={1.5} />}
-          title="ยังไม่มีเครื่องที่อนุมัติแล้ว"
-          hint="อนุมัติเครื่องด้านบนก่อน แล้วค่อยเลือกว่าเครื่องไหนใช้ฟอร์มไหนได้"
+          title={t("dev.noApprovedTitle")}
+          hint={t("dev.noApprovedHint")}
         />
       ) : (
         <div style={{ overflowX: "auto", marginTop: 10 }}>
@@ -280,7 +284,7 @@ function MatrixCard({
               <tr>
                 <th style={{ ...th, textAlign: "left", minWidth: 180, position: "sticky", left: 0, background: "var(--surface)" }}>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--ink-2)" }}>
-                    <Icon icon={Users} className="h-3.5 w-3.5" /> เครื่อง
+                    <Icon icon={Users} className="h-3.5 w-3.5" /> {t("dev.device")}
                   </span>
                 </th>
                 {forms.map((f) => {
@@ -290,8 +294,8 @@ function MatrixCard({
                       <div style={{ fontWeight: 600, marginBottom: 6 }}>{f.icon} {f.title}</div>
                       <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 7, overflow: "hidden" }}>
                         {([
-                          { v: "any" as const, label: "ทุกเครื่อง" },
-                          { v: "selected" as const, label: "เลือกเอง" },
+                          { v: "any" as const, label: t("dev.scopeAny") },
+                          { v: "selected" as const, label: t("dev.scopeSelected") },
                         ]).map((opt, i) => {
                           const on = scope === opt.v;
                           return (
@@ -327,8 +331,8 @@ function MatrixCard({
                     const key = `${f.id}:${d.id}`;
                     if (scope === "any")
                       return (
-                        <td key={f.id} style={{ ...td, color: "var(--ink-3)", fontSize: ".78rem" }} title="ฟอร์มนี้รับทุกเครื่องที่อนุมัติแล้ว">
-                          ทุกเครื่อง
+                        <td key={f.id} style={{ ...td, color: "var(--ink-3)", fontSize: ".78rem" }} title={t("dev.anyCellTitle")}>
+                          {t("dev.scopeAny")}
                         </td>
                       );
                     return (

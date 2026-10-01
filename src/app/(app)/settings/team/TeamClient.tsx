@@ -7,6 +7,7 @@ import { HardHat, Tag } from "lucide-react";
 import { inviteMember, cancelInvite, changeRoleKey, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
+import type { MessageKey } from "@/i18n/dictionaries";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 export interface RoleOption { key: string; name: string; canManage: boolean }
@@ -31,11 +32,11 @@ export interface Team {
   memberIds: string[];
 }
 
-const ROLE_LABEL: Record<Role, string> = {
-  owner: "เจ้าของ",
-  admin: "แอดมิน",
-  designer: "ออกแบบฟอร์ม",
-  operator: "หน้างาน",
+const ROLE_LABEL: Record<Role, MessageKey> = {
+  owner: "role.owner",
+  admin: "role.admin",
+  designer: "role.designer",
+  operator: "role.operator",
 };
 
 export default function TeamClient({
@@ -74,7 +75,7 @@ export default function TeamClient({
     setBusy(false);
     if ("error" in res) setMsg({ t: res.error, err: true });
     else {
-      setMsg({ t: `เชิญ ${email} แล้ว — ให้เขาสมัครด้วยอีเมลนี้ที่หน้าเข้าสู่ระบบ แล้วจะเข้าองค์กรอัตโนมัติ` });
+      setMsg({ t: tt("team.invited", { email }) });
       setEmail("");
       router.refresh();
     }
@@ -89,38 +90,38 @@ export default function TeamClient({
     <div style={{ display: "grid", gap: 16 }}>
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{tt("team.title", { name: tenantName })}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>จัดการสมาชิกและสิทธิ์การใช้งาน</p>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("team.subtitle")}</p>
       </div>
 
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>เชิญสมาชิกใหม่</h2>
+        <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("team.inviteTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>
-          พิมพ์อีเมลและเลือกสิทธิ์ — เมื่อเขาสมัครด้วยอีเมลนี้ จะเข้าองค์กรให้อัตโนมัติ
+          {t("team.inviteSub")}
         </p>
         <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <Field type="email" placeholder="อีเมลของสมาชิก" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
+          <Field type="email" placeholder={t("team.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
           <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} style={selstyle}>
             {inviteOptions.map((r) => (
               <option key={r.key} value={r.key}>{r.name}</option>
             ))}
           </select>
-          <Button variant="primary" type="submit" loading={busy}>เชิญ</Button>
+          <Button variant="primary" type="submit" loading={busy}>{t("team.invite")}</Button>
         </form>
-        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>สิทธิ์ที่จะได้รับ: <b>{selectedRoleName}</b></p>
+        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>{t("team.roleToGet")} <b>{selectedRoleName}</b></p>
         {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
       </Card>
 
       {invites.length > 0 && (
         <Card>
-          <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>คำเชิญที่รอตอบรับ</h2>
+          <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{t("team.pending")}</h2>
           <div style={{ display: "grid", gap: 8 }}>
             {invites.map((inv) => (
               <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontSize: ".92rem" }}>{inv.email}</b>
-                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>สิทธิ์ {roleOptions.find((r) => r.key === inv.role_key)?.name || ROLE_LABEL[inv.role]} · รอสมัคร</small>
+                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{tt("team.inviteRole", { role: roleOptions.find((r) => r.key === inv.role_key)?.name || t(ROLE_LABEL[inv.role]) })}</small>
                 </div>
-                <AsyncButton variant="danger" onClick={async () => { await cancelInvite(inv.id); router.refresh(); }}>ยกเลิก</AsyncButton>
+                <AsyncButton variant="danger" onClick={async () => { await cancelInvite(inv.id); router.refresh(); }}>{t("common.cancel")}</AsyncButton>
               </div>
             ))}
           </div>
@@ -128,7 +129,7 @@ export default function TeamClient({
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>สมาชิก ({members.length})</h2>
+        <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{tt("team.members", { n: members.length })}</h2>
         <div style={{ display: "grid", gap: 4 }}>
           {members.map((m) => {
             const isMe = m.user_id === me;
@@ -140,7 +141,7 @@ export default function TeamClient({
               <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
                 <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}><Icon icon={HardHat} className="h-[18px] w-[18px]" /></div>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <b style={{ fontSize: ".92rem" }}>{m.name || m.email || "สมาชิก"} {isMe && <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(คุณ)</span>}</b>
+                  <b style={{ fontSize: ".92rem" }}>{m.name || m.email || t("team.memberFallback")} {isMe && <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>{t("team.you")}</span>}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{m.email}</small>
                 </div>
                 {canEditThis && !isMe ? (
@@ -162,11 +163,11 @@ export default function TeamClient({
                 )}
                 {!isMe && canEditThis && (
                   <AsyncButton variant="danger" onClick={async () => {
-                    if (!(await confirmDialog({ message: `นำ ${m.name || m.email} ออกจากองค์กร?`, confirmLabel: "นำออก", danger: true }))) return;
+                    if (!(await confirmDialog({ message: tt("team.removeConfirm", { name: m.name || m.email || "" }), confirmLabel: t("team.remove"), danger: true }))) return;
                     const res = await removeMember(m.user_id);
                     if ("error" in res) await alertDialog(res.error);
                     else router.refresh();
-                  }}>นำออก</AsyncButton>
+                  }}>{t("team.remove")}</AsyncButton>
                 )}
               </div>
             );
@@ -197,7 +198,7 @@ function TeamsSection({
 
   function nameOf(uid: string) {
     const m = members.find((x) => x.user_id === uid);
-    return m?.name || m?.email || "สมาชิก";
+    return m?.name || m?.email || t("team.memberFallback");
   }
 
   async function add(e: React.FormEvent) {
@@ -283,7 +284,7 @@ function TeamsSection({
                         }
                         style={{ width: 18, height: 18, accentColor: "var(--accent)" }}
                       />
-                      {m.name || m.email || "สมาชิก"}
+                      {m.name || m.email || t("team.memberFallback")}
                     </label>
                   );
                 })}

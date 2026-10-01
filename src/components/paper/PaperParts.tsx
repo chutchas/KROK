@@ -10,6 +10,7 @@
 import Icon from "@/components/Icon";
 import { Camera, Check, X, Plus, Trash2, PenLine } from "lucide-react";
 import type { TableColumn } from "@/lib/form-schema";
+import { useT } from "@/i18n/LanguageProvider";
 import {
   BOX_BORDER,
   BOX_PAD_X,
@@ -92,11 +93,12 @@ export function PaperHeaderContent({ icon, title, description }: { icon: string;
 }
 
 export function PaperMetaContent({ filler, date }: { filler?: string; date?: string }) {
+  const { t } = useT();
   return (
     <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap", lineHeight: 1.6 }}>
-      ผู้กรอก: {filler || "__________"}
+      {t("fw.paper.filler")} {filler || "__________"}
       <br />
-      วันที่: {date || "__________"}
+      {t("fw.paper.date")} {date || "__________"}
     </div>
   );
 }
@@ -164,6 +166,7 @@ export function PaperChoices({
 
 /** ผ่าน / ไม่ผ่าน — ปุ่มเล็กบรรทัดเดียว */
 export function PaperPassFail({ value, onChange, disabled = false }: { value?: string; onChange?: (v: "pass" | "fail") => void; disabled?: boolean }) {
+  const { t } = useT();
   const btn = (kind: "pass" | "fail") => {
     const on = value === kind;
     const color = kind === "pass" ? "#15803d" : "#dc2626";
@@ -178,7 +181,7 @@ export function PaperPassFail({ value, onChange, disabled = false }: { value?: s
           color: on ? color : INK, fontFamily: "inherit", fontSize: FONT, fontWeight: 700, cursor: disabled ? "default" : "pointer",
         }}
       >
-        <Icon icon={kind === "pass" ? Check : X} className="h-3.5 w-3.5" /> {kind === "pass" ? "ผ่าน" : "ไม่ผ่าน"}
+        <Icon icon={kind === "pass" ? Check : X} className="h-3.5 w-3.5" /> {kind === "pass" ? t("fw.pass") : t("fw.fail")}
       </button>
     );
   };
@@ -187,16 +190,17 @@ export function PaperPassFail({ value, onChange, disabled = false }: { value?: s
 
 /** รูปถ่าย — ปุ่มถ่าย + รูปย่อ ในบรรทัดเดียว */
 export function PaperPhoto({ photo, onPick, disabled = false, extra }: { photo?: string; onPick?: () => void; disabled?: boolean; extra?: React.ReactNode }) {
+  const { t } = useT();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: CONTROL_H }}>
-      {photo && <img src={photo} alt="รูปที่ถ่าย" style={{ height: CONTROL_H, width: CONTROL_H * 1.33, objectFit: "cover", borderRadius: 3, border: `1px solid ${LINE}` }} />}
+      {photo && <img src={photo} alt={t("fw.photoAlt")} style={{ height: CONTROL_H, width: CONTROL_H * 1.33, objectFit: "cover", borderRadius: 3, border: `1px solid ${LINE}` }} />}
       <button
         type="button"
         disabled={disabled}
         onClick={onPick}
         style={{ flex: photo ? "0 0 auto" : 1, height: CONTROL_H, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, border: `1px dashed ${LINE}`, borderRadius: 4, background: "#fff", color: MUTED, fontFamily: "inherit", fontSize: FONT, cursor: disabled ? "default" : "pointer", padding: "0 10px" }}
       >
-        <Icon icon={Camera} className="h-3.5 w-3.5" /> {photo ? "ถ่ายใหม่" : "ถ่ายรูป / เลือกรูป"}
+        <Icon icon={Camera} className="h-3.5 w-3.5" /> {photo ? t("fw.paper.retake") : t("fw.paper.takePhoto")}
       </button>
       {extra}
     </div>
@@ -205,6 +209,7 @@ export function PaperPhoto({ photo, onPick, disabled = false, extra }: { photo?:
 
 /** ลายเซ็น — กล่องแสดงลายเซ็น แตะเพื่อเปิดแผ่นเซ็นเต็มจอ */
 export function PaperSignature({ url, onOpen, disabled = false }: { url?: string; onOpen?: () => void; disabled?: boolean }) {
+  const { t } = useT();
   return (
     <button
       type="button"
@@ -213,9 +218,9 @@ export function PaperSignature({ url, onOpen, disabled = false }: { url?: string
       style={{ width: "100%", height: CONTROL_H, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: url ? "flex-start" : "center", gap: 5, border: "none", borderBottom: `1px solid ${INK}`, background: "#fff", color: MUTED, fontFamily: "inherit", fontSize: FONT, cursor: disabled ? "default" : "pointer", padding: 0 }}
     >
       {url ? (
-        <img src={url} alt="ลายเซ็น" style={{ height: CONTROL_H - 2, maxWidth: "100%", objectFit: "contain" }} />
+        <img src={url} alt={t("fw.paper.sigAlt")} style={{ height: CONTROL_H - 2, maxWidth: "100%", objectFit: "contain" }} />
       ) : (
-        <><Icon icon={PenLine} className="h-3.5 w-3.5" /> แตะเพื่อเซ็น</>
+        <><Icon icon={PenLine} className="h-3.5 w-3.5" /> {t("fw.paper.tapToSign")}</>
       )}
     </button>
   );
@@ -235,7 +240,8 @@ export function PaperTable({
   onDelete?: (ri: number) => void;
   disabled?: boolean;
 }) {
-  const cols = columns.length ? columns : [{ id: "c0", label: "รายการ", type: "text" as const }];
+  const { t } = useT();
+  const cols = columns.length ? columns : [{ id: "c0", label: t("fw.colItem"), type: "text" as const }];
   const totalW = cols.reduce((s, c) => s + (c.width || 1), 0);
   const cell: React.CSSProperties = { width: "100%", height: TABLE_ROW_H - 1, boxSizing: "border-box", border: "none", padding: "0 5px", background: "transparent", color: INK, fontFamily: "inherit", fontSize: ".76rem", outline: "none" };
   return (
@@ -272,7 +278,7 @@ export function PaperTable({
             ))}
             {onDelete && (
               <td style={{ textAlign: "center", padding: 0 }}>
-                <button type="button" onClick={() => onDelete(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", padding: 2 }}>
+                <button type="button" onClick={() => onDelete(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", padding: 2 }}>
                   <Icon icon={Trash2} className="h-3.5 w-3.5" />
                 </button>
               </td>
@@ -286,9 +292,10 @@ export function PaperTable({
 
 /** ปุ่ม "+ แถว" เล็ก ๆ สำหรับวางในบรรทัดชื่อช่อง (ไม่เพิ่มความสูงกล่อง) */
 export function PaperAddRow({ onClick }: { onClick: () => void }) {
+  const { t } = useT();
   return (
     <button type="button" onClick={onClick} style={{ height: LABEL_H, display: "inline-flex", alignItems: "center", gap: 3, border: `1px solid #2f6fe0`, borderRadius: 4, background: "#eef4ff", color: "#2f6fe0", fontFamily: "inherit", fontSize: ".7rem", fontWeight: 600, padding: "0 6px", cursor: "pointer" }}>
-      <Icon icon={Plus} className="h-3 w-3" /> แถว
+      <Icon icon={Plus} className="h-3 w-3" /> {t("fw.paper.row")}
     </button>
   );
 }

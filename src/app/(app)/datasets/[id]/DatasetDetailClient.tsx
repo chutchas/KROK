@@ -6,7 +6,6 @@ import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ArrowLeft, Trash2, Save, Plus, X, KeyRound, Search, Eraser, History, FileText } from "lucide-react";
 import {
-  SOURCE_LABEL,
   cellText,
   isValidColumnKey,
   slugKey,
@@ -16,7 +15,9 @@ import {
   type DatasetSyncMode,
 } from "@/lib/datasets";
 import { clearRows, deleteDataset, updateDataset } from "../actions";
-import { SOURCE_ICON, SyncBadge, fmtTime, label, selectStyle, smallBtn, tableWrap, td, th } from "../ui";
+import type { MessageKey } from "@/i18n/dictionaries";
+import { useT } from "@/i18n/LanguageProvider";
+import { SOURCE_ICON, SOURCE_KEY, SyncBadge, fmtTime, label, selectStyle, smallBtn, tableWrap, td, th } from "../ui";
 import FileImportPanel from "./FileImportPanel";
 import PullPanel from "./PullPanel";
 import PushPanel from "./PushPanel";
@@ -31,7 +32,7 @@ export interface SyncRun {
   created_at: string;
 }
 
-const KIND_LABEL: Record<SyncRun["kind"], string> = { manual: "กดเอง", file: "ไฟล์", schedule: "ตั้งเวลา", push: "API push" };
+const KIND_LABEL: Record<SyncRun["kind"], MessageKey> = { manual: "ds.run.manual", file: "ds.run.file", schedule: "ds.run.schedule", push: "ds.run.push" };
 
 export default function DatasetDetailClient({
   ds,
@@ -48,6 +49,7 @@ export default function DatasetDetailClient({
   usedBy: { id: string; title: string; icon: string; columns: string[] }[];
   canEdit: boolean;
 }) {
+  const { t, tt, lang } = useT();
   const router = useRouter();
   const [name, setName] = useState(ds.name);
   const [desc, setDesc] = useState(ds.description);
@@ -97,14 +99,14 @@ export default function DatasetDetailClient({
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
       <div>
         <Link href="/datasets" style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".85rem", color: "var(--ink-2)", textDecoration: "none" }}>
-          <Icon icon={ArrowLeft} className="h-4 w-4" /> ข้อมูลอ้างอิงทั้งหมด
+          <Icon icon={ArrowLeft} className="h-4 w-4" /> {t("ds.backAll")}
         </Link>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
           <h1 style={{ fontSize: "1.35rem", margin: 0 }}>{ds.name}</h1>
           <SyncBadge ds={ds} />
         </div>
         <div style={{ fontSize: ".82rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>
-          <Icon icon={SOURCE_ICON[ds.sourceKind]} className="h-3.5 w-3.5" /> {SOURCE_LABEL[ds.sourceKind]} · {ds.rowCount.toLocaleString()} แถว
+          <Icon icon={SOURCE_ICON[ds.sourceKind]} className="h-3.5 w-3.5" /> {t(SOURCE_KEY[ds.sourceKind])} · {tt("ds.rows", { n: ds.rowCount.toLocaleString() })}
           {ds.lastSyncStatus === "error" && ds.lastSyncError && <span style={{ color: "var(--fail)" }}>· {ds.lastSyncError}</span>}
         </div>
       </div>
@@ -118,32 +120,32 @@ export default function DatasetDetailClient({
 
       {/* ---------- คอลัมน์และการตั้งค่า ---------- */}
       <Card>
-        <b style={{ fontFamily: "var(--font-anuphan)" }}>ตั้งค่าและคอลัมน์</b>
+        <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("ds.settingsCols")}</b>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
           <div>
-            <label style={label}>ชื่อ</label>
+            <label style={label}>{t("ds.name")}</label>
             <Field value={name} onChange={(e) => setName(e.target.value)} disabled={!canEdit} maxLength={120} />
           </div>
           <div>
-            <label style={label}>คำอธิบาย</label>
+            <label style={label}>{t("ds.description")}</label>
             <Field value={desc} onChange={(e) => setDesc(e.target.value)} disabled={!canEdit} maxLength={500} />
           </div>
         </div>
 
-        <label style={label}>คอลัมน์</label>
+        <label style={label}>{t("ds.columns")}</label>
         {cols.length === 0 ? (
           <p style={{ fontSize: ".85rem", color: "var(--ink-3)", margin: 0 }}>
-            ยังไม่มีคอลัมน์ — {ds.sourceKind === "file" ? "อัปโหลดไฟล์แล้วระบบจะสร้างให้" : ds.sourceKind === "api_pull" ? "ทดสอบ API แล้วเลือกฟิลด์" : "เพิ่มเอง หรือให้ระบบสร้างจากข้อมูลที่ push เข้ามาครั้งแรก"}
+            {t("ds.noColumns")}{ds.sourceKind === "file" ? t("ds.noColumns.file") : ds.sourceKind === "api_pull" ? t("ds.noColumns.apiPull") : t("ds.noColumns.apiPush")}
           </p>
         ) : (
           <div style={tableWrap}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead>
                 <tr>
-                  <th style={th}>ชื่อที่แสดง</th>
-                  <th style={th}>ชนิด</th>
-                  <th style={th}>ชื่อภายใน (API)</th>
-                  <th style={th} title="ค่าไม่ซ้ำในแต่ละแถว ใช้อัปเดตรายแถว"><Icon icon={KeyRound} className="h-3.5 w-3.5" /> key</th>
+                  <th style={th}>{t("ds.col.label")}</th>
+                  <th style={th}>{t("ds.col.type")}</th>
+                  <th style={th}>{t("ds.col.key")}</th>
+                  <th style={th} title={t("ds.col.keyHint")}><Icon icon={KeyRound} className="h-3.5 w-3.5" /> key</th>
                   <th style={th}></th>
                 </tr>
               </thead>
@@ -157,8 +159,8 @@ export default function DatasetDetailClient({
                       </td>
                       <td style={td}>
                         <select value={c.type} disabled={!canEdit} onChange={(e) => setCols(cols.map((x, xi) => (xi === i ? { ...x, type: e.target.value === "number" ? "number" : "text" } : x)))} style={{ ...selectStyle, padding: "5px 8px" }}>
-                          <option value="text">ข้อความ</option>
-                          <option value="number">ตัวเลข</option>
+                          <option value="text">{t("ds.type.text")}</option>
+                          <option value="number">{t("ds.type.number")}</option>
                         </select>
                       </td>
                       <td style={td}>
@@ -167,7 +169,7 @@ export default function DatasetDetailClient({
                         ) : (
                           <code style={{ fontSize: ".8rem" }}>{c.key}</code>
                         )}
-                        {usedCols.has(c.key) && <span style={{ fontSize: ".7rem", color: "var(--accent)", marginLeft: 6 }}>ฟอร์มใช้อยู่</span>}
+                        {usedCols.has(c.key) && <span style={{ fontSize: ".7rem", color: "var(--accent)", marginLeft: 6 }}>{t("ds.usedByForm")}</span>}
                       </td>
                       <td style={td}>
                         <input type="radio" name="keycol" checked={keyCol === c.key} disabled={!canEdit} onChange={() => setKeyCol(c.key)} style={{ accentColor: "var(--accent)" }} />
@@ -177,7 +179,7 @@ export default function DatasetDetailClient({
                           <button
                             onClick={() => { setCols(cols.filter((_, xi) => xi !== i)); if (keyCol === c.key) setKeyCol(null); }}
                             disabled={usedCols.has(c.key)}
-                            title={usedCols.has(c.key) ? "ฟอร์มใช้คอลัมน์นี้อยู่" : "ลบคอลัมน์"}
+                            title={usedCols.has(c.key) ? t("ds.colInUse") : t("ds.deleteCol")}
                             style={{ ...smallBtn, color: "var(--fail)", opacity: usedCols.has(c.key) ? 0.4 : 1 }}
                           >
                             <Icon icon={X} className="h-3.5 w-3.5" />
@@ -194,16 +196,16 @@ export default function DatasetDetailClient({
         {canEdit && (
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
             <button onClick={addColumn} disabled={cols.length >= 40} style={{ ...smallBtn, color: "var(--accent)", borderColor: "var(--accent)" }}>
-              <Icon icon={Plus} className="h-3.5 w-3.5" /> เพิ่มคอลัมน์
+              <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("ds.addCol")}
             </button>
-            {keyCol && <button onClick={() => setKeyCol(null)} style={smallBtn}>ไม่ใช้ key</button>}
+            {keyCol && <button onClick={() => setKeyCol(null)} style={smallBtn}>{t("ds.noKey")}</button>}
           </div>
         )}
 
-        <label style={label}>เมื่อนำเข้าข้อมูลใหม่</label>
+        <label style={label}>{t("ds.onImport")}</label>
         <select value={mode} disabled={!canEdit} onChange={(e) => setMode(e.target.value === "upsert" ? "upsert" : "replace")} style={selectStyle}>
-          <option value="replace">แทนที่ทั้งชุด (ข้อมูลที่ไม่มีในรอบใหม่จะหายไป)</option>
-          <option value="upsert" disabled={!keyCol}>อัปเดตตาม key (เพิ่มใหม่ / แก้ของเดิม / ไม่ลบ){!keyCol ? " — ต้องเลือก key" : ""}</option>
+          <option value="replace">{t("ds.mode.replaceLong")}</option>
+          <option value="upsert" disabled={!keyCol}>{t("ds.mode.upsertLong")}{!keyCol ? t("ds.mode.needKeyCol") : ""}</option>
         </select>
 
         {canEdit && (
@@ -212,11 +214,11 @@ export default function DatasetDetailClient({
               variant="primary"
               disabled={!dirty || cols.some((c) => !isValidColumnKey(c.key))}
               loading={busy === "save"}
-              onClick={() => run("save", () => updateDataset(ds.id, { name, description: desc, columns: cols, keyColumn: keyCol, syncMode: mode }), "บันทึกแล้ว")}
+              onClick={() => run("save", () => updateDataset(ds.id, { name, description: desc, columns: cols, keyColumn: keyCol, syncMode: mode }), t("common.saved"))}
             >
-              <Icon icon={Save} className="h-4 w-4" /> บันทึก
+              <Icon icon={Save} className="h-4 w-4" /> {t("common.save")}
             </Button>
-            {dirty && <Button onClick={() => { setName(ds.name); setDesc(ds.description); setCols(ds.columns); setKeyCol(ds.keyColumn); setMode(ds.syncMode); }}>ยกเลิกการแก้</Button>}
+            {dirty && <Button onClick={() => { setName(ds.name); setDesc(ds.description); setCols(ds.columns); setKeyCol(ds.keyColumn); setMode(ds.syncMode); }}>{t("ds.discard")}</Button>}
           </div>
         )}
       </Card>
@@ -224,17 +226,17 @@ export default function DatasetDetailClient({
       {/* ---------- ข้อมูล ---------- */}
       <Card>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <b style={{ fontFamily: "var(--font-anuphan)" }}>ข้อมูล</b>
+          <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("ds.data")}</b>
           <div style={{ position: "relative", minWidth: 200, flex: "0 1 280px" }}>
-            <Field value={q} onChange={(e) => setQ(e.target.value)} placeholder="ค้นหาในตัวอย่าง" style={{ paddingLeft: 30, width: "100%" }} />
+            <Field value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("ds.searchPreview")} style={{ paddingLeft: 30, width: "100%" }} />
             <span style={{ position: "absolute", left: 9, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)", display: "flex" }}><Icon icon={Search} className="h-4 w-4" /></span>
           </div>
         </div>
         <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "4px 0 10px" }}>
-          แสดง {Math.min(rows.length, previewLimit).toLocaleString()} แถวแรกจาก {ds.rowCount.toLocaleString()} แถว
+          {tt("ds.previewOf", { n: Math.min(rows.length, previewLimit).toLocaleString(), total: ds.rowCount.toLocaleString() })}
         </p>
         {rows.length === 0 ? (
-          <p style={{ fontSize: ".88rem", color: "var(--ink-3)" }}>ยังไม่มีข้อมูล</p>
+          <p style={{ fontSize: ".88rem", color: "var(--ink-3)" }}>{t("common.none")}</p>
         ) : (
           <div style={{ ...tableWrap, maxHeight: 420, overflowY: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
@@ -253,19 +255,19 @@ export default function DatasetDetailClient({
           <button
             style={{ ...smallBtn, marginTop: 10, color: "var(--fail)" }}
             disabled={busy === "clear"}
-            onClick={async () => { if (await confirmDialog({ message: `ล้างข้อมูลทั้ง ${ds.rowCount.toLocaleString()} แถว? (คอลัมน์ยังอยู่) dropdown ในฟอร์มที่ใช้ชุดนี้จะไม่มีตัวเลือกจนกว่าจะนำเข้าใหม่`, confirmLabel: "ล้างข้อมูล", danger: true })) void run("clear", () => clearRows(ds.id), "ล้างข้อมูลแล้ว"); }}
+            onClick={async () => { if (await confirmDialog({ message: tt("ds.clearConfirm", { n: ds.rowCount.toLocaleString() }), confirmLabel: t("ds.clearBtn"), danger: true })) void run("clear", () => clearRows(ds.id), t("ds.cleared")); }}
           >
-            <Icon icon={Eraser} className="h-3.5 w-3.5" /> ล้างข้อมูลทั้งหมด
+            <Icon icon={Eraser} className="h-3.5 w-3.5" /> {t("ds.clearAll")}
           </button>
         )}
       </Card>
 
       {/* ---------- ฟอร์มที่ใช้ ---------- */}
       <Card>
-        <b style={{ fontFamily: "var(--font-anuphan)" }}>ฟอร์มที่ใช้ชุดข้อมูลนี้</b>
+        <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("ds.usedByTitle")}</b>
         {usedBy.length === 0 ? (
           <p style={{ fontSize: ".85rem", color: "var(--ink-3)", margin: "6px 0 0" }}>
-            ยังไม่มี — ไปที่ สร้างฟอร์ม → เลือกฟิลด์ “เลือก 1 ข้อ” หรือ “เลือกหลายข้อ” → ตัวเลือกจาก “ข้อมูลอ้างอิง”
+            {t("ds.usedByEmpty")}
           </p>
         ) : (
           <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
@@ -282,15 +284,15 @@ export default function DatasetDetailClient({
       {/* ---------- ประวัติ ---------- */}
       {canEdit && (
         <Card>
-          <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={History} className="h-4 w-4" /> ประวัติการนำเข้า</b>
+          <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={History} className="h-4 w-4" /> {t("ds.history")}</b>
           {runs.length === 0 ? (
-            <p style={{ fontSize: ".85rem", color: "var(--ink-3)", margin: "6px 0 0" }}>ยังไม่มี</p>
+            <p style={{ fontSize: ".85rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("ds.nothingYet")}</p>
           ) : (
             <div style={{ display: "grid", gap: 4, marginTop: 8 }}>
               {runs.map((r) => (
                 <div key={r.id} style={{ display: "flex", gap: 8, fontSize: ".8rem", flexWrap: "wrap", color: r.status === "error" ? "var(--fail)" : "var(--ink-2)" }}>
-                  <span style={{ color: "var(--ink-3)", minWidth: 110 }}>{fmtTime(r.created_at)}</span>
-                  <span style={{ minWidth: 64 }}>{KIND_LABEL[r.kind] || r.kind}</span>
+                  <span style={{ color: "var(--ink-3)", minWidth: 110 }}>{fmtTime(r.created_at, lang)}</span>
+                  <span style={{ minWidth: 64 }}>{KIND_LABEL[r.kind] ? t(KIND_LABEL[r.kind]) : r.kind}</span>
                   <span style={{ flex: 1, minWidth: 160, wordBreak: "break-word" }}>{r.status === "error" ? "✗ " : "✓ "}{r.message}</span>
                 </div>
               ))}
@@ -306,7 +308,7 @@ export default function DatasetDetailClient({
             loading={busy === "delete"}
             disabled={usedBy.length > 0}
             onClick={async () => {
-              if (!(await confirmDialog({ message: `ลบ “${ds.name}” และข้อมูลทั้งหมด? ย้อนกลับไม่ได้`, danger: true }))) return;
+              if (!(await confirmDialog({ message: tt("ds.deleteConfirm", { name: ds.name }), danger: true }))) return;
               setBusy("delete");
               const res = await deleteDataset(ds.id);
               setBusy(null);
@@ -314,9 +316,9 @@ export default function DatasetDetailClient({
               else router.push("/datasets");
             }}
           >
-            <Icon icon={Trash2} className="h-4 w-4" /> ลบชุดข้อมูล
+            <Icon icon={Trash2} className="h-4 w-4" /> {t("ds.delete")}
           </Button>
-          {usedBy.length > 0 && <span style={{ fontSize: ".78rem", color: "var(--ink-3)", marginLeft: 8 }}>ลบไม่ได้ขณะที่ยังมีฟอร์มใช้อยู่</span>}
+          {usedBy.length > 0 && <span style={{ fontSize: ".78rem", color: "var(--ink-3)", marginLeft: 8 }}>{t("ds.deleteBlocked")}</span>}
         </div>
       )}
     </div>

@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import { TabletSmartphone, Check } from "lucide-react";
+import { useT } from "@/i18n/LanguageProvider";
 import { listDevicesForForm, toggleFormDevice, type DeviceLink } from "@/app/(app)/settings/devices/actions";
 
 /**
@@ -10,6 +11,7 @@ import { listDevicesForForm, toggleFormDevice, type DeviceLink } from "@/app/(ap
  * บันทึกทันทีที่ติ๊ก — ไม่รอกดบันทึกฟอร์ม เพราะเป็นข้อมูลคนละตาราง
  */
 export default function FormDevicePicker({ formId }: { formId: string | null }) {
+  const { t, tt } = useT();
   const [rows, setRows] = useState<DeviceLink[]>([]);
   const [loading, setLoading] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
@@ -43,7 +45,7 @@ export default function FormDevicePicker({ formId }: { formId: string | null }) 
   if (!formId)
     return (
       <p style={{ fontSize: ".8rem", color: "var(--ink-3)", margin: "8px 0 0" }}>
-        บันทึกฟอร์มก่อน แล้วเปิดกลับมาเลือกเครื่องได้ — ระหว่างนี้ยังไม่มีเครื่องไหนกรอกฟอร์มนี้ได้
+        {t("fw.devPick.saveFirst")}
       </p>
     );
 
@@ -52,15 +54,15 @@ export default function FormDevicePicker({ formId }: { formId: string | null }) 
   return (
     <div style={{ marginTop: 10 }}>
       <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginBottom: 6 }}>
-        เครื่องที่ผูกกับฟอร์มนี้ ({count}/{rows.length})
+        {tt("fw.devPick.linked", { n: count, total: rows.length })}
       </div>
 
-      {loading && <div style={{ fontSize: ".8rem", color: "var(--ink-3)" }}>กำลังโหลด…</div>}
+      {loading && <div style={{ fontSize: ".8rem", color: "var(--ink-3)" }}>{t("common.loading")}</div>}
 
       {!loading && rows.length === 0 && (
         <p style={{ fontSize: ".82rem", color: "var(--ink-3)", margin: 0 }}>
-          ยังไม่มีเครื่องที่อนุมัติแล้วในองค์กร — อนุมัติเครื่องก่อนที่{" "}
-          <Link href="/settings/devices" style={{ color: "var(--accent)" }}>ตั้งค่า → อุปกรณ์</Link>
+          {t("fw.devPick.none")}{" "}
+          <Link href="/settings/devices" style={{ color: "var(--accent)" }}>{t("fw.devPick.settingsLink")}</Link>
         </p>
       )}
 
@@ -94,7 +96,7 @@ export default function FormDevicePicker({ formId }: { formId: string | null }) 
 
       {count === 0 && rows.length > 0 && (
         <p style={{ fontSize: ".8rem", color: "var(--amber)", margin: "8px 0 0" }}>
-          ยังไม่ได้เลือกเครื่องเลย — ตอนนี้ยังไม่มีใครกรอกฟอร์มนี้ได้
+          {t("fw.devPick.noneSelected")}
         </p>
       )}
       {err && <p style={{ fontSize: ".8rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}

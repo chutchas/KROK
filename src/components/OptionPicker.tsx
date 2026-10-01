@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import { Search, X, Check } from "lucide-react";
+import { useT } from "@/i18n/LanguageProvider";
 
 // ============================================================
 // OptionPicker — ตัวเลือกแบบค้นหาได้ สำหรับ dropdown ที่ดึงจากข้อมูลอ้างอิง
@@ -33,6 +34,7 @@ export default function OptionPicker({
   compact?: boolean;
   name: string;
 }) {
+  const { tt } = useT();
   const selected = useMemo(() => (multiple ? (Array.isArray(value) ? value : []) : typeof value === "string" && value ? [value] : []), [multiple, value]);
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -108,7 +110,7 @@ export default function OptionPicker({
           {selected.map((s) => (
             <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 999, padding: compact ? "1px 8px" : "4px 10px", fontSize: compact ? ".78rem" : ".9rem", fontWeight: 600 }}>
               {text(s)}
-              <button type="button" aria-label={`เอา ${labels?.get(s) ?? s} ออก`} onClick={() => onChange(multiple ? selected.filter((x) => x !== s) : "")} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}>
+              <button type="button" aria-label={tt("fw.opt.remove", { name: labels?.get(s) ?? s })} onClick={() => onChange(multiple ? selected.filter((x) => x !== s) : "")} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}>
                 <Icon icon={X} className="h-3.5 w-3.5" />
               </button>
             </span>
@@ -124,7 +126,7 @@ export default function OptionPicker({
           value={q}
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
-          placeholder={`${multiple || !selected.length ? "พิมพ์เพื่อค้นหา" : "เปลี่ยน — พิมพ์เพื่อค้นหา"} (${options.length.toLocaleString()} รายการ)`}
+          placeholder={tt(multiple || !selected.length ? "fw.opt.searchPh" : "fw.opt.changePh", { n: options.length.toLocaleString() })}
           style={{ width: "100%", padding: compact ? "5px 8px 5px 32px" : "11px 12px 11px 34px", border: `1px solid ${line}`, borderRadius: compact ? 5 : 8, background: bg, color: ink, fontFamily: "inherit", fontSize: fs }}
         />
       </div>
@@ -134,7 +136,7 @@ export default function OptionPicker({
           aria-multiselectable={multiple}
           style={{ position: "absolute", zIndex: 30, left: 0, right: 0, marginTop: 4, maxHeight: 260, overflowY: "auto", background: bg, border: `1px solid ${line}`, borderRadius: 8, boxShadow: "var(--shadow)" }}
         >
-          {matches.length === 0 && <div style={{ padding: "10px 12px", color: paper ? "#888" : "var(--ink-3)", fontSize: ".88rem" }}>ไม่พบ “{q}”</div>}
+          {matches.length === 0 && <div style={{ padding: "10px 12px", color: paper ? "#888" : "var(--ink-3)", fontSize: ".88rem" }}>{tt("fw.opt.notFound", { q })}</div>}
           {matches.slice(0, SHOW_LIMIT).map((o) => {
             const on = selected.includes(o);
             return (
@@ -153,7 +155,7 @@ export default function OptionPicker({
           })}
           {matches.length > SHOW_LIMIT && (
             <div style={{ padding: "8px 12px", fontSize: ".78rem", color: paper ? "#888" : "var(--ink-3)" }}>
-              แสดง {SHOW_LIMIT} จาก {matches.length.toLocaleString()} — พิมพ์เพิ่มเพื่อกรอง
+              {tt("fw.opt.showing", { n: SHOW_LIMIT, total: matches.length.toLocaleString() })}
             </div>
           )}
         </div>

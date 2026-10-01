@@ -13,8 +13,11 @@ type Preset = "7d" | "30d" | "month" | "all" | "custom";
 function ymd(d: Date) { return d.toLocaleDateString("sv"); }
 
 export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
-  const { t, lang } = useT();
-  const en = lang === "en";
+  const { t, tt, lang } = useT();
+  const fmtWhen = (iso: string) => {
+    const d = new Date(iso);
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
+  };
   const [formId, setFormId] = useState("all");
   const [preset, setPreset] = useState<Preset>("30d");
   const [from, setFrom] = useState("");
@@ -59,9 +62,9 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
   }
 
   const approvalLabel = (a: string) =>
-    a === "pending" ? (en ? "Pending" : "รออนุมัติ")
-      : a === "approved" ? (en ? "Approved" : "อนุมัติแล้ว")
-      : a === "rejected" ? (en ? "Rejected" : "ตีกลับ")
+    a === "pending" ? t("dash.pending")
+      : a === "approved" ? t("dash.approved")
+      : a === "rejected" ? t("dash.rejected")
       : "-";
 
   return (
@@ -85,29 +88,29 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
 
           <Selectable label={t("report.range")}>
             <select value={preset} onChange={(e) => setPreset(e.target.value as Preset)} style={selStyle}>
-              <option value="7d">{en ? "7 days" : "7 วัน"}</option>
-              <option value="30d">{en ? "30 days" : "30 วัน"}</option>
-              <option value="month">{en ? "This month" : "เดือนนี้"}</option>
-              <option value="all">{en ? "All time" : "ทั้งหมด"}</option>
-              <option value="custom">{en ? "Custom" : "กำหนดเอง"}</option>
+              <option value="7d">{t("rep.7d")}</option>
+              <option value="30d">{t("rep.30d")}</option>
+              <option value="month">{t("rep.thisMonth")}</option>
+              <option value="all">{t("rep.allTime")}</option>
+              <option value="custom">{t("rep.custom")}</option>
             </select>
           </Selectable>
 
           <Selectable label={t("report.result")}>
             <select value={result} onChange={(e) => setResult(e.target.value)} style={selStyle}>
-              <option value="all">{en ? "All" : "ทั้งหมด"}</option>
-              <option value="pass">{en ? "Pass" : "ผ่าน"}</option>
-              <option value="fail">{en ? "Fail" : "ไม่ผ่าน"}</option>
+              <option value="all">{t("studio.stAll")}</option>
+              <option value="pass">{t("rep.pass")}</option>
+              <option value="fail">{t("rep.fail")}</option>
             </select>
           </Selectable>
 
           <Selectable label={t("report.approval")}>
             <select value={approval} onChange={(e) => setApproval(e.target.value)} style={selStyle}>
-              <option value="all">{en ? "All" : "ทั้งหมด"}</option>
-              <option value="pending">{en ? "Pending" : "รออนุมัติ"}</option>
-              <option value="approved">{en ? "Approved" : "อนุมัติแล้ว"}</option>
-              <option value="rejected">{en ? "Rejected" : "ตีกลับ"}</option>
-              <option value="none">{en ? "No approval" : "ไม่มีอนุมัติ"}</option>
+              <option value="all">{t("studio.stAll")}</option>
+              <option value="pending">{t("dash.pending")}</option>
+              <option value="approved">{t("dash.approved")}</option>
+              <option value="rejected">{t("dash.rejected")}</option>
+              <option value="none">{t("rep.noApproval")}</option>
             </select>
           </Selectable>
         </div>
@@ -127,20 +130,20 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
 
         <div style={{ display: "flex", gap: 10, marginTop: 16, alignItems: "center", flexWrap: "wrap" }}>
           <Button onClick={search} disabled={busy}>
-            <Icon icon={Search} className="h-4 w-4" /> {busy ? (en ? "Searching…" : "กำลังค้นหา…") : t("report.search")}
+            <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
           <Button variant="primary" onClick={exportXlsx} disabled={!preview || preview.total === 0}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
             {formId === "all"
-              ? (en ? "Pick a single form to include every field's answers in the Excel file" : "เลือกฟอร์มเดียว เพื่อให้ไฟล์ Excel มีคำตอบทุกช่อง (ช่องตารางแยกชีต)")
-              : (en ? "Excel includes every field's answers · table fields get their own sheet" : "ไฟล์ Excel มีคำตอบทุกช่อง · ช่องตารางแยกเป็นชีตของตัวเอง · ช่องที่เก็บรหัสมีคอลัมน์ (รหัส)")}
+              ? t("rep.hintPickForm")
+              : t("rep.hintOneForm")}
           </span>
           {preview && (
             <span style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
-              {en ? `Found ${preview.total.toLocaleString()} rows` : `พบ ${preview.total.toLocaleString()} รายการ`}
-              {preview.total > preview.rows.length && (en ? ` · showing first ${preview.rows.length}` : ` · แสดง ${preview.rows.length} แรก`)}
+              {tt("rep.found", { n: preview.total.toLocaleString() })}
+              {preview.total > preview.rows.length && tt("rep.showingFirst", { n: preview.rows.length })}
             </span>
           )}
         </div>
@@ -150,31 +153,31 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
       {/* ตาราง preview */}
       {preview && (
         preview.rows.length === 0 ? (
-          <Card><p style={{ color: "var(--ink-3)", margin: 0 }}>{en ? "No data for these filters" : "ไม่พบข้อมูลตามเงื่อนไขที่เลือก"}</p></Card>
+          <Card><p style={{ color: "var(--ink-3)", margin: 0 }}>{t("rep.noData")}</p></Card>
         ) : (
           <Card>
             <div style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".85rem", minWidth: 620 }}>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--ink-3)", borderBottom: "1px solid var(--line)" }}>
-                    <th style={th}>{en ? "Submitted" : "วันที่ส่ง"}</th>
-                    <th style={th}>{en ? "Form" : "ฟอร์ม"}</th>
-                    <th style={th}>{en ? "By" : "ผู้กรอก"}</th>
-                    <th style={th}>{en ? "Result" : "ผลลัพธ์"}</th>
-                    <th style={th}>{en ? "Approval" : "อนุมัติ"}</th>
-                    <th style={{ ...th, textAlign: "right" }}>{en ? "Issues" : "ปัญหา"}</th>
+                    <th style={th}>{t("rep.colSubmitted")}</th>
+                    <th style={th}>{t("report.form")}</th>
+                    <th style={th}>{t("rep.colBy")}</th>
+                    <th style={th}>{t("report.result")}</th>
+                    <th style={th}>{t("rep.colApproval")}</th>
+                    <th style={{ ...th, textAlign: "right" }}>{t("rep.colIssues")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {preview.rows.map((r) => (
                     <tr key={r.id} style={{ borderBottom: "1px solid var(--line)" }}>
-                      <td style={td}>{r.when}</td>
+                      <td style={td}>{fmtWhen(r.when)}</td>
                       <td style={td}>{r.icon} {r.form}</td>
                       <td style={td}>{r.user}</td>
                       <td style={td}>
                         {r.result === "fail"
-                          ? <Pill kind="fail">{en ? "Fail" : "ไม่ผ่าน"}</Pill>
-                          : <Pill kind="pass">{en ? "Pass" : "ผ่าน"}</Pill>}
+                          ? <Pill kind="fail">{t("rep.fail")}</Pill>
+                          : <Pill kind="pass">{t("rep.pass")}</Pill>}
                       </td>
                       <td style={td}>{r.approval === "none" ? "-" : approvalLabel(r.approval)}</td>
                       <td style={{ ...td, textAlign: "right", color: r.failCount ? "var(--fail)" : "var(--ink-3)" }}>{r.failCount || "-"}</td>

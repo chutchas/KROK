@@ -1,13 +1,15 @@
 "use client";
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema } from "@/lib/form-schema";
+import { type FormField, type FormSchema } from "@/lib/form-schema";
+import { useT } from "@/i18n/LanguageProvider";
 
 // มุมมอง "กระดาษจริง" — ฟอร์มเปล่าแบบเอกสาร A4 สำหรับพิมพ์/ตรวจทาน
 function Blank({ f }: { f: FormField }) {
+  const { t } = useT();
   if (f.type === "pass_fail") {
     return (
       <span style={{ display: "inline-flex", gap: 14, fontSize: ".82rem" }}>
-        <span>☐ ผ่าน</span>
-        <span>☐ ไม่ผ่าน</span>
+        <span>☐ {t("fw.pass")}</span>
+        <span>☐ {t("fw.fail")}</span>
       </span>
     );
   }
@@ -54,6 +56,7 @@ function Blank({ f }: { f: FormField }) {
 // พิมพ์เป็นเอกสารแบบไหลต่อเนื่อง (paginate ได้ดี ไม่ทิ้งหน้าแรกว่าง)
 // จงใจไม่ใช้ absolute-canvas ตอนพิมพ์ เพราะ browser แบ่งหน้า absolute ได้ไม่ดี
 export default function FormPaperView({ schema }: { schema: FormSchema }) {
+  const { t } = useT();
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
       <div
@@ -81,7 +84,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
           ) : <div />}
           {schema.show_meta !== false && (
             <div style={{ fontSize: ".78rem", color: "#555", textAlign: "right", whiteSpace: "nowrap" }}>
-              วันที่: ______________<br />เลขที่: ______________
+              {t("fw.paper.date")} ______________<br />{t("fw.paper.docNo")} ______________
             </div>
           )}
         </div>
@@ -106,7 +109,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
                     <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
                       <td style={{ width: "42%", verticalAlign: "top", padding: "8px 8px 8px 0", color: "#222" }}>
                         {f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}
-                        <span style={{ display: "block", fontSize: ".68rem", color: "#888" }}>{FIELD_TYPE_LABELS[f.type]}{f.unit ? ` (${f.unit})` : ""}</span>
+                        <span style={{ display: "block", fontSize: ".68rem", color: "#888" }}>{t(`ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}</span>
                       </td>
                       <td style={{ verticalAlign: "middle", padding: "8px 0" }}>
                         <Blank f={f} />
@@ -120,8 +123,8 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
         ))}
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28, fontSize: ".82rem", color: "#333" }}>
-          <div>ผู้ตรวจ: ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>ลงชื่อ / วันที่</span></div>
-          <div>ผู้อนุมัติ: ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>ลงชื่อ / วันที่</span></div>
+          <div>{t("fw.paper.inspector")} ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>{t("fw.paper.signDate")}</span></div>
+          <div>{t("fw.paper.approver")} ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>{t("fw.paper.signDate")}</span></div>
         </div>
       </div>
     </div>

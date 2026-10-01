@@ -3,6 +3,8 @@
 import Icon from "@/components/Icon";
 import { FileSpreadsheet, DownloadCloud, UploadCloud, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import type { DatasetMeta, DatasetSourceKind } from "@/lib/datasets";
+import type { MessageKey } from "@/i18n/dictionaries";
+import { useT } from "@/i18n/LanguageProvider";
 
 export const SOURCE_ICON: Record<DatasetSourceKind, typeof FileSpreadsheet> = {
   file: FileSpreadsheet,
@@ -10,22 +12,29 @@ export const SOURCE_ICON: Record<DatasetSourceKind, typeof FileSpreadsheet> = {
   api_push: UploadCloud,
 };
 
-export function fmtTime(s: string | null): string {
+export const SOURCE_KEY: Record<DatasetSourceKind, MessageKey> = {
+  file: "ds.source.file",
+  api_pull: "ds.source.apiPull",
+  api_push: "ds.source.apiPush",
+};
+
+export function fmtTime(s: string | null, lang: string): string {
   if (!s) return "—";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short" });
 }
 
 export function SyncBadge({ ds }: { ds: Pick<DatasetMeta, "lastSyncStatus" | "lastSyncedAt" | "lastSyncError"> }) {
+  const { t, lang } = useT();
   const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".76rem", borderRadius: 999, padding: "2px 9px", border: "1px solid" };
   if (ds.lastSyncStatus === "running")
-    return <span style={{ ...base, color: "var(--accent)", borderColor: "var(--accent)" }}><Icon icon={Loader2} className="h-3.5 w-3.5" /> กำลัง sync</span>;
+    return <span style={{ ...base, color: "var(--accent)", borderColor: "var(--accent)" }}><Icon icon={Loader2} className="h-3.5 w-3.5" /> {t("ds.syncing")}</span>;
   if (ds.lastSyncStatus === "error")
-    return <span title={ds.lastSyncError} style={{ ...base, color: "var(--fail)", borderColor: "var(--fail)" }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> ล่าสุดไม่สำเร็จ</span>;
+    return <span title={ds.lastSyncError} style={{ ...base, color: "var(--fail)", borderColor: "var(--fail)" }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> {t("ds.lastFailed")}</span>;
   if (ds.lastSyncedAt)
-    return <span style={{ ...base, color: "var(--pass)", borderColor: "var(--pass)" }}><Icon icon={CheckCircle2} className="h-3.5 w-3.5" /> {fmtTime(ds.lastSyncedAt)}</span>;
-  return <span style={{ ...base, color: "var(--ink-3)", borderColor: "var(--line)" }}>ยังไม่มีข้อมูล</span>;
+    return <span style={{ ...base, color: "var(--pass)", borderColor: "var(--pass)" }}><Icon icon={CheckCircle2} className="h-3.5 w-3.5" /> {fmtTime(ds.lastSyncedAt, lang)}</span>;
+  return <span style={{ ...base, color: "var(--ink-3)", borderColor: "var(--line)" }}>{t("common.none")}</span>;
 }
 
 export const smallBtn: React.CSSProperties = {

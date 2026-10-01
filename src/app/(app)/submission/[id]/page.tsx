@@ -5,27 +5,20 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
-import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
+import { type AnswerItem } from "@/lib/answer-item";
+import { T, LocalDate } from "@/i18n/T";
+import type { MessageKey } from "@/i18n/dictionaries";
 
 export const dynamic = "force-dynamic";
 
 
 
-const STATUS_LABEL: Record<string, { t: string; c: string }> = {
-  none: { t: "ส่งแล้ว", c: "var(--ink-2)" },
-  pending: { t: "รออนุมัติ", c: "var(--amber)" },
-  approved: { t: "อนุมัติแล้ว", c: "var(--pass)" },
-  rejected: { t: "ตีกลับ", c: "var(--fail)" },
+const STATUS_LABEL: Record<string, { k: MessageKey; c: string }> = {
+  none: { k: "dash.submitted", c: "var(--ink-2)" },
+  pending: { k: "dash.pending", c: "var(--amber)" },
+  approved: { k: "dash.approved", c: "var(--pass)" },
+  rejected: { k: "dash.rejected", c: "var(--fail)" },
 };
-
-function fmt(ts: string | null) {
-  if (!ts) return "—";
-  try {
-    return new Date(ts).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
-  } catch {
-    return "—";
-  }
-}
 
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -95,7 +88,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> กลับ Dashboard</a>
+        <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="sub.backDashboard" /></a>
         <PrintButton submissionId={String(sub.id)} />
       </div>
 
@@ -108,33 +101,33 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
             </div>
             <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}>{sub.form_icon} {sub.form_title}</h1>
-            <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · เอกสารเลขที่ {String(sub.id).slice(0, 8).toUpperCase()}</div>
+            <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · <T k="sub.docNo" vars={{ id: String(sub.id).slice(0, 8).toUpperCase() }} /></div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ display: "inline-block", border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontFamily: "var(--font-anuphan)" }}>
-              {status.t}
+              <T k={status.k} />
             </div>
             <div style={{ marginTop: 8, fontSize: ".8rem", color: sub.result === "fail" ? "var(--fail)" : "var(--pass)", fontWeight: 600 }}>
-              {sub.result === "fail" ? `พบปัญหา ${(sub.fails as string[])?.length || 0} รายการ` : "ครบถ้วน"}
+              {sub.result === "fail" ? <T k="sub.issues" vars={{ n: (sub.fails as string[])?.length || 0 }} /> : <T k="sub.complete" />}
             </div>
           </div>
         </div>
 
         {/* meta */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 24px", fontSize: ".86rem", margin: "14px 0 8px" }}>
-          <div><span style={{ color: "var(--ink-3)" }}>ผู้กรอก: </span><b>{sub.user_name || "—"}</b></div>
-          <div><span style={{ color: "var(--ink-3)" }}>เวลาส่ง: </span>{fmt(sub.submitted_at)}</div>
-          <div><span style={{ color: "var(--ink-3)" }}>ใช้เวลา: </span>{sub.duration_s ?? "—"} วินาที</div>
-          <div><span style={{ color: "var(--ink-3)" }}>เวอร์ชันฟอร์ม: </span>v{sub.form_version ?? 1}</div>
+          <div><span style={{ color: "var(--ink-3)" }}><T k="sub.filledBy" /> </span><b>{sub.user_name || "—"}</b></div>
+          <div><span style={{ color: "var(--ink-3)" }}><T k="sub.submittedAt" /> </span><LocalDate iso={sub.submitted_at} /></div>
+          <div><span style={{ color: "var(--ink-3)" }}><T k="sub.duration" /> </span><T k="sub.seconds" vars={{ s: sub.duration_s ?? "—" }} /></div>
+          <div><span style={{ color: "var(--ink-3)" }}><T k="sub.formVersion" /> </span>v{sub.form_version ?? 1}</div>
         </div>
         {caseSteps.length > 0 && (
           <div style={{ fontSize: ".84rem", margin: "4px 0 8px", padding: "8px 12px", border: "1px solid var(--line)", borderRadius: 8 }}>
-            <div style={{ color: "var(--ink-3)", marginBottom: 4 }}>ผู้กรอกแต่ละขั้น · งาน #{String(sub.case_id).slice(0, 8).toUpperCase()}</div>
+            <div style={{ color: "var(--ink-3)", marginBottom: 4 }}><T k="sub.stepFillers" vars={{ id: String(sub.case_id).slice(0, 8).toUpperCase() }} /></div>
             {caseSteps.map((c, i) => (
               <div key={i} style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <span style={{ minWidth: 140 }}>{c.title}</span>
                 <b>{c.name}</b>
-                {c.at && <span style={{ color: "var(--ink-3)" }}>{fmt(c.at)}</span>}
+                {c.at && <span style={{ color: "var(--ink-3)" }}><LocalDate iso={c.at} /></span>}
               </div>
             ))}
           </div>
@@ -181,13 +174,13 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                         color: a.src === "scan" || a.src === "api" ? "var(--ink-3)" : "var(--accent)",
                       }}
                     >
-                      {SRC_LABEL[a.src]}
+                      <T k={`src.${a.src}`} />
                     </span>
                   )}
                   {a.photoField && photoMap[a.photoField] ? (
                     <img src={photoMap[a.photoField]} alt={a.label} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
                   ) : a.photoField ? (
-                    <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>(ไม่พบไฟล์)</span>
+                    <span style={{ color: "var(--ink-3)", fontWeight: 400 }}><T k="sub.fileMissing" /></span>
                   ) : (
                     <>
                       {a.display ?? "—"}
@@ -203,9 +196,9 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         {/* เอกสารต้นฉบับที่ AI อ่าน */}
         {extracts.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 2 }}>เอกสารที่ AI อ่าน</div>
+            <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 2 }}><T k="sub.aiDocsTitle" /></div>
             <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "0 0 10px" }}>
-              รูปต้นฉบับที่ผู้กรอกถ่ายไว้ — ใช้ตรวจสอบย้อนหลังว่าค่าที่เติมตรงกับเอกสารจริง
+              <T k="sub.aiDocsSub" />
             </p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(190px, 1fr))", gap: 12 }}>
               {extracts.map((ex) => (
@@ -213,10 +206,10 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                   {ex.url ? (
                     <img src={ex.url} alt="เอกสารต้นฉบับ" style={{ width: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 6, background: "var(--code-bg)" }} />
                   ) : (
-                    <div style={{ color: "var(--ink-3)", fontSize: ".82rem", padding: "18px 0", textAlign: "center" }}>(ไม่ได้เก็บรูปต้นฉบับ)</div>
+                    <div style={{ color: "var(--ink-3)", fontSize: ".82rem", padding: "18px 0", textAlign: "center" }}><T k="sub.noOriginal" /></div>
                   )}
                   <div style={{ fontSize: ".76rem", color: "var(--ink-3)", marginTop: 6 }}>
-                    เติม {ex.count} ช่อง{ex.edited > 0 && ` · ผู้กรอกแก้ ${ex.edited}`}
+                    <T k="sub.filledFields" vars={{ n: ex.count }} />{ex.edited > 0 && <> · <T k="sub.editedByFiller" vars={{ n: ex.edited }} /></>}
                   </div>
                 </div>
               ))}
@@ -227,18 +220,18 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         {/* approval history timeline */}
         {Array.isArray(sub.approval_history) && sub.approval_history.length > 0 && (
           <div style={{ marginTop: 20 }}>
-            <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 8 }}>ประวัติการอนุมัติ</div>
+            <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 600, fontSize: ".95rem", marginBottom: 8 }}><T k="sub.approvalHistory" /></div>
             {(sub.approval_history as { step: number; label: string; reviewer_name: string; decision: string; note: string; at: string }[]).map((h, i) => (
               <div key={i} style={{ display: "flex", gap: 10, padding: "8px 0", borderBottom: "1px solid var(--line)", fontSize: ".86rem" }}>
                 <span aria-hidden style={{ display: "inline-flex" }}><Icon icon={h.decision === "approved" ? Check : Undo2} className="h-4 w-4" /></span>
                 <div style={{ flex: 1 }}>
                   <b style={{ color: h.decision === "approved" ? "var(--pass)" : "var(--fail)" }}>
-                    {h.label} — {h.decision === "approved" ? "อนุมัติ" : "ตีกลับ"}
+                    {h.label} — <T k={h.decision === "approved" ? "sub.decApproved" : "sub.decRejected"} />
                   </b>
-                  <span style={{ color: "var(--ink-2)" }}> โดย {h.reviewer_name}</span>
+                  <span style={{ color: "var(--ink-2)" }}> <T k="sub.by" /> {h.reviewer_name}</span>
                   {h.note && <div style={{ color: "var(--ink-2)" }}>“{h.note}”</div>}
                 </div>
-                <span style={{ color: "var(--ink-3)", fontSize: ".76rem", whiteSpace: "nowrap" }}>{fmt(h.at)}</span>
+                <span style={{ color: "var(--ink-3)", fontSize: ".76rem", whiteSpace: "nowrap" }}><LocalDate iso={h.at} /></span>
               </div>
             ))}
           </div>
@@ -247,7 +240,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         {/* current step (still pending) */}
         {sub.approval_status === "pending" && Array.isArray(sub.approval_chain) && (sub.approval_chain as unknown[]).length > 0 && (
           <div style={{ marginTop: 16, padding: "10px 14px", borderRadius: 8, background: "var(--accent-soft)", color: "var(--ink-2)", fontSize: ".86rem", display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon icon={Clock} className="h-4 w-4" /> กำลังรออนุมัติขั้นที่ {(sub.approval_step as number) + 1} จาก {(sub.approval_chain as unknown[]).length}
+            <Icon icon={Clock} className="h-4 w-4" /> <T k="sub.waitingStep" vars={{ n: (sub.approval_step as number) + 1, total: (sub.approval_chain as unknown[]).length }} />
           </div>
         )}
 
@@ -255,15 +248,15 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         {(sub.approval_status === "approved" || sub.approval_status === "rejected") && (
           <div style={{ marginTop: 20, padding: "14px 16px", borderRadius: 10, background: sub.approval_status === "approved" ? "var(--pass-soft)" : "var(--fail-soft)" }}>
             <div style={{ fontWeight: 700, fontFamily: "var(--font-anuphan)", color: sub.approval_status === "approved" ? "var(--pass)" : "var(--fail)", display: "flex", alignItems: "center", gap: 6 }}>
-              <Icon icon={sub.approval_status === "approved" ? Check : Undo2} className="h-4 w-4" /> {sub.approval_status === "approved" ? "อนุมัติโดย" : "ตีกลับโดย"} {sub.reviewer_name || "ผู้ตรวจ"}
+              <Icon icon={sub.approval_status === "approved" ? Check : Undo2} className="h-4 w-4" /> <T k={sub.approval_status === "approved" ? "sub.approvedBy" : "sub.rejectedBy"} /> {sub.reviewer_name || <T k="sub.reviewer" />}
             </div>
-            <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginTop: 2 }}>{fmt(sub.reviewed_at)}</div>
+            <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginTop: 2 }}><LocalDate iso={sub.reviewed_at} /></div>
             {sub.review_note && <div style={{ fontSize: ".88rem", marginTop: 6 }}>“{sub.review_note}”</div>}
           </div>
         )}
 
         <div style={{ marginTop: 26, paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: ".72rem", color: "var(--ink-3)", fontFamily: "monospace", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-          <span>สร้างโดย KROK · ฟอร์มดิจิทัลหน้างาน</span>
+          <span><T k="sub.footer" /></span>
           <span style={{ wordBreak: "break-all" }}>{String(sub.id)}</span>
         </div>
       </div>

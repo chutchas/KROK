@@ -58,8 +58,8 @@ export async function GET(req: Request) {
       .order("id", { ascending: false }) // ลำดับตายตัว — กันแถวเวลาเดียวกันซ้ำ/หายระหว่างหน้า
       .range(offset, offset + PAGE - 1);
     if (formId && formId !== "all") q = q.eq("form_id", formId);
-    if (from) q = q.gte("submitted_at", from + "T00:00:00");
-    if (to) q = q.lte("submitted_at", to + "T23:59:59");
+    if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
+    if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
     if (result === "pass" || result === "fail") q = q.eq("result", result);
     if (approval && approval !== "all") q = q.eq("approval_status", approval);
 

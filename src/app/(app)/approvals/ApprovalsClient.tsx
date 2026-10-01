@@ -24,16 +24,16 @@ export interface PendingSub {
   approval_chain: ApprovalStep[] | unknown[];
 }
 
-function fmt(ts: string) {
+function fmt(ts: string, lang: string) {
   try {
-    return new Date(ts).toLocaleString("th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }
 }
 
 export default function ApprovalsClient({ initial, isOwner }: { initial: PendingSub[]; myId: string; isOwner: boolean }) {
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
   const router = useRouter();
   const [subs, setSubs] = useState(initial);
   const [notes, setNotes] = useState<Record<string, string>>({});
@@ -82,7 +82,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
             <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>{s.form_icon}</div>
             <div style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontFamily: "var(--font-anuphan)" }}>{s.form_title}</b>
-              <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at)}</small>
+              <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at, lang)}</small>
             </div>
             {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("appr.problems", { n: s.fails.length })}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("appr.complete")}</span></Pill>}
           </div>
@@ -101,14 +101,14 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
                       fontWeight: current ? 700 : 500, border: current ? "1px solid var(--accent)" : "1px solid var(--line)",
                       display: "inline-flex", alignItems: "center", gap: 4,
                     }}>
-                      {done && <Icon icon={Check} className="h-3 w-3" />}{current && <Icon icon={Play} className="h-3 w-3" />}{st.label || `ขั้น ${i + 1}`}: {st.name}
+                      {done && <Icon icon={Check} className="h-3 w-3" />}{current && <Icon icon={Play} className="h-3 w-3" />}{st.label || tt("appr.stepN", { n: i + 1 })}: {st.name}
                     </span>
                     {i < chainOf(s).length - 1 && <span style={{ color: "var(--ink-3)", display: "inline-flex" }}><Icon icon={ArrowRight} className="h-3.5 w-3.5" /></span>}
                   </span>
                 );
               })}
               {isOwner && chainOf(s)[s.approval_step ?? 0]?.user_id !== undefined && (
-                <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>· owner override ได้</span>
+                <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>· {t("appr.ownerOverride")}</span>
               )}
             </div>
           )}
@@ -120,12 +120,12 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
           )}
 
           <details style={{ marginTop: 12 }}>
-            <summary style={{ cursor: "pointer", color: "var(--accent)", fontSize: ".88rem" }}>ดูคำตอบทั้งหมด</summary>
+            <summary style={{ cursor: "pointer", color: "var(--accent)", fontSize: ".88rem" }}>{t("appr.viewAll")}</summary>
             <div style={{ marginTop: 8 }}>
               {s.answers.map((a, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: ".88rem" }}>
                   <div style={{ color: "var(--ink-2)" }}>{a.label}{a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}</div>
-                  <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Icon icon={Paperclip} className="h-3.5 w-3.5" /> มีไฟล์แนบ</span> : a.display ?? "—"}</div>
+                  <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Icon icon={Paperclip} className="h-3.5 w-3.5" /> {t("appr.hasAttachment")}</span> : a.display ?? "—"}</div>
                 </div>
               ))}
             </div>
@@ -135,7 +135,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
           <TextArea
             value={notes[s.id] || ""}
             onChange={(e) => setNotes((n) => ({ ...n, [s.id]: e.target.value }))}
-            placeholder="ความเห็น / เหตุผล (จำเป็นเมื่อตีกลับ)"
+            placeholder={t("appr.notePlaceholder")}
             style={{ marginTop: 12, minHeight: 52 }}
           />
           <div style={{ display: "flex", gap: 10, marginTop: 10 }}>

@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
 import PrintButton from "@/app/(app)/submission/[id]/PrintButton";
+import { T } from "@/i18n/T";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "owner" && session.role !== "admin")
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
+    return <div style={{ color: "var(--ink-2)" }}><T k="inv.ownerOnly" /></div>;
 
   const supabase = await createClient();
   const { data } = await supabase
@@ -37,7 +38,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
   return (
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <a href="/settings/billing/history" style={{ fontSize: ".9rem" }}>← กลับ</a>
+        <a href="/settings/billing/history" style={{ fontSize: ".9rem" }}>← <T k="common.back" /></a>
         <PrintButton />
       </div>
 
