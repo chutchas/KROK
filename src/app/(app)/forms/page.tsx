@@ -121,6 +121,7 @@ async function loadDrafts(supabase: ServerClient, tenantId: string, userId: stri
         total: (d.total as number) ?? 0,
         updatedAt: d.updated_at as string,
         expiresAt: d.expires_at as string,
+        category: f?.schema?.category,
       };
     });
   } catch {
@@ -180,6 +181,8 @@ async function loadCases(supabase: ServerClient, tenantId: string, userId: strin
           kind,
           returned: ret ? { name: ret.name, note: ret.note || "" } : null,
           updatedAt: d.updated_at as string,
+          // เริ่มรอตั้งแต่เหตุการณ์ล่าสุดในประวัติ (ส่งต่อ/ส่งกลับ/รับงาน) — การกดบันทึกเฉย ๆ ไม่นับว่าเริ่มรอใหม่
+          waitingSince: history.length ? history[history.length - 1].at || (d.updated_at as string) : (d.updated_at as string),
         });
       }
     };

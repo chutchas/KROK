@@ -37,6 +37,8 @@ export interface DraftListItem {
   total: number;
   updatedAt: string;
   expiresAt: string;
+  /** ประเภทฟอร์ม (schema.category) — ใช้กรอง */
+  category?: string;
 }
 
 type Tab = "all" | "tasks" | "drafts";
@@ -115,7 +117,8 @@ export default function FormsListClient({
       <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("forms.subtitle")}</p>
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
-      <div role="tablist" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px" }}>
+      {/* จอแคบ: แท็บไม่ตัดบรรทัด เลื่อนซ้าย-ขวาได้แทน */}
+      <div role="tablist" className="krok-tabscroll" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none" }}>
         {([
           { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
           { k: "tasks" as const, label: t("wf.tabTasks"), n: cases.filter((c) => c.kind !== "watch").length },
@@ -124,7 +127,7 @@ export default function FormsListClient({
           const on = tab === x.k;
           return (
             <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3 }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.label}
@@ -171,7 +174,7 @@ export default function FormsListClient({
                   <Icon icon={Plus} className="h-4 w-4" /> {t("forms.createFirst")}
                 </Button>
               </Link>
-              <Link href="/studio/templates" style={{ textDecoration: "none" }}>
+              <Link href="/studio?mode=template" style={{ textDecoration: "none" }}>
                 <Button variant="ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                   <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("templates.browse")}
                 </Button>
@@ -220,20 +223,63 @@ export default function FormsListClient({
   );
 }
 
-function fmtWhen(s: string): string {
+function fmtWhen(s: string, lang: string): string {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
 }
 
+type DraftSort = "updated" | "expiry" | "progress" | "form";
+
 function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; busyId: string | null; onDelete: (id: string) => void }) {
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
   const [now] = useState(() => Date.now());
+  const [q, setQ] = useState("");
+  const [cat, setCat] = useState("all");
+  const [sort, setSort] = useState<DraftSort>("updated");
+  const cats = useMemo(() => Array.from(new Set(drafts.map((d) => d.category).filter((c): c is string => !!c))), [drafts]);
+  const shown = useMemo(() => {
+    const n = q.trim().toLowerCase();
+    const list = drafts.filter((d) => (cat === "all" || d.category === cat) && (!n || `${d.formTitle} ${d.title}`.toLowerCase().includes(n)));
+    const time = (s: string) => new Date(s).getTime() || 0;
+    const cmp: Record<DraftSort, (a: DraftListItem, b: DraftListItem) => number> = {
+      updated: (a, b) => time(b.updatedAt) - time(a.updatedAt),
+      expiry: (a, b) => time(a.expiresAt) - time(b.expiresAt),
+      progress: (a, b) => (b.total ? b.filled / b.total : 0) - (a.total ? a.filled / a.total : 0),
+      form: (a, b) => a.formTitle.localeCompare(b.formTitle, lang === "en" ? "en" : "th") || time(b.updatedAt) - time(a.updatedAt),
+    };
+    return [...list].sort(cmp[sort]);
+  }, [drafts, q, cat, sort, lang]);
   if (drafts.length === 0)
     return <Card><EmptyState icon={<Icon icon={FilePen} className="h-7 w-7" />} title={t("draft.empty")} hint={t("draft.emptyHint")} /></Card>;
+  const selStyle: React.CSSProperties = { padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", flex: "0 0 auto" };
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
-      {drafts.map((d) => {
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "stretch" }}>
+        <div style={{ position: "relative", flex: "1 1 220px", minWidth: 0 }}>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
+          <Field type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("draft.searchPh")} aria-label={t("draft.searchPh")} style={{ width: "100%", paddingLeft: 32 }} />
+        </div>
+        {cats.length > 0 && (
+          <select value={cat} onChange={(e) => setCat(e.target.value)} aria-label={t("forms.allCategories")} className="krok-listsort" style={selStyle}>
+            <option value="all">{t("forms.allCategories")}</option>
+            {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
+          </select>
+        )}
+        <select value={sort} onChange={(e) => setSort(e.target.value as DraftSort)} aria-label={t("list.sortBy")} className="krok-listsort" style={selStyle}>
+          <option value="updated">{t("draft.sortUpdated")}</option>
+          <option value="expiry">{t("draft.sortExpiry")}</option>
+          <option value="progress">{t("draft.sortProgress")}</option>
+          <option value="form">{t("draft.sortForm")}</option>
+        </select>
+      </div>
+      {shown.length === 0 && (
+        <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: ".9rem", padding: "20px 0" }}>
+          <span style={{ display: "inline-flex" }}><Icon icon={SearchX} className="h-6 w-6" /></span>
+          <p style={{ margin: "6px 0 0" }}>{t("list.noMatch")}</p>
+        </div>
+      )}
+      {shown.map((d) => {
         const pct = d.total ? Math.round((d.filled / d.total) * 100) : 0;
         const days = Math.max(0, Math.ceil((new Date(d.expiresAt).getTime() - now) / 864e5));
         return (
@@ -251,7 +297,7 @@ function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; bus
                 </small>
               </div>
               <small style={{ display: "flex", alignItems: "center", gap: 4, color: days <= 3 ? "#d97706" : "var(--ink-3)", fontSize: ".72rem", marginTop: 4 }}>
-                <Icon icon={Clock} className="h-3 w-3" /> {tt("draft.updated", { t: fmtWhen(d.updatedAt) })} · {tt("draft.expires", { d: days })}
+                <Icon icon={Clock} className="h-3 w-3" /> {tt("draft.updated", { t: fmtWhen(d.updatedAt, lang) })} · {tt("draft.expires", { d: days })}
               </small>
               {!d.available && <small style={{ display: "block", color: "var(--fail)", fontSize: ".74rem" }}>{t("draft.formGone")}</small>}
             </div>

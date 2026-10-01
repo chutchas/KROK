@@ -22,7 +22,7 @@ export interface FormRow {
   device_scope: "any" | "selected";
 }
 
-export default async function StudioPage({ searchParams }: { searchParams: Promise<{ tpl?: string }> }) {
+export default async function StudioPage({ searchParams }: { searchParams: Promise<{ tpl?: string; mode?: string }> }) {
   const session = await enforceMenu("studio");
   if (!canManage(session.role))
     return (
@@ -76,8 +76,9 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const teams = ((teamRows || []) as { id: string; name: string }[]).map((tt) => ({ id: tt.id, name: tt.name }));
 
   // ?tpl=<id> จากคลังเทมเพลต → เปิดเป็นร่างในหน้าแก้ไข (ยังไม่บันทึก)
-  const { tpl } = await searchParams;
+  const { tpl, mode } = await searchParams;
   const template = tpl ? getTemplate(tpl)?.schema ?? null : null;
 
-  return <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template} />;
+  return <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template}
+    initialMode={mode === "template" || mode === "file" ? mode : "prompt"} />;
 }

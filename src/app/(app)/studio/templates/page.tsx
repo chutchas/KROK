@@ -1,16 +1,6 @@
-import { enforceMenu, canManage } from "@/lib/session";
-import TemplatesClient from "./TemplatesClient";
+import { redirect } from "next/navigation";
 
-export const dynamic = "force-dynamic";
-
-export default async function TemplatesPage() {
-  const session = await enforceMenu("studio");
-  if (!canManage(session.role)) {
-    return (
-      <div style={{ color: "var(--ink-2)" }}>
-        บัญชีของคุณเป็นระดับ Operator — ไปที่แท็บ “กรอกฟอร์ม” เพื่อใช้งานได้เลย
-      </div>
-    );
-  }
-  return <TemplatesClient />;
+// คลังเทมเพลตย้ายไปอยู่ในหน้า "สร้างฟอร์ม" (โหมด "จากเทมเพลต") — ลิงก์เก่าพาไปที่นั่น
+export default function TemplatesPage() {
+  redirect("/studio?mode=template");
 }

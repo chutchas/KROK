@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import Link from "next/link";
+import TemplateGallery from "./TemplateGallery";
+import { getTemplate } from "@/lib/form-templates";
 import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
@@ -27,11 +28,11 @@ interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper";
 
-export default function StudioClient({ initialForms, members, teams, tenantId, template = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown }) {
+export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt" }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template" }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
-  const [createMode, setCreateMode] = useState<"prompt" | "file">("prompt");
+  const [createMode, setCreateMode] = useState<"prompt" | "file" | "template">(initialMode);
   // เปิดจากคลังเทมเพลต → เริ่มที่หน้าแก้ไขพร้อมร่างจากเทมเพลต (ยังไม่บันทึกจนกว่าจะกดเผยแพร่)
   const [draft, setDraft] = useState<FormSchema | null>(() => (template ? sanitizeSchema(template) : null));
   const [requiresApproval, setRequiresApproval] = useState(false);
@@ -62,8 +63,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   useEffect(() => {
     setOrigin(window.location.origin);
-    // เปิดจากเทมเพลตแล้ว เอา ?tpl ออกจาก URL — refresh ทีหลังจะไม่เปิดร่างเทมเพลตซ้ำ
-    if (window.location.search.includes("tpl=")) window.history.replaceState(null, "", "/studio");
+    // เปิดจากเทมเพลต/ลิงก์โหมดแล้ว เอา ?tpl / ?mode ออกจาก URL — refresh ทีหลังจะไม่เปิดร่างเทมเพลตซ้ำ
+    if (/[?&](tpl|mode)=/.test(window.location.search)) window.history.replaceState(null, "", "/studio");
   }, []);
 
   const fillUrl = (f: FormRow) => `${origin}${f.visibility === "public" ? "/f/" : "/fill/"}${f.id}`;
@@ -87,6 +88,19 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     const res = await setFormStatus(id, s);
     if ("error" in res) await alertDialog(res.error);
     else router.refresh();
+  }
+
+  /** เลือกเทมเพลต → เปิดเป็นร่างในแท็บแก้ไข (เหมือนผลจาก AI — ยังไม่บันทึกจนกดเผยแพร่) */
+  function applyTemplate(id: string) {
+    const tpl = getTemplate(id);
+    if (!tpl) return;
+    setDraft(sanitizeSchema(tpl.schema));
+    setEditingId(null);
+    setView("mobile");
+    setSelKey(null);
+    setStatus(null);
+    setTab("edit");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function callGenerate(payload: Record<string, unknown>, busyMsg: string) {
@@ -329,26 +343,29 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
         <div className="krok-seg krok-seg-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
-          {(["prompt", "file"] as const).map((m) => {
+          {([
+            { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt") },
+            { m: "file" as const, icon: FileUp, label: t("studio.modeFile") },
+            { m: "template" as const, icon: LayoutTemplate, label: t("studio.modeTemplate") },
+          ]).map(({ m, icon, label }, i) => {
             const on = createMode === m;
             return (
               <button
                 key={m}
                 onClick={() => setCreateMode(m)}
+                aria-pressed={on}
                 className="inline-flex items-center gap-1.5 krok-seg-btn"
-                style={{ padding: "9px 16px", border: "none", borderLeft: m === "file" ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}
+                style={{ padding: "9px 16px", border: "none", borderLeft: i > 0 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}
               >
-                <Icon icon={m === "prompt" ? Sparkles : FileUp} className="h-4 w-4" /> {m === "prompt" ? t("studio.modePrompt") : t("studio.modeFile")}
+                <Icon icon={icon} className="h-4 w-4" /> {label}
               </button>
             );
           })}
-          <Link href="/studio/templates" className="inline-flex items-center gap-1.5 krok-seg-btn"
-            style={{ padding: "9px 16px", borderLeft: "1px solid var(--line)", fontSize: ".9rem", fontWeight: 500, background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none" }}>
-            <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("studio.modeTemplate")}
-          </Link>
         </div>
 
-        {createMode === "prompt" ? (
+        {createMode === "template" ? (
+          <TemplateGallery onUse={applyTemplate} />
+        ) : createMode === "prompt" ? (
           <div>
             <TextArea ref={promptRef} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")}
               // คำสั่งจากตัวอย่างยาวหลายบรรทัด → ขยายกล่องให้เห็นทั้งหมด (สูงสุด ~520px แล้วเลื่อนในกล่อง)

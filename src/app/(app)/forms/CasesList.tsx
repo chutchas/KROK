@@ -1,11 +1,12 @@
 "use client";
 // แท็บ "งานรอฉัน" — งานของฟอร์มกรอกหลายคน: ที่ฉันถืออยู่ / รอทีมฉันกดรับ / ที่ฉันเคยทำ (ติดตามสถานะ)
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, EmptyState, Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ClipboardList, CornerUpLeft, Users, ArrowRight, Eye } from "lucide-react";
+import { ClipboardList, CornerUpLeft, Users, ArrowRight, Eye, Hourglass, Search as SearchIcon, SearchX } from "lucide-react";
+import { Field } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { claimCaseAction } from "@/app/(app)/fill/[formId]/case-actions";
 
@@ -23,17 +24,36 @@ export interface CaseListItem {
   kind: "mine" | "pool" | "watch";
   returned: { name: string; note: string } | null;
   updatedAt: string;
+  /** เวลาที่งานมาถึงสถานะปัจจุบัน (ใช้คำนวณ "รอมาแล้ว") */
+  waitingSince: string;
 }
 
-function fmtWhen(s: string): string {
+function fmtWhen(s: string, lang: string): string {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
+}
+
+/** ระยะเวลารอแบบสั้น: นาที / ชม. / วัน */
+export function waitMinutes(since: string, now: number): number {
+  const t = new Date(since).getTime();
+  return Number.isNaN(t) ? 0 : Math.max(0, Math.floor((now - t) / 60000));
 }
 
 export default function CasesList({ cases }: { cases: CaseListItem[] }) {
-  const { t } = useT();
+  const { t, tt, lang } = useT();
   const router = useRouter();
+  const [now] = useState(() => Date.now());
+  const [q, setQ] = useState("");
+  const [sort, setSort] = useState<"oldest" | "newest">("oldest");
+  // รอนานสุดขึ้นก่อน (ค่าเริ่มต้น) หรือกลับด้าน · ค้นจากชื่อฟอร์ม/ชื่องาน/เลขงาน/ขั้นตอน
+  const shown = useMemo(() => {
+    const n = q.trim().toLowerCase();
+    const list = n ? cases.filter((c) => [c.formTitle, c.title, c.id.slice(0, 8), c.stepTitle, c.teamName || "", c.holderName || ""].join(" ").toLowerCase().includes(n)) : cases;
+    const ts = (c: CaseListItem) => new Date(c.waitingSince).getTime() || 0;
+    return [...list].sort((a, b) => (sort === "oldest" ? ts(a) - ts(b) : ts(b) - ts(a)));
+  }, [cases, q, sort]);
+  const waitLabel = (m: number) => (m < 60 ? tt("wf.waitMin", { n: m }) : m < 1440 ? tt("wf.waitHr", { n: Math.floor(m / 60) }) : tt("wf.waitDay", { n: Math.floor(m / 1440) }));
   const [busy, setBusy] = useState<string | null>(null);
   const [err, setErr] = useState<{ id: string; msg: string } | null>(null);
   // ลิงก์ที่หน้าตาเป็นปุ่ม (ไม่ซ้อน <button> ใน <a>)
@@ -63,8 +83,25 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
 
   return (
     <div style={{ display: "grid", gap: 16, marginTop: 10 }}>
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "stretch" }}>
+        <div style={{ position: "relative", flex: "1 1 220px", minWidth: 0 }}>
+          <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
+          <Field type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("wf.searchPh")} aria-label={t("wf.searchPh")} style={{ width: "100%", paddingLeft: 32 }} />
+        </div>
+        <select value={sort} onChange={(e) => setSort(e.target.value as "oldest" | "newest")} aria-label={t("list.sortBy")} className="krok-listsort"
+          style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", flex: "0 0 auto" }}>
+          <option value="oldest">{t("wf.sortOldest")}</option>
+          <option value="newest">{t("wf.sortNewest")}</option>
+        </select>
+      </div>
+      {shown.length === 0 && (
+        <div style={{ textAlign: "center", color: "var(--ink-3)", fontSize: ".9rem", padding: "20px 0" }}>
+          <span style={{ display: "inline-flex" }}><Icon icon={SearchX} className="h-6 w-6" /></span>
+          <p style={{ margin: "6px 0 0" }}>{t("list.noMatch")}</p>
+        </div>
+      )}
       {groups.map((g) => {
-        const items = cases.filter((c) => c.kind === g.k);
+        const items = shown.filter((c) => c.kind === g.k);
         if (!items.length) return null;
         return (
           <section key={g.k}>
@@ -87,7 +124,16 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
                           {c.holderName ? t("wf.heldBy").replace("{name}", c.holderName) : t("wf.waitingTeam").replace("{team}", c.teamName ? `${t("wf.team")} ${c.teamName}` : t("wf.admins"))}
                         </span>
                       )}
-                      <span>· {fmtWhen(c.updatedAt)}</span>
+                      {(() => {
+                        // รอเกิน 1 วัน = สีส้ม, เกิน 3 วัน = สีแดง
+                        const m = waitMinutes(c.waitingSince, now);
+                        const color = m >= 4320 ? "var(--fail)" : m >= 1440 ? "#d97706" : "var(--ink-3)";
+                        return (
+                          <span title={fmtWhen(c.waitingSince, lang)} style={{ display: "inline-flex", alignItems: "center", gap: 3, color, fontWeight: m >= 1440 ? 600 : 400 }}>
+                            <Icon icon={Hourglass} className="h-3 w-3" /> {waitLabel(m)}
+                          </span>
+                        );
+                      })()}
                     </div>
                     {err?.id === c.id && <div role="alert" style={{ fontSize: ".8rem", color: "var(--fail)", marginTop: 4 }}>⚠ {err.msg}</div>}
                     {c.returned && (

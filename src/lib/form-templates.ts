@@ -1,6 +1,8 @@
 import type { FormSchema, FormStep } from "@/lib/form-schema";
+import { EXTRA_TEMPLATES } from "@/lib/form-templates-extra";
 
-// คลังเทมเพลตฟอร์มสำเร็จรูป (built-in) — โรงงาน/คลังสินค้าไทย
+// คลังเทมเพลตฟอร์มสำเร็จรูป (built-in) — หลายอุตสาหกรรม (ชุดเพิ่มเติมอยู่ใน form-templates-extra.ts)
+// กรองได้ 2 แบบ: ลักษณะงาน = schema.category · อุตสาหกรรม = industries
 // ผู้ใช้ "ใช้เทมเพลตนี้" → สร้างเป็นฟอร์มใหม่ในองค์กร แล้วปรับแต่งต่อได้
 // display (ชื่อ/ไอคอน/หมวด/จำนวนฟิลด์) ดึงจาก schema โดยตรง
 //
@@ -12,12 +14,32 @@ export type TemplateSchema = Omit<FormSchema, "steps" | "flow"> & {
 
 export interface FormTemplate {
   id: string; // slug ของเทมเพลต
+  /** อุตสาหกรรมที่ใช้ (key จาก TEMPLATE_INDUSTRIES) */
+  industries: string[];
   schema: TemplateSchema;
 }
 
-export const FORM_TEMPLATES: FormTemplate[] = [
+/** อุตสาหกรรมสำหรับกรองเทมเพลต (ชุดเดียวกับตัวอย่างคำสั่ง AI) */
+export const TEMPLATE_INDUSTRIES: { key: string; th: string; en: string }[] = [
+  { key: "manufacturing", th: "โรงงานผลิต", en: "Manufacturing" },
+  { key: "logistics", th: "ขนส่ง/คลังสินค้า", en: "Transport / Warehouse" },
+  { key: "port", th: "ท่าเรือ/ตู้คอนเทนเนอร์", en: "Port / Containers" },
+  { key: "construction", th: "ก่อสร้าง", en: "Construction" },
+  { key: "food", th: "อาหาร/ร้านอาหาร", en: "Food / Restaurants" },
+  { key: "retail", th: "ค้าปลีก/ร้านค้า", en: "Retail" },
+  { key: "hospitality", th: "โรงแรม/บริการ", en: "Hospitality" },
+  { key: "healthcare", th: "โรงพยาบาล/คลินิก", en: "Healthcare" },
+  { key: "agriculture", th: "เกษตร/ปศุสัตว์", en: "Agriculture" },
+  { key: "energy", th: "พลังงาน/สาธารณูปโภค", en: "Energy / Utilities" },
+  { key: "facilities", th: "อาคาร/นิติบุคคล", en: "Facilities / Property" },
+  { key: "education", th: "โรงเรียน/การศึกษา", en: "Education" },
+  { key: "general", th: "ทั่วไป/สำนักงาน", en: "General / Office" },
+];
+
+const CORE_TEMPLATES: FormTemplate[] = [
   {
     id: "machine-preshift",
+    industries: ["manufacturing"],
     schema: {
       title: "ตรวจเช็คเครื่องจักรก่อนเริ่มกะ",
       description: "เช็คสภาพเครื่องจักรก่อนเดินเครื่อง ลดเหตุขัดข้องระหว่างกะ",
@@ -56,6 +78,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "daily-safety",
+    industries: ["manufacturing", "construction", "general"],
     schema: {
       title: "เช็คลิสต์ความปลอดภัยประจำวัน (จป.)",
       description: "ตรวจความปลอดภัยพื้นที่ทำงานประจำวัน ตามหลัก จป.",
@@ -93,6 +116,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "goods-receipt",
+    industries: ["logistics", "retail", "manufacturing"],
     schema: {
       title: "ใบตรวจรับสินค้าเข้าคลัง",
       description: "ตรวจรับสินค้า/วัตถุดิบเข้าคลัง พร้อมรายการและสภาพสินค้า",
@@ -138,6 +162,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "material-requisition",
+    industries: ["manufacturing", "logistics"],
     schema: {
       title: "ใบเบิกวัสดุ/อะไหล่",
       description: "ขอเบิกวัสดุหรืออะไหล่จากคลัง พร้อมรายการและผู้อนุมัติ",
@@ -183,6 +208,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "qc-inspection",
+    industries: ["manufacturing", "food"],
     schema: {
       title: "บันทึกตรวจสอบคุณภาพ (QC)",
       description: "ตรวจสอบคุณภาพสินค้ารายล็อต บันทึกค่าที่วัดและผลตัดสิน",
@@ -229,6 +255,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "five-s",
+    industries: ["manufacturing", "general"],
     schema: {
       title: "เช็คลิสต์ 5ส ประจำพื้นที่",
       description: "ตรวจประเมิน 5ส (สะสาง สะดวก สะอาด สุขลักษณะ สร้างนิสัย) รายพื้นที่",
@@ -265,6 +292,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "machine-cleaning",
+    industries: ["manufacturing", "food"],
     schema: {
       title: "บันทึกการทำความสะอาดเครื่องจักร",
       description: "บันทึกการทำความสะอาดเครื่องจักรตามแผน พร้อมสารเคมีที่ใช้",
@@ -310,6 +338,7 @@ export const FORM_TEMPLATES: FormTemplate[] = [
   },
   {
     id: "incident-report",
+    industries: ["general", "manufacturing", "construction"],
     schema: {
       title: "ใบรายงานอุบัติการณ์/เหตุผิดปกติ",
       description: "รายงานอุบัติเหตุหรือเหตุการณ์ผิดปกติ พร้อมการแก้ไขเบื้องต้น",
@@ -344,6 +373,8 @@ export const FORM_TEMPLATES: FormTemplate[] = [
     },
   },
 ];
+
+export const FORM_TEMPLATES: FormTemplate[] = [...CORE_TEMPLATES, ...EXTRA_TEMPLATES];
 
 export function getTemplate(id: string): FormTemplate | undefined {
   return FORM_TEMPLATES.find((tpl) => tpl.id === id);
