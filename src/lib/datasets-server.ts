@@ -117,7 +117,7 @@ function uniqRows(rows: OptRow[]): OptRow[] {
 function applyToField(f: FormField, rows: OptRow[] | null, dsName: string | undefined, cascading: boolean, labeled: boolean) {
   if (!rows) {
     // dataset ถูกลบ/ไม่มีสิทธิ์/ยังไม่รัน migration → ใช้ตัวเลือกที่พิมพ์ไว้ (ถ้ามี) และเตือน
-    f.options_error = dsName ? "ดึงตัวเลือกจากข้อมูลอ้างอิงไม่ได้" : "ไม่พบข้อมูลอ้างอิงที่ฟิลด์นี้ใช้";
+    f.options_error = dsName ? "ดึงตัวเลือกจากถังข้อมูลไม่ได้" : "ไม่พบถังข้อมูลที่ฟิลด์นี้ใช้";
     delete f.options_source?.parent;
     return;
   }
@@ -190,7 +190,7 @@ export async function writeRecords(
 function friendly(msg: string): string {
   if (msg.includes("changed during import")) return "มีการนำเข้าอื่นเสร็จก่อนระหว่างนี้ — ลองใหม่อีกครั้ง";
   if (msg.includes("row limit exceeded")) return `dataset เกินลิมิต ${MAX_DATASET_ROWS.toLocaleString()} แถว`;
-  if (msg.includes("forbidden")) return "ไม่มีสิทธิ์แก้ไขข้อมูลอ้างอิงนี้";
+  if (msg.includes("forbidden")) return "ไม่มีสิทธิ์แก้ไขถังข้อมูลนี้";
   return msg;
 }
 

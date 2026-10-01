@@ -18,18 +18,18 @@ import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, We
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
-// เมนูหลัก — เห็นบน navbar ตลอด (งานที่ใช้ประจำ) กรองตามสิทธิ์เมนูของ role
+// เมนูกลุ่มงานหลัก — อยู่บน navbar ครบทุกตัว (ไม่อยู่ใน sidebar) กรองตามสิทธิ์เมนูของ role
 const PRIMARY: NavEntry[] = [
   { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
   { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
   { href: "/forms", key: "nav.fill", icon: Smartphone, menu: "forms" },
-];
-
-// เมนูรอง — อยู่ในเมนู hamburger; ตัวที่กำลังเปิดจะโผล่มาเป็นแท็บ active บน navbar
-const SECONDARY: NavEntry[] = [
   { href: "/datasets", key: "nav.datasets", icon: Database, menu: "datasets" },
   { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
   { href: "/reports", key: "nav.reports", icon: FileSpreadsheet, menu: "reports" },
+];
+
+// เมนูอื่น — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
+const SECONDARY: NavEntry[] = [
   { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
   { href: "/settings/billing", key: "nav.billing", icon: CreditCard, menu: "billing" },
   { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
@@ -42,19 +42,8 @@ const SECONDARY: NavEntry[] = [
   { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
 ];
 
-// หมวดหมู่ในเมนู sidebar (drawer)
+// หมวดหมู่ในเมนู sidebar (drawer) — ไม่มีกลุ่มงานหลัก เพราะอยู่บน navbar แล้ว
 const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
-  {
-    labelKey: "grp.work",
-    items: [
-      { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
-      { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
-      { href: "/forms", key: "nav.fill", icon: Smartphone, menu: "forms" },
-      { href: "/datasets", key: "nav.datasets", icon: Database, menu: "datasets" },
-      { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
-      { href: "/reports", key: "nav.reports", icon: FileSpreadsheet, menu: "reports" },
-    ],
-  },
   {
     labelKey: "grp.org",
     items: [
@@ -174,9 +163,59 @@ export default function AppShell({
   const activeSecondary = secondary.find((n) => isActive(n.href));
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
 
+  // มือถือ: แถบเมนูเลื่อนแนวนอนได้ → เลื่อนให้แท็บที่ active มาอยู่ในจอเสมอ (ไม่ต้องปัดหาเอง)
+  // เลื่อนเฉพาะแถบเมนู (scrollTo) ไม่ใช้ scrollIntoView ซึ่งจะเลื่อนทั้งหน้าด้วย
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    const el = nav?.querySelector<HTMLElement>('a[aria-current="page"]');
+    if (!nav || !el || nav.scrollWidth <= nav.clientWidth) return;
+    const target = el.offsetLeft - nav.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
+    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+  }, [activeHref]);
+  // ขอบจาง ซ้าย/ขวา บอกว่ายังมีเมนูให้ปัดดู
+  const [edge, setEdge] = useState({ l: false, r: false });
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const upd = () => {
+      const l = nav.scrollLeft > 2;
+      const r = nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 2;
+      setEdge((e) => (e.l === l && e.r === r ? e : { l, r }));
+    };
+    upd();
+    nav.addEventListener("scroll", upd, { passive: true });
+    const ro = new ResizeObserver(upd);
+    ro.observe(nav);
+    return () => { nav.removeEventListener("scroll", upd); ro.disconnect(); };
+  }, [navItems.length]);
+  const fade = edge.l || edge.r
+    ? `linear-gradient(to right, ${edge.l ? "transparent 0, #000 28px" : "#000 0"}, ${edge.r ? "#000 calc(100% - 28px), transparent 100%" : "#000 100%"})`
+    : undefined;
+  // จอคอม: หมุนล้อเมาส์บนแถบเมนู = ปัดซ้าย-ขวา (เมาส์ส่วนใหญ่ไม่มีล้อแนวนอน)
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const onWheel = (e: WheelEvent) => {
+      if (nav.scrollWidth <= nav.clientWidth || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
+      e.preventDefault();
+      nav.scrollLeft += e.deltaY;
+    };
+    nav.addEventListener("wheel", onWheel, { passive: false });
+    return () => nav.removeEventListener("wheel", onWheel);
+  }, []);
+
   return (
     <>
       <style>{`
+        /* แถบเมนูหลัก: ที่ไม่พอ → ปัดซ้าย-ขวาได้ (ทุกขนาดจอ) ไม่ตกบรรทัด ไม่ซ่อนชื่อ */
+        .krok-nav{ overflow-x: auto; scrollbar-width: none; overscroll-behavior-x: contain; }
+        .krok-nav::-webkit-scrollbar{ display: none; }
+        /* จอคอม: แถวเดียวเสมอ — เมนูหลักยอมหดแล้วปัด ส่วน workspace + ปุ่มขวาคงขนาด */
+        @media (min-width: 641px){
+          .krok-topbar{ flex-wrap: nowrap !important; }
+          .krok-ws-slot, .krok-controls{ flex-shrink: 0; }
+        }
         @media (max-width: 640px){
           /* มือถือ: ปุ่มควบคุม (theme/lang/noti/profile) ขึ้นแถวบนชิดขวา */
           .krok-controls{ order: 1; }
@@ -237,25 +276,29 @@ export default function AppShell({
             </Link>
           </div>
 
-          <nav className="krok-nav" style={{ display: "flex", gap: 2 }}>
+          <nav ref={navRef} className="krok-nav" aria-label={t("nav.menu")} style={{ display: "flex", gap: 0, minWidth: 0, flex: "0 1 auto", maskImage: fade, WebkitMaskImage: fade }}>
             {navItems.map((n) => {
               const on = isActive(n.href);
               return (
                 <Link
                   key={n.href}
                   href={n.href}
+                  aria-current={on ? "page" : undefined}
+                  title={t(n.key)}
                   className="inline-flex items-center gap-1.5"
                   style={{
-                    padding: "8px 12px",
+                    padding: "7px 9px",
                     borderRadius: 8,
                     fontWeight: on ? 600 : 500,
-                    fontSize: ".9rem",
+                    fontSize: ".84rem",
+                    whiteSpace: "nowrap",
+                    flex: "0 0 auto",
                     textDecoration: "none",
                     color: on ? "var(--accent)" : "var(--ink-2)",
                     background: on ? "var(--accent-soft)" : "transparent",
                   }}
                 >
-                  <Icon icon={n.icon} className="h-[18px] w-[18px]" /> {t(n.key)}
+                  <Icon icon={n.icon} className="h-[17px] w-[17px]" /> <span className="krok-nav-label">{t(n.key)}</span>
                 </Link>
               );
             })}

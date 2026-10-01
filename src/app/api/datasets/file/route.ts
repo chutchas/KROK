@@ -85,7 +85,7 @@ export async function POST(req: Request) {
     .eq("id", datasetId)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
-  if (!row) return NextResponse.json({ error: "ไม่พบข้อมูลอ้างอิง" }, { status: 404 });
+  if (!row) return NextResponse.json({ error: "ไม่พบถังข้อมูล" }, { status: 404 });
   const ds = rowToMeta(row as Record<string, unknown>);
 
   let parsed: { table: ParsedTable; sheets: string[] };

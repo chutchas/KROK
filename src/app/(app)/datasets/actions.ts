@@ -37,7 +37,7 @@ const MASK = "••••••••";
 async function guard(): Promise<{ session: KrokSession } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์จัดการข้อมูลอ้างอิง" };
+  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์จัดการถังข้อมูล" };
   return { session };
 }
 
@@ -115,7 +115,7 @@ export async function updateDataset(id: string, patch: DatasetPatch): Promise<R>
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
 
   const upd: Record<string, unknown> = {};
   if (patch.name !== undefined) {
@@ -169,7 +169,7 @@ export async function deleteDataset(id: string): Promise<R> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   const supabase = await createClient();
   const used = await formsUsingDataset(supabase, g.session.tenantId, id);
   if (used.length)
@@ -186,7 +186,7 @@ export async function clearRows(id: string): Promise<R> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   try {
     const supabase = await createClient();
     await writeRecords(supabase, ds, [], "replace");
@@ -210,7 +210,7 @@ export async function getPullConfig(id: string): Promise<R<{ config: PullConfigV
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   const admin = getAdminClient();
   if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
   const { data } = await admin.from("dataset_secrets").select("pull_config").eq("dataset_id", id).maybeSingle();
@@ -255,7 +255,7 @@ export async function testPull(id: string, config: unknown): Promise<R<{ result:
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   try {
     const cfg = await mergedPullConfig(id, config);
     const records = await fetchPullRecords(cfg);
@@ -279,7 +279,7 @@ export async function savePullConfig(id: string, config: unknown, columns: Datas
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   const admin = getAdminClient();
   if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
 
@@ -314,7 +314,7 @@ export async function syncNow(id: string): Promise<R<{ rows: number }>> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   if (ds.lastSyncStatus === "running" && ds.updatedAt && Date.now() - new Date(ds.updatedAt).getTime() < 120000)
     return { error: "กำลัง sync อยู่ ลองใหม่อีกสักครู่" };
   const admin = getAdminClient();
@@ -333,7 +333,7 @@ export async function rotatePushKey(id: string): Promise<R<{ key: string }>> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   const admin = getAdminClient();
   if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
   const k = newPushKey();
@@ -351,7 +351,7 @@ export async function revokePushKey(id: string): Promise<R> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบข้อมูลอ้างอิง" };
+  if (!ds) return { error: "ไม่พบถังข้อมูล" };
   const admin = getAdminClient();
   if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
   await admin.from("dataset_secrets").update({ push_key_hash: null }).eq("dataset_id", id);
