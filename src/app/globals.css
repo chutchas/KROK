@@ -226,3 +226,6 @@ a {
   .krok-listsort { width: 100%; flex: 1 1 100% !important; }
 }
 .krok-tabscroll::-webkit-scrollbar { display: none; }
+
+/* ความกว้างหน้าแอป — ทุกหน้าใช้ค่าเดียวกัน (แถบบน + เนื้อหา) · ขอบซ้าย-ขวายืดตามจอ 16–32px */
+:root { --krok-page-w: 1360px; --krok-gutter: clamp(16px, 2.5vw, 32px); }

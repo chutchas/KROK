@@ -311,7 +311,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: tab === "edit" && draft ? "visible" : "hidden" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {/* แท็บหลัก 3 แท็บ */}
       <div style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
         {([
@@ -485,7 +485,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
       {tab === "edit" && (draft ? (
         // จอกว้าง: ฟอร์มซ้าย + แผงตั้งค่าขวาแบบถาวร (ฟอร์มไม่ยืด-หดตอนเลือกฟิลด์) · จอแคบ: แผงลอย/แผ่นเลื่อนขึ้น
-        <div className="krok-editwide">
+        <div>
         <div className="krok-editgrid">
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
@@ -855,12 +855,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
       <style>{`
         /* ===== หน้าแก้ไขฟอร์ม =====
-           จอกว้าง (>=1100px): ขยายออกนอกคอลัมน์ 1040px ของแอป → ฟอร์มซ้าย (เต็มที่) + แผงตั้งค่าขวา 380px แบบถาวร
+           จอกว้าง (>=1100px): ฟอร์มซ้าย (เต็มที่) + แผงตั้งค่าขวา 380px แบบถาวร — กว้างเท่าหน้าอื่น (--krok-page-w)
            แผงตรึงตอนเลื่อนหน้า, ไม่ได้เลือกฟิลด์ = แสดงคำแนะนำ · ฟอร์มไม่ยืด-หดตอนเลือก/ปิด */
         .krok-editgrid{ display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
         .krok-settings-backdrop{ display:none; }
         @media(min-width:1100px){
-          .krok-editwide{ --w:min(1480px, calc(100vw - 48px)); width:var(--w); margin-left:calc((100% - var(--w)) / 2); }
           .krok-editgrid{ grid-template-columns:minmax(0,1fr) 380px; }
           .krok-aside{ position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto; border-radius:12px; }
         }

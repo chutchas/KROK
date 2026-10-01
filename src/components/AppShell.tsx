@@ -204,9 +204,10 @@ export default function AppShell({
         <div
           className="krok-topbar"
           style={{
-            maxWidth: 1040,
+            // ความกว้างเดียวกับเนื้อหา (--krok-page-w) → ขอบซ้าย-ขวาของแถบบนตรงกับเนื้อหาทุกหน้า
+            maxWidth: "var(--krok-page-w)",
             margin: "0 auto",
-            padding: "10px 16px",
+            padding: "10px var(--krok-gutter)",
             display: "flex",
             alignItems: "center",
             gap: 14,
@@ -415,7 +416,7 @@ export default function AppShell({
         </div>
       )}
 
-      <main style={{ maxWidth: 1040, margin: "0 auto", padding: "20px 16px 90px" }}>{children}</main>
+      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
     </>
   );
 }
