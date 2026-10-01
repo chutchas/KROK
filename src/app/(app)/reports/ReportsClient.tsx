@@ -133,7 +133,7 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
           <Button onClick={search} disabled={busy}>
             <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
-          <Button variant="primary" onClick={exportXlsx} disabled={!preview || preview.total === 0}>
+          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={!preview || preview.total === 0}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>

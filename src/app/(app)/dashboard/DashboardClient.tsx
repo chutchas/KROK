@@ -118,7 +118,7 @@ export default function DashboardClient({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        <button onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
+        <button data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
           className="inline-flex items-center gap-1.5"
           style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600 }}>
           <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
@@ -126,7 +126,7 @@ export default function DashboardClient({
       </div>
 
       {/* แถวสรุป workspace (ตายตัว 3 การ์ด) */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="krok-sumcards">
+      <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="krok-sumcards">
         <SummaryCard icon={FileText} label={t("dash.sumForms")} used={summary.forms.used} max={summary.forms.max} />
         <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
         <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={summary.period} />
@@ -151,7 +151,7 @@ export default function DashboardClient({
 
       {/* รายการล่าสุด (คงเดิม) */}
       <Card>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+        <h2 data-tour="dash-latest" style={{ fontSize: "1.15rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--pass)" }} />
           {t("dash.latest")}
         </h2>

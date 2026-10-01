@@ -316,7 +316,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {/* แท็บหลัก 3 แท็บ */}
-      <div style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
+      <div data-tour="studio-tabs" style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
         {([
           { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
           { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
@@ -345,7 +345,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         </div>
 
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
-        <div className="krok-seg krok-seg-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
+        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
           {([
             { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt") },
             { m: "file" as const, icon: FileUp, label: t("studio.modeFile") },
@@ -551,7 +551,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
           <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
 
-          <div className="krok-canvaswrap" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
+          <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
               <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()} />
             ) : (
@@ -726,14 +726,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             )}
           </div>
 
-          <div className="krok-editbtns" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
+          <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
             {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
         {selKey && <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />}
-        <aside className={selKey ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={t("editor.fieldSettings")}>
+        <aside data-tour="studio-aside" className={selKey ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={t("editor.fieldSettings")}>
           {selKey ? (
             <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
           ) : (

@@ -65,7 +65,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("appr.title")}</h1>
+        <h1 data-tour="appr-title" style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("appr.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {subs.length ? tt("appr.count", { n: subs.length }) : t("appr.none")}
         </p>

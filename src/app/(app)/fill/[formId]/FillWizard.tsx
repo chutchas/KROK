@@ -1048,7 +1048,7 @@ export default function FillWizard(props: Props) {
   };
 
   const draftBtn = draftsOn ? (
-    <Button onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.draftTitle")}>
+    <Button data-tour="fill-draft" onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.draftTitle")}>
       <Icon icon={Save} className="h-4 w-4" /> {kase ? t("common.save") : t("draft.save")}
     </Button>
   ) : null;
@@ -1068,7 +1068,7 @@ export default function FillWizard(props: Props) {
   ) : null;
 
   const viewToggle = (
-    <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
+    <div data-tour="fill-mode" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
       {([
         { m: "mobile" as const, label: t("studio.viewMobile") },
         { m: "paper" as const, label: t("studio.viewPaper") },
@@ -1169,7 +1169,7 @@ export default function FillWizard(props: Props) {
 
         {!viewOnly && (
           <div style={{ marginTop: 14 }}>
-            <Button variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
+            <Button data-tour="fill-submit" variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
               {submitting ? t("fill.submitting") : wf && !isLastSeg ? handoffLabel : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
             </Button>
           </div>
@@ -1221,7 +1221,7 @@ export default function FillWizard(props: Props) {
       <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); latest.current.idx = idx - 1; window.scrollTo(0, 0); void saveDraftNow("auto"); }}>{t("fill.prev")}</Button>}
         {!(viewOnly && idx >= maxIdx) && (
-          <Button variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
+          <Button data-tour="fill-submit" variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
             {submitting ? t("fill.submitting")
               : idx < maxIdx || viewOnly ? t("fill.next")
               : wf && !isLastSeg ? handoffLabel

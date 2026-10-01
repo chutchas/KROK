@@ -119,7 +119,7 @@ export default function FormsListClient({
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
       {/* จอแคบ: แท็บไม่ตัดบรรทัด เลื่อนซ้าย-ขวาได้แทน */}
-      <div role="tablist" className="krok-tabscroll" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none" }}>
+      <div role="tablist" data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none" }}>
         {([
           { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
           { k: "tasks" as const, label: t("wf.tabTasks"), n: cases.filter((c) => c.kind !== "watch").length },
@@ -145,7 +145,7 @@ export default function FormsListClient({
       ) : (<>
       {forms.length > 0 && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "12px 0" }}>
-          <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
+          <div data-tour="forms-search" style={{ position: "relative", flex: 1, minWidth: 180 }}>
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("forms.search")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>

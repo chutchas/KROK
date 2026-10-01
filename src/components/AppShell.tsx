@@ -3,6 +3,7 @@ import { backdropClose } from "@/lib/backdrop";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PROFILE_AVATAR_EVENT, PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
+import TourGuide, { TOUR_START_EVENT } from "@/components/TourGuide";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
@@ -15,7 +16,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet, TabletSmartphone, Database } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet, TabletSmartphone, Database, CircleHelp } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -279,6 +280,7 @@ export default function AppShell({
         >
           <button
             onClick={() => setMenuOpen(true)}
+            data-tour="menu"
             aria-label={t("nav.menu")}
             title={t("nav.menu")}
             className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
@@ -294,7 +296,7 @@ export default function AppShell({
             </Link>
           </div>
 
-          <nav ref={navRef} className="krok-nav" aria-label={t("nav.menu")} style={{ display: "flex", gap: 0, minWidth: 0, flex: "0 1 auto", maskImage: fade, WebkitMaskImage: fade }}>
+          <nav ref={navRef} data-tour="nav" className="krok-nav" aria-label={t("nav.menu")} style={{ display: "flex", gap: 0, minWidth: 0, flex: "0 1 auto", maskImage: fade, WebkitMaskImage: fade }}>
             {navItems.map((n) => {
               const on = isActive(n.href);
               return (
@@ -323,7 +325,7 @@ export default function AppShell({
           </nav>
 
           {/* ปุ่ม workspace (ตัวย่อ + ชื่อตัวหนา ▾) — จอคอม: ฝั่งขวาก่อนปุ่มสลับโหมด · มือถือ: แถวที่ 2 เต็มความกว้าง */}
-          <div className="krok-ws-slot" style={{ display: "flex", alignItems: "center", minWidth: 0, marginLeft: "auto" }}>
+          <div className="krok-ws-slot" data-tour="ws" style={{ display: "flex", alignItems: "center", minWidth: 0, marginLeft: "auto" }}>
             {workspaces.length > 1 || canManage ? (
               <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
             ) : (
@@ -336,7 +338,7 @@ export default function AppShell({
             <ThemeToggle />
             <LanguageToggle />
             <NotificationBell userId={userId} />
-            <div ref={profileRef} style={{ position: "relative" }}>
+            <div ref={profileRef} data-tour="profile" style={{ position: "relative" }}>
               <button
                 onClick={() => setProfileOpen((v) => !v)}
                 title={t("nav.profile")}
@@ -390,6 +392,13 @@ export default function AppShell({
                   >
                     <Icon icon={HardHat} className="h-[18px] w-[18px]" /> {t("nav.profile")}
                   </Link>
+                  <button
+                    onClick={() => { setProfileOpen(false); window.dispatchEvent(new Event(TOUR_START_EVENT)); }}
+                    className="inline-flex items-center gap-2.5"
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", textAlign: "left", border: "none", background: "transparent", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}
+                  >
+                    <Icon icon={CircleHelp} className="h-[18px] w-[18px]" /> {t("tour.replay")}
+                  </button>
                   <button
                     onClick={signOut}
                     className="inline-flex items-center gap-2.5"
@@ -485,6 +494,7 @@ export default function AppShell({
         </div>
       )}
 
+      <TourGuide userId={userId} />
       <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
     </>
   );

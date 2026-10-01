@@ -45,7 +45,7 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
           </p>
         </div>
         {canEdit && !creating && (
-          <Button variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>
+          <Button data-tour="ds-create" variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("ds.create")}
           </Button>
         )}
