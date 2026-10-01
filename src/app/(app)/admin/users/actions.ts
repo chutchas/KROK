@@ -62,10 +62,13 @@ export async function setUserPlan(userId: string, plan: string): Promise<{ ok: t
   const from = (cur?.plan as string) || "free";
   if (from === plan) return { ok: true };
 
-  const { error } = await a.admin.from("account_plans").upsert(
-    { user_id: userId, plan, updated_at: new Date().toISOString(), updated_by: a.session.userId },
-    { onConflict: "user_id" }
-  );
+  // แอดมินกำหนด = ไม่มีวันหมดอายุ (ดีลพิเศษ/แก้ไขให้ลูกค้า) · ยังไม่รัน 0046 (ไม่มีคอลัมน์) = บันทึกแบบเดิม
+  const row: Record<string, unknown> = { user_id: userId, plan, expires_at: null, updated_at: new Date().toISOString(), updated_by: a.session.userId };
+  let { error } = await a.admin.from("account_plans").upsert(row, { onConflict: "user_id" });
+  if (error && /expires_at/.test(error.message)) {
+    delete row.expires_at;
+    ({ error } = await a.admin.from("account_plans").upsert(row, { onConflict: "user_id" }));
+  }
   if (error) return { error: error.message };
 
   // สำเนาที่ tenants.plan + ประวัติของทุก workspace ที่เป็นเจ้าของ

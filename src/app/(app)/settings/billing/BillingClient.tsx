@@ -7,8 +7,8 @@ import { Check, Lock, CreditCard, Minus } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { DEFAULT_PLANS, UNLIMITED, planFeatures, type PlanKey, type Plan } from "@/lib/plans";
 import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
-import { PAYMENTS_ENABLED } from "@/lib/payments";
-import { setPlan } from "./actions";
+import { setPlan, invoiceStatus } from "./actions";
+import { useEffect, useSyncExternalStore } from "react";
 
 export default function BillingClient({
   isOwner,
@@ -20,7 +20,19 @@ export default function BillingClient({
   payMethods = [],
   plans = DEFAULT_PLANS,
   current,
+  payable = false,
+  expiresAt = null,
+  pendingInvoice = null,
+  returnInvoice = null,
 }: {
+  /** เปิดรับชำระจริงแล้ว (Payment Gateway ตั้งค่าครบ + PAYMENTS_LIVE) */
+  payable?: boolean;
+  /** วันหมดอายุของแพ็กเกจปัจจุบัน (null = ไม่หมดอายุ) */
+  expiresAt?: string | null;
+  /** ใบแจ้งหนี้ที่ค้างจ่าย (ลิงก์ชำระยังใช้ได้) */
+  pendingInvoice?: { id: string; plan: string; amount: number; url: string } | null;
+  /** กลับมาจากหน้าชำระของ Gateway (?invoice=) → รอผลยืนยัน */
+  returnInvoice?: string | null;
   isOwner: boolean;
   /** ชื่อเจ้าของบัญชี (แสดงเมื่อผู้ดูไม่ใช่เจ้าของ) */
   ownerName?: string | null;
@@ -49,10 +61,10 @@ export default function BillingClient({
     n === undefined || max <= 0 ? null : <UsageBar key={label} label={label} used={n} max={max} unit={unit} />;
 
   async function choose(p: PlanKey) {
-    if (p === currentPlan) return;
     setBusy(p);
     setMsg(null);
     const res = await setPlan(p);
+    if ("checkoutUrl" in res) { window.location.href = res.checkoutUrl; return; } // ไปหน้าชำระของ Gateway
     setBusy(null);
     if ("error" in res) setMsg({ t: res.error, err: true });
     else {
@@ -60,6 +72,27 @@ export default function BillingClient({
       router.refresh();
     }
   }
+
+  // กลับจากหน้าชำระ: ถามสถานะซ้ำทุก 3 วิ (สูงสุด ~2 นาที) จนกว่า Gateway จะแจ้งผล
+  const [payState, setPayState] = useState<"waiting" | "paid" | "failed" | "timeout" | null>(returnInvoice ? "waiting" : null);
+  useEffect(() => {
+    if (!returnInvoice) return;
+    let n = 0; let stop = false;
+    const tick = async () => {
+      if (stop) return;
+      const r = await invoiceStatus(returnInvoice);
+      const s = "status" in r ? r.status : "";
+      if (s === "paid") { setPayState("paid"); router.refresh(); return; }
+      if (s === "failed" || s === "void") { setPayState("failed"); return; }
+      if (++n >= 40) { setPayState("timeout"); return; }
+      setTimeout(tick, 3000);
+    };
+    void tick();
+    return () => { stop = true; };
+  }, [returnInvoice, router]);
+
+  const now = useSyncExternalStore(noopSub, () => Date.now(), () => 0);
+  const daysLeft = expiresAt && now ? Math.ceil((new Date(expiresAt).getTime() - now) / 86400_000) : null;
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
@@ -72,6 +105,32 @@ export default function BillingClient({
           {isOwner ? tt("plan.accountOwn", { n: workspaces }) : tt("plan.accountOther", { name: ownerName || t("plan.ownerFallback"), n: workspaces })}
         </p>
       </div>
+
+      {payState && (
+        <Notice kind={payState === "failed" ? "error" : "info"}>
+          {payState === "waiting" ? t("pay.waiting") : payState === "paid" ? t("pay.paid") : payState === "failed" ? t("pay.failed") : t("pay.timeout")}
+        </Notice>
+      )}
+      {pendingInvoice && !payState && isOwner && (
+        <Notice>
+          <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            {tt("pay.pending", { plan: plans.find((p) => p.key === pendingInvoice.plan)?.name ?? pendingInvoice.plan, amount: pendingInvoice.amount.toLocaleString() })}
+            <a href={pendingInvoice.url} style={{ color: "var(--accent)", fontWeight: 600 }}>{t("pay.continue")}</a>
+          </span>
+        </Notice>
+      )}
+      {daysLeft !== null && plan.priceThb > 0 && (
+        <Notice kind={daysLeft <= 7 ? "error" : "info"}>
+          <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            {daysLeft > 0
+              ? tt("pay.expiresIn", { date: new Date(expiresAt!).toLocaleDateString(en ? "en-GB" : "th-TH", { dateStyle: "medium" }), n: daysLeft })
+              : t("pay.expired")}
+            {isOwner && payable && (
+              <Button onClick={() => choose(plan.key)} disabled={!!busy} loading={busy === plan.key} style={{ padding: "5px 12px", fontSize: ".82rem" }}>{t("pay.renew")}</Button>
+            )}
+          </span>
+        </Notice>
+      )}
 
       <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 2 }}>{t("plan.usage")}</h2>
@@ -151,7 +210,7 @@ export default function BillingClient({
                   <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".88rem", fontWeight: 600 }}>{t("plan.currentBadge")}</div>
                 ) : !isOwner ? (
                   <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.billingOwnerOnly")}</div>
-                ) : p.priceThb > 0 && !PAYMENTS_ENABLED ? (
+                ) : p.priceThb > 0 && !payable ? (
                   <Button variant="default" disabled style={{ width: "100%", opacity: 0.7 }}>
                     <Icon icon={Lock} className="h-4 w-4" /> {t("plan.locked")}
                   </Button>
@@ -223,3 +282,5 @@ function UsageBar({ label, used, max, unit }: { label: string; used: number; max
     </div>
   );
 }
+
+const noopSub = () => () => {};

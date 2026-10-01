@@ -8,11 +8,12 @@ import { NextResponse, type NextRequest } from "next/server";
 // - /api/public: API รับการส่งฟอร์มสาธารณะ (ตรวจสิทธิ์ฟอร์ม public ในตัว)
 // - /api/v1: API สำหรับระบบภายนอก (ตรวจ API key ในตัว เช่น push ข้อมูลเข้า dataset)
 // - /api/cron: งานตั้งเวลา (ตรวจ CRON_SECRET ในตัว)
+// - /api/billing/callback: ผลการชำระจาก Payment Gateway (ตรวจลายเซ็นในตัว)
 // - /sw.js, /offline, /manifest: ไฟล์ PWA/ออฟไลน์
-const PUBLIC_PATHS = ["/login", "/auth", "/api/health", "/f/", "/api/public", "/api/v1/", "/api/cron/", "/sw.js", "/offline", "/manifest"];
+const PUBLIC_PATHS = ["/login", "/auth", "/api/health", "/f/", "/api/public", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
 // เส้นทางที่ไม่ใช้ session ผู้ใช้เลย (ตรวจ API key / secret เอง หรือเป็นไฟล์) — ข้ามการเช็ก login ทั้งหมด
-const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/v1/", "/api/cron/", "/sw.js", "/offline", "/manifest"];
+const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
 export async function updateSession(request: NextRequest) {
   if (NO_SESSION_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) return NextResponse.next({ request });

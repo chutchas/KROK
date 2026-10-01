@@ -9,6 +9,8 @@ export const dynamic = "force-dynamic";
 // งานเก็บกวาดตามเวลา (วันละครั้งพอ) — Authorization: Bearer <CRON_SECRET>
 // - ลบแบบร่างการกรอกฟอร์มที่หมดอายุ (เกิน 30 วันหลังแก้ไขล่าสุด) พร้อมไฟล์ใน bucket 'drafts'
 //   (หน้าแบบร่างก็ลบร่างหมดอายุของผู้ใช้เองอยู่แล้ว งานนี้เก็บของคนที่ไม่กลับมาเปิด)
+// - แพ็กเกจเสียเงินที่หมดอายุเกินช่วงผ่อนผัน → Free + ลิงก์ชำระที่หมดอายุ → void (0046)
+//   (สิทธิ์ใช้งานตัดเองอยู่แล้วตอนหมดอายุ งานนี้แค่เก็บข้อมูลให้ตรง)
 // ============================================================
 
 function authorized(req: Request): boolean {
@@ -44,7 +46,9 @@ async function handle(req: Request) {
     drafts += data.length;
     if (data.length < 200) break;
   }
-  return NextResponse.json({ ok: true, drafts, files });
+  // ยังไม่รัน 0046 = ข้าม
+  const { data: expired } = await admin.rpc("expire_account_plans");
+  return NextResponse.json({ ok: true, drafts, files, expiredPlans: typeof expired === "number" ? expired : 0 });
 }
 
 export const GET = handle;
