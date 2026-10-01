@@ -160,7 +160,8 @@ export default function AppShell({
   const matchesHref = (href: string) => path === href || path.startsWith(href + "/");
   const activeHref = allHrefs.filter(matchesHref).sort((a, b) => b.length - a.length)[0] || "";
   const isActive = (href: string) => href === activeHref;
-  const activeSecondary = secondary.find((n) => isActive(n.href));
+  // หาเมนูที่เปิดอยู่จากทุกเมนูใน sidebar ด้วย (เช่น Developer, ประวัติ/ใบเสร็จ ที่ไม่ได้อยู่ใน SECONDARY)
+  const activeSecondary = [...secondary, ...DRAWER_GROUPS.flatMap((g) => g.items).filter(visible)].find((n) => isActive(n.href));
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
 
   // มือถือ: แถบเมนูเลื่อนแนวนอนได้ → เลื่อนให้แท็บที่ active มาอยู่ในจอเสมอ (ไม่ต้องปัดหาเอง)
