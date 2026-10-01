@@ -229,8 +229,9 @@ a {
     top: 0;
     width: 100%;
   }
-  .krok-print-root,
-  .krok-print-root * {
+  /* ต้องเจาะจงกว่ากฎซ่อนด้านบน (body:has(...) * ) ไม่งั้นเอกสารถูกซ่อนไปด้วย = พิมพ์ออกมาเป็นหน้าว่าง */
+  body:has(.krok-print-root) .krok-print-root,
+  body:has(.krok-print-root) .krok-print-root * {
     visibility: visible !important;
   }
   .krok-print-root .krok-paper {
