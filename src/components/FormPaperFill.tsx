@@ -60,14 +60,17 @@ export default function FormPaperFill({
   }, []);
 
   return (
-    <div data-paper="">
+    // krok-print-live: กดพิมพ์ในหน้ากรอก (มุมมองกระดาษ) = พิมพ์กระดาษแผ่นนี้พร้อมค่าที่กรอก (ดู globals.css)
+    <div data-paper="" className="krok-print-live">
       <div
         ref={wrapRef}
+        className="krok-pl-wrap"
         style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 12, WebkitOverflowScrolling: "touch" }}
       >
         {/* กล่องขนาดจริงหลังย่อ เพื่อให้ scroll พอดี (ไม่มี scroll แนวนอนตอน fit) */}
-        <div style={{ width: CANVAS_W * scale, height: canvasH * scale, margin: "0 auto", position: "relative" }}>
+        <div className="krok-pl-sizer" style={{ width: CANVAS_W * scale, height: canvasH * scale, margin: "0 auto", position: "relative" }}>
           <div
+            className="krok-pl-canvas"
             style={{
               position: "absolute", top: 0, left: 0,
               width: CANVAS_W, minHeight: canvasH,
@@ -112,7 +115,7 @@ export default function FormPaperFill({
       </div>
 
       {/* แถบซูม */}
-      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
+      <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
         <button
           onClick={() => { userZoomed.current = false; setScale(fitScale); }}
           style={{ padding: "5px 10px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".76rem" }}

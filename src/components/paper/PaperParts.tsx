@@ -97,10 +97,12 @@ export function PaperHeaderContent({ icon, title, description }: { icon: string;
 export function PaperMetaContent({ filler, date }: { filler?: string; date?: string }) {
   const { t } = useT();
   return (
-    <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", whiteSpace: "nowrap", lineHeight: 1.6 }}>
-      {t("fw.paper.filler")} {filler || "__________"}
-      <br />
-      {t("fw.paper.date")} {date || "__________"}
+    // ชื่อยาวขึ้นบรรทัดใหม่ได้ไม่เกิน 2 บรรทัด (ตัดตามคำ) — กล่องกว้างจำกัด ห้ามล้นขอบกระดาษ
+    <div style={{ fontSize: ".72rem", color: "#555", textAlign: "right", lineHeight: 1.5, minWidth: 0 }}>
+      <div title={filler} style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", overflowWrap: "anywhere" }}>
+        {t("fw.paper.filler")} {filler || "__________"}
+      </div>
+      <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t("fw.paper.date")} {date || "__________"}</div>
     </div>
   );
 }
@@ -270,7 +272,7 @@ export function PaperTable({
             ))}
             {onDelete && (
               <td style={{ textAlign: "center", padding: 0 }}>
-                <button type="button" onClick={() => onDelete(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", padding: 2 }}>
+                <button type="button" className="no-print" onClick={() => onDelete(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", padding: 2 }}>
                   <Icon icon={Trash2} className="h-3.5 w-3.5" />
                 </button>
               </td>
@@ -286,7 +288,7 @@ export function PaperTable({
 export function PaperAddRow({ onClick }: { onClick: () => void }) {
   const { t } = useT();
   return (
-    <button type="button" onClick={onClick} style={{ height: LABEL_H, display: "inline-flex", alignItems: "center", gap: 3, border: `1px solid #2f6fe0`, borderRadius: 4, background: "#eef4ff", color: "#2f6fe0", fontFamily: "inherit", fontSize: ".7rem", fontWeight: 600, padding: "0 6px", cursor: "pointer" }}>
+    <button type="button" className="no-print" onClick={onClick} style={{ height: LABEL_H, display: "inline-flex", alignItems: "center", gap: 3, border: `1px solid #2f6fe0`, borderRadius: 4, background: "#eef4ff", color: "#2f6fe0", fontFamily: "inherit", fontSize: ".7rem", fontWeight: 600, padding: "0 6px", cursor: "pointer" }}>
       <Icon icon={Plus} className="h-3 w-3" /> {t("fw.paper.row")}
     </button>
   );

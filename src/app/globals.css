@@ -235,6 +235,31 @@ a {
     width: 100%;
   }
   /* ต้องเจาะจงกว่ากฎซ่อนด้านบน (body:has(...) * ) ไม่งั้นเอกสารถูกซ่อนไปด้วย = พิมพ์ออกมาเป็นหน้าว่าง */
+  /* หน้ากรอก (มุมมองกระดาษ): พิมพ์กระดาษแผ่นที่กำลังกรอก พร้อมค่าที่กรอก — ขนาดจริง ไม่ใช่ขนาดที่ย่อพอดีจอ */
+  body:has(.krok-print-live) *:not(.krok-print-live):not(.krok-print-live *):not(:has(.krok-print-live)) {
+    display: none !important;
+  }
+  body:has(.krok-print-live) main {
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .krok-print-live .krok-pl-wrap {
+    overflow: visible !important;
+    border: none !important;
+    padding: 0 !important;
+    background: none !important;
+  }
+  .krok-print-live .krok-pl-sizer {
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+  }
+  .krok-print-live .krok-pl-canvas {
+    position: relative !important;
+    transform: none !important;
+    box-shadow: none !important;
+    zoom: 0.9; /* แคนวาส A4 794px → พอดีพื้นที่พิมพ์เมื่อมีขอบกระดาษ */
+  }
   body:has(.krok-print-root) .krok-print-root,
   body:has(.krok-print-root) .krok-print-root * {
     visibility: visible !important;

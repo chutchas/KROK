@@ -915,6 +915,7 @@ export const en: Record<MessageKey, string> = {
   "case.waitNext": "Awaiting a later step",
   "fw.actionFailed": "Action failed",
   "fw.addRow": "Add row",
+  "fw.printPaper": "Print this sheet with the filled values",
   "fw.ai.ask": "Check photo with AI",
   "fw.ai.check": "AI photo check",
   "fw.ai.checking": "Checking...",

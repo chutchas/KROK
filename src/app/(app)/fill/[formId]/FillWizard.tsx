@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
+import { Printer, Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
@@ -1131,6 +1131,9 @@ export default function FillWizard(props: Props) {
           <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {viewToggle}
+            <Button onClick={() => window.print()} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.printPaper")} aria-label={t("fw.printPaper")}>
+              <Icon icon={Printer} className="h-4 w-4" /> {t("sub.print")}
+            </Button>
             {draftBtn}
             {!props.publicMode && <Button variant="ghost" onClick={exitForm} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
           </div>
@@ -1861,7 +1864,7 @@ function PaperTableField({ field: f, initial, onChange }: { field: FormField; in
       <PaperLabel label={f.label} required={f.required} right={
         <span style={{ display: "inline-flex", gap: 4 }}>
           {scanCol && (
-            <button type="button" onClick={() => setScanOpen(true)} title={t("ctype.scanAdd")} aria-label={t("ctype.scanAdd")}
+            <button type="button" className="no-print" onClick={() => setScanOpen(true)} title={t("ctype.scanAdd")} aria-label={t("ctype.scanAdd")}
               style={{ display: "inline-flex", alignItems: "center", gap: 3, border: "1px solid #2f6fe0", borderRadius: 4, background: "#2f6fe0", color: "#fff", fontFamily: "inherit", fontSize: ".7rem", fontWeight: 600, padding: "0 6px", cursor: "pointer" }}>
               <Icon icon={ScanLine} className="h-3 w-3" /> {t("ctype.scan")}
             </button>

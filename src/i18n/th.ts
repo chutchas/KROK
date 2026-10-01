@@ -930,6 +930,7 @@ export const th = {
   "case.waitNext": "รอขั้นถัดไป",
   "fw.actionFailed": "ทำรายการไม่สำเร็จ",
   "fw.addRow": "เพิ่มแถว",
+  "fw.printPaper": "พิมพ์เอกสารพร้อมค่าที่กรอก",
   "fw.ai.ask": "ให้ AI ตรวจรูป",
   "fw.ai.check": "AI ตรวจรูป",
   "fw.ai.checking": "กำลังดู...",
