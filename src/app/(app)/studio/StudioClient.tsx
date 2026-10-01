@@ -273,7 +273,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     function onDown(e: PointerEvent) {
       const el = e.target as HTMLElement | null;
       if (!el) return;
-      if (el.closest(".krok-settings") || el.closest("[data-krok-keep]")) return;
+      // คลิกในแผงตั้งค่า (ทั้งคอลัมน์ขวา) / หน้าต่างลอยที่เปิดจากแผง (dialog) → คงการเลือกไว้
+      if (el.closest(".krok-aside, .krok-settings, [data-krok-keep], [role=dialog], [role=alertdialog]")) return;
       setSelKey(null);
     }
     document.addEventListener("pointerdown", onDown, true);

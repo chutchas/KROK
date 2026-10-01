@@ -2,7 +2,7 @@
 import { backdropClose } from "@/lib/backdrop";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
+import { PROFILE_AVATAR_EVENT, PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
@@ -118,6 +118,13 @@ export default function AppShell({
     return () => window.removeEventListener(PROFILE_NAME_EVENT, on);
   }, [displayName]);
   const fullName = liveName && liveName.base === displayName ? liveName.name : displayName;
+  const [liveAvatar, setLiveAvatar] = useState<{ url: string; base: string } | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => setLiveAvatar({ url: (e as CustomEvent<string>).detail, base: avatarUrl });
+    window.addEventListener(PROFILE_AVATAR_EVENT, on);
+    return () => window.removeEventListener(PROFILE_AVATAR_EVENT, on);
+  }, [avatarUrl]);
+  const shownAvatar = liveAvatar && liveAvatar.base === avatarUrl ? liveAvatar.url : avatarUrl;
   const shortName = firstName(fullName);
   const [profileOpen, setProfileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -348,7 +355,7 @@ export default function AppShell({
                   fontFamily: "inherit",
                 }}
               >
-                <Avatar url={avatarUrl} size={22} /><span className="krok-profile-name" title={fullName} style={{ maxWidth: "9em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortName}</span>
+                <Avatar url={shownAvatar} size={22} /><span className="krok-profile-name" title={fullName} style={{ maxWidth: "9em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortName}</span>
                 <Icon icon={ChevronDown} className="h-3.5 w-3.5" />
               </button>
               {profileOpen && (
@@ -367,7 +374,7 @@ export default function AppShell({
                   }}
                 >
                   <div style={{ padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
-                    <Avatar url={avatarUrl} size={34} />
+                    <Avatar url={shownAvatar} size={34} />
                     <div>
                       <b style={{ fontSize: ".88rem", display: "block", overflowWrap: "anywhere" }}>{fullName}</b>
                       <small style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tenantName}</small>

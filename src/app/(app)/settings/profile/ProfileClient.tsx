@@ -8,7 +8,8 @@ import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/i18n/LanguageProvider";
 import type { Lang, MessageKey } from "@/i18n/dictionaries";
 import { saveProfile, saveAvatar } from "./actions";
-import { emitProfileName } from "@/lib/profile-events";
+import { emitProfileAvatar, emitProfileName } from "@/lib/profile-events";
+import AvatarCropper from "@/components/AvatarCropper";
 
 export interface ProfileData {
   first_name: string;
@@ -30,35 +31,42 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [avatar, setAvatar] = useState(initial.avatar_url);
   const [avatarBusy, setAvatarBusy] = useState(false);
+  const [cropFile, setCropFile] = useState<File | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const set = (k: keyof ProfileData, v: string) => setForm((f) => ({ ...f, [k]: v }));
 
-  async function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
+  // เลือกไฟล์ → เปิดหน้าต่างครอปก่อนเสมอ (รูปโปรไฟล์ต้องเป็นจัตุรัส + ย่อให้เล็กก่อนอัปโหลด)
+  function onPickAvatar(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
+    if (fileRef.current) fileRef.current.value = "";
     if (!file) return;
     if (!file.type.startsWith("image/")) { setMsg({ t: t("profile.avatarErrType"), err: true }); return; }
-    if (file.size > 3 * 1024 * 1024) { setMsg({ t: t("profile.avatarErrSize"), err: true }); return; }
+    if (file.size > 25 * 1024 * 1024) { setMsg({ t: t("profile.avatarErrSize"), err: true }); return; }
+    setMsg(null);
+    setCropFile(file);
+  }
+
+  async function uploadCropped(blob: Blob) {
+    setCropFile(null);
     setAvatarBusy(true);
     setMsg(null);
     try {
       const supabase = createClient();
-      const ext = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-      const path = `${initial.user_id}/avatar_${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage.from("avatars").upload(path, file, { upsert: true, contentType: file.type });
+      const path = `${initial.user_id}/avatar_${Date.now()}.jpg`;
+      const { error: upErr } = await supabase.storage.from("avatars").upload(path, blob, { upsert: true, contentType: "image/jpeg" });
       if (upErr) throw new Error(upErr.message);
-      const { data: pub } = supabase.storage.from("avatars").getPublicUrl(path);
-      const url = pub.publicUrl;
+      const url = supabase.storage.from("avatars").getPublicUrl(path).data.publicUrl;
       const res = await saveAvatar(url);
       if ("error" in res) throw new Error(res.error);
       setAvatar(url);
+      emitProfileAvatar(url);
       setMsg({ t: t("profile.avatarSaved") });
       router.refresh();
     } catch (err) {
       setMsg({ t: err instanceof Error ? err.message : t("profile.avatarErrType"), err: true });
     } finally {
       setAvatarBusy(false);
-      if (fileRef.current) fileRef.current.value = "";
     }
   }
 
@@ -125,6 +133,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
             <small style={{ color: "var(--ink-3)" }}>{avatarBusy ? t("profile.avatarUploading") : t("profile.avatarHint")}</small>
           </div>
           <input ref={fileRef} type="file" accept="image/*" hidden onChange={onPickAvatar} />
+          {cropFile && <AvatarCropper file={cropFile} onCancel={() => setCropFile(null)} onDone={uploadCropped} />}
         </div>
         <form onSubmit={submit} style={{ display: "grid", gap: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>

@@ -8,6 +8,12 @@ export function emitProfileName(name: string) {
   window.dispatchEvent(new CustomEvent<string>(PROFILE_NAME_EVENT, { detail: name }));
 }
 
+export const PROFILE_AVATAR_EVENT = "krok:profile-avatar";
+export function emitProfileAvatar(url: string) {
+  if (typeof window === "undefined") return;
+  window.dispatchEvent(new CustomEvent<string>(PROFILE_AVATAR_EVENT, { detail: url }));
+}
+
 /** ชื่อแรก (ตัดนามสกุลออก) สำหรับแสดงในที่แคบ */
 export function firstName(full: string): string {
   return full.trim().split(/\s+/)[0] || full;
