@@ -7,6 +7,7 @@ import { UploadCloud, KeyRound, Copy, Ban } from "lucide-react";
 import { MAX_DATASET_ROWS, type DatasetMeta } from "@/lib/datasets";
 import { revokePushKey, rotatePushKey } from "../actions";
 import { label } from "../ui";
+import { confirmDialog } from "@/components/dialogs";
 
 const codeBox: React.CSSProperties = {
   background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 10, padding: 12,
@@ -27,7 +28,7 @@ export default function PushPanel({ ds }: { ds: DatasetMeta }) {
   const keyShown = newKey || (ds.pushKeyPrefix ? `${ds.pushKeyPrefix}…` : "<API key>");
 
   async function rotate() {
-    if (ds.pushKeyPrefix && !confirm("สร้าง key ใหม่? key เดิมจะใช้ไม่ได้ทันที ระบบที่ส่งข้อมูลอยู่ต้องเปลี่ยน key ด้วย")) return;
+    if (ds.pushKeyPrefix && !(await confirmDialog({ message: "สร้าง key ใหม่? key เดิมจะใช้ไม่ได้ทันที ระบบที่ส่งข้อมูลอยู่ต้องเปลี่ยน key ด้วย", confirmLabel: "สร้าง key ใหม่" }))) return;
     setBusy("rotate");
     setErr("");
     const res = await rotatePushKey(ds.id);
@@ -37,7 +38,7 @@ export default function PushPanel({ ds }: { ds: DatasetMeta }) {
   }
 
   async function revoke() {
-    if (!confirm("ยกเลิก key? ระบบภายนอกจะส่งข้อมูลเข้ามาไม่ได้จนกว่าจะสร้าง key ใหม่")) return;
+    if (!(await confirmDialog({ message: "ยกเลิก key? ระบบภายนอกจะส่งข้อมูลเข้ามาไม่ได้จนกว่าจะสร้าง key ใหม่", confirmLabel: "ยกเลิก key", danger: true }))) return;
     setBusy("revoke");
     const res = await revokePushKey(ds.id);
     setBusy("");

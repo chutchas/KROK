@@ -19,6 +19,7 @@ import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-cat
 import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
+import { alertDialog, confirmDialog } from "@/components/dialogs";
 
 interface Member { user_id: string; name: string; role: string }
 interface Team { id: string; name: string }
@@ -79,7 +80,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
 
   async function changeStatus(id: string, s: "published" | "archived" | "draft") {
     const res = await setFormStatus(id, s);
-    if ("error" in res) alert(res.error);
+    if ("error" in res) await alertDialog(res.error);
     else router.refresh();
   }
 
@@ -284,9 +285,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
   }
 
   async function onDelete(id: string, title: string) {
-    if (!confirm(tt("studio.deleteConfirm", { title }))) return;
+    if (!(await confirmDialog({ message: tt("studio.deleteConfirm", { title }), danger: true }))) return;
     const res = await deleteForm(id);
-    if ("error" in res) alert(res.error);
+    if ("error" in res) await alertDialog(res.error);
     else router.refresh();
   }
 

@@ -9,6 +9,7 @@ import { reviewSubmission } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 
 import type { ApprovalStep } from "@/lib/approval";
+import { alertDialog } from "@/components/dialogs";
 
 export interface PendingSub {
   id: string;
@@ -40,14 +41,14 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
 
   async function act(id: string, decision: "approved" | "rejected") {
     if (decision === "rejected" && !notes[id]?.trim()) {
-      alert("การตีกลับต้องระบุเหตุผล");
+      await alertDialog(t("appr.rejectNeedsNote"));
       return;
     }
     setBusy(id + decision);
     const res = await reviewSubmission(id, decision, notes[id] || "");
     setBusy(null);
     if ("error" in res) {
-      alert(res.error);
+      await alertDialog(res.error);
       return;
     }
     setSubs((prev) => prev.filter((s) => s.id !== id));

@@ -77,6 +77,40 @@ export function calcMetric(rows: MetricRow[], metric: WidgetMetric): number {
   return new Set(rows.map((r) => (r.user_name || "").trim()).filter(Boolean)).size; // submitters
 }
 
+/** ผลรวมพื้นฐานจาก RPC dashboard_metrics (ฐานข้อมูลนับให้) */
+export interface MetricAgg {
+  n: number;
+  pending: number;
+  pass: number;
+  fail: number;
+  dur_sum: number;
+  dur_n: number;
+  submitters: number;
+}
+
+/** สร้างผลรวมจากแถวดิบ — สูตรเดียวกับฝั่ง SQL (ใช้ทดสอบความตรงกัน) */
+export function aggOf(rows: MetricRow[]): MetricAgg {
+  const ds = rows.map((r) => r.duration_s).filter((n): n is number => typeof n === "number");
+  return {
+    n: rows.length,
+    pending: rows.filter((r) => r.approval_status === "pending").length,
+    pass: rows.filter((r) => r.result === "pass").length,
+    fail: rows.filter((r) => r.result === "fail").length,
+    dur_sum: ds.reduce((a, b) => a + b, 0),
+    dur_n: ds.length,
+    submitters: new Set(rows.map((r) => (r.user_name || "").trim()).filter(Boolean)).size,
+  };
+}
+
+/** metric จากผลรวม — ต้องให้ค่าเท่ากับ calcMetric(rows) เสมอ */
+export function calcMetricAgg(a: MetricAgg, metric: WidgetMetric): number {
+  if (metric === "usage") return a.n;
+  if (metric === "pending") return a.pending;
+  if (metric === "passrate") return a.pass + a.fail ? Math.round((a.pass / (a.pass + a.fail)) * 100) : 0;
+  if (metric === "avgtime") return a.dur_n ? Math.round(a.dur_sum / a.dur_n) : 0;
+  return a.submitters;
+}
+
 // จำนวนวันของ trend ตามช่วง (month = ถึงวันปัจจุบันของเดือน)
 export function trendDays(range: WidgetRange, now = new Date()): number {
   return range === "7d" ? 7 : range === "30d" ? 30 : now.getDate();

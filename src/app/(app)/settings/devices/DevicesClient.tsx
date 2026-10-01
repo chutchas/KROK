@@ -5,6 +5,7 @@ import { Card, Button, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { TabletSmartphone, Check, Ban, Trash2, Pencil, ShieldCheck, Clock, Grid3x3, Users } from "lucide-react";
 import { deleteDevice, renameDevice, setDeviceStatus, setFormDeviceScope, toggleFormDevice, type DeviceStatus } from "./actions";
+import { confirmDialog } from "@/components/dialogs";
 
 export interface DeviceRow {
   id: string;
@@ -131,7 +132,7 @@ export default function DevicesClient({
         </button>
         <button
           disabled={busy === d.id}
-          onClick={() => { if (confirm(`ลบ “${d.name}” ออกจากทะเบียน? เครื่องนี้จะต้องขออนุมัติใหม่`)) void run(d.id, () => deleteDevice(d.id)); }}
+          onClick={async () => { if (await confirmDialog({ message: `ลบ “${d.name}” ออกจากทะเบียน? เครื่องนี้จะต้องขออนุมัติใหม่`, danger: true })) void run(d.id, () => deleteDevice(d.id)); }}
           style={{ ...btn, color: "var(--fail)" }}
         >
           <Icon icon={Trash2} className="h-3.5 w-3.5" /> ลบ

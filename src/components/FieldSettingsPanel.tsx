@@ -15,6 +15,7 @@ import {
   type TableColumn,
   type TableColType,
 } from "@/lib/form-schema";
+import { alertDialog, confirmDialog } from "@/components/dialogs";
 
 let idc = 0;
 const newId = (p: string) => `${p}_${Date.now().toString(36)}${(idc++).toString(36)}`;
@@ -127,9 +128,9 @@ export default function FieldSettingsPanel({
           <button style={iconBtn} onClick={() => { const fid = newId("f"); patchStep({ fields: [...step.fields, { id: fid, type: "text", label: "", required: true }] }); onSelect(fid); }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
           </button>
-          <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} onClick={() => {
-            if (schema.steps.length <= 1) { alert(t("editor.needOneStep")); return; }
-            if (!confirm(t("editor.deleteStepConfirm"))) return;
+          <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} onClick={async () => {
+            if (schema.steps.length <= 1) { await alertDialog(t("editor.needOneStep")); return; }
+            if (!(await confirmDialog({ message: t("editor.deleteStepConfirm"), danger: true }))) return;
             setSteps(schema.steps.filter((_, i) => i !== si));
             onSelect(null);
           }}><Icon icon={Trash2} className="h-4 w-4" /> {t("editor.deleteStep")}</button>

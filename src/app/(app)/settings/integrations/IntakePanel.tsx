@@ -8,6 +8,7 @@ import { KeyRound, Copy, Check, RefreshCw, Trash2, Save } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { rotateIntakeKey, revokeIntakeKey, saveIntake } from "./intake-actions";
 import type { FormOption } from "./IntegrationsClient";
+import { confirmDialog } from "@/components/dialogs";
 
 export interface IntakeConfig {
   enabled: boolean;
@@ -107,7 +108,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   }
 
   async function rotate() {
-    if (saved.keyPrefix && !confirm(t("intake.rotateConfirm"))) return;
+    if (saved.keyPrefix && !(await confirmDialog({ message: t("intake.rotateConfirm"), confirmLabel: t("intake.rotate") }))) return;
     setBusy("rotate"); setMsg(null);
     const r = await rotateIntakeKey(formId);
     setBusy(null);
@@ -117,7 +118,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   }
 
   async function revoke() {
-    if (!confirm(t("intake.revokeConfirm"))) return;
+    if (!(await confirmDialog({ message: t("intake.revokeConfirm"), confirmLabel: t("intake.revoke"), danger: true }))) return;
     setBusy("revoke"); setMsg(null);
     const r = await revokeIntakeKey(formId);
     setBusy(null);

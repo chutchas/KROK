@@ -2,7 +2,12 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
+/** ตัวตนผู้ใช้ที่ใช้จริงในแอป (จาก JWT claims — ไม่ต้องยิง Auth server ทุก request) */
+interface User {
+  id: string;
+  email?: string;
+  user_metadata?: Record<string, unknown>;
+}
 import { createClient } from "@/lib/supabase/server";
 import type { MenuKey } from "@/lib/menus";
 
@@ -138,8 +143,10 @@ async function bundleFromQueries(supabase: ServerClient, userId: string, wanted:
 }
 
 /**
- * ยิง Supabase ครั้งเดียวต่อ request: auth.getUser() + rpc(session_bundle) แบบขนาน
- * (rpc อ่าน auth.uid() จาก JWT ใน cookie จึงไม่ต้องรอ getUser ก่อน)
+ * ยิง Supabase ครั้งเดียวต่อ request: auth.getClaims() + rpc(session_bundle) แบบขนาน
+ * - getClaims ตรวจลายเซ็น JWT ในเครื่อง (โปรเจกต์ที่ใช้ asymmetric signing key) → ไม่ต้องยิง Auth server
+ *   ถ้ายังเป็น key แบบเดิม (HS256) supabase-js จะ fallback ไป getUser() ให้เอง = ปลอดภัยเท่าเดิม
+ * (rpc อ่าน auth.uid() จาก JWT ใน cookie จึงไม่ต้องรอผลยืนยันตัวตนก่อน)
  * ถ้า RPC ล้มเหลว → fallback ไป query ตรง (ยังใช้งานได้แม้ migration 0023 ยังไม่ถูกรัน)
  * cache() → layout + page + action ใน request เดียวกันใช้ผลลัพธ์ร่วมกัน
  */
@@ -148,13 +155,18 @@ const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null>
   const store = await cookies();
   const wanted = store.get(WS_COOKIE)?.value ?? null;
 
-  const [{ data: userData }, rpcRes] = await Promise.all([
-    supabase.auth.getUser(),
+  const [{ data: claimData }, rpcRes] = await Promise.all([
+    supabase.auth.getClaims(),
     supabase.rpc("session_bundle", { p_wanted: wanted }),
   ]);
 
-  const user = userData?.user;
-  if (!user) return null;
+  const claims = claimData?.claims;
+  if (!claims?.sub) return null;
+  const user: User = {
+    id: claims.sub,
+    email: typeof claims.email === "string" ? claims.email : undefined,
+    user_metadata: (claims.user_metadata as Record<string, unknown> | undefined) ?? {},
+  };
 
   // RPC สำเร็จ → ใช้ผลจาก RPC (round-trip เดียว = fast path)
   if (!rpcRes.error && rpcRes.data) {

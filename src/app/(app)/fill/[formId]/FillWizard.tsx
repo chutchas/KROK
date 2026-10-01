@@ -35,6 +35,7 @@ import {
   type DeviceStatus,
 } from "@/lib/device-client";
 import { registerDevice } from "@/app/(app)/settings/devices/actions";
+import { confirmDialog } from "@/components/dialogs";
 
 type TableRow = Record<string, string>;
 type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string; src?: FillSrcTag | "api" };
@@ -383,7 +384,7 @@ export default function FillWizard(props: Props) {
   async function exitForm() {
     if (draftsOn && dirty.current !== savedAt.current && hasContent()) {
       const ok = await saveDraftNow("auto");
-      if (!ok && !confirm("บันทึกร่างไม่สำเร็จ — ออกจากหน้านี้เลยไหม? (คำตอบที่ยังไม่บันทึกจะหายไป)")) return;
+      if (!ok && !(await confirmDialog({ message: t("draft.exitUnsaved"), confirmLabel: t("fill.exit"), danger: true }))) return;
     }
     router.push(kase ? "/forms?tab=tasks" : "/forms");
   }

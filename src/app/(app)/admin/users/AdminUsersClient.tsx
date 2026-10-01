@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import { Crown, Code2, UserRound } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { setPlatformRole, removeFromWorkspace } from "./actions";
+import { confirmDialog } from "@/components/dialogs";
 
 type PlatformRole = "platform_admin" | "developer" | "user";
 export interface SysUser {
@@ -102,7 +103,7 @@ export default function AdminUsersClient({ users, meId }: { users: SysUser[]; me
                         <Button
                           variant="danger"
                           onClick={async () => {
-                            if (!confirm(t("admin.removeConfirm"))) return;
+                            if (!(await confirmDialog({ message: t("admin.removeConfirm"), danger: true }))) return;
                             setBusy(u.userId);
                             const res = await removeFromWorkspace(u.userId, w.tenantId);
                             setBusy(null);

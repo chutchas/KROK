@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from "next";
+import { DialogHost } from "@/components/dialogs";
 import "./globals.css";
 import { LanguageProvider } from "@/i18n/LanguageProvider";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
@@ -36,7 +37,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <ServiceWorkerRegister />
-        <LanguageProvider initial="th">{children}</LanguageProvider>
+        <LanguageProvider initial="th">{children}<DialogHost /></LanguageProvider>
       </body>
     </html>
   );

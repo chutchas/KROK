@@ -1,7 +1,8 @@
 "use client";
 import React from "react";
 
-type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & {
+// React 19: ref เป็น prop ปกติ — ส่งผ่าน ...rest ลง <button> ได้เลย
+type BtnProps = React.ComponentProps<"button"> & {
   variant?: "primary" | "default" | "ghost" | "danger";
   loading?: boolean;
 };

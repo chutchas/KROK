@@ -7,6 +7,7 @@ import { ShieldCheck, Lock, Trash2, Plus } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { MENUS, type MenuKey } from "@/lib/menus";
 import { createRole, updateRole, deleteRole } from "./actions";
+import { confirmDialog } from "@/components/dialogs";
 
 export interface RoleRow {
   key: string;
@@ -117,7 +118,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                 </div>
                 {r.canManage ? <Pill kind="pass">{t("roles.manages")}</Pill> : <Pill kind="na">{t("roles.limited")}</Pill>}
                 {!r.isSystem && (
-                  <Button variant="danger" onClick={async () => { if (!confirm(t("roles.deleteConfirm"))) return; setBusy(true); const res = await deleteRole(r.key); setBusy(false); if ("error" in res) setMsg({ t: res.error, err: true }); else router.refresh(); }} style={{ padding: "6px 10px" }}>
+                  <Button variant="danger" onClick={async () => { if (!(await confirmDialog({ message: t("roles.deleteConfirm"), danger: true }))) return; setBusy(true); const res = await deleteRole(r.key); setBusy(false); if ("error" in res) setMsg({ t: res.error, err: true }); else router.refresh(); }} style={{ padding: "6px 10px" }}>
                     <Icon icon={Trash2} className="h-4 w-4" />
                   </Button>
                 )}

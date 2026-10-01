@@ -18,6 +18,7 @@ import {
 } from "@/lib/form-schema";
 import FillSourcesPanel from "@/components/FillSourcesPanel";
 import OptionsSourceEditor from "@/components/OptionsSourceEditor";
+import { alertDialog, confirmDialog } from "@/components/dialogs";
 
 // ตัวช่วย: ย้ายสมาชิกใน array ขึ้น/ลง (คืน array ใหม่)
 function move<T>(arr: T[], i: number, dir: -1 | 1): T[] {
@@ -149,9 +150,9 @@ export default function FormEditor({
             <button
               style={{ ...iconBtn, color: "var(--fail)" }}
               title={t("editor.deleteStep")}
-              onClick={() => {
-                if (value.steps.length <= 1) { alert(t("editor.needOneStep")); return; }
-                if (!confirm(t("editor.deleteStepConfirm"))) return;
+              onClick={async () => {
+                if (value.steps.length <= 1) { await alertDialog(t("editor.needOneStep")); return; }
+                if (!(await confirmDialog({ message: t("editor.deleteStepConfirm"), danger: true }))) return;
                 setSteps(value.steps.filter((_, i) => i !== si));
               }}
             >

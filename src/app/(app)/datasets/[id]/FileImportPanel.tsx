@@ -5,6 +5,7 @@ import Icon from "@/components/Icon";
 import { Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { MAX_DATASET_ROWS, cellText, type DatasetColumn, type DatasetMeta, type DatasetRecord, type DatasetSyncMode } from "@/lib/datasets";
 import { label, selectStyle, tableWrap, td, th } from "../ui";
+import { confirmDialog } from "@/components/dialogs";
 
 interface Preview {
   sheets: string[];
@@ -69,7 +70,7 @@ export default function FileImportPanel({ ds, onDone }: { ds: DatasetMeta; onDon
 
   async function doImport() {
     if (!file) return;
-    if (mode === "replace" && ds.rowCount > 0 && !confirm(`แทนที่ข้อมูลเดิม ${ds.rowCount.toLocaleString()} แถว ด้วยข้อมูลจากไฟล์นี้?`)) return;
+    if (mode === "replace" && ds.rowCount > 0 && !(await confirmDialog({ message: `แทนที่ข้อมูลเดิม ${ds.rowCount.toLocaleString()} แถว ด้วยข้อมูลจากไฟล์นี้?`, confirmLabel: "แทนที่", danger: true }))) return;
     setBusy("import");
     setErr("");
     try {

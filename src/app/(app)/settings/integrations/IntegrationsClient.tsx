@@ -8,6 +8,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import { createWebhook, toggleWebhook, deleteWebhook, testWebhookById } from "./actions";
 import NotifyPanel from "./NotifyPanel";
 import IntakePanel, { type IntakeConfig } from "./IntakePanel";
+import { confirmDialog } from "@/components/dialogs";
 
 export interface NotifySettings {
   line_enabled: boolean;
@@ -280,7 +281,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
                 <Button
                   variant="danger"
                   onClick={async () => {
-                    if (!confirm(t("intg.deleteConfirm"))) return;
+                    if (!(await confirmDialog({ message: t("intg.deleteConfirm"), danger: true }))) return;
                     await deleteWebhook(w.id);
                     router.refresh();
                   }}

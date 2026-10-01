@@ -5,7 +5,9 @@ import {
   WIDGET_FORMATS,
   WIDGET_METRICS,
   calcMetric,
+  calcMetricAgg,
   trendDays,
+  type MetricAgg,
   type DashWidget,
   type WidgetFormat,
   type WidgetMetric,
@@ -79,12 +81,69 @@ function rangeStartIso(range: WidgetRange, days?: number): string | null {
 }
 const dayKey = (ts: string) => new Date(ts).toLocaleDateString("sv");
 
+type AggRow = MetricAgg & { k: string | null; title: string | null; icon: string | null };
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const ZERO: MetricAgg = { n: 0, pending: 0, pass: 0, fail: 0, dur_sum: 0, dur_n: 0, submitters: 0 };
+const num = (r: Record<string, unknown>): AggRow => ({
+  k: (r.k as string) ?? null, title: (r.title as string) ?? null, icon: (r.icon as string) ?? null,
+  n: Number(r.n) || 0, pending: Number(r.pending) || 0, pass: Number(r.pass) || 0, fail: Number(r.fail) || 0,
+  dur_sum: Number(r.dur_sum) || 0, dur_n: Number(r.dur_n) || 0, submitters: Number(r.submitters) || 0,
+});
+
+/**
+ * fast path: ให้ฐานข้อมูลนับ (RPC dashboard_metrics, migration 0037) — คืน null ถ้ายังไม่มี RPC → ใช้วิธีเดิม
+ */
+async function computeWidgetSql(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string, w: DashWidget, scoped: string | null): Promise<WidgetResult | null> {
+  const call = async (group: "none" | "form" | "day") => {
+    const { data, error } = await supabase.rpc("dashboard_metrics", {
+      p_tenant: tenantId, p_form: scoped, p_range: w.range, p_group: group, p_tz: "Asia/Bangkok",
+    });
+    if (error) throw error;
+    return ((data || []) as Record<string, unknown>[]).map(num);
+  };
+  try {
+    if (w.format === "stat") {
+      const a = (await call("none"))[0] ?? ZERO;
+      const value = calcMetricAgg(a, w.metric);
+      return w.metric === "passrate" ? { kind: "stat", value, pass: a.pass, fail: a.fail } : { kind: "stat", value };
+    }
+    if (w.format === "trend") {
+      const [tot, days] = await Promise.all([call("none"), call("day")]);
+      return {
+        kind: "trend",
+        total: calcMetricAgg(tot[0] ?? ZERO, w.metric),
+        series: days.map((d) => ({ key: d.k || "", v: calcMetricAgg(d, w.metric) })),
+      };
+    }
+    const groups = await call("form");
+    const items = groups
+      .map((g) => ({ title: g.title || "—", icon: g.icon || "📋", v: calcMetricAgg(g, w.metric) }))
+      .sort((a, b) => b.v - a.v)
+      .slice(0, 8);
+    return { kind: "ranking", items };
+  } catch (e) {
+    const m = (e as { message?: string })?.message || "";
+    if (/dashboard_metrics/.test(m) && /does not exist|schema cache|not find/i.test(m)) return null; // ยังไม่ได้รัน 0037
+    return { error: m || "คำนวณไม่สำเร็จ" };
+  }
+}
+
 export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!WIDGET_FORMATS.includes(w.format) || !WIDGET_METRICS.includes(w.metric)) return { error: "bad widget" };
+  if (!RANGES.includes(w.range)) return { error: "bad widget" };
 
   const supabase = await createClient();
+  {
+    const scopedFast = w.format !== "ranking" && w.formId && w.formId !== "all" && UUID.test(w.formId) ? w.formId : null;
+    if (w.format === "ranking" || !w.formId || w.formId === "all" || scopedFast) {
+      const fast = await computeWidgetSql(supabase, session.tenantId, w, scopedFast);
+      if (fast) return fast;
+    }
+  }
+
+  // ---- วิธีเดิม (ก่อนรัน migration 0037): ดึงแถวมานับในแอป ----
   const cols = "form_id, form_title, form_icon, result, approval_status, duration_s, user_name, submitted_at";
 
   // ranking = ทุกฟอร์มเสมอ; format อื่นกรองตาม formId

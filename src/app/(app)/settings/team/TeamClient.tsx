@@ -6,6 +6,7 @@ import Icon from "@/components/Icon";
 import { HardHat, Tag } from "lucide-react";
 import { inviteMember, cancelInvite, changeRoleKey, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
+import { alertDialog, confirmDialog } from "@/components/dialogs";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 export interface RoleOption { key: string; name: string; canManage: boolean }
@@ -147,7 +148,7 @@ export default function TeamClient({
                     defaultValue={curKey}
                     onChange={async (e) => {
                       const res = await changeRoleKey(m.user_id, e.target.value);
-                      if ("error" in res) alert(res.error);
+                      if ("error" in res) await alertDialog(res.error);
                       router.refresh();
                     }}
                     style={selstyle}
@@ -161,9 +162,9 @@ export default function TeamClient({
                 )}
                 {!isMe && canEditThis && (
                   <AsyncButton variant="danger" onClick={async () => {
-                    if (!confirm(`นำ ${m.name || m.email} ออกจากองค์กร?`)) return;
+                    if (!(await confirmDialog({ message: `นำ ${m.name || m.email} ออกจากองค์กร?`, confirmLabel: "นำออก", danger: true }))) return;
                     const res = await removeMember(m.user_id);
-                    if ("error" in res) alert(res.error);
+                    if ("error" in res) await alertDialog(res.error);
                     else router.refresh();
                   }}>นำออก</AsyncButton>
                 )}
@@ -205,7 +206,7 @@ function TeamsSection({
     setBusy(true);
     const res = await createTeam(newName);
     setBusy(false);
-    if ("error" in res) { alert(res.error); return; }
+    if ("error" in res) { await alertDialog(res.error); return; }
     setNewName("");
     router.refresh();
   }
@@ -219,7 +220,7 @@ function TeamsSection({
     setBusy(true);
     const res = await setTeamMembers(teamId, draftIds);
     setBusy(false);
-    if ("error" in res) { alert(res.error); return; }
+    if ("error" in res) { await alertDialog(res.error); return; }
     setEditing(null);
     router.refresh();
   }
@@ -256,9 +257,9 @@ function TeamsSection({
                   <Button
                     variant="danger"
                     onClick={async () => {
-                      if (!confirm(t("team.deleteTeamConfirm"))) return;
+                      if (!(await confirmDialog({ message: t("team.deleteTeamConfirm"), danger: true }))) return;
                       const res = await deleteTeam(team.id);
-                      if ("error" in res) alert(res.error);
+                      if ("error" in res) await alertDialog(res.error);
                       else router.refresh();
                     }}
                   >

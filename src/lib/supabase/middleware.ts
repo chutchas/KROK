@@ -11,7 +11,12 @@ import { NextResponse, type NextRequest } from "next/server";
 // - /sw.js, /offline, /manifest: ไฟล์ PWA/ออฟไลน์
 const PUBLIC_PATHS = ["/login", "/auth", "/api/health", "/f/", "/api/public", "/api/v1/", "/api/cron/", "/sw.js", "/offline", "/manifest"];
 
+// เส้นทางที่ไม่ใช้ session ผู้ใช้เลย (ตรวจ API key / secret เอง หรือเป็นไฟล์) — ข้ามการเช็ก login ทั้งหมด
+const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/v1/", "/api/cron/", "/sw.js", "/offline", "/manifest"];
+
 export async function updateSession(request: NextRequest) {
+  if (NO_SESSION_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) return NextResponse.next({ request });
+
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -33,9 +38,9 @@ export async function updateSession(request: NextRequest) {
     }
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // getClaims: ต่ออายุ token ที่หมดอายุ + ตรวจลายเซ็น JWT ในเครื่อง (HS256 เดิม = fallback ไป getUser ให้เอง)
+  const { data: claimData } = await supabase.auth.getClaims();
+  const user = claimData?.claims?.sub ? claimData.claims : null;
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));

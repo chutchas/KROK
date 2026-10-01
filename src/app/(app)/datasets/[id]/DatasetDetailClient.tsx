@@ -20,6 +20,7 @@ import { SOURCE_ICON, SyncBadge, fmtTime, label, selectStyle, smallBtn, tableWra
 import FileImportPanel from "./FileImportPanel";
 import PullPanel from "./PullPanel";
 import PushPanel from "./PushPanel";
+import { confirmDialog } from "@/components/dialogs";
 
 export interface SyncRun {
   id: number;
@@ -252,7 +253,7 @@ export default function DatasetDetailClient({
           <button
             style={{ ...smallBtn, marginTop: 10, color: "var(--fail)" }}
             disabled={busy === "clear"}
-            onClick={() => { if (confirm(`ล้างข้อมูลทั้ง ${ds.rowCount.toLocaleString()} แถว? (คอลัมน์ยังอยู่) dropdown ในฟอร์มที่ใช้ชุดนี้จะไม่มีตัวเลือกจนกว่าจะนำเข้าใหม่`)) void run("clear", () => clearRows(ds.id), "ล้างข้อมูลแล้ว"); }}
+            onClick={async () => { if (await confirmDialog({ message: `ล้างข้อมูลทั้ง ${ds.rowCount.toLocaleString()} แถว? (คอลัมน์ยังอยู่) dropdown ในฟอร์มที่ใช้ชุดนี้จะไม่มีตัวเลือกจนกว่าจะนำเข้าใหม่`, confirmLabel: "ล้างข้อมูล", danger: true })) void run("clear", () => clearRows(ds.id), "ล้างข้อมูลแล้ว"); }}
           >
             <Icon icon={Eraser} className="h-3.5 w-3.5" /> ล้างข้อมูลทั้งหมด
           </button>
@@ -305,7 +306,7 @@ export default function DatasetDetailClient({
             loading={busy === "delete"}
             disabled={usedBy.length > 0}
             onClick={async () => {
-              if (!confirm(`ลบ “${ds.name}” และข้อมูลทั้งหมด? ย้อนกลับไม่ได้`)) return;
+              if (!(await confirmDialog({ message: `ลบ “${ds.name}” และข้อมูลทั้งหมด? ย้อนกลับไม่ได้`, danger: true }))) return;
               setBusy("delete");
               const res = await deleteDataset(ds.id);
               setBusy(null);

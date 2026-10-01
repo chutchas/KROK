@@ -6,6 +6,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import { ChevronDown, Check, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
+import { alertDialog } from "@/components/dialogs";
 
 export interface WorkspaceItem {
   tenantId: string;
@@ -61,7 +62,7 @@ export default function WorkspaceSwitcher({
     const res = await createWorkspace(name);
     setBusy(false);
     if ("error" in res) {
-      alert(res.error);
+      await alertDialog(res.error);
       return;
     }
     setName("");

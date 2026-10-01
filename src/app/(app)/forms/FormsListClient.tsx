@@ -10,6 +10,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
 import { deleteDraftAction, deleteSubmittedDrafts } from "./actions";
 import CasesList, { type CaseListItem } from "./CasesList";
+import { alertDialog, confirmDialog } from "@/components/dialogs";
 
 export interface FormListItem {
   id: string;
@@ -81,11 +82,11 @@ export default function FormsListClient({
   }
 
   async function removeDraft(id: string) {
-    if (!confirm(t("draft.deleteConfirm"))) return;
+    if (!(await confirmDialog({ message: t("draft.deleteConfirm"), danger: true }))) return;
     setBusyId(id);
     const res = await deleteDraftAction(id);
     setBusyId(null);
-    if ("error" in res) alert(res.error);
+    if ("error" in res) await alertDialog(res.error);
     else setHidden((h) => new Set([...h, id]));
   }
   const [search, setSearch] = useState("");

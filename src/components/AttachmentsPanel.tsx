@@ -23,6 +23,7 @@ import {
   listAttachments,
   removeAttachment,
 } from "@/app/(app)/studio/attachment-actions";
+import { confirmDialog } from "@/components/dialogs";
 
 /**
  * แผงจัดการ "เอกสารที่เกี่ยวข้อง" ใน Studio
@@ -116,7 +117,7 @@ export default function AttachmentsPanel({
   }
 
   async function onRemove(a: Attachment) {
-    if (!confirm(`ลบ “${a.name}” ออกจากฟอร์ม?`)) return;
+    if (!(await confirmDialog({ message: `ลบ “${a.name}” ออกจากฟอร์ม?`, danger: true }))) return;
     setBusy(true);
     try {
       const res = await removeAttachment(a.id);
