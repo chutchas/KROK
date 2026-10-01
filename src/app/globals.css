@@ -222,6 +222,11 @@ a {
   body:has(.krok-print-root) * {
     visibility: hidden !important;
   }
+  /* ส่วนที่ถูกซ่อนยังกินพื้นที่ → หน้าที่ยาว (เช่น editor) พิมพ์ออกมามีหน้าว่างต่อท้าย
+     จึงเอาออกจาก layout เลย: ทุกอย่างที่ไม่ใช่เอกสารและไม่ได้ห่อเอกสารอยู่ */
+  body:has(.krok-print-root) *:not(.krok-print-root):not(.krok-print-root *):not(:has(.krok-print-root)) {
+    display: none !important;
+  }
   .krok-print-root {
     display: block !important;
     position: absolute;
