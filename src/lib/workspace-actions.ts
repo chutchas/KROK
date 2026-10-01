@@ -47,3 +47,36 @@ export async function createWorkspace(name: string): Promise<{ ok: true; id: str
   revalidatePath("/", "layout");
   return { ok: true, id };
 }
+
+export interface PendingInvite { id: string; tenant_id: string; tenant_name: string; role_name: string; invited_by_name: string | null }
+
+/** คำเชิญที่ค้างอยู่ของผู้ใช้ที่ล็อกอิน (มีบัญชีอยู่แล้วตอนถูกเชิญ) — ยังไม่รัน migration 0039 = คืนว่าง */
+export async function myPendingInvites(): Promise<PendingInvite[]> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("my_pending_invites");
+  if (error || !Array.isArray(data)) return [];
+  return data as PendingInvite[];
+}
+
+/** รับคำเชิญ → เข้า workspace นั้นและสลับไปใช้ทันที */
+export async function acceptInvite(id: string): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("accept_invite", { p_id: id });
+  if (error) return { error: error.message };
+  const store = await cookies();
+  store.set(WS_COOKIE, data as string, COOKIE_OPTS);
+  revalidatePath("/", "layout");
+  return { ok: true };
+}
+
+export async function declineInvite(id: string): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("decline_invite", { p_id: id });
+  if (error) return { error: error.message };
+  revalidatePath("/", "layout");
+  return { ok: true };
+}

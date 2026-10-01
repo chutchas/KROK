@@ -18,7 +18,7 @@ export default async function TeamPage() {
       .order("created_at", { ascending: true }),
     supabase
       .from("invites")
-      .select("id, email, role, role_key, created_at")
+      .select("id, email, role, role_key, team_ids, created_at")
       .eq("tenant_id", session.tenantId)
       .is("accepted_at", null)
       .order("created_at", { ascending: false }),

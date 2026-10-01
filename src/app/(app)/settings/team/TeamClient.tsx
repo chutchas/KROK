@@ -3,8 +3,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { HardHat, Tag } from "lucide-react";
-import { inviteMember, cancelInvite, changeRoleKey, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
+import { HardHat, Tag, Mail, Link2, Check } from "lucide-react";
+import { inviteMember, resendInvite, type InviteResult, cancelInvite, changeRoleKey, removeMember, createTeam, deleteTeam, setTeamMembers } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 import type { MessageKey } from "@/i18n/dictionaries";
@@ -24,6 +24,7 @@ export interface Invite {
   email: string;
   role: Role;
   role_key: string | null;
+  team_ids?: string[] | null;
   created_at: string;
 }
 export interface Team {
@@ -60,8 +61,21 @@ export default function TeamClient({
   const { t, tt } = useT();
   const [email, setEmail] = useState("");
   const [roleKey, setRoleKey] = useState<string>("user");
-  const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ t: string; err?: boolean; link?: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  const [inviteTeams, setInviteTeams] = useState<string[]>([]);
+  const [copied, setCopied] = useState<string | null>(null);
+  const teamName = (id: string) => teams.find((x) => x.id === id)?.name;
+
+  /** ข้อความผลการเชิญ/ส่งซ้ำ: ส่งอีเมลแล้ว หรือบันทึกแล้วแต่ส่งไม่สำเร็จ (ให้คัดลอกลิงก์ส่งเอง) */
+  function inviteMsg(res: InviteResult, to: string): { t: string; err?: boolean; link?: string } {
+    if ("error" in res) return { t: res.error, err: true };
+    if (res.emailed) return { t: tt("team.invitedEmailed", { email: to }), link: res.link };
+    return { t: res.notConfigured ? tt("team.invitedNoEmailSetup", { email: to }) : tt("team.invitedEmailFail", { email: to, err: res.emailError || "" }), err: !res.notConfigured, link: res.link };
+  }
+  async function copyLink(link: string) {
+    try { await navigator.clipboard.writeText(link); setCopied(link); setTimeout(() => setCopied(null), 2000); } catch { await alertDialog(link); }
+  }
 
   const canOwner = myRole === "owner";
   const inviteOptions = canOwner ? roleOptions : roleOptions.filter((r) => r.key !== "owner");
@@ -71,12 +85,12 @@ export default function TeamClient({
     e.preventDefault();
     setBusy(true);
     setMsg(null);
-    const res = await inviteMember(email, roleKey);
+    const res = await inviteMember(email, roleKey, inviteTeams);
     setBusy(false);
-    if ("error" in res) setMsg({ t: res.error, err: true });
-    else {
-      setMsg({ t: tt("team.invited", { email }) });
+    setMsg(inviteMsg(res, email));
+    if (!("error" in res)) {
       setEmail("");
+      setInviteTeams([]);
       router.refresh();
     }
   }
@@ -108,7 +122,36 @@ export default function TeamClient({
           <Button variant="primary" type="submit" loading={busy}>{t("team.invite")}</Button>
         </form>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>{t("team.roleToGet")} <b>{selectedRoleName}</b></p>
-        {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
+        {teams.length > 0 && (
+          // ทีม/แผนก (ไม่บังคับ) — เลือกได้หลายทีม ใส่ให้อัตโนมัติเมื่อรับคำเชิญ
+          <div style={{ marginTop: 10 }}>
+            <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("team.inviteTeams")} <span style={{ color: "var(--ink-3)" }}>({t("team.optional")})</span></div>
+            <div role="group" aria-label={t("team.inviteTeams")} style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+              {teams.map((tm) => {
+                const on = inviteTeams.includes(tm.id);
+                return (
+                  <button key={tm.id} type="button" aria-pressed={on}
+                    onClick={() => setInviteTeams((cur) => (on ? cur.filter((x) => x !== tm.id) : [...cur, tm.id]))}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem",
+                      border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
+                    {on ? <Icon icon={Check} className="h-3.5 w-3.5" /> : <Icon icon={Tag} className="h-3.5 w-3.5" />} {tm.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        {msg && (
+          <Notice kind={msg.err ? "error" : "info"}>
+            {msg.t}
+            {msg.link && (
+              <button type="button" onClick={() => copyLink(msg.link!)}
+                style={{ marginLeft: 8, border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", padding: 0, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                <Icon icon={copied === msg.link ? Check : Link2} className="h-3.5 w-3.5" /> {copied === msg.link ? t("team.linkCopied") : t("team.copyLink")}
+              </button>
+            )}
+          </Notice>
+        )}
       </Card>
 
       {invites.length > 0 && (
@@ -117,10 +160,16 @@ export default function TeamClient({
           <div style={{ display: "grid", gap: 8 }}>
             {invites.map((inv) => (
               <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ flex: "1 1 220px", minWidth: 0 }}>
                   <b style={{ fontSize: ".92rem" }}>{inv.email}</b>
-                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{tt("team.inviteRole", { role: roleOptions.find((r) => r.key === inv.role_key)?.name || t(ROLE_LABEL[inv.role]) })}</small>
+                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>
+                    {tt("team.inviteRole", { role: roleOptions.find((r) => r.key === inv.role_key)?.name || t(ROLE_LABEL[inv.role]) })}
+                    {(inv.team_ids || []).map(teamName).filter(Boolean).length > 0 && <> · {t("team.inviteTeamsShort")}: {(inv.team_ids || []).map(teamName).filter(Boolean).join(", ")}</>}
+                  </small>
                 </div>
+                <AsyncButton onClick={async () => { setMsg(inviteMsg(await resendInvite(inv.id), inv.email)); }} title={t("team.resend")}>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon icon={Mail} className="h-4 w-4" /> {t("team.resend")}</span>
+                </AsyncButton>
                 <AsyncButton variant="danger" onClick={async () => { await cancelInvite(inv.id); router.refresh(); }}>{t("common.cancel")}</AsyncButton>
               </div>
             ))}

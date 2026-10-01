@@ -1,13 +1,16 @@
 import { redirect } from "next/navigation";
 import { getSession, canManage, listWorkspaces, getAllowedMenus } from "@/lib/session";
 import AppShell from "@/components/AppShell";
+import InviteBanner from "@/components/InviteBanner";
+import { myPendingInvites } from "@/lib/workspace-actions";
 
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   if (!session) redirect("/login");
-  const [workspaces, allowedMenus] = await Promise.all([
+  const [workspaces, allowedMenus, invites] = await Promise.all([
     listWorkspaces(),
     getAllowedMenus(session.tenantId, session.roleKey),
+    myPendingInvites(),
   ]);
 
   return (
@@ -24,6 +27,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       workspaces={workspaces}
       activeTenantId={session.tenantId}
     >
+      {invites.length > 0 && <InviteBanner invites={invites} />}
       {children}
     </AppShell>
   );

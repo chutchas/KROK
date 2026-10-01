@@ -1,5 +1,6 @@
 "use client";
 import { useCallback, useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { LogIn, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
@@ -27,7 +28,9 @@ const NAV: { href: string; k: MessageKey }[] = [
 
 export default function HomeClient() {
   const { t } = useT();
-  const [open, setOpen] = useState(false);
+  const sp = useSearchParams();
+  // มาจากลิงก์เชิญ / ลิงก์ยืนยันอีเมล → เปิดหน้าต่างเข้าสู่ระบบทันที
+  const [open, setOpen] = useState(() => sp.has("invite") || sp.has("confirmed") || sp.has("auth_error"));
   const [stuck, setStuck] = useState(false);
   const openLogin = useCallback(() => setOpen(true), []);
 

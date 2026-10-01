@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
@@ -9,14 +9,23 @@ import { LogoMark } from "@/components/Logo";
 
 export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const { t } = useT();
-  const [mode, setMode] = useState<"signin" | "signup">("signin");
-  const [email, setEmail] = useState("");
+  const { t, tt } = useT();
+  const sp = useSearchParams();
+  // ลิงก์จากอีเมลเชิญ: /login?invite=<email> → เปิดหน้าสมัครพร้อมอีเมล ไม่ต้องตั้งชื่อองค์กร (เข้า workspace ที่เชิญ)
+  const invited = (sp.get("invite") || "").trim().toLowerCase();
+  const [mode, setMode] = useState<"signin" | "signup">(invited ? "signup" : "signin");
+  const [email, setEmail] = useState(invited);
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
-  const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
+  const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(() => {
+    if (sp.get("confirmed")) return { t: t("login.confirmedOk") };
+    const e = sp.get("auth_error");
+    if (e) return { t: e === "1" ? t("login.confirmFail") : `${t("login.confirmFail")} (${e})`, err: true };
+    return null;
+  });
+  const isInvite = mode === "signup" && !!invited && email.trim().toLowerCase() === invited;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -25,13 +34,29 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     const supabase = createClient();
     try {
       if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
-          options: { data: { org_name: org, display_name: name } },
+          options: {
+            data: { org_name: isInvite ? "" : org, display_name: name },
+            // ลิงก์ในอีเมลยืนยันพากลับมาที่แอปแล้วเข้าสู่ระบบให้เลย
+            emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
+          },
         });
         if (error) throw error;
-        setMsg({ t: t("login.signupOk") });
+        // Supabase ไม่บอก error เมื่ออีเมลนี้มีบัญชีแล้ว (กันเดาอีเมล) แต่ identities จะว่าง
+        if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+          setMsg({ t: t("login.alreadyRegistered"), err: true });
+          setMode("signin");
+          return;
+        }
+        // ปิดการยืนยันอีเมลไว้ → ได้ session ทันที เข้าแอปเลย
+        if (data.session) {
+          router.push("/dashboard");
+          router.refresh();
+          return;
+        }
+        setMsg({ t: tt("login.checkEmail", { email }) });
         setMode("signin");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -64,16 +89,17 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
       <Card>
         <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>
-          {mode === "signin" ? t("login.signin") : t("login.signupTitle")}
+          {mode === "signin" ? t("login.signin") : isInvite ? t("login.inviteTitle") : t("login.signupTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>
-          {mode === "signin" ? t("login.signinHint") : t("login.signupHint")}
+          {mode === "signin" ? t("login.signinHint") : isInvite ? t("login.inviteHint") : t("login.signupHint")}
         </p>
 
         <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
+          {isInvite && <Notice kind="info">{t("login.inviteNotice")}</Notice>}
           {mode === "signup" && (
             <>
-              <Field placeholder={t("login.org")} value={org} onChange={(e) => setOrg(e.target.value)} required />
+              {!isInvite && <Field placeholder={t("login.org")} value={org} onChange={(e) => setOrg(e.target.value)} required />}
               <Field placeholder={t("login.name")} value={name} onChange={(e) => setName(e.target.value)} required />
             </>
           )}
@@ -95,7 +121,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
             autoComplete={mode === "signin" ? "current-password" : "new-password"}
           />
           <Button variant="primary" type="submit" disabled={busy} style={{ padding: 13 }}>
-            {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : t("login.doSignup")}
+            {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : isInvite ? t("login.doJoin") : t("login.doSignup")}
           </Button>
         </form>
 

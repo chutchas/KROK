@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession, type KrokSession } from "@/lib/session";
 import { canAddMember } from "@/lib/quota";
 import { fmtLimit } from "@/lib/plans";
+import { sendEmail, inviteEmail } from "@/lib/email";
+import { siteOrigin } from "@/lib/site-origin";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 const ROLES: Role[] = ["owner", "admin", "designer", "operator"];
@@ -18,8 +20,38 @@ async function requireAdmin(): Promise<AdminGate> {
   return { ok: true, session };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export type InviteResult =
+  | { ok: true; link: string; emailed: boolean; emailError?: string; notConfigured?: boolean }
+  | { error: string };
+
+/** ลิงก์ในอีเมลเชิญ: หน้าสมัครที่กรอกอีเมลไว้ให้ (มีบัญชีแล้ว = เข้าสู่ระบบแล้วกดเข้าร่วมที่แถบด้านบน) */
+async function inviteLink(email: string) {
+  return `${await siteOrigin()}/login?invite=${encodeURIComponent(email)}`;
+}
+
+/** ส่งอีเมลเชิญ (ล้มเหลวไม่ทำให้คำเชิญหาย — คืน error ให้หน้าจอแจ้งและให้คัดลอกลิงก์ส่งเองได้) */
+async function sendInviteMail(supabase: Awaited<ReturnType<typeof createClient>>, session: KrokSession, inv: { email: string; role_key: string | null; team_ids: string[] | null }) {
+  const [{ data: role }, { data: teamRows }] = await Promise.all([
+    supabase.from("tenant_roles").select("name").eq("tenant_id", session.tenantId).eq("key", inv.role_key || "user").maybeSingle(),
+    inv.team_ids?.length ? supabase.from("teams").select("name").eq("tenant_id", session.tenantId).in("id", inv.team_ids) : Promise.resolve({ data: [] as { name: string }[] }),
+  ]);
+  const link = await inviteLink(inv.email);
+  const mail = inviteEmail({
+    workspace: session.tenantName,
+    inviter: session.displayName || "ผู้ดูแล",
+    role: (role?.name as string) || inv.role_key || "User",
+    teams: ((teamRows || []) as { name: string }[]).map((t) => t.name),
+    link,
+  });
+  const sent = await sendEmail({ to: inv.email, ...mail });
+  return { link, sent };
+}
+
 // เชิญสมาชิกด้วย role_key (รองรับ custom role) — เก็บทั้ง role_key และ enum role (สำรอง/ความปลอดภัย)
-export async function inviteMember(email: string, roleKey: string): Promise<{ ok: true } | { error: string }> {
+// teamIds (ไม่บังคับ): ทีม/แผนกที่จะใส่ให้อัตโนมัติเมื่อรับคำเชิญ · แล้วส่งอีเมลเชิญผ่าน Resend
+export async function inviteMember(email: string, roleKey: string, teamIds: string[] = []): Promise<InviteResult> {
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const { session } = a;
@@ -39,19 +71,51 @@ export async function inviteMember(email: string, roleKey: string): Promise<{ ok
   if (!q.ok)
     return { error: `แผนปัจจุบันมีสมาชิกได้สูงสุด ${fmtLimit(q.max)} คน (ปัจจุบัน ${q.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` };
 
+  // ทีมต้องเป็นของ workspace นี้ (กรองทิ้งที่ไม่ใช่)
+  let teams: string[] = [];
+  const wanted = Array.from(new Set(teamIds.filter((x) => typeof x === "string" && UUID_RE.test(x)))).slice(0, 50);
+  if (wanted.length) {
+    const { data: rows } = await supabase.from("teams").select("id").eq("tenant_id", session.tenantId).in("id", wanted);
+    teams = ((rows || []) as { id: string }[]).map((r) => r.id);
+  }
+
+  // เป็นสมาชิกอยู่แล้ว → ไม่ต้องเชิญ
+  const { data: already } = await supabase.from("memberships").select("user_id").eq("tenant_id", session.tenantId).ilike("email", clean.replace(/[%_\\]/g, "\\$&")).maybeSingle();
+  if (already) return { error: "อีเมลนี้เป็นสมาชิกของ workspace นี้อยู่แล้ว" };
+
   const { error } = await supabase
     .from("invites")
     .upsert(
-      { tenant_id: session.tenantId, email: clean, role, role_key: roleKey, invited_by: session.userId, accepted_at: null },
+      { tenant_id: session.tenantId, email: clean, role, role_key: roleKey, team_ids: teams, invited_by: session.userId, accepted_at: null },
       { onConflict: "tenant_id,email" }
     );
   if (error) return { error: error.message };
+
+  const { link, sent } = await sendInviteMail(supabase, session, { email: clean, role_key: roleKey, team_ids: teams });
   await supabase.from("audit_log").insert({
     tenant_id: session.tenantId, actor_id: session.userId,
-    action: "member.invite", target_type: "invite", meta: { email: clean, role_key: roleKey },
+    action: "member.invite", target_type: "invite",
+    meta: { email: clean, role_key: roleKey, teams: teams.length, emailed: sent.ok, ...(sent.ok ? { email_id: sent.id } : { email_error: sent.error }) },
   });
   revalidatePath("/settings/team");
-  return { ok: true };
+  return sent.ok ? { ok: true, link, emailed: true } : { ok: true, link, emailed: false, emailError: sent.error, notConfigured: sent.notConfigured };
+}
+
+/** ส่งอีเมลเชิญซ้ำ (คำเชิญที่ยังไม่รับ) */
+export async function resendInvite(id: string): Promise<InviteResult> {
+  const a = await requireAdmin();
+  if (!a.ok) return { error: a.error };
+  const supabase = await createClient();
+  const { data: inv } = await supabase
+    .from("invites").select("email, role_key, team_ids").eq("id", id).eq("tenant_id", a.session.tenantId).is("accepted_at", null).maybeSingle();
+  if (!inv) return { error: "ไม่พบคำเชิญนี้ หรือมีคนรับไปแล้ว" };
+  const { link, sent } = await sendInviteMail(supabase, a.session, inv as { email: string; role_key: string | null; team_ids: string[] | null });
+  await supabase.from("audit_log").insert({
+    tenant_id: a.session.tenantId, actor_id: a.session.userId,
+    action: "member.invite_resend", target_type: "invite", target_id: id,
+    meta: { email: inv.email, emailed: sent.ok, ...(sent.ok ? { email_id: sent.id } : { email_error: sent.error }) },
+  });
+  return sent.ok ? { ok: true, link, emailed: true } : { ok: true, link, emailed: false, emailError: sent.error, notConfigured: sent.notConfigured };
 }
 
 export async function cancelInvite(id: string): Promise<{ ok: true } | { error: string }> {
