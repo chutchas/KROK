@@ -150,13 +150,6 @@ export default function FormsListClient({
             <option value="all">{t("forms.allCategories")}</option>
             {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>
-          {canCreate && (
-            <Link href="/studio/templates" style={{ textDecoration: "none", flex: "0 0 auto" }}>
-              <Button variant="ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6, whiteSpace: "nowrap" }}>
-                <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("templates.browse")}
-              </Button>
-            </Link>
-          )}
         </div>
       )}
       <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; flex:1 1 100% !important; min-width:0 !important; } }`}</style>

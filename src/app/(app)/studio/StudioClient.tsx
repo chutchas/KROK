@@ -4,7 +4,8 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { Sparkles, FileUp, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone } from "lucide-react";
+import Link from "next/link";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
@@ -26,12 +27,13 @@ interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper";
 
-export default function StudioClient({ initialForms, members, teams, tenantId }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string }) {
+export default function StudioClient({ initialForms, members, teams, tenantId, template = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [createMode, setCreateMode] = useState<"prompt" | "file">("prompt");
-  const [draft, setDraft] = useState<FormSchema | null>(null);
+  // เปิดจากคลังเทมเพลต → เริ่มที่หน้าแก้ไขพร้อมร่างจากเทมเพลต (ยังไม่บันทึกจนกว่าจะกดเผยแพร่)
+  const [draft, setDraft] = useState<FormSchema | null>(() => (template ? sanitizeSchema(template) : null));
   const [requiresApproval, setRequiresApproval] = useState(false);
   const [requireDevice, setRequireDevice] = useState(false);
   const [deviceScope, setDeviceScope] = useState<"any" | "selected">("any");
@@ -50,7 +52,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [customCat, setCustomCat] = useState(false);
-  const [tab, setTab] = useState<"new" | "edit" | "all">("new");
+  const [tab, setTab] = useState<"new" | "edit" | "all">(template ? "edit" : "new");
   const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
   const [qrForm, setQrForm] = useState<FormRow | null>(null);
   const [shareForm, setShareForm] = useState<FormRow | null>(null);
@@ -59,6 +61,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
 
   useEffect(() => {
     setOrigin(window.location.origin);
+    // เปิดจากเทมเพลตแล้ว เอา ?tpl ออกจาก URL — refresh ทีหลังจะไม่เปิดร่างเทมเพลตซ้ำ
+    if (window.location.search.includes("tpl=")) window.history.replaceState(null, "", "/studio");
   }, []);
 
   const fillUrl = (f: FormRow) => `${origin}${f.visibility === "public" ? "/f/" : "/fill/"}${f.id}`;
@@ -337,6 +341,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId }:
               </button>
             );
           })}
+          <Link href="/studio/templates" className="inline-flex items-center gap-1.5 krok-seg-btn"
+            style={{ padding: "9px 16px", borderLeft: "1px solid var(--line)", fontSize: ".9rem", fontWeight: 500, background: "var(--surface)", color: "var(--ink-2)", textDecoration: "none" }}>
+            <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("studio.modeTemplate")}
+          </Link>
         </div>
 
         {createMode === "prompt" ? (

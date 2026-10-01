@@ -2,6 +2,7 @@ import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import StudioClient from "./StudioClient";
 import type { FormSchema } from "@/lib/form-schema";
+import { getTemplate } from "@/lib/form-templates";
 
 export const dynamic = "force-dynamic";
 
@@ -21,7 +22,7 @@ export interface FormRow {
   device_scope: "any" | "selected";
 }
 
-export default async function StudioPage() {
+export default async function StudioPage({ searchParams }: { searchParams: Promise<{ tpl?: string }> }) {
   const session = await enforceMenu("studio");
   if (!canManage(session.role))
     return (
@@ -74,5 +75,9 @@ export default async function StudioPage() {
 
   const teams = ((teamRows || []) as { id: string; name: string }[]).map((tt) => ({ id: tt.id, name: tt.name }));
 
-  return <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} />;
+  // ?tpl=<id> จากคลังเทมเพลต → เปิดเป็นร่างในหน้าแก้ไข (ยังไม่บันทึก)
+  const { tpl } = await searchParams;
+  const template = tpl ? getTemplate(tpl)?.schema ?? null : null;
+
+  return <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template} />;
 }

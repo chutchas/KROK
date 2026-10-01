@@ -61,7 +61,8 @@ function settle(id: number, v: boolean) {
 
 const subscribe = (l: () => void) => { listeners.add(l); return () => { listeners.delete(l); }; };
 const snapshot = () => queue;
-const serverSnapshot = (): Req[] => [];
+const EMPTY: Req[] = []; // ค่าเดิมทุกครั้ง — React ต้องการ snapshot ที่คงที่
+const serverSnapshot = (): Req[] => EMPTY;
 
 export function DialogHost() {
   const reqs = useSyncExternalStore(subscribe, snapshot, serverSnapshot);

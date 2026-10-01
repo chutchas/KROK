@@ -2,13 +2,12 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Card, Button, Notice } from "@/components/ui";
+import { Card, Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ArrowLeft, ChevronDown, ChevronUp, Plus, Info } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { FORM_TEMPLATES } from "@/lib/form-templates";
 import { categoryLabel } from "@/lib/form-categories";
-import { createFromTemplate } from "@/app/(app)/studio/actions";
 
 export default function TemplatesClient() {
   const { t, tt, lang } = useT();
@@ -16,7 +15,6 @@ export default function TemplatesClient() {
   const [catFilter, setCatFilter] = useState("all");
   const [openId, setOpenId] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
-  const [err, setErr] = useState("");
 
   const cats = useMemo(
     () => Array.from(new Set(FORM_TEMPLATES.map((tpl) => tpl.schema.category).filter((c): c is string => !!c))),
@@ -25,21 +23,10 @@ export default function TemplatesClient() {
 
   const list = FORM_TEMPLATES.filter((tpl) => catFilter === "all" || tpl.schema.category === catFilter);
 
-  async function use(id: string) {
+  // เปิดเทมเพลตในหน้าแก้ไขของ "สร้างฟอร์ม" — ยังไม่บันทึกจนกว่าผู้ใช้กดเผยแพร่
+  function use(id: string) {
     setBusyId(id);
-    setErr("");
-    try {
-      const res = await createFromTemplate(id);
-      if ("error" in res) {
-        setErr(res.error);
-        setBusyId(null);
-        return;
-      }
-      router.push(`/forms?f=${res.id}`);
-    } catch {
-      setErr("สร้างฟอร์มไม่สำเร็จ ลองใหม่อีกครั้ง");
-      setBusyId(null);
-    }
+    router.push(`/studio?tpl=${encodeURIComponent(id)}`);
   }
 
   return (
@@ -73,7 +60,6 @@ export default function TemplatesClient() {
           </select>
         </div>
 
-        {err && <Notice kind="error">{err}</Notice>}
 
         {list.length === 0 && (
           <p style={{ color: "var(--ink-3)", fontSize: ".9rem" }}>{t("templates.emptyCat")}</p>
