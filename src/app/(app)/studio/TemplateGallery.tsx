@@ -3,6 +3,7 @@
 // KROK · คลังเทมเพลต — แสดงในหน้า "สร้างฟอร์ม" เป็นโหมดที่ 3 (ข้าง "พิมพ์อธิบาย (AI)" / "จากไฟล์ฟอร์มเดิม")
 // กด "ใช้เทมเพลตนี้" → onUse(id) ให้หน้าสร้างฟอร์มเปิดเป็นร่างในแท็บแก้ไข (ยังไม่บันทึกจนกดเผยแพร่)
 // ============================================================
+import FormIcon from "@/components/FormIcon";
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -83,9 +84,7 @@ export default function TemplateGallery({ onUse }: { onUse: (id: string) => void
           return (
             <div key={tpl.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 16, background: "var(--surface)", display: "flex", flexDirection: "column", minWidth: 0 }}>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
-                <div style={{ width: 42, height: 42, borderRadius: 10, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flexShrink: 0 }}>
-                  {s.icon}
-                </div>
+                <FormIcon value={s.icon} size={42} />
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <b style={{ fontFamily: "var(--font-anuphan)", display: "block" }}>{s.title}</b>
                   <small style={{ color: "var(--ink-3)", fontSize: ".76rem" }}>

@@ -1,4 +1,5 @@
 "use client";
+import FormIcon from "@/components/FormIcon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -202,9 +203,7 @@ export default function FormsListClient({
                 transition: "background .3s, box-shadow .3s, border-color .3s",
               }}
             >
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem" }}>
-                {f.icon}
-              </div>
+              <FormIcon value={f.icon} size={44} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
@@ -284,7 +283,7 @@ function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; bus
         const days = Math.max(0, Math.ceil((new Date(d.expiresAt).getTime() - now) / 864e5));
         return (
           <div key={d.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: 14, background: "var(--surface)", flexWrap: "wrap", opacity: d.available ? 1 : 0.65 }}>
-            <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flex: "0 0 auto" }}>{d.formIcon}</div>
+            <FormIcon value={d.formIcon} size={44} />
             <div style={{ flex: 1, minWidth: 180 }}>
               <b style={{ fontFamily: "var(--font-anuphan)" }}>{d.formTitle}</b>
               <div style={{ fontSize: ".85rem", color: "var(--ink-2)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.title || t("draft.untitled")}</div>

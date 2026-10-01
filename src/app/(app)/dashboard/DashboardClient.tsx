@@ -1,4 +1,5 @@
 "use client";
+import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Card, Pill } from "@/components/ui";
@@ -66,7 +67,7 @@ export default function DashboardClient({
   const [dragId, setDragId] = useState<string | null>(null);
 
   const formName = useMemo(() => {
-    const m = new Map(forms.map((f) => [f.id, `${f.icon} ${f.title}`]));
+    const m = new Map(forms.map((f) => [f.id, f.title]));
     return (id: string) => (id === "all" ? t("report.allForms") : m.get(id) || t("dash.deletedForm"));
   }, [forms, t]);
 
@@ -159,7 +160,7 @@ export default function DashboardClient({
           {subs.map((s) => (
             <div key={s.id} onClick={() => setOpen(s)}
               style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
-              <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1rem" }}>{s.form_icon}</div>
+              <FormIcon value={s.form_icon} size={34} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: ".93rem" }}>{s.form_title}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at, lang)}</small>
@@ -315,7 +316,7 @@ function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "
           <span style={{ width: 18, textAlign: "right", color: "var(--ink-3)", fontSize: ".78rem" }}>{i + 1}</span>
           <span style={{ flex: 1, minWidth: 0 }}>
             <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".84rem" }}>
-              <b style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.icon} {r.title}</b>
+              <b style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><InlineFormIcon value={r.icon} size={15} />{r.title}</b>
               <span className="tabnum" style={{ color: "var(--ink-2)", flexShrink: 0 }}>{fmtValue(metric, r.v, en, tt)}</span>
             </span>
             <span style={{ display: "block", height: 5, borderRadius: 4, background: "var(--surface-2)", marginTop: 3, overflow: "hidden" }}>
@@ -371,7 +372,7 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
             <Section n={2} label={t("dash.stepForm" as never)} />
             <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
               <option value="all">{t("report.allForms" as never)}</option>
-              {forms.map((f) => <option key={f.id} value={f.id}>{f.icon} {f.title}</option>)}
+              {forms.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
             </select>
           </>
         )}
@@ -473,7 +474,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }} className="no-print">
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <h2 style={{ fontSize: "1.1rem" }}>{sub.form_icon} {sub.form_title}</h2>
+          <h2 style={{ fontSize: "1.1rem" }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
           {sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>

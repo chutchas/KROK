@@ -1,4 +1,5 @@
 "use client";
+import IconPicker from "@/components/IconPicker";
 import { useState } from "react";
 import { Field } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -124,12 +125,7 @@ export default function FormEditor({
 
       {/* หัวฟอร์ม */}
       <div style={{ display: "grid", gap: 8, gridTemplateColumns: "56px 1fr", alignItems: "start" }}>
-        <input
-          value={value.icon}
-          onChange={(e) => patch({ icon: e.target.value.slice(0, 4) })}
-          style={{ ...sel, textAlign: "center", fontSize: "1.3rem", padding: "8px 4px" }}
-          aria-label="icon"
-        />
+        <IconPicker value={value.icon} onChange={(icon) => patch({ icon })} />
         <div style={{ display: "grid", gap: 8 }}>
           <Field value={value.title} onChange={(e) => patch({ title: e.target.value })} placeholder={t("editor.formTitle")} />
           <Field value={value.description} onChange={(e) => patch({ description: e.target.value })} placeholder={t("editor.formDesc")} />

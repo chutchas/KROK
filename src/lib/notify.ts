@@ -110,7 +110,7 @@ function buildMessage(ev: NotifyEvent, info: NotifyInfo): { subject: string; tex
   const head = eventLabel(ev);
   const lines = [
     `[KROK] ${head}`,
-    `ฟอร์ม: ${info.formIcon ? info.formIcon + " " : ""}${info.formTitle}`,
+    `ฟอร์ม: ${info.formTitle}`,
   ];
   const isCase = ev === "case.assigned" || ev === "case.returned";
   if (isCase && info.caseTitle) lines.push(`งาน: ${info.caseTitle}`);

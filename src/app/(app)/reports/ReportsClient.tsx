@@ -1,4 +1,5 @@
 "use client";
+import { InlineFormIcon } from "@/components/FormIcon";
 import { useState } from "react";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -82,7 +83,7 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
           <Selectable label={t("report.form")}>
             <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
               <option value="all">{t("report.allForms")}</option>
-              {forms.map((f) => <option key={f.id} value={f.id}>{f.icon} {f.title}</option>)}
+              {forms.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
             </select>
           </Selectable>
 
@@ -172,7 +173,7 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
                   {preview.rows.map((r) => (
                     <tr key={r.id} style={{ borderBottom: "1px solid var(--line)" }}>
                       <td style={td}>{fmtWhen(r.when)}</td>
-                      <td style={td}>{r.icon} {r.form}</td>
+                      <td style={td}><InlineFormIcon value={r.icon} size={15} />{r.form}</td>
                       <td style={td}>{r.user}</td>
                       <td style={td}>
                         {r.result === "fail"

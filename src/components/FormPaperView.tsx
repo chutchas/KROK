@@ -1,4 +1,5 @@
 "use client";
+import { InlineFormIcon } from "@/components/FormIcon";
 import { type FormField, type FormSchema } from "@/lib/form-schema";
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -78,7 +79,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: schema.show_header !== false ? "2px solid #111" : "none", paddingBottom: 10, marginBottom: 16, gap: 12 }}>
           {schema.show_header !== false ? (
             <div>
-              <div style={{ fontSize: "1.25rem", fontWeight: 700 }}>{schema.icon} {schema.title}</div>
+              <div style={{ fontSize: "1.25rem", fontWeight: 700 }}><InlineFormIcon value={schema.icon} size={20} />{schema.title}</div>
               {schema.description && <div style={{ color: "#555", fontSize: ".82rem" }}>{schema.description}</div>}
             </div>
           ) : <div />}

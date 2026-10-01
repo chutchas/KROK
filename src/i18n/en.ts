@@ -1426,6 +1426,12 @@ export const en: Record<MessageKey, string> = {
   "login.inviteTitle": "Join a workspace",
   "login.inviteHint": "You've been invited — set your name and password and you'll join the workspace automatically.",
   "login.doJoin": "Sign up & join",
+  "icon.change": "Change icon",
+  "icon.pick": "Choose form icon",
+  "icon.search": "Search icons, e.g. truck, food, safety",
+  "icon.byTask": "By task",
+  "icon.byIndustry": "By industry",
+  "icon.none": "No icons found",
 };
 
 export default en;

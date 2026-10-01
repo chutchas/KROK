@@ -1,4 +1,5 @@
 "use client";
+import { InlineFormIcon } from "@/components/FormIcon";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -1116,7 +1117,7 @@ export default function FillWizard(props: Props) {
       <div>
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-          <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
+          <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {viewToggle}
             {draftBtn}
@@ -1157,7 +1158,7 @@ export default function FillWizard(props: Props) {
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: "1.05rem" }}>{props.icon} {props.title}</h2>
+        <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {viewToggle}
           {draftBtn}

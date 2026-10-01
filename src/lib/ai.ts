@@ -2,6 +2,7 @@ import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { sanitizeSchema, type FormSchema } from "./form-schema";
+import { ICON_KEY_LIST } from "./form-icons";
 import { getAdminClient } from "./supabase/admin";
 import { PURPOSE_NEEDS_VISION as PURPOSE_NEEDS_VISION_MAP, type AiPurpose } from "./ai-purpose";
 import { parseExtractResult as parseExtract, type ExtractKey as EK } from "./doc-extract";
@@ -231,7 +232,7 @@ function extractJson(text: string): unknown {
 }
 
 export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เดียวเท่านั้น ห้ามมีข้อความอื่นนอก JSON ตาม spec นี้:
-{"title":"ชื่อฟอร์ม","description":"อธิบายสั้นๆ ว่าใช้เมื่อไหร่","icon":"emoji 1 ตัว",
+{"title":"ชื่อฟอร์ม","description":"อธิบายสั้นๆ ว่าใช้เมื่อไหร่","icon":"ชื่อไอคอน 1 ชื่อจากรายการนี้ที่เข้ากับเอกสารที่สุด: ${ICON_KEY_LIST.join(", ")}",
 "steps":[{"title":"ชื่อขั้นตอน","fields":[{
  "id":"snake_case_id","type":"text|number|select|checkbox|pass_fail|photo|barcode|signature|datetime",
  "label":"คำถาม/สิ่งที่ต้องตรวจ (ใช้ภาษาเดียวกับคำขอ)","required":true,
@@ -280,7 +281,7 @@ export async function refineForm(schema: FormSchema, instruction: string): Promi
 
 // spec สำหรับ "คัดลอกฟอร์มเดิมจากรูป/ไฟล์" — เน้นความเหมือน ไม่ใช่ออกแบบใหม่
 export const REPLICATE_SPEC = `ตอบกลับเป็น JSON object เดียวเท่านั้น ห้ามมีข้อความอื่นนอก JSON ตาม spec นี้:
-{"title":"ชื่อฟอร์มตามที่พิมพ์บนเอกสาร","description":"อธิบายสั้นๆ (ถ้าเอกสารมี)","icon":"emoji 1 ตัว",
+{"title":"ชื่อฟอร์มตามที่พิมพ์บนเอกสาร","description":"อธิบายสั้นๆ (ถ้าเอกสารมี)","icon":"ชื่อไอคอน 1 ชื่อจากรายการนี้ที่เข้ากับเอกสารที่สุด: ${ICON_KEY_LIST.join(", ")}",
 "steps":[{"title":"ชื่อหัวข้อ/section ตามเอกสาร","fields":[{
  "id":"snake_case_id",
  "type":"text|number|select|checkbox|pass_fail|photo|barcode|signature|datetime|table",

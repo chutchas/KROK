@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { InlineFormIcon } from "@/components/FormIcon";
 import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -100,7 +101,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
               <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
             </div>
-            <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}>{sub.form_icon} {sub.form_title}</h1>
+            <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={24} />{sub.form_title}</h1>
             <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · <T k="sub.docNo" vars={{ id: String(sub.id).slice(0, 8).toUpperCase() }} /></div>
           </div>
           <div style={{ textAlign: "right" }}>

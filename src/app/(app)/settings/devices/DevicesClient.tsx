@@ -1,4 +1,5 @@
 "use client";
+import { InlineFormIcon } from "@/components/FormIcon";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, EmptyState } from "@/components/ui";
@@ -291,7 +292,7 @@ function MatrixCard({
                   const scope = scopes[f.id] || "any";
                   return (
                     <th key={f.id} style={th}>
-                      <div style={{ fontWeight: 600, marginBottom: 6 }}>{f.icon} {f.title}</div>
+                      <div style={{ fontWeight: 600, marginBottom: 6 }}><InlineFormIcon value={f.icon} size={16} />{f.title}</div>
                       <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 7, overflow: "hidden" }}>
                         {([
                           { v: "any" as const, label: t("dev.scopeAny") },

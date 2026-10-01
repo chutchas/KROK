@@ -1441,4 +1441,10 @@ export const th = {
   "login.inviteTitle": "เข้าร่วม workspace",
   "login.inviteHint": "คุณได้รับคำเชิญ — ตั้งชื่อและรหัสผ่าน แล้วระบบจะพาเข้า workspace ที่เชิญให้อัตโนมัติ",
   "login.doJoin": "สมัครและเข้าร่วม",
+  "icon.change": "เปลี่ยนไอคอน",
+  "icon.pick": "เลือกไอคอนฟอร์ม",
+  "icon.search": "ค้นหาไอคอน เช่น รถ, อาหาร, ความปลอดภัย",
+  "icon.byTask": "ตามลักษณะงาน",
+  "icon.byIndustry": "ตามอุตสาหกรรม",
+  "icon.none": "ไม่พบไอคอน",
 } as const;

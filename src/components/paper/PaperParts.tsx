@@ -7,6 +7,7 @@
 //   ขอบ 2 + padding 12 + ชื่อช่อง LABEL_H 18 + ช่องไฟ 4 + ตัวกรอก CONTROL_H 28
 // กระดาษเป็นสีขาวเสมอ จึงใช้สีคงที่ ไม่ใช้ token ของธีม (กัน dark mode ทำสีเพี้ยน)
 // ============================================================
+import { InlineFormIcon } from "@/components/FormIcon";
 import Icon from "@/components/Icon";
 import { Camera, Check, X, Plus, Trash2, PenLine } from "lucide-react";
 import type { TableColumn } from "@/lib/form-schema";
@@ -83,7 +84,7 @@ export function PaperHeaderContent({ icon, title, description }: { icon: string;
   return (
     <div style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 4 }}>
       <div style={{ fontSize: "1.2rem", fontWeight: 700, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        {icon} {title}
+        <InlineFormIcon value={icon} size={18} />{title}
       </div>
       {description && (
         <div style={{ fontSize: ".72rem", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{description}</div>

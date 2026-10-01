@@ -1,4 +1,6 @@
 "use client";
+import IconPicker from "@/components/IconPicker";
+import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
@@ -491,7 +493,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
             <div>
               <h2 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                {editingId && <Icon icon={Pencil} className="h-4 w-4" />}{draft.icon} {draft.title}
+                {editingId && <Icon icon={Pencil} className="h-4 w-4" />}<InlineFormIcon value={draft.icon} size={20} />{draft.title}
               </h2>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
@@ -522,8 +524,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {/* ตั้งค่าฟอร์ม: ไอคอน/ชื่อ + ประเภท (แถวเดียวกัน) / คำอธิบาย */}
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 12, display: "grid", gap: 8 }}>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <input value={draft.icon} onChange={(e) => setDraft({ ...draft, icon: e.target.value.slice(0, 4) })} aria-label="icon"
-                style={{ width: 52, textAlign: "center", fontSize: "1.4rem", padding: "6px 4px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", flex: "0 0 auto" }} />
+              <IconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
               <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
               <select
                 title={t("studio.category")}
@@ -798,7 +799,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             .filter((f) => !search.trim() || f.title.toLowerCase().includes(search.trim().toLowerCase()))
             .map((f) => (
             <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--surface)", flexWrap: "wrap" }}>
-              <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>{f.icon}</div>
+              <FormIcon value={f.icon} size={40} />
               <div style={{ flex: 1, minWidth: 140 }}>
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>{" "}
                 {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="fail">{t("studio.stArchived")}</Pill>}

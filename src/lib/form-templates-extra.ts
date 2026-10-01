@@ -23,7 +23,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "shift-handover", industries: ["manufacturing", "healthcare", "hospitality", "energy"],
     schema: {
-      title: "บันทึกส่งมอบงานระหว่างกะ", icon: "🔁", category: "production",
+      title: "บันทึกส่งมอบงานระหว่างกะ", icon: "i:workflow", category: "production",
       description: "ส่งต่องานค้าง ปัญหา และสิ่งที่กะถัดไปต้องรู้ ลดงานตกหล่นระหว่างเปลี่ยนกะ",
       steps: [
         { title: "ข้อมูลกะ", fields: [txt("area", "แผนก/พื้นที่"), sel("from_shift", "กะที่ส่ง", SHIFT), txt("giver", "ผู้ส่งมอบ"), txt("receiver", "ผู้รับมอบ")] },
@@ -40,7 +40,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "punch-list", industries: ["construction", "facilities"],
     schema: {
-      title: "ตรวจรับงานผู้รับเหมา (Punch list)", icon: "🏗️", category: "inspection",
+      title: "ตรวจรับงานผู้รับเหมา (Punch list)", icon: "i:construction", category: "inspection",
       description: "ตรวจรับงวดงาน/ส่งมอบงานก่อสร้าง บันทึกจุดบกพร่องที่ผู้รับเหมาต้องแก้ไขก่อนรับงาน",
       steps: [
         { title: "ข้อมูลงาน", fields: [txt("project", "โครงการ"), txt("contractor", "ผู้รับเหมา"), txt("scope", "งวดงาน/ขอบเขตที่ตรวจ", { width: "full" }), when("inspected_at", "วันที่ตรวจ")] },
@@ -56,7 +56,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "concrete-pour", industries: ["construction"],
     schema: {
-      title: "ตรวจก่อนเทคอนกรีต", icon: "🧱", category: "quality",
+      title: "ตรวจก่อนเทคอนกรีต", icon: "i:brick-wall", category: "quality",
       description: "เช็กแบบหล่อ เหล็กเสริม และคอนกรีตที่ส่งมาก่อนอนุมัติเท พร้อมบันทึกค่ายุบตัว (slump)",
       steps: [
         { title: "ข้อมูล", fields: [txt("location", "ตำแหน่งที่เท (ชั้น/โซน/ชิ้นส่วน)"), num("volume", "ปริมาณคอนกรีต", "ลบ.ม."), txt("supplier", "ผู้ส่งคอนกรีต"), txt("ticket", "เลขใบส่งคอนกรีต")] },
@@ -74,7 +74,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "restroom-cleaning", industries: ["facilities", "retail", "hospitality", "healthcare"],
     schema: {
-      title: "บันทึกทำความสะอาดห้องน้ำรายชั่วโมง", icon: "🚻", category: "checklist",
+      title: "บันทึกทำความสะอาดห้องน้ำรายชั่วโมง", icon: "i:spray-can", category: "checklist",
       description: "แม่บ้านบันทึกทุกรอบที่ทำความสะอาด สแกน QR หน้าห้องน้ำ ตรวจของใช้สิ้นเปลือง",
       steps: [
         { title: "รอบทำความสะอาด", fields: [scan("restroom", "ห้องน้ำ (สแกน QR หน้าห้อง)"), when("cleaned_at", "เวลาทำความสะอาด"), txt("cleaner", "ผู้ทำความสะอาด")] },
@@ -89,7 +89,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "vehicle-handover", industries: ["logistics", "general"],
     schema: {
-      title: "รับ-คืนรถส่วนกลาง/รถเช่า", icon: "🚗", category: "logistics",
+      title: "รับ-คืนรถส่วนกลาง/รถเช่า", icon: "i:car", category: "logistics",
       description: "บันทึกสภาพรถ เลขไมล์ และน้ำมันตอนรับและคืนรถ พร้อมรูปรอบคัน กันข้อโต้แย้งเรื่องความเสียหาย",
       steps: [
         { title: "ข้อมูล", fields: [scan("plate", "ทะเบียนรถ"), sel("action", "รายการ", ["รับรถ", "คืนรถ"]), txt("driver", "ผู้ใช้รถ"), txt("purpose", "วัตถุประสงค์/ปลายทาง")] },
@@ -105,7 +105,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "truck-loading", industries: ["logistics", "manufacturing", "port"],
     schema: {
-      title: "ตรวจการโหลดสินค้าขึ้นรถ", icon: "🚚", category: "logistics",
+      title: "ตรวจการโหลดสินค้าขึ้นรถ", icon: "i:truck", category: "logistics",
       description: "เช็กรถก่อนโหลด จำนวนสินค้า การจัดเรียง และเลขซีล ก่อนปล่อยรถออกจากคลัง",
       steps: [
         { title: "รถและเอกสาร", fields: [txt("plate", "ทะเบียนรถ"), scan("do_no", "เลขที่ใบส่งสินค้า (DO)"), txt("driver", "พนักงานขับ"), pf("truck_clean", "กระบะ/ตู้สะอาด แห้ง ไม่มีกลิ่น")] },
@@ -121,7 +121,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "racking-inspection", industries: ["logistics", "manufacturing", "retail"],
     schema: {
-      title: "ตรวจชั้นวางสินค้า (Racking)", icon: "🗄️", category: "safety",
+      title: "ตรวจชั้นวางสินค้า (Racking)", icon: "i:boxes", category: "safety",
       description: "ตรวจความเสียหายของชั้นวางในคลังประจำเดือน ระบุระดับความเสี่ยงแบบไฟจราจร",
       steps: [
         { title: "ข้อมูล", fields: [txt("aisle", "แถว/ช่อง (Aisle/Bay)"), when("inspected_at", "วันที่ตรวจ"), txt("inspector", "ผู้ตรวจ")] },
@@ -137,7 +137,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "calibration", industries: ["manufacturing", "food", "healthcare"],
     schema: {
-      title: "บันทึกสอบเทียบเครื่องมือวัด", icon: "📏", category: "quality",
+      title: "บันทึกสอบเทียบเครื่องมือวัด", icon: "i:ruler", category: "quality",
       description: "สอบเทียบภายใน (in-house) เทียบกับเครื่องมือมาตรฐาน บันทึกค่าคลาดเคลื่อนและกำหนดครั้งถัดไป",
       steps: [
         { title: "เครื่องมือ", fields: [scan("tool_id", "รหัสเครื่องมือ"), sel("tool_type", "ประเภท", ["เวอร์เนีย", "ไมโครมิเตอร์", "เครื่องชั่ง", "เทอร์โมมิเตอร์", "เกจวัดแรงดัน"]), txt("standard", "เครื่องมือมาตรฐานที่ใช้อ้างอิง")] },
@@ -153,7 +153,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "returns-inspection", industries: ["retail", "logistics"],
     schema: {
-      title: "ตรวจรับสินค้าคืน (Returns)", icon: "↩️", category: "logistics",
+      title: "ตรวจรับสินค้าคืน (Returns)", icon: "i:package-check", category: "logistics",
       description: "ตรวจสภาพสินค้าที่ลูกค้าส่งคืน ตัดสินว่าขายต่อ ซ่อม หรือทำลาย พร้อมรูปหลักฐาน",
       steps: [
         { title: "ข้อมูลการคืน", fields: [scan("order_no", "เลขที่คำสั่งซื้อ/ใบคืน"), txt("customer", "ลูกค้า"), sel("reason", "เหตุผลที่คืน", ["ชำรุด", "ส่งผิดรุ่น", "ไม่ตรงปก", "เปลี่ยนใจ", "อื่นๆ"])] },
@@ -168,7 +168,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "fit-for-work", industries: ["logistics", "construction", "energy", "port"],
     schema: {
-      title: "ตรวจความพร้อมก่อนเริ่มงาน (เป่าแอลกอฮอล์)", icon: "🧑‍✈️", category: "safety",
+      title: "ตรวจความพร้อมก่อนเริ่มงาน (เป่าแอลกอฮอล์)", icon: "i:user-check", category: "safety",
       description: "ตรวจพนักงานขับ/คนงานก่อนเริ่มงาน: ค่าแอลกอฮอล์ การพักผ่อน และความพร้อมของร่างกาย",
       steps: [
         { title: "พนักงาน", fields: [txt("name", "ชื่อพนักงาน"), scan("emp_id", "รหัสพนักงาน"), when("checked_at", "เวลาตรวจ")] },
@@ -186,7 +186,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "leave-request", industries: ["general"],
     schema: {
-      title: "ใบขอลางาน", icon: "🗓️", category: "hr",
+      title: "ใบขอลางาน", icon: "i:calendar-days", category: "hr",
       description: "พนักงานยื่นขอลา ระบุประเภท ช่วงวัน และผู้รับงานแทน แล้วส่งหัวหน้าอนุมัติ",
       steps: [
         { title: "ข้อมูลการลา", fields: [
@@ -202,7 +202,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "probation-eval", industries: ["general"],
     schema: {
-      title: "แบบประเมินพนักงานทดลองงาน", icon: "📝", category: "hr",
+      title: "แบบประเมินพนักงานทดลองงาน", icon: "i:file-text", category: "hr",
       description: "หัวหน้าประเมินพนักงานก่อนครบทดลองงาน ให้คะแนนรายหัวข้อและสรุปผลบรรจุ",
       steps: [
         { title: "ข้อมูลพนักงาน", fields: [txt("name", "ชื่อพนักงาน"), txt("position", "ตำแหน่ง"), when("start", "วันเริ่มงาน"), txt("evaluator", "ผู้ประเมิน")] },
@@ -217,7 +217,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "purchase-request", industries: ["general", "manufacturing"],
     schema: {
-      title: "ใบขอซื้อ (PR)", icon: "🛒", category: "other",
+      title: "ใบขอซื้อ (PR)", icon: "i:shopping-cart", category: "other",
       description: "ขอซื้อสินค้า/บริการ ระบุรายการ งบประมาณ และผู้ขายที่เสนอ ส่งต่อให้ผู้อนุมัติ",
       steps: [
         { title: "ผู้ขอซื้อ", fields: [txt("name", "ผู้ขอซื้อ"), txt("dept", "แผนก"), when("need_by", "ต้องการภายในวันที่"), sel("priority", "ความเร่งด่วน", ["ปกติ", "ด่วน", "ด่วนมาก"])] },
@@ -233,7 +233,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "sales-visit", industries: ["general", "retail"],
     schema: {
-      title: "รายงานเข้าพบลูกค้า", icon: "🤝", category: "other",
+      title: "รายงานเข้าพบลูกค้า", icon: "i:handshake", category: "other",
       description: "พนักงานขายบันทึกการเข้าพบลูกค้า สิ่งที่คุย โอกาสการขาย และนัดหมายครั้งถัดไป",
       steps: [
         { title: "การเข้าพบ", fields: [txt("customer", "ลูกค้า/บริษัท"), txt("contact", "ผู้ที่เข้าพบ"), when("visited_at", "วันเวลาเข้าพบ"), sel("type", "ประเภท", ["ลูกค้าใหม่", "ลูกค้าเดิม", "ติดตามงาน", "แก้ปัญหา"])] },
@@ -250,7 +250,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "cash-count", industries: ["retail", "hospitality", "food"],
     schema: {
-      title: "นับเงินสดปิดกะ", icon: "💵", category: "audit",
+      title: "นับเงินสดปิดกะ", icon: "i:banknote", category: "audit",
       description: "นับเงินในลิ้นชักตอนปิดกะ เทียบกับยอดขายในระบบ บันทึกส่วนต่างและผู้ตรวจนับ",
       steps: [
         { title: "ข้อมูล", fields: [txt("branch", "สาขา"), txt("pos", "เครื่อง POS"), sel("shift", "กะ", SHIFT), txt("cashier", "แคชเชียร์")] },
@@ -266,7 +266,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "fertigation-log", industries: ["agriculture"],
     schema: {
-      title: "บันทึกการให้น้ำและปุ๋ย", icon: "💧", category: "production",
+      title: "บันทึกการให้น้ำและปุ๋ย", icon: "i:droplets", category: "production",
       description: "บันทึกการให้น้ำ/ปุ๋ยรายแปลง ค่า EC และ pH ของสารละลาย เพื่อคุมคุณภาพผลผลิตตามมาตรฐาน GAP",
       steps: [
         { title: "แปลง", fields: [scan("plot", "แปลง/โรงเรือน"), txt("crop", "พืช"), when("applied_at", "วันเวลา")] },
@@ -282,7 +282,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "pool-water", industries: ["hospitality", "facilities"],
     schema: {
-      title: "ตรวจคุณภาพน้ำสระว่ายน้ำ", icon: "🏊", category: "inspection",
+      title: "ตรวจคุณภาพน้ำสระว่ายน้ำ", icon: "i:waves", category: "inspection",
       description: "วัดค่าคลอรีนและ pH ของสระวันละหลายรอบ ค่าเกินเกณฑ์ให้ปิดสระและบันทึกการแก้ไข",
       steps: [
         { title: "รอบตรวจ", fields: [sel("pool", "สระ", ["สระหลัก", "สระเด็ก", "จากุซซี่"]), when("tested_at", "เวลาตรวจ"), txt("tester", "ผู้ตรวจ")] },
@@ -299,7 +299,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "transformer-inspection", industries: ["energy", "facilities", "manufacturing"],
     schema: {
-      title: "ตรวจหม้อแปลงไฟฟ้า", icon: "⚡", category: "maintenance",
+      title: "ตรวจหม้อแปลงไฟฟ้า", icon: "i:zap", category: "maintenance",
       description: "ตรวจหม้อแปลงไฟฟ้าประจำเดือน: อุณหภูมิ ระดับน้ำมัน รอยรั่ว และค่าโหลด",
       steps: [
         { title: "หม้อแปลง", fields: [scan("tr_id", "รหัสหม้อแปลง"), sel("kva", "ขนาด", ["250 kVA", "500 kVA", "1000 kVA", "1500 kVA", "2000 kVA"]), when("inspected_at", "วันที่ตรวจ")] },
@@ -316,7 +316,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "equipment-loan", industries: ["education", "general", "healthcare"],
     schema: {
-      title: "ยืม-คืนอุปกรณ์", icon: "📦", category: "other",
+      title: "ยืม-คืนอุปกรณ์", icon: "i:laptop", category: "other",
       description: "บันทึกการยืมและคืนอุปกรณ์ส่วนกลาง (โน้ตบุ๊ก โปรเจกเตอร์ เครื่องมือ) พร้อมสภาพตอนคืน",
       steps: [
         { title: "การยืม", fields: [scan("asset", "รหัสอุปกรณ์"), txt("borrower", "ผู้ยืม"), txt("dept", "หน่วยงาน/ห้องเรียน"), when("borrowed_at", "วันเวลายืม"), when("due", "กำหนดคืน")] },
@@ -332,7 +332,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
   {
     id: "trailer-inspection", industries: ["port", "logistics"],
     schema: {
-      title: "ตรวจสภาพหางพ่วง/แชสซี", icon: "🛞", category: "inspection",
+      title: "ตรวจสภาพหางพ่วง/แชสซี", icon: "i:container", category: "inspection",
       description: "ตรวจหางพ่วงและแชสซีก่อนรับตู้ที่ท่าเรือ: ยาง ไฟ ล็อกตู้ (twist lock) และเบรก",
       steps: [
         { title: "ข้อมูล", fields: [txt("chassis", "เลขแชสซี/หาง"), txt("tractor", "ทะเบียนหัวลาก"), txt("driver", "พนักงานขับ"), when("checked_at", "เวลาตรวจ")] },

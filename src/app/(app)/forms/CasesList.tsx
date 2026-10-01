@@ -1,5 +1,6 @@
 "use client";
 // แท็บ "งานรอฉัน" — งานของฟอร์มกรอกหลายคน: ที่ฉันถืออยู่ / รอทีมฉันกดรับ / ที่ฉันเคยทำ (ติดตามสถานะ)
+import FormIcon from "@/components/FormIcon";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -109,7 +110,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
             <div style={{ display: "grid", gap: 10 }}>
               {items.map((c) => (
                 <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, border: c.returned ? "1px solid #d97706" : "1px solid var(--line)", borderRadius: 12, padding: 14, background: "var(--surface)", flexWrap: "wrap" }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 10, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.4rem", flex: "0 0 auto" }}>{c.formIcon}</div>
+                  <FormIcon value={c.formIcon} size={44} />
                   <div style={{ flex: 1, minWidth: 180 }}>
                     <b style={{ fontFamily: "var(--font-anuphan)" }}>{c.formTitle}</b>
                     <span style={{ fontFamily: "monospace", fontSize: ".72rem", color: "var(--ink-3)", marginLeft: 8 }}>#{c.id.slice(0, 8).toUpperCase()}</span>

@@ -1,4 +1,5 @@
 "use client";
+import { InlineFormIcon } from "@/components/FormIcon";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
@@ -172,7 +173,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
             >
               <option value="">{t("intg.allForms")}</option>
               {forms.map((f) => (
-                <option key={f.id} value={f.id}>{f.icon} {f.title}</option>
+                <option key={f.id} value={f.id}>{f.title}</option>
               ))}
             </select>
           </div>
@@ -240,7 +241,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem", overflowWrap: "anywhere", marginTop: 2 }}>{w.url}</small>
                   <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: ".72rem", color: "var(--ink-2)", background: "var(--accent-soft)", border: "1px solid var(--line)", borderRadius: 20, padding: "2px 9px" }}>
-                      {w.formId ? `📋 ${w.formTitle}` : t("intg.allForms")}
+                      {w.formId ? <><InlineFormIcon value={null} size={14} />{w.formTitle}</> : t("intg.allForms")}
                     </span>
                     {w.formId && (
                       <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>

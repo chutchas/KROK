@@ -159,7 +159,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
         <div>
           <label style={{ fontSize: ".85rem", color: "var(--ink-2)" }}>{t("intake.form")}</label>
           <select value={formId} onChange={(e) => { setFormId(e.target.value); setMsg(null); }} style={{ ...sel, marginTop: 4 }}>
-            {forms.map((f) => <option key={f.id} value={f.id}>{f.icon} {f.title}{intake[f.id]?.enabled ? ` · ${t("intake.on")}` : ""}</option>)}
+            {forms.map((f) => <option key={f.id} value={f.id}>{f.title}{intake[f.id]?.enabled ? ` · ${t("intake.on")}` : ""}</option>)}
           </select>
         </div>
 

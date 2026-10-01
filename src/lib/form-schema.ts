@@ -2,6 +2,7 @@
 // KROK · form schema types + sanitizer
 // schema เดียวที่ AI สร้าง / editor แก้ / mobile render / dashboard อ่าน
 // ============================================================
+import { normalizeIcon } from "@/lib/form-icons";
 
 export const FIELD_TYPES = [
   "text",
@@ -459,7 +460,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   const schema: FormSchema = {
     title: str(r.title, 150, "ฟอร์มใหม่"),
     description: str(r.description, 300),
-    icon: str(r.icon, 4, "📋") || "📋",
+    icon: normalizeIcon(r.icon),
     flow: "sequential",
     steps,
   };

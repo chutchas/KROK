@@ -1,4 +1,5 @@
 "use client";
+import FormIcon from "@/components/FormIcon";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
@@ -79,7 +80,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
       {subs.map((s) => (
         <Card key={s.id}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <div style={{ width: 40, height: 40, borderRadius: 9, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.2rem" }}>{s.form_icon}</div>
+            <FormIcon value={s.form_icon} size={40} />
             <div style={{ flex: 1, minWidth: 0 }}>
               <b style={{ fontFamily: "var(--font-anuphan)" }}>{s.form_title}</b>
               <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at, lang)}</small>

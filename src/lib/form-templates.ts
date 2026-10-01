@@ -43,7 +43,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "ตรวจเช็คเครื่องจักรก่อนเริ่มกะ",
       description: "เช็คสภาพเครื่องจักรก่อนเดินเครื่อง ลดเหตุขัดข้องระหว่างกะ",
-      icon: "🔧",
+      icon: "i:wrench",
       category: "maintenance",
       steps: [
         {
@@ -82,7 +82,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "เช็คลิสต์ความปลอดภัยประจำวัน (จป.)",
       description: "ตรวจความปลอดภัยพื้นที่ทำงานประจำวัน ตามหลัก จป.",
-      icon: "🦺",
+      icon: "i:shield-check",
       category: "safety",
       steps: [
         {
@@ -120,7 +120,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "ใบตรวจรับสินค้าเข้าคลัง",
       description: "ตรวจรับสินค้า/วัตถุดิบเข้าคลัง พร้อมรายการและสภาพสินค้า",
-      icon: "📦",
+      icon: "i:package",
       category: "logistics",
       steps: [
         {
@@ -166,7 +166,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "ใบเบิกวัสดุ/อะไหล่",
       description: "ขอเบิกวัสดุหรืออะไหล่จากคลัง พร้อมรายการและผู้อนุมัติ",
-      icon: "📝",
+      icon: "i:file-text",
       category: "logistics",
       steps: [
         {
@@ -212,7 +212,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "บันทึกตรวจสอบคุณภาพ (QC)",
       description: "ตรวจสอบคุณภาพสินค้ารายล็อต บันทึกค่าที่วัดและผลตัดสิน",
-      icon: "🔬",
+      icon: "i:microscope",
       category: "quality",
       steps: [
         {
@@ -259,7 +259,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "เช็คลิสต์ 5ส ประจำพื้นที่",
       description: "ตรวจประเมิน 5ส (สะสาง สะดวก สะอาด สุขลักษณะ สร้างนิสัย) รายพื้นที่",
-      icon: "✨",
+      icon: "i:sparkles",
       category: "audit",
       steps: [
         {
@@ -296,7 +296,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "บันทึกการทำความสะอาดเครื่องจักร",
       description: "บันทึกการทำความสะอาดเครื่องจักรตามแผน พร้อมสารเคมีที่ใช้",
-      icon: "🧽",
+      icon: "i:spray-can",
       category: "maintenance",
       steps: [
         {
@@ -342,7 +342,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
     schema: {
       title: "ใบรายงานอุบัติการณ์/เหตุผิดปกติ",
       description: "รายงานอุบัติเหตุหรือเหตุการณ์ผิดปกติ พร้อมการแก้ไขเบื้องต้น",
-      icon: "🚨",
+      icon: "i:siren",
       category: "safety",
       steps: [
         {
