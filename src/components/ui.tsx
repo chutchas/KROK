@@ -127,7 +127,7 @@ export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextArea(props: React.ComponentProps<"textarea">) {
   return (
     <textarea
       {...props}

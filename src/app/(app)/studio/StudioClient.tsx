@@ -15,7 +15,7 @@ import FormDevicePicker from "@/components/FormDevicePicker";
 import QrModal from "@/components/QrModal";
 import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
-import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY } from "@/lib/prompt-library";
+import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY, buildPrompt } from "@/lib/prompt-library";
 import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
 import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
 import type { FormRow } from "./page";
@@ -58,6 +58,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [shareForm, setShareForm] = useState<FormRow | null>(null);
   const [origin, setOrigin] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
+  const promptRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     setOrigin(window.location.origin);
@@ -327,7 +328,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         </div>
 
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
-        <div className="krok-seg" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
+        <div className="krok-seg krok-seg-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
           {(["prompt", "file"] as const).map((m) => {
             const on = createMode === m;
             return (
@@ -349,7 +350,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
         {createMode === "prompt" ? (
           <div>
-            <TextArea value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")} style={{ minHeight: 200 }} />
+            <TextArea ref={promptRef} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")}
+              // คำสั่งจากตัวอย่างยาวหลายบรรทัด → ขยายกล่องให้เห็นทั้งหมด (สูงสุด ~520px แล้วเลื่อนในกล่อง)
+              style={{ minHeight: Math.max(200, Math.min(prompt.split("\n").length * 23 + 28, 520)) }} />
             <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
               <AsyncButton variant="primary" onClick={generate} disabled={!!busy} style={{ padding: "12px 30px", fontSize: "1rem" }}>
                 <Icon icon={Sparkles} className="h-[18px] w-[18px]" /> {t("studio.generate")}
@@ -436,10 +439,19 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   {lang === "en" ? group.en : group.th}
                 </div>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  {group.items.map((it, i) => (
+                  {group.items.map((it) => (
                     <button
-                      key={i}
-                      onClick={() => setPrompt(lang === "en" ? it.en : it.th)}
+                      key={it.id}
+                      // เติมคำสั่งเต็ม (ขั้นตอน + ฟิลด์) ไม่ใช่แค่ชื่อ — ผู้ใช้แก้ต่อได้ก่อนกดสร้าง
+                      onClick={() => {
+                        setCreateMode("prompt");
+                        setPrompt(buildPrompt(it.id, lang));
+                        // ปุ่มอยู่ใต้กล่องคำสั่ง → เลื่อนขึ้นไปให้เห็นคำสั่งที่เติม แล้วกดสร้างได้เลย
+                        requestAnimationFrame(() => {
+                          promptRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                          promptRef.current?.focus({ preventScroll: true });
+                        });
+                      }}
                       style={{ fontSize: ".82rem", padding: "7px 13px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", lineHeight: 1.35 }}
                     >
                       {lang === "en" ? it.en : it.th}
@@ -835,6 +847,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           /* toggle แบบแบ่งครึ่ง: เต็มแถว */
           .krok-seg{display:flex !important;width:100%;flex-basis:100%}
           .krok-seg-btn{flex:1;justify-content:center}
+          /* โหมดสร้าง 3 ปุ่ม: แคบเกินจะตัดคำ → เรียงลงแนวตั้ง */
+          .krok-seg-modes{flex-direction:column}
+          .krok-seg-modes>.krok-seg-btn{justify-content:flex-start;border-left:none !important}
+          .krok-seg-modes>.krok-seg-btn+.krok-seg-btn{border-top:1px solid var(--line) !important}
           /* dropdown ประเภทฟอร์ม: เต็มแถว */
           .krok-typefilter{width:100%;flex:1 1 100% !important;min-width:0 !important}
           /* ปุ่มบันทึก/ยกเลิก: เต็มแถว แบ่งเท่ากัน */
