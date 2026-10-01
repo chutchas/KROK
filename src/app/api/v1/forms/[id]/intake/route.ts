@@ -31,6 +31,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BODY = 512 * 1024;
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
+const DISABLED = { error: "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้ผู้ดูแลเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล", code: "intake_disabled" };
+const clientIp = (req: Request) => (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || req.headers.get("x-real-ip") || "unknown";
 
 async function authenticate(req: Request, formId: string, admin: Admin) {
   const auth = req.headers.get("authorization") || "";
@@ -42,7 +44,9 @@ async function authenticate(req: Request, formId: string, admin: Admin) {
     .eq("form_id", formId)
     .eq("key_hash", hashIntakeKey(key))
     .maybeSingle();
-  if (!cfg || !cfg.enabled) return null;
+  if (!cfg) return null;
+  // key ถูกต้องแต่ผู้ดูแลปิด API ไว้ → บอกให้ชัด (ผู้ถือ key ถูกต้องแล้ว จึงไม่เผยข้อมูลเพิ่ม)
+  if (!cfg.enabled) return "disabled" as const;
   // key หมดอายุ (null/ไม่มีคอลัมน์ = ไม่หมดอายุ)
   const exp = (cfg as { key_expires_at?: string | null }).key_expires_at;
   if (exp && new Date(exp).getTime() <= Date.now()) return "expired" as const;
@@ -61,9 +65,9 @@ async function loadSchema(admin: Admin, raw: unknown, tenantId: string): Promise
   return schema;
 }
 
-async function rateLimited(admin: Admin, formId: string): Promise<boolean> {
+async function rateLimited(admin: Admin, key: string, max = 120): Promise<boolean> {
   try {
-    const { data, error } = await admin.rpc("hit_rate_limit", { p_key: `intake:${formId}`, p_max: 120, p_window_seconds: 60 });
+    const { data, error } = await admin.rpc("hit_rate_limit", { p_key: key, p_max: max, p_window_seconds: 60 });
     return !error && data === false;
   } catch {
     return false;
@@ -74,7 +78,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const admin = getAdminClient();
   if (!admin) return json({ error: "server not configured" }, 500);
   const { id } = await params;
+  // GET ไม่ได้บันทึกอะไร แต่ต้องคุมความถี่ (ทั้งต่อ IP — กันเดา/ยิงถล่ม — และต่อฟอร์ม)
+  if (await rateLimited(admin, `intake-get-ip:${clientIp(req)}`, 60) || await rateLimited(admin, `intake-get:${id}`, 120))
+    return json({ error: "เรียกถี่เกินไป (สูงสุด 60 ครั้ง/นาที)" }, 429);
   const a = await authenticate(req, id, admin);
+  if (a === "disabled") return json(DISABLED, 403);
   if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   const schema = await loadSchema(admin, a.f.schema, a.f.tenant_id);
@@ -93,10 +101,11 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!admin) return json({ error: "server not configured" }, 500);
   const { id } = await params;
   const a = await authenticate(req, id, admin);
+  if (a === "disabled") return json(DISABLED, 403);
   if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   if (a.f.status !== "published") return json({ error: "ฟอร์มนี้ยังไม่เผยแพร่" }, 409);
-  if (await rateLimited(admin, id)) return json({ error: "ส่งถี่เกินไป (สูงสุด 120 ครั้ง/นาที)" }, 429);
+  if (await rateLimited(admin, `intake:${id}`)) return json({ error: "ส่งถี่เกินไป (สูงสุด 120 ครั้ง/นาที)" }, 429);
 
   const len = Number(req.headers.get("content-length") || 0);
   if (len > MAX_BODY) return json({ error: "payload ใหญ่เกิน 512KB" }, 413);

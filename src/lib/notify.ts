@@ -1,6 +1,9 @@
 import "server-only";
 import nodemailer from "nodemailer";
+import dns from "node:dns";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { isBlockedIp } from "@/lib/safe-fetch";
+import { smtpHostShapeOk, smtpPortAllowed, friendlySmtpError, SMTP_PORTS } from "@/lib/notify-utils";
 
 export type NotifyEvent = "submission.created" | "submission.approved" | "submission.rejected" | "case.assigned" | "case.returned";
 
@@ -8,6 +11,8 @@ export interface NotifyConfig {
   line_enabled: boolean;
   line_token: string | null;
   line_target: string | null;
+  /** ไม่มีผู้รับ → ส่งถึงผู้ติดตาม OA ทั้งหมด (ต้องเลือกเอง) · ไม่มีคอลัมน์ (ยังไม่รัน 0043) = แบบเดิม */
+  line_broadcast?: boolean;
   email_enabled: boolean;
   smtp_host: string | null;
   smtp_port: number | null;
@@ -43,8 +48,12 @@ export interface NotifyInfo {
 const LINE_PUSH = "https://api.line.me/v2/bot/message/push";
 const LINE_BROADCAST = "https://api.line.me/v2/bot/message/broadcast";
 
-/** ส่งข้อความ LINE ผ่าน Messaging API (push ถ้ามี target, ไม่งั้น broadcast) */
-export async function sendLine(token: string, target: string | null, text: string): Promise<{ ok: boolean; status: string }> {
+/**
+ * ส่งข้อความ LINE ผ่าน Messaging API
+ * มี target = push ถึงคน/กลุ่มนั้น · ไม่มี target = broadcast เฉพาะเมื่อ broadcast=true (กันส่งถึงผู้ติดตามทั้งหมดโดยไม่ตั้งใจ)
+ */
+export async function sendLine(token: string, target: string | null, text: string, broadcast = false): Promise<{ ok: boolean; status: string }> {
+  if (!target && !broadcast) return { ok: false, status: "ยังไม่ได้ใส่ผู้รับ (userId/groupId) และไม่ได้เลือกส่งถึงผู้ติดตามทั้งหมด" };
   try {
     const body = target
       ? JSON.stringify({ to: target, messages: [{ type: "text", text }] })
@@ -59,10 +68,13 @@ export async function sendLine(token: string, target: string | null, text: strin
     });
     clearTimeout(timer);
     if (res.ok) return { ok: true, status: "OK" };
+    if (res.status === 401) return { ok: false, status: "HTTP 401 — Channel access token ไม่ถูกต้องหรือหมดอายุ" };
+    if (res.status === 400) return { ok: false, status: "HTTP 400 — ผู้รับไม่ถูกต้อง หรือบอทยังไม่ได้เป็นเพื่อน/อยู่ในกลุ่ม" };
+    if (res.status === 429) return { ok: false, status: "HTTP 429 — เกินโควตาข้อความของ LINE OA เดือนนี้" };
     const t = await res.text().catch(() => "");
     return { ok: false, status: `HTTP ${res.status} ${t.slice(0, 120)}` };
   } catch (e) {
-    return { ok: false, status: e instanceof Error ? e.message.slice(0, 120) : "failed" };
+    return { ok: false, status: e instanceof Error && e.name === "AbortError" ? "LINE ไม่ตอบกลับ (timeout)" : "ส่ง LINE ไม่สำเร็จ" };
   }
 }
 
@@ -75,16 +87,41 @@ interface SmtpCfg {
   to: string[];
 }
 
-/** ส่งอีเมลผ่าน SMTP ของ tenant */
-export async function sendEmail(cfg: SmtpCfg, subject: string, text: string): Promise<{ ok: boolean; status: string }> {
+class SmtpBlocked extends Error { code = "EBLOCKED"; }
+
+/**
+ * ตรวจปลายทาง SMTP ก่อนต่อจริง (กัน SSRF/สแกนพอร์ต):
+ * - พอร์ตต้องเป็นของ SMTP เท่านั้น · โฮสต์ต้องเป็นโดเมน (ไม่ใช่ IP/localhost)
+ * - resolve DNS แล้วทุก IP ต้องไม่ใช่เครือข่ายภายใน → คืน IP ที่จะต่อ (ต่อด้วย IP นี้เลย กัน DNS rebinding)
+ */
+export async function checkSmtpTarget(host: string, port: number): Promise<{ ok: true; ip: string } | { ok: false; status: string }> {
+  if (!smtpPortAllowed(port)) return { ok: false, status: `พอร์ต SMTP ต้องเป็น ${SMTP_PORTS.join(" / ")}` };
+  if (!smtpHostShapeOk(host)) return { ok: false, status: "ชื่อโฮสต์ SMTP ไม่ถูกต้อง (ต้องเป็นโดเมน เช่น smtp.gmail.com)" };
   try {
+    const list = await dns.promises.lookup(host.trim(), { all: true });
+    if (!list.length || list.some((a) => isBlockedIp(a.address))) return { ok: false, status: friendlySmtpError(new SmtpBlocked()) };
+    return { ok: true, ip: list[0].address };
+  } catch {
+    return { ok: false, status: "หาเซิร์ฟเวอร์ SMTP ไม่พบ — ตรวจชื่อโฮสต์" };
+  }
+}
+
+/** ส่งอีเมลผ่าน SMTP ของ tenant (ตรวจปลายทางก่อน · ข้อความ error ไม่เผยรายละเอียดเครือข่าย) */
+export async function sendEmail(cfg: SmtpCfg, subject: string, text: string): Promise<{ ok: boolean; status: string }> {
+  const target = await checkSmtpTarget(cfg.host, cfg.port);
+  if (!target.ok) return target;
+  try {
+    const host = cfg.host.trim();
     const transporter = nodemailer.createTransport({
-      host: cfg.host,
+      host: target.ip,
       port: cfg.port,
       secure: cfg.port === 465, // 465 = SSL, อื่น ๆ ใช้ STARTTLS
       auth: { user: cfg.user, pass: cfg.pass },
+      tls: { servername: host }, // ตรวจใบรับรองกับชื่อโดเมนจริง แม้ต่อด้วย IP
+      name: "krok",
       connectionTimeout: 10000,
       greetingTimeout: 8000,
+      socketTimeout: 15000,
     });
     await transporter.sendMail({
       from: cfg.from,
@@ -94,7 +131,7 @@ export async function sendEmail(cfg: SmtpCfg, subject: string, text: string): Pr
     });
     return { ok: true, status: "OK" };
   } catch (e) {
-    return { ok: false, status: e instanceof Error ? e.message.slice(0, 160) : "failed" };
+    return { ok: false, status: friendlySmtpError(e) };
   }
 }
 
@@ -144,7 +181,10 @@ function wanted(cfg: NotifyConfig, ev: NotifyEvent): boolean {
  */
 export async function dispatchNotifications(tenantId: string, ev: NotifyEvent, info: NotifyInfo): Promise<void> {
   const admin = getAdminClient();
-  if (!admin) return;
+  if (!admin) {
+    console.warn("[KROK] SUPABASE_SERVICE_ROLE_KEY ไม่ได้ตั้งค่า — ข้ามการแจ้งเตือน LINE/Email");
+    return;
+  }
 
   const { data } = await admin.from("tenant_notify").select("*").eq("tenant_id", tenantId).maybeSingle();
   if (!data) return;
@@ -158,7 +198,8 @@ export async function dispatchNotifications(tenantId: string, ev: NotifyEvent, i
   const jobs: Promise<unknown>[] = [];
 
   if (cfg.line_enabled && cfg.line_token) {
-    jobs.push(sendLine(cfg.line_token, cfg.line_target || null, text));
+    // ยังไม่รัน 0043 (ไม่มีคอลัมน์) = ทำงานแบบเดิม (ว่าง = broadcast)
+    jobs.push(sendLine(cfg.line_token, cfg.line_target || null, text, cfg.line_broadcast ?? true));
   }
   if (cfg.email_enabled && cfg.smtp_host && cfg.smtp_port && cfg.email_from && cfg.email_to.length) {
     jobs.push(

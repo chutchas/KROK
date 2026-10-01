@@ -3,10 +3,14 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { runLater } from "@/lib/background";
 
 /**
  * แจ้ง webhook ว่ามี submission ใหม่ (เรียกหลังบันทึกสำเร็จจากฝั่ง client)
  * โหลด submission ด้วย client ของผู้ใช้ (RLS การันตีว่าเป็นของ tenant ตัวเอง)
+ * กันแจ้งซ้ำ: จอง notified_at แบบ atomic ก่อน — เรียกซ้ำ (กดซ้ำ/ซิงก์ออฟไลน์ซ้ำ) จะไม่ยิงอีก
+ * การยิงออกภายนอกรันหลังตอบผู้ใช้แล้ว (after) ไม่ถ่วงหน้ากรอก
  */
 export async function notifySubmission(submissionId: string): Promise<{ ok: boolean }> {
   const session = await getSession();
@@ -21,31 +25,38 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
 
   if (!sub || sub.tenant_id !== session.tenantId) return { ok: false };
 
-  // best-effort: อย่าให้ webhook พังทำให้ทั้ง action ล้ม (submission บันทึกไปแล้ว)
-  try {
-    await dispatchWebhooks(session.tenantId, "submission.created", {
-      submission_id: sub.id,
-      form_id: sub.form_id,
-      form_title: sub.form_title,
-      user_name: sub.user_name,
-      result: sub.result,
-      fails: sub.fails,
-      answers: sub.answers,
-      approval_status: sub.approval_status,
-      submitted_at: sub.submitted_at,
-    }, sub.form_id as string);
-  } catch { /* ignore */ }
+  // จองสิทธิ์การแจ้ง (ยังไม่รัน 0043 = ไม่มีคอลัมน์ → แจ้งตามเดิม)
+  const admin = getAdminClient();
+  if (admin) {
+    const { data: claimed, error } = await admin
+      .from("submissions")
+      .update({ notified_at: new Date().toISOString() })
+      .eq("id", sub.id)
+      .is("notified_at", null)
+      .select("id");
+    if (!error && (!claimed || claimed.length === 0)) return { ok: true }; // แจ้งไปแล้ว
+  }
 
-  // แจ้งเตือน LINE/Email (best-effort)
-  try {
-    await dispatchNotifications(session.tenantId, "submission.created", {
-      formTitle: sub.form_title as string,
-      userName: sub.user_name as string,
-      result: sub.result as "pass" | "fail",
-      failCount: Array.isArray(sub.fails) ? (sub.fails as unknown[]).length : 0,
-      submissionId: sub.id as string,
-    });
-  } catch { /* ignore */ }
+  const tenantId = session.tenantId;
+  runLater(() => dispatchWebhooks(tenantId, "submission.created", {
+    submission_id: sub.id,
+    form_id: sub.form_id,
+    form_title: sub.form_title,
+    user_name: sub.user_name,
+    result: sub.result,
+    fails: sub.fails,
+    answers: sub.answers,
+    approval_status: sub.approval_status,
+    submitted_at: sub.submitted_at,
+  }, sub.form_id as string));
+
+  runLater(() => dispatchNotifications(tenantId, "submission.created", {
+    formTitle: sub.form_title as string,
+    userName: sub.user_name as string,
+    result: sub.result as "pass" | "fail",
+    failCount: Array.isArray(sub.fails) ? (sub.fails as unknown[]).length : 0,
+    submissionId: sub.id as string,
+  }));
 
   return { ok: true };
 }

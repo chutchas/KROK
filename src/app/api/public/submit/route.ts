@@ -5,6 +5,7 @@ import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
 import { sanitizeSchema } from "@/lib/form-schema";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
+import { runLater } from "@/lib/background";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -143,23 +144,19 @@ export async function POST(req: Request) {
   }
 
   // แจ้ง webhook (best-effort)
-  try {
-    await dispatchWebhooks(f.tenant_id, "submission.created", {
-      id: subId, form_id: f.id, form_title: f.title, result, fails, answers, user_name: userName, submitted_at: new Date().toISOString(), source: "public",
-    }, f.id);
-  } catch { /* ignore */ }
+  runLater(() => dispatchWebhooks(f.tenant_id, "submission.created", {
+      submission_id: subId, id: subId, form_id: f.id, form_title: f.title, result, fails, answers, user_name: userName, submitted_at: new Date().toISOString(), source: "public",
+    }, f.id));
 
   // แจ้งเตือน LINE/Email (best-effort)
-  try {
-    await dispatchNotifications(f.tenant_id, "submission.created", {
+  runLater(() => dispatchNotifications(f.tenant_id, "submission.created", {
       formTitle: f.title as string,
       formIcon: f.icon as string,
       userName,
       result,
       failCount: Array.isArray(fails) ? fails.length : 0,
       submissionId: subId,
-    });
-  } catch { /* ignore */ }
+    }));
 
   return NextResponse.json({ ok: true, id: subId });
 }

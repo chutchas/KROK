@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
+import { runLater } from "@/lib/background";
 
 export async function reviewSubmission(
   id: string,
@@ -40,8 +41,7 @@ export async function reviewSubmission(
   // แจ้ง webhook เมื่อจบกระบวนการ (อนุมัติครบ หรือ ตีกลับ) — ไม่แจ้งตอนแค่เลื่อนขั้น
   if (newStatus === "approved" || newStatus === "rejected") {
     // best-effort: การอนุมัติ commit ไปแล้ว — webhook พังต้องไม่ทำให้ action ล้ม
-    try {
-      await dispatchWebhooks(
+    runLater(() => dispatchWebhooks(
         session.tenantId,
         newStatus === "approved" ? "submission.approved" : "submission.rejected",
         {
@@ -54,12 +54,10 @@ export async function reviewSubmission(
           at: entry.at,
         },
         sub.form_id as string
-      );
-    } catch { /* ignore */ }
+      ));
 
     // แจ้งเตือน LINE/Email (best-effort)
-    try {
-      await dispatchNotifications(
+    runLater(() => dispatchNotifications(
         session.tenantId,
         newStatus === "approved" ? "submission.approved" : "submission.rejected",
         {
@@ -68,8 +66,7 @@ export async function reviewSubmission(
           reviewer: session.displayName,
           note: note.slice(0, 500),
         }
-      );
-    } catch { /* ignore */ }
+      ));
   }
 
   revalidatePath("/approvals");

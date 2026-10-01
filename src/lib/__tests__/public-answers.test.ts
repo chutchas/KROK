@@ -24,8 +24,8 @@ describe("sanitizePublicAnswers", () => {
     ], new Set());
     expect(r.result).toBe("fail");
     expect(r.fails).toEqual(["อุณหภูมิ (ค่านอกช่วง)"]);
-    expect(r.answers[0]).toEqual({ label: "ชื่อ", type: "text", display: "สมชาย" });
-    expect(r.answers[3]).toEqual({ label: "รูป", type: "photo", display: "—" });
+    expect(r.answers[0]).toEqual({ id: "t", label: "ชื่อ", type: "text", display: "สมชาย" });
+    expect(r.answers[3]).toEqual({ id: "ph", label: "รูป", type: "photo", display: "—" });
     expect(r.answers[4].rows).toEqual([{ c1: "น็อต" }]);
     expect(r.answers[4].columns).toEqual([{ id: "c1", label: "ของ", type: "text" }]);
   });

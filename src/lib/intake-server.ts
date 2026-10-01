@@ -9,6 +9,7 @@ import { buildAnswerList, titleFromAnswers, type IntakeAnswer } from "@/lib/inta
 import { stepTeam, stepUser } from "@/lib/case-flow";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
+import { runLater } from "@/lib/background";
 
 type Db = SupabaseClient;
 
@@ -74,17 +75,13 @@ export async function createIntakeSubmission(
     target_id: f.id,
     meta: { submission_id: id, result, source: "api", ref: opts.ref, source_name: opts.sourceName },
   });
-  try {
-    await dispatchWebhooks(f.tenant_id, "submission.created", {
+  runLater(() => dispatchWebhooks(f.tenant_id, "submission.created", {
       submission_id: id, form_id: f.id, form_title: f.title, user_name: opts.sourceName, result, fails, answers: list,
       approval_status: f.requires_approval ? "pending" : "none", submitted_at: new Date().toISOString(), source: "api", ref: opts.ref,
-    }, f.id);
-  } catch { /* best-effort */ }
-  try {
-    await dispatchNotifications(f.tenant_id, "submission.created", {
+    }, f.id));
+  runLater(() => dispatchNotifications(f.tenant_id, "submission.created", {
       formTitle: f.title, formIcon: f.icon, userName: opts.sourceName, result, failCount: fails.length, submissionId: id,
-    });
-  } catch { /* best-effort */ }
+    }));
   return { id };
 }
 
@@ -165,12 +162,10 @@ export async function createIntakeCase(
     const { data: t } = await admin.from("teams").select("name").eq("id", teamId).maybeSingle();
     teamName = (t?.name as string) ?? null;
   }
-  try {
-    await dispatchNotifications(f.tenant_id, "case.assigned", {
+  runLater(() => dispatchNotifications(f.tenant_id, "case.assigned", {
       formTitle: f.title, formIcon: f.icon, userName: label, submissionId: id,
       caseTitle: title || undefined, stepTitle: `1. ${schema.steps[0]?.title ?? ""}`,
       teamName: teamName ?? undefined, assignee: holderName ?? undefined,
-    });
-  } catch { /* best-effort */ }
+    }));
   return { id, holder: holderName, team: teamName };
 }

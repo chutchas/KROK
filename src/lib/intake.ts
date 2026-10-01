@@ -263,7 +263,7 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
   for (const s of schema.steps)
     for (const f of s.fields) {
       const a = answers[f.id] || {};
-      const item: Record<string, unknown> = { label: f.label, type: f.type };
+      const item: Record<string, unknown> = { id: f.id, label: f.label, type: f.type };
       if (a.src) item.src = a.src;
       if (f.type === "photo" || f.type === "signature") {
         item.display = "—";

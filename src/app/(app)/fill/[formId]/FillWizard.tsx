@@ -583,7 +583,7 @@ export default function FillWizard(props: Props) {
       for (const s of schema.steps)
         for (const f of s.fields) {
           const a = answers.current[f.id] || {};
-          const item: Record<string, unknown> = { label: f.label, type: f.type };
+          const item: Record<string, unknown> = { id: f.id, label: f.label, type: f.type };
           if (a.src) item.src = a.src; // ที่มาของค่า: scan | ai | ai_edited (ไม่มี = คนกรอกเอง)
           if (f.type === "photo") {
             if (photos[f.id]) {

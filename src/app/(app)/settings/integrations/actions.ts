@@ -4,6 +4,12 @@ import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
 import { testWebhook, type WebhookEvent } from "@/lib/webhooks";
 import { sendLine, sendEmail } from "@/lib/notify";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { smtpHostShapeOk, smtpPortAllowed, SMTP_PORTS } from "@/lib/notify-utils";
+
+// ความลับ (LINE token / SMTP password / webhook secret) อ่าน-เขียนผ่าน service role เท่านั้น (migration 0043 ปิด REST)
+// ทุก action ตรวจ session + สิทธิ์ผู้จัดการ และผูก tenant_id เองก่อนเสมอ
+const NO_ADMIN = "เซิร์ฟเวอร์ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY — ระบบเชื่อมต่อจึงใช้งานไม่ได้ (แจ้งผู้ดูแลระบบ)";
 
 const EVENTS: WebhookEvent[] = ["submission.created", "submission.approved", "submission.rejected"];
 
@@ -22,6 +28,18 @@ function validUrl(url: string): boolean {
   }
 }
 
+async function ownForm(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string, formId?: string | null): Promise<string | null | false> {
+  if (!formId) return null;
+  const { data: f } = await supabase.from("forms").select("id").eq("id", formId).eq("tenant_id", tenantId).maybeSingle();
+  return f ? formId : false;
+}
+
+function cleanFields(fields: unknown): string[] {
+  return Array.isArray(fields)
+    ? Array.from(new Set(fields.filter((x): x is string => typeof x === "string"))).slice(0, 200)
+    : [];
+}
+
 export async function createWebhook(
   name: string,
   url: string,
@@ -35,21 +53,15 @@ export async function createWebhook(
   if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
   if (!validUrl(url.trim())) return { error: "URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)" };
 
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
   const supabase = await createClient();
 
-  // ตรวจว่า formId (ถ้ามี) เป็นฟอร์มของ tenant นี้จริง
-  let form_id: string | null = null;
-  if (formId) {
-    const { data: f } = await supabase
-      .from("forms").select("id").eq("id", formId).eq("tenant_id", session.tenantId).maybeSingle();
-    if (!f) return { error: "ไม่พบฟอร์มที่เลือก" };
-    form_id = formId;
-  }
-  const fieldIds = Array.isArray(fields)
-    ? Array.from(new Set(fields.filter((x): x is string => typeof x === "string"))).slice(0, 200)
-    : [];
+  const form_id = await ownForm(supabase, session.tenantId, formId);
+  if (form_id === false) return { error: "ไม่พบฟอร์มที่เลือก" };
+  const fieldIds = cleanFields(fields);
 
-  const { error } = await supabase.from("webhooks").insert({
+  const { error } = await admin.from("webhooks").insert({
     tenant_id: session.tenantId,
     name: name.trim().slice(0, 80) || "Webhook",
     url: url.trim(),
@@ -67,8 +79,10 @@ export async function createWebhook(
 export async function toggleWebhook(id: string, active: boolean): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
-  const supabase = await createClient();
-  const { error } = await supabase.from("webhooks").update({ active }).eq("id", id).eq("tenant_id", session.tenantId);
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
+  const { data, error } = await admin.from("webhooks").update({ active }).eq("id", id).eq("tenant_id", session.tenantId).select("id");
+  if (!error && !data?.length) return { error: "ไม่พบ webhook" };
   if (error) return { error: error.message };
   revalidatePath("/settings/integrations");
   return { ok: true };
@@ -77,18 +91,68 @@ export async function toggleWebhook(id: string, active: boolean): Promise<{ ok: 
 export async function deleteWebhook(id: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
-  const supabase = await createClient();
-  const { error } = await supabase.from("webhooks").delete().eq("id", id).eq("tenant_id", session.tenantId);
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
+  const { error } = await admin.from("webhooks").delete().eq("id", id).eq("tenant_id", session.tenantId);
   if (error) return { error: error.message };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
 
+/** แก้ไข webhook — secret ว่าง = คงเดิม · clearSecret = ลบลายเซ็น */
+export async function updateWebhook(
+  id: string,
+  input: { name: string; url: string; events: unknown; secret: string; clearSecret?: boolean; formId?: string | null; fields?: unknown }
+): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!validUrl(input.url.trim())) return { error: "URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)" };
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
+  const supabase = await createClient();
+  const form_id = await ownForm(supabase, session.tenantId, input.formId);
+  if (form_id === false) return { error: "ไม่พบฟอร์มที่เลือก" };
+  const patch: Record<string, unknown> = {
+    name: input.name.trim().slice(0, 80) || "Webhook",
+    url: input.url.trim(),
+    events: cleanEvents(input.events),
+    form_id,
+    fields: form_id ? cleanFields(input.fields) : [],
+  };
+  if (input.secret.trim()) patch.secret = input.secret.trim().slice(0, 200);
+  else if (input.clearSecret) patch.secret = null;
+  const { data, error } = await admin.from("webhooks").update(patch).eq("id", id).eq("tenant_id", session.tenantId).select("id");
+  if (error) return { error: error.message };
+  if (!data?.length) return { error: "ไม่พบ webhook" };
+  revalidatePath("/settings/integrations");
+  return { ok: true };
+}
+
+export interface DeliveryRow { id: string; event: string; status: number | null; ok: boolean; attempts: number; error: string | null; duration_ms: number | null; created_at: string }
+
+/** ประวัติการส่งล่าสุดของ webhook (20 รายการ) — ยังไม่รัน 0043 = รายการว่าง */
+export async function listDeliveries(webhookId: string): Promise<{ rows: DeliveryRow[] } | { error: string }> {
+  const session = await getSession();
+  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
+  const { data, error } = await admin
+    .from("webhook_deliveries")
+    .select("id, event, status, ok, attempts, error, duration_ms, created_at")
+    .eq("webhook_id", webhookId)
+    .eq("tenant_id", session.tenantId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+  if (error) return /webhook_deliveries/.test(error.message) ? { rows: [] } : { error: error.message };
+  return { rows: (data || []) as DeliveryRow[] };
+}
+
 export async function testWebhookById(id: string): Promise<{ ok: boolean; status: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { ok: false, status: "unauthorized" };
-  const supabase = await createClient();
-  const { data } = await supabase
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, status: NO_ADMIN };
+  const { data } = await admin
     .from("webhooks")
     .select("url, secret")
     .eq("id", id)
@@ -96,7 +160,7 @@ export async function testWebhookById(id: string): Promise<{ ok: boolean; status
     .maybeSingle();
   if (!data) return { ok: false, status: "not found" };
   const res = await testWebhook(data.url as string, (data.secret as string) ?? null);
-  await supabase
+  await admin
     .from("webhooks")
     .update({ last_status: `test ${res.status}`, last_at: new Date().toISOString() })
     .eq("id", id)
@@ -111,6 +175,7 @@ export interface NotifyInput {
   line_enabled: boolean;
   line_token: string; // "" = ไม่เปลี่ยนของเดิม
   line_target: string;
+  line_broadcast?: boolean;
   email_enabled: boolean;
   smtp_host: string;
   smtp_port: number;
@@ -128,10 +193,19 @@ export interface NotifyInput {
 export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { error: "unauthorized" };
-  const supabase = await createClient();
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
+
+  // ตรวจปลายทาง SMTP ตั้งแต่ตอนบันทึก (ตอนส่งจริงตรวจ DNS/IP ซ้ำอีกชั้น)
+  const host = input.smtp_host?.trim() || "";
+  const port = Number.isFinite(input.smtp_port) ? Math.round(input.smtp_port) : 0;
+  if (host && !smtpHostShapeOk(host)) return { error: "ชื่อโฮสต์ SMTP ไม่ถูกต้อง (ต้องเป็นโดเมน เช่น smtp.gmail.com)" };
+  if ((host || input.email_enabled) && !smtpPortAllowed(port)) return { error: `พอร์ต SMTP ต้องเป็น ${SMTP_PORTS.join(" / ")}` };
+  if (input.line_enabled && !input.line_target?.trim() && !input.line_broadcast)
+    return { error: "LINE: ใส่ userId/groupId ของผู้รับ หรือเลือก \"ส่งถึงผู้ติดตามทั้งหมด\"" };
 
   // อ่านของเดิมเพื่อคงค่า secret ถ้าผู้ใช้ไม่ได้กรอกใหม่
-  const { data: cur } = await supabase
+  const { data: cur } = await admin
     .from("tenant_notify")
     .select("line_token, smtp_pass")
     .eq("tenant_id", session.tenantId)
@@ -147,9 +221,10 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
     line_enabled: !!input.line_enabled,
     line_token: input.line_token ? input.line_token.trim() : ((cur?.line_token as string) ?? null),
     line_target: input.line_target?.trim() || null,
+    line_broadcast: !!input.line_broadcast,
     email_enabled: !!input.email_enabled,
-    smtp_host: input.smtp_host?.trim() || null,
-    smtp_port: Number.isFinite(input.smtp_port) && input.smtp_port > 0 ? Math.round(input.smtp_port) : null,
+    smtp_host: host || null,
+    smtp_port: smtpPortAllowed(port) ? port : null,
     smtp_user: input.smtp_user?.trim() || null,
     smtp_pass: input.smtp_pass ? input.smtp_pass : ((cur?.smtp_pass as string) ?? null),
     email_from: input.email_from?.trim() || null,
@@ -162,12 +237,13 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
     updated_at: new Date().toISOString(),
   };
 
-  let { error } = await supabase.from("tenant_notify").upsert(row, { onConflict: "tenant_id" });
-  // ยังไม่ได้รัน migration 0033 (ไม่มีคอลัมน์ on_case) → บันทึกส่วนที่เหลือตามเดิม
-  if (error && /on_case/.test(error.message)) {
-    const { on_case: _drop, ...rest } = row;
-    void _drop;
-    ({ error } = await supabase.from("tenant_notify").upsert(rest, { onConflict: "tenant_id" }));
+  let { error } = await admin.from("tenant_notify").upsert(row, { onConflict: "tenant_id" });
+  // ยังไม่ได้รัน migration 0033/0043 (ไม่มีคอลัมน์ on_case / line_broadcast) → บันทึกส่วนที่เหลือตามเดิม
+  for (const col of ["line_broadcast", "on_case"] as const) {
+    if (error && new RegExp(col).test(error.message)) {
+      delete (row as Record<string, unknown>)[col];
+      ({ error } = await admin.from("tenant_notify").upsert(row, { onConflict: "tenant_id" }));
+    }
   }
   if (error) return { error: error.message };
   revalidatePath("/settings/integrations");
@@ -178,8 +254,9 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
 export async function testNotify(channel: "line" | "email"): Promise<{ ok: boolean; status: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { ok: false, status: "unauthorized" };
-  const supabase = await createClient();
-  const { data } = await supabase
+  const admin = getAdminClient();
+  if (!admin) return { ok: false, status: NO_ADMIN };
+  const { data } = await admin
     .from("tenant_notify")
     .select("*")
     .eq("tenant_id", session.tenantId)
@@ -190,7 +267,7 @@ export async function testNotify(channel: "line" | "email"): Promise<{ ok: boole
 
   if (channel === "line") {
     if (!data.line_token) return { ok: false, status: "ยังไม่ได้ใส่ LINE token" };
-    return sendLine(data.line_token as string, (data.line_target as string) || null, text);
+    return sendLine(data.line_token as string, (data.line_target as string) || null, text, (data.line_broadcast as boolean | undefined) ?? true);
   }
   // email
   if (!data.smtp_host || !data.smtp_port || !data.email_from || !(data.email_to as string[])?.length) {

@@ -37,6 +37,7 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
       line_enabled: s.line_enabled,
       line_token: lineToken,
       line_target: s.line_target,
+      line_broadcast: s.line_broadcast,
       email_enabled: s.email_enabled,
       smtp_host: s.smtp_host,
       smtp_port: Number(s.smtp_port) || 0,
@@ -91,6 +92,11 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
         <label style={label}>{t("notify.lineTarget")}</label>
         <Field value={s.line_target} onChange={(e) => set("line_target", e.target.value)} style={{ width: "100%" }} />
         <div style={hint}>{t("notify.lineTargetHint")}</div>
+        {!s.line_target.trim() && (
+          <div style={{ marginTop: 6 }}>
+            <Check on={s.line_broadcast} onChange={(v) => set("line_broadcast", v)}>{t("notify.lineBroadcast")}</Check>
+          </div>
+        )}
         <div style={{ marginTop: 10 }}>
           <Button onClick={() => test("line")} disabled={testingCh === "line"} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Icon icon={Send} className="h-4 w-4" /> {testingCh === "line" ? t("notify.testing") : t("notify.test")}
@@ -112,7 +118,10 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
           </div>
           <div>
             <label style={label}>{t("notify.smtpPort")}</label>
-            <Field type="number" value={String(s.smtp_port)} onChange={(e) => set("smtp_port", Number(e.target.value))} style={{ width: "100%" }} />
+            <select value={String(s.smtp_port)} onChange={(e) => set("smtp_port", Number(e.target.value))} aria-label={t("notify.smtpPort")}
+              style={{ width: "100%", padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".9rem", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
+              {[587, 465, 2525, 25].map((p) => <option key={p} value={p}>{p}{p === 587 ? " (STARTTLS)" : p === 465 ? " (SSL)" : ""}</option>)}
+            </select>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>

@@ -1,5 +1,7 @@
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { Notice } from "@/components/ui";
 import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySettings } from "./IntegrationsClient";
 import type { IntakeConfig } from "./IntakePanel";
 import { T } from "@/i18n/T";
@@ -13,19 +15,22 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     return <div style={{ color: "var(--ink-2)" }}><T k="intg.manageOnly" /></div>;
 
   const supabase = await createClient();
+  // webhooks + tenant_notify มีความลับ → อ่านด้วย service role (ผูก tenant เอง) · REST ถูกปิดใน 0043
+  const admin = getAdminClient();
+  const none = Promise.resolve({ data: null });
   const [{ data: whData }, { data: formData }, { data: nData }] = await Promise.all([
-    supabase
+    admin ? admin
       .from("webhooks")
       .select("id, name, url, events, secret, active, last_status, last_at, form_id, fields")
       .eq("tenant_id", session.tenantId)
-      .order("created_at", { ascending: true }),
+      .order("created_at", { ascending: true }) : none,
     supabase
       .from("forms")
       .select("id, title, icon, schema")
       .eq("tenant_id", session.tenantId)
       .is("deleted_at", null)
       .order("title"),
-    supabase.from("tenant_notify").select("*").eq("tenant_id", session.tenantId).maybeSingle(),
+    admin ? admin.from("tenant_notify").select("*").eq("tenant_id", session.tenantId).maybeSingle() : none,
   ]);
   const intakeCols = "form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at";
   const [{ data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
@@ -60,6 +65,8 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     line_enabled: !!n.line_enabled,
     hasLineToken: !!n.line_token,
     line_target: (n.line_target as string) ?? "",
+    // ไม่มีคอลัมน์ (ยังไม่รัน 0043) + ไม่มีผู้รับ = เดิมส่งแบบ broadcast อยู่แล้ว
+    line_broadcast: typeof n.line_broadcast === "boolean" ? n.line_broadcast : !!n.line_enabled && !n.line_target,
     email_enabled: !!n.email_enabled,
     smtp_host: (n.smtp_host as string) ?? "",
     smtp_port: (n.smtp_port as number) ?? 587,
@@ -99,10 +106,11 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     fields: (w.fields as string[]) ?? [],
   }));
 
-  return (
+  return (<>
+    {!admin && <Notice kind="error"><T k="intg.noServiceKey" /></Notice>}
     <IntegrationsClient
       webhooks={webhooks} forms={forms} notify={notify} intake={intake} teams={teams} members={members}
       initialTab={tab === "webhooks" || tab === "intake" ? tab : "notify"}
     />
-  );
+  </>);
 }

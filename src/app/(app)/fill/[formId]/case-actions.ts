@@ -6,6 +6,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { getSession } from "@/lib/session";
 import { dispatchNotifications } from "@/lib/notify";
 import type { FormSchema } from "@/lib/form-schema";
+import { runLater } from "@/lib/background";
 
 type Res = { ok: true; teamName?: string | null; holder?: string | null } | { error: string };
 
@@ -45,8 +46,7 @@ function stepTitle(schema: FormSchema, i: number): string {
 
 async function afterMove(row: CaseRow, ev: "case.assigned" | "case.returned", actor: string, note: string | null, supabase: Awaited<ReturnType<typeof createClient>>): Promise<Res> {
   const tn = await teamName(supabase, row.assignee_team);
-  try {
-    await dispatchNotifications(row.tenant_id, ev, {
+  runLater(() => dispatchNotifications(row.tenant_id, ev, {
       formTitle: row.form_title,
       formIcon: row.form_icon,
       userName: actor,
@@ -56,8 +56,7 @@ async function afterMove(row: CaseRow, ev: "case.assigned" | "case.returned", ac
       teamName: row.claimed_name ? undefined : tn ?? undefined,
       assignee: row.claimed_name ?? undefined,
       note: note || undefined,
-    });
-  } catch { /* best-effort */ }
+    }));
   revalidatePath("/forms");
   return { ok: true, teamName: tn, holder: row.claimed_name };
 }

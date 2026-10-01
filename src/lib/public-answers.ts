@@ -53,7 +53,7 @@ export function sanitizePublicAnswers(
   const fails: string[] = [];
   fields.forEach((f, i) => {
     const a = pick(f, i) || {};
-    const item: Record<string, unknown> = { label: f.label, type: f.type };
+    const item: Record<string, unknown> = { id: f.id, label: f.label, type: f.type };
     const src = str(a.src, 20);
     if (src && SRC.has(src)) item.src = src;
 
