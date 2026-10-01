@@ -2,6 +2,7 @@
 import { backdropClose } from "@/lib/backdrop";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
@@ -109,6 +110,15 @@ export default function AppShell({
   const router = useRouter();
   const { t } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
+  // ชื่อที่เพิ่งบันทึกในหน้าโปรไฟล์ — แสดงทันที จนกว่า server จะส่งชื่อใหม่มา (base = ชื่อจาก server ตอนที่รับ event)
+  const [liveName, setLiveName] = useState<{ name: string; base: string } | null>(null);
+  useEffect(() => {
+    const on = (e: Event) => setLiveName({ name: (e as CustomEvent<string>).detail, base: displayName });
+    window.addEventListener(PROFILE_NAME_EVENT, on);
+    return () => window.removeEventListener(PROFILE_NAME_EVENT, on);
+  }, [displayName]);
+  const fullName = liveName && liveName.base === displayName ? liveName.name : displayName;
+  const shortName = firstName(fullName);
   const [profileOpen, setProfileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -338,7 +348,7 @@ export default function AppShell({
                   fontFamily: "inherit",
                 }}
               >
-                <Avatar url={avatarUrl} size={22} /><span className="krok-profile-name">{displayName}</span>
+                <Avatar url={avatarUrl} size={22} /><span className="krok-profile-name" title={fullName} style={{ maxWidth: "9em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortName}</span>
                 <Icon icon={ChevronDown} className="h-3.5 w-3.5" />
               </button>
               {profileOpen && (
@@ -359,7 +369,7 @@ export default function AppShell({
                   <div style={{ padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
                     <Avatar url={avatarUrl} size={34} />
                     <div>
-                      <b style={{ fontSize: ".88rem", display: "block" }}>{displayName}</b>
+                      <b style={{ fontSize: ".88rem", display: "block", overflowWrap: "anywhere" }}>{fullName}</b>
                       <small style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tenantName}</small>
                     </div>
                   </div>

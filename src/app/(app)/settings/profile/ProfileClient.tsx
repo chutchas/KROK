@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { useT } from "@/i18n/LanguageProvider";
 import type { Lang, MessageKey } from "@/i18n/dictionaries";
 import { saveProfile, saveAvatar } from "./actions";
+import { emitProfileName } from "@/lib/profile-events";
 
 export interface ProfileData {
   first_name: string;
@@ -79,6 +80,10 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
     }
     setLang(form.language); // ใช้ภาษาใหม่ทันที
     setMsg({ t: t("common.saved"), err: false });
+    // ชื่อบนแถบบน: เปลี่ยนทันที แล้วต่ออายุ session ให้ JWT มีชื่อใหม่ (ไม่งั้นโหลดหน้าใหม่ยังเห็นชื่อเดิมจนกว่า token หมดอายุ)
+    const display = [form.first_name, form.last_name].map((x) => x.trim()).filter(Boolean).join(" ");
+    if (display) emitProfileName(display);
+    await createClient().auth.refreshSession().catch(() => null);
     router.refresh();
   }
 
