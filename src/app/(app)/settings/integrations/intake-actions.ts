@@ -26,7 +26,16 @@ async function guard(formId: string) {
 }
 
 function migrationMsg(m: string) {
+  if (/key_expires_at/.test(m)) return "ยังไม่ได้รัน migration 0042_intake_key_expiry.sql";
   return /form_intake/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ยังไม่ได้รัน migration 0034_form_intake.sql" : m;
+}
+
+/** อายุ key ที่เลือกได้ (วัน) · null = ไม่หมดอายุ */
+const EXPIRY_DAYS = [30, 90, 180, 365];
+function expiryFrom(days: number | null): string | null | undefined {
+  if (days === null) return null;
+  if (!EXPIRY_DAYS.includes(days)) return undefined; // ค่าไม่ถูกต้อง
+  return new Date(Date.now() + days * 86400_000).toISOString();
 }
 
 export async function saveIntake(
@@ -70,10 +79,12 @@ export async function saveIntake(
 }
 
 /** สร้าง API key ใหม่ (คีย์เดิมใช้ไม่ได้ทันที) — คืนคีย์เต็มครั้งเดียว */
-export async function rotateIntakeKey(formId: string): Promise<{ key: string; prefix: string } | { error: string }> {
+export async function rotateIntakeKey(formId: string, days: number | null = 90): Promise<{ key: string; prefix: string } | { error: string }> {
   const g = await guard(formId);
   if ("error" in g) return { error: g.error! };
   const { session, supabase } = g;
+  const expires = expiryFrom(days);
+  if (expires === undefined) return { error: "อายุ key ไม่ถูกต้อง" };
   const k = newIntakeKey();
   const { error } = await supabase.from("form_intake").upsert({
     form_id: formId,
@@ -81,12 +92,13 @@ export async function rotateIntakeKey(formId: string): Promise<{ key: string; pr
     key_hash: k.hash,
     key_prefix: k.prefix,
     key_created_at: new Date().toISOString(),
+    key_expires_at: expires,
     updated_by: session.userId,
     updated_at: new Date().toISOString(),
   }, { onConflict: "form_id" });
   if (error) return { error: migrationMsg(error.message) };
   await supabase.from("audit_log").insert({
-    tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_rotate", target_type: "form", target_id: formId, meta: { prefix: k.prefix },
+    tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_rotate", target_type: "form", target_id: formId, meta: { prefix: k.prefix, expires_days: days },
   });
   revalidatePath("/settings/integrations");
   return { key: k.key, prefix: k.prefix };
@@ -97,11 +109,30 @@ export async function revokeIntakeKey(formId: string): Promise<{ ok: true } | { 
   if ("error" in g) return { error: g.error! };
   const { session, supabase } = g;
   const { error } = await supabase.from("form_intake")
-    .update({ key_hash: null, key_prefix: null, key_created_at: null, updated_by: session.userId, updated_at: new Date().toISOString() })
+    .update({ key_hash: null, key_prefix: null, key_created_at: null, key_expires_at: null, updated_by: session.userId, updated_at: new Date().toISOString() })
     .eq("form_id", formId);
   if (error) return { error: migrationMsg(error.message) };
   await supabase.from("audit_log").insert({
     tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_revoke", target_type: "form", target_id: formId, meta: {},
+  });
+  revalidatePath("/settings/integrations");
+  return { ok: true };
+}
+
+/** ต่ออายุ/เปลี่ยนวันหมดอายุของ key ปัจจุบัน (นับจากวันนี้) — key เดิมใช้ต่อได้ ระบบภายนอกไม่ต้องเปลี่ยน */
+export async function setIntakeKeyExpiry(formId: string, days: number | null): Promise<{ ok: true } | { error: string }> {
+  const g = await guard(formId);
+  if ("error" in g) return { error: g.error! };
+  const { session, supabase } = g;
+  const expires = expiryFrom(days);
+  if (expires === undefined) return { error: "อายุ key ไม่ถูกต้อง" };
+  const { data, error } = await supabase.from("form_intake")
+    .update({ key_expires_at: expires, updated_by: session.userId, updated_at: new Date().toISOString() })
+    .eq("form_id", formId).not("key_hash", "is", null).select("form_id");
+  if (error) return { error: migrationMsg(error.message) };
+  if (!data?.length) return { error: "ยังไม่มี key" };
+  await supabase.from("audit_log").insert({
+    tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_expiry", target_type: "form", target_id: formId, meta: { expires_days: days },
   });
   revalidatePath("/settings/integrations");
   return { ok: true };

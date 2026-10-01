@@ -34,6 +34,7 @@ const ACTIONS: Record<string, L> = {
   "workspace.rename": { th: "เปลี่ยนชื่อ workspace", en: "Renamed the workspace" },
   "plan.change": { th: "เปลี่ยนแพ็กเกจ", en: "Changed plan" },
   "intake.key_rotate": { th: "ออกกุญแจ API รับข้อมูลเข้าฟอร์มใหม่", en: "Issued a new form intake API key" },
+  "intake.key_expiry": { th: "เปลี่ยนวันหมดอายุกุญแจ API รับข้อมูลเข้าฟอร์ม", en: "Changed form intake API key expiry" },
   "intake.key_revoke": { th: "ยกเลิกกุญแจ API รับข้อมูลเข้าฟอร์ม", en: "Revoked the form intake API key" },
   "attachment.add": { th: "แนบไฟล์ประกอบฟอร์ม", en: "Added a form attachment" },
   "attachment.remove": { th: "ลบไฟล์ประกอบฟอร์ม", en: "Removed a form attachment" },
@@ -96,7 +97,7 @@ const K: Record<string, L> = {
   size: { th: "ขนาด", en: "Size" }, source: { th: "ช่องทาง", en: "Channel" }, result: { th: "ผล", en: "Result" }, by: { th: "ผู้กรอก", en: "Filled by" },
   ref: { th: "เลขอ้างอิง", en: "Reference" }, step: { th: "ขั้นที่", en: "Step" }, note: { th: "หมายเหตุ", en: "Note" }, name: { th: "ชื่อใหม่", en: "New name" },
   plan: { th: "แพ็กเกจ", en: "Plan" }, teams: { th: "ทีม", en: "Teams" }, mailed: { th: "อีเมลเชิญ", en: "Invite email" }, key: { th: "กุญแจ", en: "Key" },
-  provider: { th: "ผู้ให้บริการ", en: "Provider" }, model: { th: "โมเดล", en: "Model" }, enabled: { th: "เปิดใช้", en: "Enabled" }, purpose: { th: "ใช้สำหรับ", en: "Purpose" },
+expiry: { th: "อายุ key", en: "Key lifetime" },   provider: { th: "ผู้ให้บริการ", en: "Provider" }, model: { th: "โมเดล", en: "Model" }, enabled: { th: "เปิดใช้", en: "Enabled" }, purpose: { th: "ใช้สำหรับ", en: "Purpose" },
 };
 
 export interface AuditCtx {
@@ -162,6 +163,7 @@ export function describeAudit(
   if (m.note) push("note", str(m.note));
   if (m.plan) push("plan", str(m.plan));
   if (m.prefix) push("key", `${str(m.prefix)}…`);
+  if ("expires_days" in m) push("expiry", m.expires_days == null ? (lang === "en" ? "Never expires" : "ไม่หมดอายุ") : (lang === "en" ? `${str(m.expires_days)} days` : `${str(m.expires_days)} วัน`));
   if (m.provider) push("provider", str(m.provider));
   if (m.model) push("model", str(m.model));
   if (m.purpose) push("purpose", str(m.purpose));

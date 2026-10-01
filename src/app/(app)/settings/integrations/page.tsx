@@ -27,12 +27,17 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       .order("title"),
     supabase.from("tenant_notify").select("*").eq("tenant_id", session.tenantId).maybeSingle(),
   ]);
-  const [{ data: teamRows }, { data: memberRows }, intakeRes] = await Promise.all([
+  const intakeCols = "form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at";
+  const [{ data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
     supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId).order("name"),
     supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
     // ยังไม่ได้รัน migration 0034 → error → ไม่มีค่าตั้ง (แท็บ API จะแจ้งให้รัน migration ตอนบันทึก)
-    supabase.from("form_intake").select("form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at").eq("tenant_id", session.tenantId),
+    supabase.from("form_intake").select(`${intakeCols}, key_expires_at`).eq("tenant_id", session.tenantId),
   ]);
+  // ยังไม่ได้รัน migration 0042 (ไม่มีคอลัมน์วันหมดอายุ) → อ่านแบบเดิม
+  const intakeRes = intakeFirst.error
+    ? await supabase.from("form_intake").select(intakeCols).eq("tenant_id", session.tenantId)
+    : intakeFirst;
   const intake: Record<string, IntakeConfig> = {};
   for (const r of (intakeRes.data || []) as Record<string, unknown>[]) {
     const a = r.assignee as { team_id?: string; user_id?: string } | null;
@@ -43,6 +48,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       keyPrefix: (r.key_prefix as string) ?? null,
       keyCreatedAt: (r.key_created_at as string) ?? null,
       lastUsedAt: (r.last_used_at as string) ?? null,
+      keyExpiresAt: (r.key_expires_at as string) ?? null,
     };
   }
   const teams = ((teamRows || []) as { id: string; name: string }[]).map((x) => ({ id: x.id, name: x.name }));

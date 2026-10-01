@@ -38,11 +38,14 @@ async function authenticate(req: Request, formId: string, admin: Admin) {
   if (!INTAKE_API_KEY_RE.test(key) || !UUID.test(formId)) return null;
   const { data: cfg } = await admin
     .from("form_intake")
-    .select("form_id, tenant_id, enabled, field_keys, assignee")
+    .select("*")
     .eq("form_id", formId)
     .eq("key_hash", hashIntakeKey(key))
     .maybeSingle();
   if (!cfg || !cfg.enabled) return null;
+  // key หมดอายุ (null/ไม่มีคอลัมน์ = ไม่หมดอายุ)
+  const exp = (cfg as { key_expires_at?: string | null }).key_expires_at;
+  if (exp && new Date(exp).getTime() <= Date.now()) return "expired" as const;
   const { data: f } = await admin
     .from("forms")
     .select("id, tenant_id, title, icon, version, schema, requires_approval, approval_chain, status, deleted_at")
@@ -72,6 +75,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!admin) return json({ error: "server not configured" }, 500);
   const { id } = await params;
   const a = await authenticate(req, id, admin);
+  if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   const schema = await loadSchema(admin, a.f.schema, a.f.tenant_id);
   const keys = (a.cfg.field_keys as Record<string, string>) || {};
@@ -89,6 +93,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!admin) return json({ error: "server not configured" }, 500);
   const { id } = await params;
   const a = await authenticate(req, id, admin);
+  if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   if (a.f.status !== "published") return json({ error: "ฟอร์มนี้ยังไม่เผยแพร่" }, 409);
   if (await rateLimited(admin, id)) return json({ error: "ส่งถี่เกินไป (สูงสุด 120 ครั้ง/นาที)" }, 429);

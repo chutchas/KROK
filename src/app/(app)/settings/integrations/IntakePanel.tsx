@@ -4,9 +4,9 @@ import { useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { KeyRound, Copy, Check, RefreshCw, Trash2, Save } from "lucide-react";
+import { KeyRound, Copy, Check, RefreshCw, Trash2, Save, CalendarClock } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { rotateIntakeKey, revokeIntakeKey, saveIntake } from "./intake-actions";
+import { rotateIntakeKey, revokeIntakeKey, saveIntake, setIntakeKeyExpiry } from "./intake-actions";
 import type { FormOption } from "./IntegrationsClient";
 import { confirmDialog } from "@/components/dialogs";
 
@@ -18,6 +18,8 @@ export interface IntakeConfig {
   keyPrefix: string | null;
   keyCreatedAt: string | null;
   lastUsedAt: string | null;
+  /** วันหมดอายุของ key (null = ไม่หมดอายุ) */
+  keyExpiresAt?: string | null;
 }
 
 const EMPTY: IntakeConfig = { enabled: false, fieldKeys: {}, assignee: "", keyPrefix: null, keyCreatedAt: null, lastUsedAt: null };
@@ -38,6 +40,9 @@ function sampleValue(type: string): unknown {
 const noop = () => () => {};
 const useOrigin = () => useSyncExternalStore(noop, () => window.location.origin, () => "https://<โดเมนของคุณ>");
 const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
+// เวลาตอนเปิดหน้า (คงที่ทั้งรอบ) — ใช้คำนวณวันที่เหลือของ key
+let PAGE_NOW = 0;
+const useNow = () => useSyncExternalStore(noop, () => (PAGE_NOW ||= Date.now()), () => 0);
 
 const fmt = (s: string | null, lang: string) => (s ? new Date(s).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short" }) : "—");
 
@@ -60,6 +65,9 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   const [busy, setBusy] = useState<string | null>(null);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [newKey, setNewKey] = useState<{ formId: string; key: string } | null>(null);
+  // อายุ key ตอนสร้าง/ต่ออายุ — ค่าเริ่มต้น 90 วัน
+  const [expiryDays, setExpiryDays] = useState("90");
+  const now = useNow();
   const [copied, setCopied] = useState<string | null>(null);
 
   const keyOf = (fid: string) => cfg.fieldKeys[fid]?.trim() || fid;
@@ -126,10 +134,19 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   async function rotate() {
     if (saved.keyPrefix && !(await confirmDialog({ message: t("intake.rotateConfirm"), confirmLabel: t("intake.rotate") }))) return;
     setBusy("rotate"); setMsg(null);
-    const r = await rotateIntakeKey(formId);
+    const r = await rotateIntakeKey(formId, expiryDays === "never" ? null : Number(expiryDays));
     setBusy(null);
     if ("error" in r) { setMsg({ t: r.error, err: true }); return; }
     setNewKey({ formId, key: r.key });
+    router.refresh();
+  }
+
+  async function applyExpiry() {
+    setBusy("expiry"); setMsg(null);
+    const r = await setIntakeKeyExpiry(formId, expiryDays === "never" ? null : Number(expiryDays));
+    setBusy(null);
+    if ("error" in r) { setMsg({ t: r.error, err: true }); return; }
+    setMsg({ t: t("intake.expirySaved") });
     router.refresh();
   }
 
@@ -177,7 +194,23 @@ export default function IntakePanel({ forms, intake, teams, members }: {
               <span style={{ fontFamily: "monospace", fontSize: ".82rem", color: "var(--ink-2)" }}>
                 {saved.keyPrefix ? `${saved.keyPrefix}••••••••` : t("intake.noKey")}
               </span>
-              <span style={{ marginLeft: "auto", display: "flex", gap: 6 }}>
+              <span style={{ marginLeft: "auto", display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".8rem", color: "var(--ink-3)" }}>
+                  {t("intake.expiry")}
+                  <select value={expiryDays} onChange={(e) => setExpiryDays(e.target.value)} aria-label={t("intake.expiry")}
+                    style={{ ...sel, width: "auto", padding: "6px 8px", fontSize: ".82rem" }}>
+                    <option value="30">{t("intake.exp30")}</option>
+                    <option value="90">{t("intake.exp90")}</option>
+                    <option value="180">{t("intake.exp180")}</option>
+                    <option value="365">{t("intake.exp365")}</option>
+                    <option value="never">{t("intake.expNever")}</option>
+                  </select>
+                </label>
+                {saved.keyPrefix && (
+                  <Button variant="ghost" onClick={applyExpiry} loading={busy === "expiry"} style={{ fontSize: ".82rem", padding: "6px 10px" }} title={t("intake.applyExpiryHint")}>
+                    <Icon icon={CalendarClock} className="h-4 w-4" /> {t("intake.applyExpiry")}
+                  </Button>
+                )}
                 <Button onClick={rotate} loading={busy === "rotate"} style={{ fontSize: ".82rem", padding: "6px 12px" }}>
                   <Icon icon={saved.keyPrefix ? RefreshCw : KeyRound} className="h-4 w-4" /> {saved.keyPrefix ? t("intake.rotate") : t("intake.createKey")}
                 </Button>
@@ -191,6 +224,18 @@ export default function IntakePanel({ forms, intake, teams, members }: {
             {saved.keyPrefix && (
               <div style={{ fontSize: ".76rem", color: "var(--ink-3)", marginTop: 6 }}>
                 {t("intake.keyCreated")} {mounted ? fmt(saved.keyCreatedAt, lang) : "…"} · {t("intake.lastUsed")} {mounted ? fmt(saved.lastUsedAt, lang) : "…"}
+                {" · "}
+                {(() => {
+                  if (!saved.keyExpiresAt) return <span>{t("intake.expiresNever")}</span>;
+                  if (!mounted) return <span>…</span>;
+                  const left = Math.ceil((new Date(saved.keyExpiresAt).getTime() - now) / 86400_000);
+                  const color = left <= 0 ? "var(--fail)" : left <= 14 ? "var(--amber)" : undefined;
+                  return (
+                    <span style={{ color, fontWeight: color ? 600 : undefined }}>
+                      {left <= 0 ? t("intake.expired") : `${t("intake.expiresAt")} ${fmt(saved.keyExpiresAt, lang)}${left <= 14 ? ` (${t("intake.daysLeft").replace("{n}", String(left))})` : ""}`}
+                    </span>
+                  );
+                })()}
               </div>
             )}
             {newKey?.formId === formId && (
