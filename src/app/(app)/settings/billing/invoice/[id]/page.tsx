@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
+import { getEffectivePlans } from "@/lib/plans-server";
 import PrintButton from "@/app/(app)/submission/[id]/PrintButton";
 import { T } from "@/i18n/T";
 
@@ -31,7 +32,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
     .maybeSingle();
   if (!data) notFound();
 
-  const plan = getPlan(data.plan as string);
+  const plan = getPlan(data.plan as string, await getEffectivePlans());
   const amount = (data.amount as number) ?? 0;
   const demo = data.status === "demo";
 

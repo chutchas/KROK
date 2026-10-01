@@ -6,6 +6,7 @@ import { testWebhook, type WebhookEvent } from "@/lib/webhooks";
 import { sendLine, sendEmail } from "@/lib/notify";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { smtpHostShapeOk, smtpPortAllowed, SMTP_PORTS } from "@/lib/notify-utils";
+import { gateWebhookAdd, gateNotify } from "@/lib/quota";
 
 // ความลับ (LINE token / SMTP password / webhook secret) อ่าน-เขียนผ่าน service role เท่านั้น (migration 0043 ปิด REST)
 // ทุก action ตรวจ session + สิทธิ์ผู้จัดการ และผูก tenant_id เองก่อนเสมอ
@@ -57,6 +58,8 @@ export async function createWebhook(
   if (!admin) return { error: NO_ADMIN };
   const supabase = await createClient();
 
+  const gate = await gateWebhookAdd(session.tenantId);
+  if (gate) return { error: gate };
   const form_id = await ownForm(supabase, session.tenantId, formId);
   if (form_id === false) return { error: "ไม่พบฟอร์มที่เลือก" };
   const fieldIds = cleanFields(fields);
@@ -207,9 +210,14 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
   // อ่านของเดิมเพื่อคงค่า secret ถ้าผู้ใช้ไม่ได้กรอกใหม่
   const { data: cur } = await admin
     .from("tenant_notify")
-    .select("line_token, smtp_pass")
+    .select("line_token, smtp_pass, line_enabled, email_enabled")
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
+
+  // แพ็กเกจ: เปิดช่องทางใหม่ต้องมีสิทธิ์แจ้งเตือน (ที่เปิดอยู่แล้วใช้ต่อได้)
+  const turningOn = (!!input.line_enabled && !cur?.line_enabled) || (!!input.email_enabled && !cur?.email_enabled);
+  const gate = await gateNotify(session.tenantId, turningOn);
+  if (gate) return { error: gate };
 
   const to = (input.email_to || [])
     .map((s) => String(s).trim())

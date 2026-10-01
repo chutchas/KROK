@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import HistoryClient, { type PlanEvent, type InvoiceRow } from "./HistoryClient";
+import { getEffectivePlans } from "@/lib/plans-server";
 
 export const dynamic = "force-dynamic";
 
@@ -45,5 +46,5 @@ export default async function BillingHistoryPage() {
     issuedAt: r.issued_at as string,
   }));
 
-  return <HistoryClient events={events} invoices={invoices} />;
+  return <HistoryClient events={events} invoices={invoices} plans={await getEffectivePlans()} />;
 }

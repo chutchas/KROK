@@ -34,3 +34,54 @@ describe("effectivePlans", () => {
     expect(p.pro.priceLabel).toBe("฿0 / เดือน");
   });
 });
+
+import { normalizeCatalog, toStored, planFeatures, getPlan, catalogRecord, cleanPlan, blankPlan, DEFAULT_PLANS } from "./plans";
+
+describe("plan catalog v2", () => {
+  it("รองรับแพ็กเกจที่สร้างเพิ่ม + เรียงตาม sort + เติมแพ็กเกจตั้งต้นที่หาย", () => {
+    const list = normalizeCatalog({ v: 2, catalog: [
+      { key: "starter", name: "สตาร์ท", priceThb: 490, sort: 15, visible: true, maxForms: 10 },
+      { key: "free", sort: 10 },
+    ] });
+    expect(list.map((p) => p.key)).toEqual(["free", "starter", "pro", "business"]);
+    const s = list.find((p) => p.key === "starter")!;
+    expect(s.maxForms).toBe(10);
+    expect(s.priceLabel).toContain("490");
+    expect(s.builtin).toBe(false);
+    // ค่าที่ไม่ได้ตั้ง = ค่าของ Pro (blankPlan)
+    expect(s.maxMembers).toBe(DEFAULT_PLANS[1].maxMembers);
+  });
+
+  it("free แสดงเสมอ · key ไม่ถูกต้อง/ซ้ำถูกตัด", () => {
+    const list = normalizeCatalog({ v: 2, catalog: [{ key: "free", visible: false }, { key: "Bad Key" }, { key: "pro", priceThb: 1 }, { key: "pro", priceThb: 2 }] });
+    expect(list.find((p) => p.key === "free")!.visible).toBe(true);
+    expect(list.some((p) => p.key === "Bad Key")).toBe(false);
+    expect(list.find((p) => p.key === "pro")!.priceThb).toBe(1);
+  });
+
+  it("toStored → normalize ได้ค่าเดิม", () => {
+    const a = normalizeCatalog({ v: 2, catalog: [{ key: "ent", name: "Enterprise", visible: false, notify: true, extras: ["SLA"], sort: 40 }] });
+    const b = normalizeCatalog(toStored(a));
+    expect(b).toEqual(a);
+  });
+
+  it("key ที่ถูกลบ = free", () => {
+    const rec = catalogRecord(normalizeCatalog({}));
+    expect(getPlan("gone", rec).key).toBe("free");
+  });
+
+  it("ลิมิตตัวเลขถูกบีบ ≥0 และไม่เกิน UNLIMITED", () => {
+    const p = cleanPlan({ maxWebhooks: -1, storageMb: 1e12, workflow: "yes" }, blankPlan("x"));
+    expect(p.maxWebhooks).toBe(blankPlan("x").maxWebhooks);
+    expect(p.storageMb).toBe(UNLIMITED);
+    expect(p.workflow).toBe(blankPlan("x").workflow);
+  });
+
+  it("planFeatures: ฟีเจอร์ที่ไม่มีถูกทำเครื่องหมาย off · extras ต่อท้าย", () => {
+    const free = planFeatures({ ...DEFAULT_PLANS[0], extras: ["ซัพพอร์ตทางอีเมล"] }, false);
+    expect(free.find((f) => f.text.includes("Webhook"))!.off).toBe(true);
+    expect(free.at(-1)!.text).toBe("ซัพพอร์ตทางอีเมล");
+    const pro = planFeatures(DEFAULT_PLANS[1], true);
+    expect(pro.find((f) => f.text.includes("webhook"))!.off).toBeFalsy();
+  });
+});

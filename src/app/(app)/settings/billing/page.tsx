@@ -1,7 +1,7 @@
 import { enforceMenu } from "@/lib/session";
 import { getQuotaSnapshot } from "@/lib/quota";
 import { getEnabledPaymentMethods } from "@/lib/payments-server";
-import { getEffectivePlans } from "@/lib/plans-server";
+import { getPlanCatalog } from "@/lib/plans-server";
 import BillingClient from "./BillingClient";
 
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ export default async function BillingPage() {
   const [snap, payMethods, plans] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     getEnabledPaymentMethods(),
-    getEffectivePlans(),
+    getPlanCatalog(),
   ]);
 
   return (
@@ -25,9 +25,16 @@ export default async function BillingPage() {
         members: snap.membersUsed,
         ai: snap.aiByPurpose,
         period: snap.period,
+        submissions: snap.submissionsMonth,
+        storageMb: Math.round(snap.storageBytes / 1048576),
+        datasets: snap.datasets,
+        webhooks: snap.webhooks,
+        intakeForms: snap.intakeForms,
+        devices: snap.devices,
       }}
+      current={snap.plan}
       payMethods={payMethods}
-      plans={plans}
+      plans={plans.filter((p) => p.visible || p.key === snap.plan.key)}
     />
   );
 }

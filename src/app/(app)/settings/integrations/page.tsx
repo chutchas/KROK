@@ -5,6 +5,7 @@ import { Notice } from "@/components/ui";
 import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySettings } from "./IntegrationsClient";
 import type { IntakeConfig } from "./IntakePanel";
 import { T } from "@/i18n/T";
+import { getTenantPlan } from "@/lib/quota";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +16,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     return <div style={{ color: "var(--ink-2)" }}><T k="intg.manageOnly" /></div>;
 
   const supabase = await createClient();
+  const plan = await getTenantPlan(session.tenantId);
   // webhooks + tenant_notify มีความลับ → อ่านด้วย service role (ผูก tenant เอง) · REST ถูกปิดใน 0043
   const admin = getAdminClient();
   const none = Promise.resolve({ data: null });
@@ -109,6 +111,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   return (<>
     {!admin && <Notice kind="error"><T k="intg.noServiceKey" /></Notice>}
     <IntegrationsClient
+      plan={{ name: plan.name, nameEn: plan.nameEn, notify: plan.notify, maxWebhooks: plan.maxWebhooks, maxIntakeForms: plan.maxIntakeForms }}
       webhooks={webhooks} forms={forms} notify={notify} intake={intake} teams={teams} members={members}
       initialTab={tab === "webhooks" || tab === "intake" ? tab : "notify"}
     />

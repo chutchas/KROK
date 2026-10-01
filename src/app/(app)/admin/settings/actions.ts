@@ -1,9 +1,9 @@
 "use server";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
-import { AI_PURPOSES } from "@/lib/ai-purpose";
 import { PAYMENT_PROVIDERS, PAYMENT_PROVIDER_IDS, type PaymentProviderId } from "@/lib/payment-meta";
-import { PLAN_ORDER, type PlanKey, type PlanOverrides } from "@/lib/plans";
+import { revalidatePath } from "next/cache";
+import { PLANS, PLAN_KEY_RE, BUILTIN_KEYS, cleanPlan, blankPlan, normalizeCatalog, toStored, type Plan } from "@/lib/plans";
 
 export interface SavePaymentInput {
   provider: PaymentProviderId;
@@ -80,52 +80,47 @@ export async function savePaymentProvider(
   return { ok: true };
 }
 
-// ---- แผน & ราคา (override ระดับแพลตฟอร์ม) ----
-const FIELDS = ["priceThb", "maxForms", "aiCreditsPerMonth", "maxMembers", "maxWorkspaces"] as const;
+// ---- แคตตาล็อกแพ็กเกจ (สร้าง/แก้/ซ่อน/เรียง/ลบ) ----
 
-export async function savePlanSettings(
-  input: PlanOverrides
-): Promise<{ ok: true } | { error: string }> {
+/**
+ * บันทึกแคตตาล็อกทั้งชุด — เฉพาะ Platform Admin / Developer
+ * - แพ็กเกจตั้งต้น (free/pro/business) ลบไม่ได้ · free แสดงเสมอ
+ * - ลบแพ็กเกจที่ยังมี workspace ใช้อยู่ไม่ได้ (ให้ซ่อนแทน)
+ * มีผลทันทีกับหน้าแผน/โควตา หน้า home และการบังคับโควตา (DB อ่านชุดเดียวกัน)
+ */
+export async function savePlanCatalog(input: unknown[]): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!session.isPlatformAdmin && session.platformRole !== "developer")
     return { error: "เฉพาะ Platform Admin / Developer เท่านั้น" };
-
   const admin = getAdminClient();
   if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
+  if (!Array.isArray(input) || input.length > 30) return { error: "ข้อมูลแพ็กเกจไม่ถูกต้อง" };
 
-  // ทำความสะอาด: เก็บเฉพาะ plan key + field ที่รู้จัก, ค่าเป็นจำนวนเต็ม ≥ 0
-  const clean: PlanOverrides = {};
-  for (const k of PLAN_ORDER) {
-    const raw = (input as Record<string, unknown>)[k];
-    if (!raw || typeof raw !== "object") continue;
-    const o = raw as Record<string, unknown>;
-    const entry: Record<string, number | string | Record<string, number>> = {};
-    for (const f of FIELDS) {
-      const v = o[f];
-      if (typeof v === "number" && Number.isFinite(v) && v >= 0) entry[f] = Math.floor(v);
-    }
-    // โควตา AI แยกต่อ purpose
-    const rawCredits = o.aiCredits;
-    if (rawCredits && typeof rawCredits === "object") {
-      const credits: Record<string, number> = {};
-      for (const purpose of AI_PURPOSES) {
-        const v = (rawCredits as Record<string, unknown>)[purpose];
-        if (typeof v === "number" && Number.isFinite(v) && v >= 0) credits[purpose] = Math.floor(v);
-      }
-      if (Object.keys(credits).length) (entry as Record<string, unknown>).aiCredits = credits;
-    }
+  const seen = new Set<string>();
+  const list: Plan[] = [];
+  for (const raw of input) {
+    const key = (raw as { key?: unknown } | null)?.key;
+    if (typeof key !== "string" || !PLAN_KEY_RE.test(key)) return { error: `รหัสแพ็กเกจ "${String(key)}" ไม่ถูกต้อง (a-z, 0-9, -, _ ยาว 2–30 ตัว ขึ้นต้นด้วยตัวอักษร)` };
+    if (seen.has(key)) return { error: `รหัสแพ็กเกจ "${key}" ซ้ำ` };
+    seen.add(key);
+    const p = cleanPlan(raw, PLANS[key] ?? blankPlan(key));
+    if (!p.name.trim()) return { error: `ตั้งชื่อแพ็กเกจ "${key}" ก่อน` };
+    list.push(p);
+  }
+  for (const k of BUILTIN_KEYS) if (!seen.has(k)) return { error: `ลบแพ็กเกจตั้งต้น "${k}" ไม่ได้ (ซ่อนได้ ยกเว้น free)` };
 
-    // ชื่อแพ็กเกจ (ตัวเลือก) — เก็บเป็น string สั้นๆ
-    for (const nf of ["name", "nameEn"] as const) {
-      const v = o[nf];
-      if (typeof v === "string" && v.trim()) entry[nf] = v.trim().slice(0, 40);
-    }
-    if (Object.keys(entry).length) clean[k as PlanKey] = entry as PlanOverrides[PlanKey];
+  // กันลบแพ็กเกจที่ยังมีลูกค้าใช้
+  const { data: cur } = await admin.from("platform_plan_settings").select("plans").eq("id", true).maybeSingle();
+  const removed = normalizeCatalog(cur?.plans).map((p) => p.key).filter((k) => !seen.has(k));
+  if (removed.length) {
+    const { count } = await admin.from("tenants").select("id", { count: "exact", head: true }).in("plan", removed);
+    if ((count ?? 0) > 0) return { error: `ยังมี ${count} workspace ใช้แพ็กเกจ ${removed.join(", ")} อยู่ — ซ่อนแพ็กเกจแทนการลบ หรือย้าย workspace ก่อน` };
   }
 
+  const normalized = normalizeCatalog(toStored(list));
   const { error } = await admin.from("platform_plan_settings").upsert(
-    { id: true, plans: clean, updated_by: session.userId, updated_at: new Date().toISOString() },
+    { id: true, plans: toStored(normalized), updated_by: session.userId, updated_at: new Date().toISOString() },
     { onConflict: "id" }
   );
   if (error) return { error: error.message };
@@ -135,8 +130,20 @@ export async function savePlanSettings(
     actor_id: session.userId,
     action: "platform.plans.update",
     target_type: "platform_plan_settings",
-    meta: { plans: Object.keys(clean) },
+    meta: { plans: normalized.map((p) => p.key), removed },
   });
-
+  revalidatePath("/", "layout");
   return { ok: true };
+}
+
+/** จำนวน workspace ต่อแพ็กเกจ (แสดงในหน้าแอดมิน) */
+export async function planTenantCounts(): Promise<Record<string, number>> {
+  const session = await getSession();
+  if (!session || (!session.isPlatformAdmin && session.platformRole !== "developer")) return {};
+  const admin = getAdminClient();
+  if (!admin) return {};
+  const { data } = await admin.from("tenants").select("plan").limit(100000);
+  const out: Record<string, number> = {};
+  for (const r of (data || []) as { plan: string | null }[]) out[r.plan || "free"] = (out[r.plan || "free"] ?? 0) + 1;
+  return out;
 }

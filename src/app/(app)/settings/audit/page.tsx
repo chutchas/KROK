@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import AuditClient, { type AuditRow } from "./AuditClient";
+import { getTenantPlan } from "@/lib/quota";
+import { daysAgoIso } from "@/lib/quota-msg";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +14,15 @@ export default async function AuditPage() {
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับผู้ดูแล workspace เท่านั้น</div>;
 
   const supabase = await createClient();
+  // แสดงย้อนหลังตามแพ็กเกจ (auditDays) — ข้อมูลเก่ากว่านั้นยังเก็บอยู่ อัปเกรดแล้วเห็นได้
+  const plan = await getTenantPlan(session.tenantId);
+  const since = daysAgoIso(plan.auditDays);
   const [{ data: logs }, { data: members }] = await Promise.all([
     supabase
       .from("audit_log")
       .select("id, actor_id, action, target_type, target_id, meta, created_at")
       .eq("tenant_id", session.tenantId)
+      .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(300),
     supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
@@ -64,5 +70,5 @@ export default async function AuditPage() {
     formName: typeof l.meta?.form_id === "string" ? forms.get(l.meta.form_id) : undefined,
   }));
 
-  return <AuditClient rows={rows} roleNames={roleNames} />;
+  return <AuditClient rows={rows} roleNames={roleNames} days={plan.auditDays} />;
 }

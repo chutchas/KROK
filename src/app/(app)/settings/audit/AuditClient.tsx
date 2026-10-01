@@ -21,8 +21,8 @@ export interface AuditRow {
   formName?: string;
 }
 
-export default function AuditClient({ rows, roleNames }: { rows: AuditRow[]; roleNames: Record<string, string> }) {
-  const { t, lang } = useT();
+export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[]; roleNames: Record<string, string>; days?: number }) {
+  const { t, tt, lang } = useT();
   const [q, setQ] = useState("");
   const [action, setAction] = useState("all");
 
@@ -60,6 +60,7 @@ export default function AuditClient({ rows, roleNames }: { rows: AuditRow[]; rol
           <Icon icon={ScrollText} className="h-6 w-6" /> {t("audit.title")}
         </h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("audit.sub")}</p>
+        {days != null && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "2px 0 0" }}>{tt("audit.retention", { n: days })}</p>}
       </div>
 
       <Card>

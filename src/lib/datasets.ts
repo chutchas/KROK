@@ -55,7 +55,8 @@ export interface PullConfig {
 
 // ---- ขีดจำกัด ----
 export const MAX_DATASETS_PER_TENANT = 50;
-export const MAX_DATASET_ROWS = 20000;
+/** เพดานสูงสุดของระบบ (แถวต่อถัง) — ลิมิตจริงต่อ workspace ตามแพ็กเกจ (maxDatasetRows) ซึ่งต่ำกว่านี้ */
+export const MAX_DATASET_ROWS = 200000;
 export const MAX_DATASET_COLUMNS = 40;
 export const MAX_CELL_CHARS = 500;
 /** แถวต่อการเรียก RPC หนึ่งครั้ง (RPC รับได้สูงสุด 5000) */

@@ -6,6 +6,7 @@ import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema } from "@/lib/form-schema";
 import { validateFieldKeys } from "@/lib/intake";
 import { newIntakeKey } from "@/lib/intake-server";
+import { gateIntakeEnable } from "@/lib/quota";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -62,6 +63,14 @@ export async function saveIntake(
     const { data } = await supabase.from("memberships").select("user_id").eq("user_id", a.slice(2)).eq("tenant_id", session.tenantId).maybeSingle();
     if (!data) return { error: "ไม่พบสมาชิกนี้" };
     assignee = { user_id: a.slice(2) };
+  }
+
+  if (input.enabled) {
+    const { data: prev } = await supabase.from("form_intake").select("enabled").eq("form_id", formId).maybeSingle();
+    if (!prev?.enabled) {
+      const gate = await gateIntakeEnable(session.tenantId, formId);
+      if (gate) return { error: gate };
+    }
   }
 
   const { error } = await supabase.from("form_intake").upsert({

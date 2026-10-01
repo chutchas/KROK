@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getPaymentSettingsForAdmin } from "@/lib/payments-server";
-import { getEffectivePlans } from "@/lib/plans-server";
+import { getPlanCatalog } from "@/lib/plans-server";
+import { planTenantCounts } from "./actions";
 import type { AiProfiles, AiSettings } from "../ai/AdminAiClient";
 import { AI_PURPOSES } from "@/lib/ai-purpose";
 import SystemSettingsClient from "./SystemSettingsClient";
@@ -75,7 +76,7 @@ export default async function SystemSettingsPage() {
   const { configured: payConfigured, views: payViews } = await getPaymentSettingsForAdmin();
 
   // ---- Plan settings (ราคา/โควตา) ----
-  const plans = await getEffectivePlans();
+  const [plans, tenantCounts] = await Promise.all([getPlanCatalog(), planTenantCounts()]);
 
   return (
     <SystemSettingsClient
@@ -85,6 +86,7 @@ export default async function SystemSettingsPage() {
       payConfigured={payConfigured}
       plans={plans}
       plansConfigured={!!admin}
+      tenantCounts={tenantCounts}
     />
   );
 }

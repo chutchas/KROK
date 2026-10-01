@@ -5,7 +5,8 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema, countFields, type FormSchema } from "@/lib/form-schema";
 import { sanitizeChain } from "@/lib/approval";
-import { canAddForm } from "@/lib/quota";
+import { canAddForm, gateApprovalSteps, gateWorkflow } from "@/lib/quota";
+import { isWorkflowSchema } from "@/lib/case-flow";
 import { fmtLimit } from "@/lib/plans";
 
 async function audit(
@@ -141,6 +142,9 @@ export async function saveForm(
   const chain = requiresApproval ? sanitizeChain(rawChain) : [];
   const vis = sanitizeVisibility(rawVisibility);
 
+  const gate = (await gateApprovalSteps(session.tenantId, chain.length)) ?? (await gateWorkflow(session.tenantId, isWorkflowSchema(schema)));
+  if (gate) return { error: gate };
+
   const quota = await canAddForm(session.tenantId);
   if (!quota.ok)
     return { error: `แผนปัจจุบันสร้างฟอร์มได้สูงสุด ${fmtLimit(quota.max)} ฟอร์ม (ใช้ไป ${quota.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา” เพื่อเพิ่มโควตา` };
@@ -207,7 +211,13 @@ export async function updateForm(
 
   const supabase = await createClient();
   // ชื่อ/ไอคอนเดิม — ใช้ตัดสินว่าต้องซิงก์ไป submissions เก่าไหม
-  const { data: before } = await supabase.from("forms").select("title, icon").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+  const { data: before } = await supabase.from("forms").select("title, icon, approval_chain, schema").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+  // แพ็กเกจ: เพิ่มขั้นอนุมัติเกินลิมิต / เปิดกรอกหลายคนใหม่ ไม่ได้ (ของเดิมที่มีอยู่แล้วคงไว้ได้)
+  let wasWf = false;
+  try { wasWf = !!before?.schema && isWorkflowSchema(sanitizeSchema(before.schema)); } catch { /* schema เดิมเสีย */ }
+  const prevSteps = Array.isArray(before?.approval_chain) ? (before.approval_chain as unknown[]).length : 0;
+  const gate = (await gateApprovalSteps(session.tenantId, chain.length, prevSteps)) ?? (await gateWorkflow(session.tenantId, isWorkflowSchema(schema), wasWf));
+  if (gate) return { error: gate };
   const { data, error } = await supabase
     .from("forms")
     .update({

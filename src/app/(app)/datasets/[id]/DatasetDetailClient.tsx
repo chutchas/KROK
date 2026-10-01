@@ -41,6 +41,7 @@ export default function DatasetDetailClient({
   runs,
   usedBy,
   canEdit,
+  maxRows,
 }: {
   ds: DatasetMeta;
   rows: DatasetRecord[];
@@ -48,6 +49,8 @@ export default function DatasetDetailClient({
   runs: SyncRun[];
   usedBy: { id: string; title: string; icon: string; columns: string[] }[];
   canEdit: boolean;
+  /** แถวต่อถังสูงสุดตามแพ็กเกจ */
+  maxRows: number;
 }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
@@ -114,9 +117,9 @@ export default function DatasetDetailClient({
       {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
 
       {/* ---------- แหล่งข้อมูล ---------- */}
-      {canEdit && ds.sourceKind === "file" && <FileImportPanel ds={ds} onDone={() => router.refresh()} />}
+      {canEdit && ds.sourceKind === "file" && <FileImportPanel ds={ds} maxRows={maxRows} onDone={() => router.refresh()} />}
       {canEdit && ds.sourceKind === "api_pull" && <PullPanel ds={ds} usedCols={usedCols} onDone={() => router.refresh()} />}
-      {canEdit && ds.sourceKind === "api_push" && <PushPanel ds={ds} />}
+      {canEdit && ds.sourceKind === "api_push" && <PushPanel ds={ds} maxRows={maxRows} />}
 
       {/* ---------- คอลัมน์และการตั้งค่า ---------- */}
       <Card>

@@ -17,7 +17,7 @@ const codeBox: React.CSSProperties = {
 
 const noopSubscribe = () => () => {};
 
-export default function PushPanel({ ds }: { ds: DatasetMeta }) {
+export default function PushPanel({ ds, maxRows = MAX_DATASET_ROWS }: { ds: DatasetMeta; maxRows?: number }) {
   const { t, tt } = useT();
   const router = useRouter();
   const origin = useSyncExternalStore(noopSubscribe, () => window.location.origin, () => "https://<โดเมน KROK>");
@@ -98,7 +98,7 @@ export default function PushPanel({ ds }: { ds: DatasetMeta }) {
       <label style={label}>{t("ds.push.example")}</label>
       <pre style={codeBox}>{curl}</pre>
       <ul style={{ fontSize: ".8rem", color: "var(--ink-2)", paddingLeft: 18, margin: "10px 0 0", lineHeight: 1.7 }}>
-        <li><code>mode: &quot;upsert&quot;</code>{t("ds.push.tipUpsert")}<code>&quot;replace&quot;</code>{tt("ds.push.tipReplace", { n: MAX_DATASET_ROWS.toLocaleString() })}</li>
+        <li><code>mode: &quot;upsert&quot;</code>{t("ds.push.tipUpsert")}<code>&quot;replace&quot;</code>{tt("ds.push.tipReplace", { n: maxRows.toLocaleString() })}</li>
         <li>{t("ds.push.tipDelete1")}<code>&quot;delete_keys&quot;: [&quot;C001&quot;]</code>{t("ds.push.tipDelete2")}</li>
         <li>{t("ds.push.tipProps")}</li>
         <li>{t("ds.push.tipLimit1")}<code>GET</code>{t("ds.push.tipLimit2")}</li>

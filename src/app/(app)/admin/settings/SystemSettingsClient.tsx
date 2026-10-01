@@ -6,7 +6,7 @@ import AdminAiClient, { type AiProfiles } from "../ai/AdminAiClient";
 import PaymentClient from "./PaymentClient";
 import PlanClient from "./PlanClient";
 import type { ProviderClientView, PaymentProviderId } from "@/lib/payment-meta";
-import type { Plan, PlanKey } from "@/lib/plans";
+import type { Plan } from "@/lib/plans";
 
 type Tab = "ai" | "payment" | "plans";
 
@@ -17,12 +17,14 @@ export default function SystemSettingsClient({
   payConfigured,
   plans,
   plansConfigured,
+  tenantCounts,
 }: {
   aiProfiles: AiProfiles;
   aiConfigured: boolean;
   payViews: Record<PaymentProviderId, ProviderClientView>;
   payConfigured: boolean;
-  plans: Record<PlanKey, Plan>;
+  plans: Plan[];
+  tenantCounts?: Record<string, number>;
   plansConfigured: boolean;
 }) {
   const [tab, setTab] = useState<Tab>("ai");
@@ -72,7 +74,7 @@ export default function SystemSettingsClient({
         <PaymentClient views={payViews} configured={payConfigured} />
       </div>
       <div hidden={tab !== "plans"}>
-        <PlanClient plans={plans} configured={plansConfigured} />
+        <PlanClient plans={plans} configured={plansConfigured} tenantCounts={tenantCounts} />
       </div>
     </div>
   );

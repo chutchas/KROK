@@ -40,6 +40,7 @@ import {
 } from "@/lib/device-client";
 import { registerDevice } from "@/app/(app)/settings/devices/actions";
 import { confirmDialog } from "@/components/dialogs";
+import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
 
 type TableRow = Record<string, string>;
 /** รูปถ่ายต่อแถวของตาราง: key → dataURL (เก็บรวมกับรูปของฟิลด์ใน state photos) */
@@ -696,7 +697,8 @@ export default function FillWizard(props: Props) {
       if (wf) {
         if (!kase) throw new Error(t("fw.caseNotFound"));
         if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error(t("fw.offlineFinalStep"));
-        await pushSubmission(supabase, payload);
+        try { await pushSubmission(supabase, payload); }
+        catch (err) { throw new Error(cleanQuotaMessage(String((err as { message?: string })?.message ?? err))); }
         const r = await completeCaseAction(kase.id, subId);
         void notifySubmission(subId).catch(() => {});
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: false, caseWarn: "error" in r ? r.error : undefined });
@@ -718,7 +720,9 @@ export default function FillWizard(props: Props) {
 
       try {
         await pushSubmission(supabase, payload);
-      } catch {
+      } catch (err) {
+        // เกินโควตาแพ็กเกจ → แจ้งผู้ใช้ตรง ๆ (เข้าคิวไปก็ส่งไม่ผ่านอยู่ดี)
+        if (isQuotaError(err)) throw new Error(cleanQuotaMessage(String((err as { message?: string }).message)));
         // ส่งไม่ผ่าน (เครือข่ายหลุด) → เก็บเข้าคิวออฟไลน์
         await enqueue({ ...payload, queuedAt: Date.now() });
         window.dispatchEvent(new Event("krok-queue-changed"));

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getSession, canManage } from "@/lib/session";
+import { getTenantPlan } from "@/lib/quota";
 import { createClient } from "@/lib/supabase/server";
 import {
   DATASET_SELECT,
@@ -97,6 +98,7 @@ export async function POST(req: Request) {
   const { table } = parsed;
   if (table.columns.length === 0) return NextResponse.json({ error: "ไม่พบหัวคอลัมน์ในแถวแรก" }, { status: 400 });
 
+  const maxRows = Math.min((await getTenantPlan(session.tenantId)).maxDatasetRows, MAX_DATASET_ROWS);
   const mapping = ds.columns.length ? matchColumns(table.columns, ds.columns) : table.columns.map((c) => c.key);
 
   if (action === "preview") {
@@ -106,14 +108,14 @@ export async function POST(req: Request) {
       columns: table.columns,
       mapping,
       total: table.totalRows,
-      tooMany: table.totalRows > MAX_DATASET_ROWS,
+      tooMany: table.totalRows > maxRows,
       sample: table.records.slice(0, 20),
     });
   }
 
   // ---------- import ----------
-  if (table.totalRows > MAX_DATASET_ROWS)
-    return NextResponse.json({ error: `ไฟล์มี ${table.totalRows.toLocaleString()} แถว เกินลิมิต ${MAX_DATASET_ROWS.toLocaleString()}` }, { status: 400 });
+  if (table.totalRows > maxRows)
+    return NextResponse.json({ error: `ไฟล์มี ${table.totalRows.toLocaleString()} แถว เกินที่แพ็กเกจรองรับ (สูงสุด ${maxRows.toLocaleString()} แถวต่อถัง)` }, { status: 400 });
 
   const mode = fd.get("mode") === "upsert" ? "upsert" : "replace";
   let columns: DatasetColumn[];

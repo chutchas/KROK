@@ -18,6 +18,7 @@ import Security from "./landing/Security";
 import Pricing from "./landing/Pricing";
 import { Faq, FinalCta } from "./landing/Closing";
 import "./landing.css";
+import type { Plan } from "@/lib/plans";
 
 const NAV: { href: string; k: MessageKey }[] = [
   { href: "#how", k: "lp.nav.how" },
@@ -27,7 +28,7 @@ const NAV: { href: string; k: MessageKey }[] = [
   { href: "#pricing", k: "lp.nav.pricing" },
 ];
 
-export default function HomeClient() {
+export default function HomeClient({ plans }: { plans?: Plan[] }) {
   const { t } = useT();
   const sp = useSearchParams();
   // มาจากลิงก์เชิญ / ลิงก์ยืนยันอีเมล → เปิดหน้าต่างเข้าสู่ระบบทันที
@@ -84,7 +85,7 @@ export default function HomeClient() {
         <Capabilities />
         <UseCases />
         <Security />
-        <Pricing onLogin={openLogin} />
+        <Pricing onLogin={openLogin} plans={plans} />
         <Faq />
         <FinalCta onLogin={openLogin} />
       </main>

@@ -189,7 +189,11 @@ export async function writeRecords(
 
 function friendly(msg: string): string {
   if (msg.includes("changed during import")) return "มีการนำเข้าอื่นเสร็จก่อนระหว่างนี้ — ลองใหม่อีกครั้ง";
-  if (msg.includes("row limit exceeded")) return `dataset เกินลิมิต ${MAX_DATASET_ROWS.toLocaleString()} แถว`;
+  if (msg.includes("row limit exceeded")) {
+    const m = msg.match(/max (\d+)/);
+    return `จำนวนแถวเกินที่แพ็กเกจรองรับ${m ? ` (สูงสุด ${Number(m[1]).toLocaleString()} แถวต่อถัง)` : ""} — อัปเกรดแพ็กเกจเพื่อเพิ่มโควตา`;
+  }
+  if (msg.includes("[quota:")) return msg.replace(/\s*\[quota:[a-z_]+\]\s*$/, "");
   if (msg.includes("forbidden")) return "ไม่มีสิทธิ์แก้ไขถังข้อมูลนี้";
   return msg;
 }

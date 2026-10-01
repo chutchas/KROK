@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { DATASET_SELECT, rowToMeta, type DatasetRecord } from "@/lib/datasets";
 import { formsUsingDataset } from "@/lib/datasets-server";
 import DatasetDetailClient, { type SyncRun } from "./DatasetDetailClient";
+import { getTenantPlan } from "@/lib/quota";
+import { MAX_DATASET_ROWS } from "@/lib/datasets";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +25,7 @@ export default async function DatasetDetailPage({ params }: { params: Promise<{ 
   if (!row) notFound();
   const ds = rowToMeta(row as Record<string, unknown>);
 
-  const [{ data: rows }, { data: runs }, usedBy] = await Promise.all([
+  const [{ data: rows }, { data: runs }, usedBy, plan] = await Promise.all([
     supabase
       .from("dataset_rows")
       .select("data")
@@ -38,6 +40,7 @@ export default async function DatasetDetailPage({ params }: { params: Promise<{ 
       .order("created_at", { ascending: false })
       .limit(15),
     formsUsingDataset(supabase, session.tenantId, id),
+    getTenantPlan(session.tenantId),
   ]);
 
   return (
@@ -48,6 +51,7 @@ export default async function DatasetDetailPage({ params }: { params: Promise<{ 
       runs={(runs || []) as SyncRun[]}
       usedBy={usedBy}
       canEdit={canManage(session.role)}
+      maxRows={Math.min(plan.maxDatasetRows, MAX_DATASET_ROWS)}
     />
   );
 }

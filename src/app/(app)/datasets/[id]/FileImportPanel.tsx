@@ -17,7 +17,7 @@ interface Preview {
   sample: DatasetRecord[];
 }
 
-export default function FileImportPanel({ ds, onDone }: { ds: DatasetMeta; onDone: () => void }) {
+export default function FileImportPanel({ ds, onDone, maxRows = MAX_DATASET_ROWS }: { ds: DatasetMeta; onDone: () => void; maxRows?: number }) {
   const { t, tt } = useT();
   const inputRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -98,7 +98,7 @@ export default function FileImportPanel({ ds, onDone }: { ds: DatasetMeta; onDon
         <Icon icon={FileSpreadsheet} className="h-4 w-4" /> {t("ds.file.title")}
       </b>
       <p style={{ fontSize: ".82rem", color: "var(--ink-2)", margin: "4px 0 10px" }}>
-        {tt("ds.file.hint", { n: MAX_DATASET_ROWS.toLocaleString() })}
+        {tt("ds.file.hint", { n: maxRows.toLocaleString() })}
         {!first && t("ds.file.hintMatch")}
       </p>
 
@@ -136,7 +136,7 @@ export default function FileImportPanel({ ds, onDone }: { ds: DatasetMeta; onDon
             {t("ds.file.found")}<b>{preview.total.toLocaleString()}</b>{tt("ds.file.foundRest", { cols: preview.columns.length })}
             {!first && <>{tt("ds.file.matched", { n: matched })}</>}
           </p>
-          {preview.tooMany && <Notice kind="error">{tt("ds.file.tooMany", { n: MAX_DATASET_ROWS.toLocaleString() })}</Notice>}
+          {preview.tooMany && <Notice kind="error">{tt("ds.file.tooMany", { n: maxRows.toLocaleString() })}</Notice>}
 
           {first ? (
             <div style={tableWrap}>

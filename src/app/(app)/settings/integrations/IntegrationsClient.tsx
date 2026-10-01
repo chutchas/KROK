@@ -3,7 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Bell, Webhook, CloudDownload } from "lucide-react";
+import { Bell, Webhook, CloudDownload, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { UNLIMITED, fmtLimit } from "@/lib/plans";
 import { useT } from "@/i18n/LanguageProvider";
 import { createWebhook } from "./actions";
 import NotifyPanel from "./NotifyPanel";
@@ -48,7 +50,10 @@ export interface WebhookItem {
 
 type IntgTab = "notify" | "webhooks" | "intake";
 
-export default function IntegrationsClient({ webhooks, forms, notify, intake, teams, members, initialTab = "notify" }: {
+export interface PlanGate { name: string; nameEn: string; notify: boolean; maxWebhooks: number; maxIntakeForms: number }
+
+export default function IntegrationsClient({ webhooks, forms, notify, intake, teams, members, initialTab = "notify", plan }: {
+  plan?: PlanGate;
   webhooks: WebhookItem[];
   forms: FormOption[];
   notify: NotifySettings;
@@ -58,7 +63,10 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
   initialTab?: IntgTab;
 }) {
   const router = useRouter();
-  const { t } = useT();
+  const { t, tt, lang } = useT();
+  const planName = plan ? (lang === "en" ? plan.nameEn : plan.name) : "";
+  const intakeOn = Object.values(intake).filter((x) => x.enabled).length;
+  const webhookFull = !!plan && plan.maxWebhooks < UNLIMITED && webhooks.length >= plan.maxWebhooks;
   const [tab, setTab] = useState<IntgTab>(initialTab);
   function switchTab(next: IntgTab) {
     setTab(next);
@@ -91,12 +99,19 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
         })}
       </div>
 
+      {tab === "notify" && plan && !plan.notify && <Upsell text={tt("intg.upNotify", { plan: planName })} />}
       {tab === "notify" && <NotifyPanel initial={notify} />}
 
+      {tab === "intake" && plan && (plan.maxIntakeForms <= 0
+        ? <Upsell text={tt("intg.upIntake", { plan: planName })} />
+        : plan.maxIntakeForms < UNLIMITED && <Usage text={tt("intg.useIntake", { used: intakeOn, max: fmtLimit(plan.maxIntakeForms) })} full={intakeOn >= plan.maxIntakeForms} />)}
       {tab === "intake" && <IntakePanel forms={forms} intake={intake} teams={teams} members={members} />}
 
+      {tab === "webhooks" && plan && (plan.maxWebhooks <= 0
+        ? <Upsell text={tt("intg.upWebhook", { plan: planName })} />
+        : plan.maxWebhooks < UNLIMITED && <Usage text={tt("intg.useWebhook", { used: webhooks.length, max: fmtLimit(plan.maxWebhooks) })} full={webhookFull} />)}
       {tab === "webhooks" && (<>
-      <Card>
+      {!webhookFull && !(plan && plan.maxWebhooks <= 0) && <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intg.addTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("intg.addSub")}</p>
         <WebhookForm forms={forms} busy={busy} submitLabel={t("intg.add")} onSubmit={async (d) => {
@@ -110,7 +125,8 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
           return true;
         }} />
         {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
-      </Card>
+      </Card>}
+      {(webhookFull || (plan && plan.maxWebhooks <= 0)) && msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
 
       <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{t("intg.listTitle")} ({webhooks.length})</h2>
@@ -144,6 +160,27 @@ X-KROK-Signature-V2: sha256=<hmac("<timestamp>.<body>") — แนะนำ: ป
 }`}</pre>
       </Card>
       </>)}
+    </div>
+  );
+}
+
+function Upsell({ text }: { text: string }) {
+  const { t } = useT();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", border: "1px solid var(--accent)", background: "var(--accent-soft)", borderRadius: 12, padding: "12px 14px" }}>
+      <Icon icon={Sparkles} className="h-5 w-5" />
+      <span style={{ flex: 1, minWidth: 200, fontSize: ".9rem", color: "var(--ink)" }}>{text}</span>
+      <Link href="/settings/billing" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "7px 14px", fontSize: ".85rem", fontWeight: 600, textDecoration: "none" }}>{t("intg.upgrade")}</Link>
+    </div>
+  );
+}
+
+function Usage({ text, full }: { text: string; full: boolean }) {
+  const { t } = useT();
+  return (
+    <div style={{ fontSize: ".84rem", color: full ? "var(--fail)" : "var(--ink-3)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+      <span>{text}</span>
+      {full && <Link href="/settings/billing" style={{ color: "var(--accent)", fontWeight: 600 }}>{t("intg.upgrade")}</Link>}
     </div>
   );
 }

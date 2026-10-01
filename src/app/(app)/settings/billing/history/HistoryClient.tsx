@@ -4,7 +4,7 @@ import { Card, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ReceiptText, ArrowRightLeft, FileText } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { getPlan } from "@/lib/plans";
+import { getPlan, type Plan } from "@/lib/plans";
 
 export interface PlanEvent { id: string; plan: string; at: string }
 export interface InvoiceRow {
@@ -26,7 +26,7 @@ function fmt(ts: string, lang: string) {
   }
 }
 
-export default function HistoryClient({ events, invoices }: { events: PlanEvent[]; invoices: InvoiceRow[] }) {
+export default function HistoryClient({ events, invoices, plans }: { events: PlanEvent[]; invoices: InvoiceRow[]; plans?: Record<string, Plan> }) {
   const { t, lang } = useT();
   const stLabel = (s: InvoiceRow["status"]) =>
     s === "paid" ? t("bill.stPaid") : s === "pending" ? t("bill.stPending") : s === "void" ? t("bill.stVoid") : s === "failed" ? t("bill.stFailed") : t("bill.stDemo");
@@ -48,7 +48,7 @@ export default function HistoryClient({ events, invoices }: { events: PlanEvent[
         ) : (
           <div style={{ display: "grid", gap: 4 }}>
             {invoices.map((iv) => {
-              const p = getPlan(iv.plan);
+              const p = getPlan(iv.plan, plans);
               return (
                 <Link key={iv.id} href={`/settings/billing/invoice/${iv.id}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 4px", borderBottom: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)" }}>
                   <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -79,7 +79,7 @@ export default function HistoryClient({ events, invoices }: { events: PlanEvent[
         ) : (
           <div style={{ display: "grid", gap: 4 }}>
             {events.map((e) => {
-              const p = getPlan(e.plan);
+              const p = getPlan(e.plan, plans);
               return (
                 <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 4px", borderBottom: "1px solid var(--line)" }}>
                   <div style={{ flex: 1, minWidth: 0 }}>

@@ -2,17 +2,21 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
-import { PLANS, type PlanKey } from "@/lib/plans";
+import { type PlanKey } from "@/lib/plans";
+import { getEffectivePlans } from "@/lib/plans-server";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
 
 export async function setPlan(plan: PlanKey): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (session.role !== "owner") return { error: "เฉพาะ owner เปลี่ยนแผนได้" };
-  if (!PLANS[plan]) return { error: "แผนไม่ถูกต้อง" };
+  const plans = await getEffectivePlans();
+  const target = typeof plan === "string" ? plans[plan] : undefined;
+  // ต้องเป็นแพ็กเกจที่เปิดให้ลูกค้าเลือก (ที่ซ่อน = แอดมินกำหนดให้เท่านั้น)
+  if (!target || (!target.visible && plan !== "free")) return { error: "แผนไม่ถูกต้อง" };
 
   // บล็อกการซื้อแผนเสียเงินจริงจนกว่าจะเปิดระบบชำระเงิน (ลดแผน/กลับ Free ได้)
-  if (PLANS[plan].priceThb > 0 && !PAYMENTS_ENABLED)
+  if (target.priceThb > 0 && !PAYMENTS_ENABLED)
     return { error: "ระบบชำระเงินยังไม่เปิดให้บริการ — ยังไม่สามารถซื้อแผนนี้ได้" };
 
   const supabase = await createClient();
@@ -29,7 +33,7 @@ export async function setPlan(plan: PlanKey): Promise<{ ok: true } | { error: st
   });
 
   // ออกใบแจ้งหนี้ (เดโม) เมื่อเปลี่ยนไปแผนเสียเงิน — ยังไม่เรียกเก็บจริง
-  const amount = PLANS[plan].priceThb;
+  const amount = target.priceThb;
   if (amount > 0) {
     const period = `${new Date().getUTCFullYear()}-${String(new Date().getUTCMonth() + 1).padStart(2, "0")}`;
     await supabase.from("invoices").insert({

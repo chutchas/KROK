@@ -3,9 +3,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Check, Lock, CreditCard } from "lucide-react";
+import { Check, Lock, CreditCard, Minus } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { PLANS, PLAN_ORDER, fmtLimit, type PlanKey, type Plan } from "@/lib/plans";
+import { DEFAULT_PLANS, UNLIMITED, planFeatures, type PlanKey, type Plan } from "@/lib/plans";
 import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
 import { setPlan } from "./actions";
@@ -16,22 +16,31 @@ export default function BillingClient({
   tenantName,
   usage,
   payMethods = [],
-  plans = PLANS,
+  plans = DEFAULT_PLANS,
+  current,
 }: {
   isOwner: boolean;
   currentPlan: PlanKey;
   tenantName: string;
-  usage: { forms: number; members: number; ai: Record<AiPurpose, number>; period: string };
+  usage: {
+    forms: number; members: number; ai: Record<AiPurpose, number>; period: string;
+    submissions?: number; storageMb?: number; datasets?: number; webhooks?: number; intakeForms?: number; devices?: number;
+  };
   payMethods?: { id: string; name: string; hint: string }[];
-  plans?: Record<PlanKey, Plan>;
+  /** แพ็กเกจที่ลูกค้าเลือกได้ (+ แพ็กเกจปัจจุบันแม้ถูกซ่อน) เรียงตามลำดับ */
+  plans?: Plan[];
+  /** แพ็กเกจที่ใช้อยู่ (ลิมิตจริง) */
+  current?: Plan;
 }) {
   const router = useRouter();
   const { t, lang } = useT();
   const [busy, setBusy] = useState<PlanKey | null>(null);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
 
-  const plan = plans[currentPlan];
+  const plan = current ?? plans.find((p) => p.key === currentPlan) ?? plans[0];
   const en = lang === "en";
+  const opt = (n: number | undefined, max: number, label: string, unit?: string) =>
+    n === undefined || max <= 0 ? null : <UsageBar key={label} label={label} used={n} max={max} unit={unit} />;
 
   async function choose(p: PlanKey) {
     if (p === currentPlan) return;
@@ -61,6 +70,12 @@ export default function BillingClient({
         <div style={{ display: "grid", gap: 14, marginTop: 8 }}>
           <UsageBar label={t("plan.forms")} used={usage.forms} max={plan.maxForms} />
           <UsageBar label={t("plan.members")} used={usage.members} max={plan.maxMembers} />
+          {opt(usage.submissions, plan.maxSubmissionsMonth, t("plan.submissions"))}
+          {opt(usage.storageMb, plan.storageMb, t("plan.storage"), "MB")}
+          {opt(usage.datasets, plan.maxDatasets, t("plan.datasets"))}
+          {opt(usage.webhooks, plan.maxWebhooks, "Webhook")}
+          {opt(usage.intakeForms, plan.maxIntakeForms, t("plan.intake"))}
+          {opt(usage.devices, plan.maxDevices, t("plan.devices"))}
         </div>
 
         <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
@@ -85,10 +100,11 @@ export default function BillingClient({
 
       {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }} className="krok-plans">
-        {PLAN_ORDER.map((key) => {
-          const p = plans[key];
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
+        {plans.map((p) => {
+          const key = p.key;
           const isCurrent = key === currentPlan;
+          const desc = en ? p.descEn : p.desc;
           return (
             <div
               key={key}
@@ -110,21 +126,16 @@ export default function BillingClient({
               )}
               <div>
                 <div style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.25rem", fontWeight: 700 }}>{en ? p.nameEn : p.name}</div>
-                <div style={{ color: "var(--accent)", fontWeight: 600, fontSize: "1rem" }}>{en ? p.priceLabelEn : p.priceLabel}</div>
+                {desc && <div style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>{desc}</div>}
+                <div style={{ color: "var(--accent)", fontWeight: 600, fontSize: "1rem", marginTop: 2 }}>{en ? p.priceLabelEn : p.priceLabel}</div>
               </div>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8, fontSize: ".88rem", color: "var(--ink-2)" }}>
-                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.forms")}: <b>{fmtLimit(p.maxForms)}</b></li>
-                <li style={{ display: "flex", alignItems: "flex-start", gap: 7 }}>
-                  <span style={{ marginTop: 2, display: "inline-flex" }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /></span>
-                  <span>
-                    {t("plan.aiCredits")}: <b>{fmtLimit(p.aiCreditsPerMonth)}</b>/{t("plan.perMonth")}
-                    <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem", marginTop: 2 }}>
-                      {AI_PURPOSES.map((k) => `${en ? PURPOSE_LABELS_EN[k] : PURPOSE_LABELS[k]} ${fmtLimit(p.aiCredits[k] ?? 0)}`).join(" · ")}
-                    </span>
-                  </span>
-                </li>
-                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> {t("plan.members")}: <b>{fmtLimit(p.maxMembers)}</b></li>
-                <li style={{ display: "flex", alignItems: "center", gap: 7 }}><Icon icon={Check} className="h-4 w-4 shrink-0 text-emerald-500" /> Workspace: <b>{fmtLimit(p.maxWorkspaces)}</b></li>
+              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 7, fontSize: ".85rem", color: "var(--ink-2)" }}>
+                {planFeatures(p, en).map((f, i) => (
+                  <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 7, color: f.off ? "var(--ink-3)" : undefined, textDecoration: f.off ? "line-through" : undefined }}>
+                    <span style={{ marginTop: 2, display: "inline-flex", flexShrink: 0, color: f.off ? "var(--ink-3)" : "var(--pass)" }}><Icon icon={f.off ? Minus : Check} className="h-4 w-4" /></span>
+                    <span>{f.text}</span>
+                  </li>
+                ))}
               </ul>
               <div style={{ marginTop: "auto" }}>
                 {isCurrent ? (
@@ -181,13 +192,12 @@ export default function BillingClient({
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", textAlign: "center" }}>{t("plan.noPayment")}</p>
       )}
 
-      <style>{`@media(max-width:700px){.krok-plans{grid-template-columns:1fr!important}}`}</style>
     </div>
   );
 }
 
-function UsageBar({ label, used, max }: { label: string; used: number; max: number }) {
-  const unlimited = max >= 999999;
+function UsageBar({ label, used, max, unit }: { label: string; used: number; max: number; unit?: string }) {
+  const unlimited = max >= UNLIMITED;
   const pct = unlimited ? 0 : Math.min(100, Math.round((used / Math.max(1, max)) * 100));
   const over = !unlimited && used >= max;
   return (
@@ -195,7 +205,7 @@ function UsageBar({ label, used, max }: { label: string; used: number; max: numb
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".85rem", marginBottom: 4 }}>
         <span style={{ color: "var(--ink-2)" }}>{label}</span>
         <span className="tabnum" style={{ fontWeight: 600, color: over ? "var(--fail)" : "var(--ink)" }}>
-          {used} / {unlimited ? "∞" : max}
+          {used.toLocaleString("en-US")} / {unlimited ? "∞" : max.toLocaleString("en-US")}{unit ? ` ${unit}` : ""}
         </span>
       </div>
       <div style={{ height: 8, borderRadius: 6, background: "var(--surface-2)", overflow: "hidden" }}>
