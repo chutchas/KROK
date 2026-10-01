@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PROFILE_AVATAR_EVENT, PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
 import TourGuide, { TOUR_START_EVENT } from "@/components/TourGuide";
+import { SETTINGS_HUBS, canSee, hubOf, type NavCtx, type SettingsHub } from "@/lib/settings-nav";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
@@ -16,7 +17,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, ShieldCheck, UsersRound, ChevronDown, ReceiptText, X, Building2, ScrollText, Terminal, FileSpreadsheet, TabletSmartphone, Database, CircleHelp } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, CircleHelp } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -30,55 +31,21 @@ const PRIMARY: NavEntry[] = [
   { href: "/reports", key: "nav.reports", icon: FileSpreadsheet, menu: "reports" },
 ];
 
-// เมนูอื่น — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
-const SECONDARY: NavEntry[] = [
-  { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
-  { href: "/settings/billing", key: "nav.billing", icon: CreditCard, menu: "billing" },
-  { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
-  { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
-  { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
-  { href: "/settings/devices", key: "nav.devices", icon: TabletSmartphone, gate: "wsadmin" },
-  { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
+// เมนูระบบ (ผู้ดูแลแพลตฟอร์ม) — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
+const PLATFORM: NavEntry[] = [
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
   { href: "/admin/settings", key: "nav.adminSystem", icon: Settings, gate: "dev" },
   { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
+  { href: "/admin/developer", key: "nav.developer", icon: Terminal, gate: "dev" },
 ];
 
-// หมวดหมู่ในเมนู sidebar (drawer) — ไม่มีกลุ่มงานหลัก เพราะอยู่บน navbar แล้ว
-const DRAWER_GROUPS: { labelKey: MessageKey; items: NavEntry[] }[] = [
-  {
-    labelKey: "grp.org",
-    items: [
-      { href: "/settings/team", key: "nav.team", icon: Users, menu: "team" },
-      { href: "/settings/roles", key: "nav.roles", icon: ShieldCheck, gate: "wsadmin" },
-      { href: "/settings/workspace", key: "nav.workspace", icon: Building2, gate: "wsadmin" },
-      { href: "/settings/devices", key: "nav.devices", icon: TabletSmartphone, gate: "wsadmin" },
-      { href: "/settings/audit", key: "nav.audit", icon: ScrollText, gate: "wsadmin" },
-    ],
-  },
-  {
-    labelKey: "grp.connect",
-    items: [
-      { href: "/settings/integrations", key: "nav.integrations", icon: Webhook, menu: "integrations" },
-    ],
-  },
-  {
-    labelKey: "grp.billing",
-    items: [
-      { href: "/settings/billing", key: "nav.billing", icon: CreditCard, menu: "billing" },
-      { href: "/settings/billing/history", key: "nav.billingHistory", icon: ReceiptText, gate: "wsadmin" },
-    ],
-  },
-  {
-    labelKey: "grp.platform",
-    items: [
-      { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
-      { href: "/admin/settings", key: "nav.adminSystem", icon: Settings, gate: "dev" },
-      { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
-      { href: "/admin/developer", key: "nav.developer", icon: Terminal, gate: "dev" },
-    ],
-  },
-];
+// ไอคอนของหมวดตั้งค่า (โครงหมวด/แท็บอยู่ที่ lib/settings-nav)
+const HUB_ICON: Record<SettingsHub["key"], typeof Users> = {
+  people: Users,
+  workspace: Building2,
+  connect: Webhook,
+  billing: CreditCard,
+};
 
 export default function AppShell({
   children,
@@ -159,27 +126,20 @@ export default function AppShell({
 
   const allowed = new Set(allowedMenus);
   const isWsAdmin = role === "owner" || role === "admin";
-  const visible = (n: NavEntry) => {
-    if (n.gate === "platform") return isPlatformAdmin;
-    if (n.gate === "dev") return isPlatformAdmin || platformRole === "developer";
-    if (n.gate === "wsadmin") return isWsAdmin;
-    if (n.menu) return allowed.has(n.menu);
-    return true;
-  };
+  const navCtx: NavCtx = { allowed, isWsAdmin, isPlatformAdmin, platformRole };
+  const visible = (n: NavEntry) => canSee(n, navCtx);
   const primary = PRIMARY.filter(visible);
-  const secondary = SECONDARY.filter(visible);
-  // เลือก "แท็บที่ active" แบบเจาะจงที่สุด (href ที่ยาวสุดที่ตรงกับ path)
-  // กันปัญหา /settings/billing กับ /settings/billing/history ติด active พร้อมกัน
-  const allHrefs = Array.from(new Set([
-    ...PRIMARY.map((n) => n.href),
-    ...SECONDARY.map((n) => n.href),
-    ...DRAWER_GROUPS.flatMap((g) => g.items.map((n) => n.href)),
-  ]));
+  // หมวดตั้งค่า: แสดงเมื่อเห็นอย่างน้อย 1 แท็บ · ลิงก์ไปแท็บแรกที่เห็น
+  const hubs = SETTINGS_HUBS.map((h) => ({ hub: h, items: h.items.filter((it) => canSee(it, navCtx)) }))
+    .filter((h) => h.items.length > 0)
+    .map((h): NavEntry & { hubKey: SettingsHub["key"] } => ({ href: h.items[0].href, key: h.hub.labelKey, icon: HUB_ICON[h.hub.key], hubKey: h.hub.key }));
+  const platform = PLATFORM.filter(visible);
   const matchesHref = (href: string) => path === href || path.startsWith(href + "/");
-  const activeHref = allHrefs.filter(matchesHref).sort((a, b) => b.length - a.length)[0] || "";
-  const isActive = (href: string) => href === activeHref;
-  // หาเมนูที่เปิดอยู่จากทุกเมนูใน sidebar ด้วย (เช่น Developer, ประวัติ/ใบเสร็จ ที่ไม่ได้อยู่ใน SECONDARY)
-  const activeSecondary = [...secondary, ...DRAWER_GROUPS.flatMap((g) => g.items).filter(visible)].find((n) => isActive(n.href));
+  const activeHubKey = hubOf(path)?.hub.key;
+  const activePrimary = primary.filter((n) => matchesHref(n.href)).sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const activePlatform = platform.find((n) => matchesHref(n.href))?.href;
+  const isActive = (href: string) => href === activePrimary || href === activePlatform || hubs.some((h) => h.href === href && h.hubKey === activeHubKey);
+  const activeSecondary = hubs.find((h) => h.hubKey === activeHubKey) ?? platform.find((n) => n.href === activePlatform);
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
 
   // มือถือ: แถบเมนูเลื่อนแนวนอนได้ → เลื่อนให้แท็บที่ active มาอยู่ในจอเสมอ (ไม่ต้องปัดหาเอง)
@@ -191,7 +151,7 @@ export default function AppShell({
     if (!nav || !el || nav.scrollWidth <= nav.clientWidth) return;
     const target = el.offsetLeft - nav.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
     nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
-  }, [activeHref]);
+  }, [path]);
   // ขอบจาง ซ้าย/ขวา บอกว่ายังมีเมนูให้ปัดดู
   const [edge, setEdge] = useState({ l: false, r: false });
   useEffect(() => {
@@ -455,8 +415,11 @@ export default function AppShell({
             </div>
 
             <nav style={{ padding: "8px 8px 24px" }}>
-              {DRAWER_GROUPS.map((g) => {
-                const items = g.items.filter(visible);
+              {[
+                { labelKey: "grp.settings" as MessageKey, items: hubs as NavEntry[] },
+                { labelKey: "grp.platform" as MessageKey, items: platform },
+              ].map((g) => {
+                const items = g.items;
                 if (items.length === 0) return null;
                 return (
                   <div key={g.labelKey} style={{ marginTop: 12 }}>
