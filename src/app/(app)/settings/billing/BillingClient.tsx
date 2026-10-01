@@ -12,6 +12,8 @@ import { setPlan } from "./actions";
 
 export default function BillingClient({
   isOwner,
+  ownerName,
+  workspaces = 1,
   currentPlan,
   tenantName,
   usage,
@@ -20,6 +22,10 @@ export default function BillingClient({
   current,
 }: {
   isOwner: boolean;
+  /** ชื่อเจ้าของบัญชี (แสดงเมื่อผู้ดูไม่ใช่เจ้าของ) */
+  ownerName?: string | null;
+  /** จำนวน workspace ที่ใช้แพ็กเกจ/โควตาร่วมกัน */
+  workspaces?: number;
   currentPlan: PlanKey;
   tenantName: string;
   usage: {
@@ -33,7 +39,7 @@ export default function BillingClient({
   current?: Plan;
 }) {
   const router = useRouter();
-  const { t, lang } = useT();
+  const { t, tt, lang } = useT();
   const [busy, setBusy] = useState<PlanKey | null>(null);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
 
@@ -61,6 +67,9 @@ export default function BillingClient({
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("plan.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent)" }}>{en ? plan.nameEn : plan.name}</b>
+        </p>
+        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "2px 0 0" }}>
+          {isOwner ? tt("plan.accountOwn", { n: workspaces }) : tt("plan.accountOther", { name: ownerName || t("plan.ownerFallback"), n: workspaces })}
         </p>
       </div>
 
@@ -141,7 +150,7 @@ export default function BillingClient({
                 {isCurrent ? (
                   <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".88rem", fontWeight: 600 }}>{t("plan.currentBadge")}</div>
                 ) : !isOwner ? (
-                  <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.ownerOnly")}</div>
+                  <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.billingOwnerOnly")}</div>
                 ) : p.priceThb > 0 && !PAYMENTS_ENABLED ? (
                   <Button variant="default" disabled style={{ width: "100%", opacity: 0.7 }}>
                     <Icon icon={Lock} className="h-4 w-4" /> {t("plan.locked")}

@@ -5,7 +5,7 @@ import { Card, Field, Notice, Pill, Button, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Crown, Code2, UserRound, Package } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { setPlatformRole, removeFromWorkspace, setTenantPlan } from "./actions";
+import { setPlatformRole, removeFromWorkspace, setUserPlan } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
 
 type PlatformRole = "platform_admin" | "developer" | "user";
@@ -14,7 +14,10 @@ export interface SysUser {
   name: string;
   email: string;
   platformRole: PlatformRole;
-  workspaces: { tenantId: string; tenantName: string; role: string; roleKey: string; plan: string }[];
+  /** แพ็กเกจของบัญชี — ใช้ร่วมทุก workspace ที่เป็นเจ้าของ */
+  plan: string;
+  /** billing = ผู้ใช้นี้เป็นเจ้าของบัญชีของ workspace นี้ (นับโควตาเข้าบัญชีนี้) */
+  workspaces: { tenantId: string; tenantName: string; role: string; roleKey: string; billing: boolean }[];
   createdAt: string;
 }
 
@@ -36,20 +39,22 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
     const s = q.trim().toLowerCase();
     if (!s) return users;
     return users.filter((u) => u.email.toLowerCase().includes(s) || u.name.toLowerCase().includes(s)
-      || u.workspaces.some((w) => w.tenantName.toLowerCase().includes(s) || (planName(w.plan) || "").toLowerCase().includes(s) || w.plan.includes(s)));
+      || u.workspaces.some((w) => w.tenantName.toLowerCase().includes(s)) || planName(u.plan).toLowerCase().includes(s) || u.plan.includes(s));
   }, [q, users]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function planName(key: string) {
     return plans.find((p) => p.key === key)?.name ?? key;
   }
 
-  async function changePlan(u: SysUser, tenantId: string, tenantName: string, plan: string) {
-    if (!(await confirmDialog({ message: tt("admin.planConfirm", { ws: tenantName, plan: planName(plan) }) }))) return;
+  async function changePlan(u: SysUser, plan: string) {
+    const who = u.name || u.email || "ผู้ใช้";
+    const n = u.workspaces.filter((w) => w.billing).length;
+    if (!(await confirmDialog({ message: tt("admin.planConfirm", { who, plan: planName(plan), n }) }))) return;
     setBusy(u.userId);
-    const res = await setTenantPlan(tenantId, plan);
+    const res = await setUserPlan(u.userId, plan);
     setBusy(null);
     if ("error" in res) setMsg({ t: res.error, err: true });
-    else { setMsg({ t: tt("admin.planSaved", { ws: tenantName, plan: planName(plan) }) }); router.refresh(); }
+    else { setMsg({ t: tt("admin.planSaved", { who, plan: planName(plan) }) }); router.refresh(); }
   }
 
   const sel: React.CSSProperties = {
@@ -98,6 +103,19 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                   <b style={{ fontSize: ".95rem" }}>{u.name || u.email || "ผู้ใช้"} {u.userId === meId && <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>({t("admin.you")})</span>}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>{u.email}</small>
                 </div>
+                {plans.length > 0 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }} title={t("admin.planHint")}>
+                    <span style={{ fontSize: ".72rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}><Icon icon={Package} className="h-3.5 w-3.5" />{t("admin.plan")}</span>
+                    <select value={u.plan} disabled={busy === u.userId} aria-label={t("admin.plan")} onChange={(e) => changePlan(u, e.target.value)} style={sel}>
+                      {!plans.some((p) => p.key === u.plan) && <option value={u.plan}>{u.plan}</option>}
+                      {plans.map((p) => (
+                        <option key={p.key} value={p.key}>
+                          {p.name} · {p.priceThb > 0 ? `฿${p.priceThb.toLocaleString()}` : t("admin.planFree")}{p.visible ? "" : ` (${t("admin.planHidden")})`}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{t("admin.platformRole")}</span>
                   <select value={u.platformRole} disabled={busy === u.userId} onChange={(e) => changeRole(u, e.target.value as PlatformRole)} style={sel}>
@@ -114,24 +132,10 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                   {u.workspaces.map((w) => (
                     <div key={w.tenantId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".85rem", flexWrap: "wrap" }}>
                       <span style={{ flex: 1, minWidth: 120 }}>{w.tenantName}</span>
-                      {/* แพ็กเกจเป็นของ workspace — แก้ได้ที่แถวของ owner (สมาชิกอื่นเห็นอย่างเดียว) */}
-                      {w.roleKey === "owner" && plans.length > 0 ? (
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }} title={t("admin.planHint")}>
-                          <Icon icon={Package} className="h-3.5 w-3.5" />
-                          <select value={w.plan} disabled={busy === u.userId} aria-label={t("admin.plan")}
-                            onChange={(e) => changePlan(u, w.tenantId, w.tenantName, e.target.value)} style={{ ...sel, padding: "5px 8px", fontSize: ".8rem" }}>
-                            {!plans.some((p) => p.key === w.plan) && <option value={w.plan}>{w.plan}</option>}
-                            {plans.map((p) => (
-                              <option key={p.key} value={p.key}>
-                                {p.name} · {p.priceThb > 0 ? `฿${p.priceThb.toLocaleString()}` : t("admin.planFree")}{p.visible ? "" : ` (${t("admin.planHidden")})`}
-                              </option>
-                            ))}
-                          </select>
-                        </label>
+                      {w.billing ? (
+                        <span style={{ fontSize: ".72rem", color: "var(--accent)" }}>{t("admin.billingWs")}</span>
                       ) : (
-                        <span style={{ fontSize: ".74rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 4 }}>
-                          <Icon icon={Package} className="h-3.5 w-3.5" />{planName(w.plan)}
-                        </span>
+                        <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{t("admin.otherOwnerWs")}</span>
                       )}
                       <Pill kind={w.roleKey === "owner" ? "pass" : "na"}>{w.roleKey}</Pill>
                       {w.roleKey !== "owner" && (

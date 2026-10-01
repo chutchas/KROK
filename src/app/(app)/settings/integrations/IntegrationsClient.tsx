@@ -50,7 +50,7 @@ export interface WebhookItem {
 
 type IntgTab = "notify" | "webhooks" | "intake";
 
-export interface PlanGate { name: string; nameEn: string; notify: boolean; maxWebhooks: number; maxIntakeForms: number }
+export interface PlanGate { name: string; nameEn: string; notify: boolean; maxWebhooks: number; maxIntakeForms: number; usedWebhooks?: number; usedIntake?: number; workspaces?: number }
 
 export default function IntegrationsClient({ webhooks, forms, notify, intake, teams, members, initialTab = "notify", plan }: {
   plan?: PlanGate;
@@ -65,8 +65,11 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
   const router = useRouter();
   const { t, tt, lang } = useT();
   const planName = plan ? (lang === "en" ? plan.nameEn : plan.name) : "";
-  const intakeOn = Object.values(intake).filter((x) => x.enabled).length;
-  const webhookFull = !!plan && plan.maxWebhooks < UNLIMITED && webhooks.length >= plan.maxWebhooks;
+  // ยอดรวมทุก workspace ของเจ้าของบัญชี (ส่งมาจาก server) · ไม่มี = นับใน workspace นี้
+  const intakeOn = plan?.usedIntake ?? Object.values(intake).filter((x) => x.enabled).length;
+  const webhookUsed = plan?.usedWebhooks ?? webhooks.length;
+  const webhookFull = !!plan && plan.maxWebhooks < UNLIMITED && webhookUsed >= plan.maxWebhooks;
+  const allWs = plan && (plan.workspaces ?? 1) > 1 ? ` ${tt("intg.allWs", { n: plan.workspaces ?? 1 })}` : "";
   const [tab, setTab] = useState<IntgTab>(initialTab);
   function switchTab(next: IntgTab) {
     setTab(next);
@@ -104,12 +107,12 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
 
       {tab === "intake" && plan && (plan.maxIntakeForms <= 0
         ? <Upsell text={tt("intg.upIntake", { plan: planName })} />
-        : plan.maxIntakeForms < UNLIMITED && <Usage text={tt("intg.useIntake", { used: intakeOn, max: fmtLimit(plan.maxIntakeForms) })} full={intakeOn >= plan.maxIntakeForms} />)}
+        : plan.maxIntakeForms < UNLIMITED && <Usage text={tt("intg.useIntake", { used: intakeOn, max: fmtLimit(plan.maxIntakeForms) }) + allWs} full={intakeOn >= plan.maxIntakeForms} />)}
       {tab === "intake" && <IntakePanel forms={forms} intake={intake} teams={teams} members={members} />}
 
       {tab === "webhooks" && plan && (plan.maxWebhooks <= 0
         ? <Upsell text={tt("intg.upWebhook", { plan: planName })} />
-        : plan.maxWebhooks < UNLIMITED && <Usage text={tt("intg.useWebhook", { used: webhooks.length, max: fmtLimit(plan.maxWebhooks) })} full={webhookFull} />)}
+        : plan.maxWebhooks < UNLIMITED && <Usage text={tt("intg.useWebhook", { used: webhookUsed, max: fmtLimit(plan.maxWebhooks) }) + allWs} full={webhookFull} />)}
       {tab === "webhooks" && (<>
       {!webhookFull && !(plan && plan.maxWebhooks <= 0) && <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intg.addTitle")}</h2>

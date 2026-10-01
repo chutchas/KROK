@@ -114,8 +114,11 @@ export async function savePlanCatalog(input: unknown[]): Promise<{ ok: true } | 
   const { data: cur } = await admin.from("platform_plan_settings").select("plans").eq("id", true).maybeSingle();
   const removed = normalizeCatalog(cur?.plans).map((p) => p.key).filter((k) => !seen.has(k));
   if (removed.length) {
-    const { count } = await admin.from("tenants").select("id", { count: "exact", head: true }).in("plan", removed);
-    if ((count ?? 0) > 0) return { error: `ยังมี ${count} workspace ใช้แพ็กเกจ ${removed.join(", ")} อยู่ — ซ่อนแพ็กเกจแทนการลบ หรือย้าย workspace ก่อน` };
+    const acct = await admin.from("account_plans").select("user_id", { count: "exact", head: true }).in("plan", removed);
+    const count = acct.error
+      ? (await admin.from("tenants").select("id", { count: "exact", head: true }).in("plan", removed)).count // ยังไม่รัน 0045
+      : acct.count;
+    if ((count ?? 0) > 0) return { error: `ยังมี ${count} บัญชีใช้แพ็กเกจ ${removed.join(", ")} อยู่ — ซ่อนแพ็กเกจแทนการลบ หรือย้ายบัญชีไปแพ็กเกจอื่นก่อน (หน้าจัดการผู้ใช้)` };
   }
 
   const normalized = normalizeCatalog(toStored(list));
@@ -142,8 +145,10 @@ export async function planTenantCounts(): Promise<Record<string, number>> {
   if (!session || (!session.isPlatformAdmin && session.platformRole !== "developer")) return {};
   const admin = getAdminClient();
   if (!admin) return {};
-  const { data } = await admin.from("tenants").select("plan").limit(100000);
+  // นับบัญชีต่อแพ็กเกจ (0045) · ยังไม่รัน = นับ workspace แบบเดิม
+  const acct = await admin.from("account_plans").select("plan").limit(100000);
+  const rows = acct.error ? (await admin.from("tenants").select("plan").limit(100000)).data : acct.data;
   const out: Record<string, number> = {};
-  for (const r of (data || []) as { plan: string | null }[]) out[r.plan || "free"] = (out[r.plan || "free"] ?? 0) + 1;
+  for (const r of (rows || []) as { plan: string | null }[]) out[r.plan || "free"] = (out[r.plan || "free"] ?? 0) + 1;
   return out;
 }

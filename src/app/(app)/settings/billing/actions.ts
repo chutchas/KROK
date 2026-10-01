@@ -5,11 +5,15 @@ import { getSession } from "@/lib/session";
 import { type PlanKey } from "@/lib/plans";
 import { getEffectivePlans } from "@/lib/plans-server";
 import { PAYMENTS_ENABLED } from "@/lib/payments";
+import { getTenantPool } from "@/lib/quota";
 
 export async function setPlan(plan: PlanKey): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner") return { error: "เฉพาะ owner เปลี่ยนแผนได้" };
+  // แพ็กเกจเป็นของบัญชีเจ้าของ (คนสร้าง workspace) — ใช้ร่วมทุก workspace ของเขา
+  const pool = await getTenantPool(session.tenantId);
+  if (pool.ownerId ? pool.ownerId !== session.userId : session.role !== "owner")
+    return { error: "เฉพาะเจ้าของบัญชีที่สร้าง workspace นี้เปลี่ยนแพ็กเกจได้" };
   const plans = await getEffectivePlans();
   const target = typeof plan === "string" ? plans[plan] : undefined;
   // ต้องเป็นแพ็กเกจที่เปิดให้ลูกค้าเลือก (ที่ซ่อน = แอดมินกำหนดให้เท่านั้น)

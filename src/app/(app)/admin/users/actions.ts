@@ -48,29 +48,36 @@ export async function removeFromWorkspace(userId: string, tenantId: string): Pro
 }
 
 /**
- * กำหนดแพ็กเกจของ workspace (Platform Admin) — มีผลทันทีกับทุกสมาชิกใน workspace นั้น
- * กำหนดแพ็กเกจที่ซ่อนอยู่ได้ (ดีลพิเศษ) · ไม่ออกใบแจ้งหนี้ · บันทึกลงประวัติของ workspace
+ * กำหนดแพ็กเกจของบัญชีผู้ใช้ (Platform Admin) — มีผลทันทีกับทุก workspace ที่ผู้ใช้นี้เป็นเจ้าของ
+ * กำหนดแพ็กเกจที่ซ่อนอยู่ได้ (ดีลพิเศษ) · ไม่ออกใบแจ้งหนี้ · บันทึกลงประวัติของแต่ละ workspace
  */
-export async function setTenantPlan(tenantId: string, plan: string): Promise<{ ok: true } | { error: string }> {
+export async function setUserPlan(userId: string, plan: string): Promise<{ ok: true } | { error: string }> {
   const a = await requirePlatform();
   if (!a.ok) return { error: a.error };
   const plans = await getEffectivePlans();
   if (typeof plan !== "string" || !plans[plan]) return { error: "ไม่พบแพ็กเกจนี้" };
 
-  const { data: cur } = await a.admin.from("tenants").select("plan").eq("id", tenantId).maybeSingle();
-  if (!cur) return { error: "ไม่พบ workspace" };
-  if (cur.plan === plan) return { ok: true };
+  const { data: cur, error: readErr } = await a.admin.from("account_plans").select("plan").eq("user_id", userId).maybeSingle();
+  if (readErr) return { error: /account_plans/.test(readErr.message) ? "ต้องรัน migration 0045_account_plans ก่อน" : readErr.message };
+  const from = (cur?.plan as string) || "free";
+  if (from === plan) return { ok: true };
 
-  const { error } = await a.admin.from("tenants").update({ plan }).eq("id", tenantId);
+  const { error } = await a.admin.from("account_plans").upsert(
+    { user_id: userId, plan, updated_at: new Date().toISOString(), updated_by: a.session.userId },
+    { onConflict: "user_id" }
+  );
   if (error) return { error: error.message };
-  await a.admin.from("audit_log").insert({
-    tenant_id: tenantId,
-    actor_id: a.session.userId,
-    action: "plan.change",
-    target_type: "tenant",
-    target_id: tenantId,
-    meta: { plan, from: cur.plan, by: "platform_admin" },
-  });
+
+  // สำเนาที่ tenants.plan + ประวัติของทุก workspace ที่เป็นเจ้าของ
+  const { data: owned } = await a.admin.rpc("owner_tenant_ids", { p_owner: userId });
+  const ids = Array.isArray(owned) ? (owned as string[]) : [];
+  if (ids.length) {
+    await a.admin.from("tenants").update({ plan }).in("id", ids);
+    await a.admin.from("audit_log").insert(ids.map((tid) => ({
+      tenant_id: tid, actor_id: a.session.userId, action: "plan.change", target_type: "tenant", target_id: tid,
+      meta: { plan, from, by: "platform_admin", account: userId },
+    })));
+  }
   revalidatePath("/admin/users");
   revalidatePath("/", "layout");
   return { ok: true };

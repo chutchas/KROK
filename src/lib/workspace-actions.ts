@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, listWorkspaces, WS_COOKIE } from "@/lib/session";
-import { getTenantPlan } from "@/lib/quota";
+import { getUserPlan, ownedTenantIds } from "@/lib/quota";
 import { fmtLimit } from "@/lib/plans";
 
 const COOKIE_OPTS = {
@@ -31,11 +31,11 @@ export async function createWorkspace(name: string): Promise<{ ok: true; id: str
   if (!clean) return { error: "ต้องระบุชื่อ workspace" };
   if (clean.length > 60) return { error: "ชื่อยาวเกินไป (สูงสุด 60 ตัวอักษร)" };
 
-  // จำกัดจำนวน workspace ที่ผู้ใช้เป็น owner ตามแผนของ workspace ที่ใช้อยู่
-  const plan = await getTenantPlan(session.tenantId);
-  const owned = (await listWorkspaces()).filter((w) => w.role === "owner").length;
+  // จำกัดจำนวน workspace ตามแพ็กเกจของบัญชีผู้ใช้ (workspace ใหม่ใช้แพ็กเกจเดียวกันและนับโควตารวม)
+  const plan = await getUserPlan(session.userId, session.tenantId);
+  const owned = (await ownedTenantIds(session.userId))?.length ?? (await listWorkspaces()).filter((w) => w.role === "owner").length;
   if (owned >= plan.maxWorkspaces)
-    return { error: `แผนปัจจุบันสร้าง workspace ได้สูงสุด ${fmtLimit(plan.maxWorkspaces)} (คุณเป็นเจ้าของ ${owned} แล้ว) — อัปเกรดแผนเพื่อเพิ่ม` };
+    return { error: `แพ็กเกจ ${plan.name} สร้าง workspace ได้สูงสุด ${fmtLimit(plan.maxWorkspaces)} (คุณเป็นเจ้าของ ${owned} แล้ว) — อัปเกรดแพ็กเกจเพื่อเพิ่ม` };
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_workspace", { p_name: clean });

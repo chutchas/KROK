@@ -2,6 +2,7 @@ import "server-only";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getPlan, fmtLimit, UNLIMITED, type Plan } from "@/lib/plans";
+import { cache } from "react";
 import { getEffectivePlans } from "@/lib/plans-server";
 import { quotaError } from "@/lib/quota-msg";
 import { AI_PURPOSES, PURPOSE_LABELS, type AiPurpose } from "@/lib/ai-purpose";
@@ -15,14 +16,79 @@ export function currentPeriod(d = new Date()): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }
 
-/** อ่าน plan ของ tenant (คืน 'free' ถ้าไม่พบ) — ใช้ราคา/โควตาที่ override จากตั้งค่าระบบ */
-export async function getTenantPlan(tenantId: string): Promise<Plan> {
-  const supabase = await createClient();
-  const [{ data }, plans] = await Promise.all([
-    supabase.from("tenants").select("plan").eq("id", tenantId).maybeSingle(),
-    getEffectivePlans(),
+// ============================================================
+// แพ็กเกจผูกกับบัญชี "เจ้าของ" (billing owner = คนสร้าง workspace) — migration 0045
+// โควตานับรวมทุก workspace ของเจ้าของคนเดียวกัน (pool) · ข้อมูลยังแยกอยู่ใน workspace ของตัวเอง
+// ยังไม่รัน 0045 → ใช้ tenants.plan และนับเฉพาะ workspace นี้ (แบบเดิม)
+// ============================================================
+
+export interface TenantPool {
+  /** billing owner (null = หาไม่ได้/ยังไม่รัน 0045) */
+  ownerId: string | null;
+  /** workspace ทั้งหมดที่ใช้โควตาร่วมกัน (รวมตัวเอง) */
+  tenantIds: string[];
+}
+
+const db = async () => getAdminClient() ?? (await createClient());
+
+export const getTenantPool = cache(async (tenantId: string): Promise<TenantPool> => {
+  const c = await db();
+  const [owner, ids] = await Promise.all([
+    c.rpc("tenant_billing_owner", { p_tenant: tenantId }),
+    c.rpc("tenant_pool_ids", { p_tenant: tenantId }),
   ]);
+  const list = Array.isArray(ids.data) ? (ids.data as string[]) : [];
+  return {
+    ownerId: !owner.error && typeof owner.data === "string" ? owner.data : null,
+    tenantIds: !ids.error && list.length ? Array.from(new Set([tenantId, ...list])) : [tenantId],
+  };
+});
+
+/** key แพ็กเกจของบัญชีผู้ใช้ (ไม่มีแถว = free · ยังไม่รัน 0045 = null) */
+export async function getUserPlanKey(userId: string): Promise<string | null> {
+  const c = await db();
+  const { data, error } = await c.from("account_plans").select("plan").eq("user_id", userId).maybeSingle();
+  if (error) return null;
+  return (data?.plan as string) || "free";
+}
+
+/** แพ็กเกจของบัญชีผู้ใช้ — ยังไม่รัน 0045 ใช้แพ็กเกจของ workspace ที่ส่งมาแทน */
+export async function getUserPlan(userId: string, fallbackTenantId?: string): Promise<Plan> {
+  const [key, plans] = await Promise.all([getUserPlanKey(userId), getEffectivePlans()]);
+  if (key === null && fallbackTenantId) return getTenantPlan(fallbackTenantId);
+  return getPlan(key, plans);
+}
+
+/** แพ็กเกจที่ workspace นี้ใช้ (= แพ็กเกจของ billing owner) */
+export const getTenantPlan = cache(async (tenantId: string): Promise<Plan> => {
+  const c = await db();
+  const [res, plans] = await Promise.all([c.rpc("tenant_plan_key", { p_tenant: tenantId }), getEffectivePlans()]);
+  if (!res.error && typeof res.data === "string") return getPlan(res.data, plans);
+  const { data } = await c.from("tenants").select("plan").eq("id", tenantId).maybeSingle(); // ยังไม่รัน 0045
   return getPlan(data?.plan as string | undefined, plans);
+});
+
+/** workspace ที่ผู้ใช้เป็น billing owner */
+export async function ownedTenantIds(userId: string): Promise<string[] | null> {
+  const admin = getAdminClient();
+  if (!admin) return null;
+  const { data, error } = await admin.rpc("owner_tenant_ids", { p_owner: userId });
+  return error || !Array.isArray(data) ? null : (data as string[]);
+}
+
+async function countIn(table: string, ids: string[], extra?: (q: any) => any, col = "id"): Promise<number> { // eslint-disable-line @typescript-eslint/no-explicit-any
+  const c = await db();
+  let q = c.from(table).select(col, { count: "exact", head: true }).in("tenant_id", ids);
+  if (extra) q = extra(q);
+  const { count } = await q;
+  return count ?? 0;
+}
+
+/** ผู้ใช้ไม่ซ้ำในทุก workspace ของกลุ่ม */
+async function distinctMembers(ids: string[]): Promise<number> {
+  const c = await db();
+  const { data } = await c.from("memberships").select("user_id").in("tenant_id", ids).limit(50000);
+  return new Set(((data || []) as { user_id: string }[]).map((r) => r.user_id)).size;
 }
 
 export interface QuotaSnapshot {
@@ -34,6 +100,9 @@ export interface QuotaSnapshot {
   /** ยอดแยกต่อ purpose — ตัวที่ใช้บังคับโควตาจริง */
   aiByPurpose: Record<AiPurpose, number>;
   period: string;
+  /** จำนวน workspace ที่ใช้โควตาร่วมกัน */
+  workspaces: number;
+  ownerId: string | null;
   submissionsMonth: number;
   storageBytes: number;
   datasets: number;
@@ -62,30 +131,34 @@ function toUsage(raw: unknown): Record<AiPurpose, number> {
 export async function getQuotaSnapshot(tenantId: string): Promise<QuotaSnapshot> {
   const supabase = await createClient();
   const period = currentPeriod();
-  // ตารางที่มีความลับ (webhooks/form_intake) ปิด REST แล้ว → นับด้วย service role (ผูก tenant เอง)
-  const db = getAdminClient() ?? supabase;
-  const count = (q: PromiseLike<{ count: number | null }>) => Promise.resolve(q).then((r) => r.count ?? 0, () => 0);
-  const [plan, forms, members, ai, subs, storage, datasets, datasetApi, webhooks, intakeForms, devices] = await Promise.all([
+  const pool = await getTenantPool(tenantId);
+  const ids = pool.tenantIds;
+  const c = await db();
+  const pooledAi = await c.rpc("ai_usage_pool_all", { p_tenant: tenantId, p_period: period });
+  const [plan, formsUsed, membersUsed, ai, subs, storage, datasets, datasetApi, webhooks, intakeForms, devices] = await Promise.all([
     getTenantPlan(tenantId),
-    supabase.from("forms").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).is("deleted_at", null),
-    supabase.from("memberships").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId),
-    supabase.rpc("ai_usage_all", { p_tenant: tenantId, p_period: period }),
-    count(supabase.from("submissions").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).gte("submitted_at", monthStart())),
-    Promise.resolve(supabase.rpc("tenant_storage_bytes", { p_tenant: tenantId })).then((r) => (typeof r.data === "number" ? r.data : Number(r.data) || 0), () => 0),
-    count(supabase.from("datasets").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId)),
-    count(supabase.from("datasets").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).in("source_kind", ["api_pull", "api_push"])),
-    count(db.from("webhooks").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId)),
-    count(db.from("form_intake").select("form_id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("enabled", true)),
-    count(db.from("devices").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId).eq("status", "approved")),
+    countIn("forms", ids, (q) => q.is("deleted_at", null)),
+    distinctMembers(ids),
+    pooledAi.error ? supabase.rpc("ai_usage_all", { p_tenant: tenantId, p_period: period }) : Promise.resolve(pooledAi),
+    countIn("submissions", ids, (q) => q.gte("submitted_at", monthStart())),
+    Promise.resolve(c.rpc("pool_storage_bytes", { p_tenant: tenantId })).then(async (r) =>
+      r.error ? Number((await supabase.rpc("tenant_storage_bytes", { p_tenant: tenantId })).data) || 0 : Number(r.data) || 0, () => 0),
+    countIn("datasets", ids),
+    countIn("datasets", ids, (q) => q.in("source_kind", ["api_pull", "api_push"])),
+    countIn("webhooks", ids),
+    countIn("form_intake", ids, (q) => q.eq("enabled", true), "form_id"),
+    countIn("devices", ids, (q) => q.eq("status", "approved")),
   ]);
   const aiByPurpose = toUsage(ai.data);
   return {
     plan,
-    formsUsed: forms.count ?? 0,
-    membersUsed: members.count ?? 0,
+    formsUsed,
+    membersUsed,
     aiUsed: AI_PURPOSES.reduce((n, k) => n + aiByPurpose[k], 0),
     aiByPurpose,
     period,
+    workspaces: ids.length,
+    ownerId: pool.ownerId,
     submissionsMonth: subs,
     storageBytes: storage,
     datasets,
@@ -96,24 +169,17 @@ export async function getQuotaSnapshot(tenantId: string): Promise<QuotaSnapshot>
   };
 }
 
-/** ตรวจว่ายังสร้างฟอร์มเพิ่มได้ไหมตามแผน */
+/** ตรวจว่ายังสร้างฟอร์มเพิ่มได้ไหม (นับรวมทุก workspace ของเจ้าของ) */
 export async function canAddForm(tenantId: string): Promise<{ ok: boolean; used: number; max: number }> {
-  const supabase = await createClient();
-  const plan = await getTenantPlan(tenantId);
-  const { count } = await supabase
-    .from("forms").select("id", { count: "exact", head: true })
-    .eq("tenant_id", tenantId).is("deleted_at", null);
-  const used = count ?? 0;
+  const [plan, pool] = await Promise.all([getTenantPlan(tenantId), getTenantPool(tenantId)]);
+  const used = await countIn("forms", pool.tenantIds, (q) => q.is("deleted_at", null));
   return { ok: used < plan.maxForms, used, max: plan.maxForms };
 }
 
-/** ตรวจว่ายังเชิญสมาชิกเพิ่มได้ไหม */
+/** ตรวจว่ายังเชิญสมาชิกเพิ่มได้ไหม (คนไม่ซ้ำ รวมทุก workspace ของเจ้าของ) */
 export async function canAddMember(tenantId: string): Promise<{ ok: boolean; used: number; max: number }> {
-  const supabase = await createClient();
-  const plan = await getTenantPlan(tenantId);
-  const { count } = await supabase
-    .from("memberships").select("id", { count: "exact", head: true }).eq("tenant_id", tenantId);
-  const used = count ?? 0;
+  const [plan, pool] = await Promise.all([getTenantPlan(tenantId), getTenantPool(tenantId)]);
+  const used = await distinctMembers(pool.tenantIds);
   return { ok: used < plan.maxMembers, used, max: plan.maxMembers };
 }
 
@@ -142,16 +208,14 @@ export async function consumeAiCredit(tenantId: string, purpose: AiPurpose): Pro
   const max = plan.aiCredits[purpose] ?? 0;
   const label = PURPOSE_LABELS[purpose];
 
-  const { data: cur } = await supabase.rpc("ai_usage_get_by", {
-    p_tenant: tenantId, p_period: period, p_purpose: purpose,
-  });
-  const used = (cur as number | null) ?? 0;
+  // ยอดรวมทั้งกลุ่ม workspace ของเจ้าของ (ยังไม่รัน 0045 = ของ workspace นี้)
+  let cur = await supabase.rpc("ai_usage_pool_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });
+  if (cur.error) cur = await supabase.rpc("ai_usage_get_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });
+  const used = (cur.data as number | null) ?? 0;
   if (used >= max) return { ok: false, used, max, purpose, label };
 
-  const { data: next } = await supabase.rpc("ai_usage_incr_by", {
-    p_tenant: tenantId, p_period: period, p_purpose: purpose,
-  });
-  return { ok: true, used: (next as number | null) ?? used + 1, max, purpose, label };
+  await supabase.rpc("ai_usage_incr_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });
+  return { ok: true, used: used + 1, max, purpose, label };
 }
 
 // ============================================================
@@ -181,21 +245,13 @@ export async function gateNotify(tenantId: string, turningOn: boolean): Gate {
   return plan.notify ? null : quotaError(`แพ็กเกจ ${plan.name} ยังใช้การแจ้งเตือน LINE / อีเมลไม่ได้`);
 }
 
-async function countVia(table: string, tenantId: string, extra?: (q: any) => any): Promise<number> { // eslint-disable-line @typescript-eslint/no-explicit-any
-  const db = getAdminClient() ?? (await createClient());
-  let q = db.from(table).select("*", { count: "exact", head: true }).eq("tenant_id", tenantId);
-  if (extra) q = extra(q);
-  const { count } = await q;
-  return count ?? 0;
-}
-
 /** เพิ่ม webhook ได้อีกไหม */
 export async function gateWebhookAdd(tenantId: string): Gate {
   const plan = await getTenantPlan(tenantId);
   if (plan.maxWebhooks >= UNLIMITED) return null;
   if (plan.maxWebhooks <= 0) return quotaError(`แพ็กเกจ ${plan.name} ยังใช้ Webhook ไม่ได้`);
-  const used = await countVia("webhooks", tenantId);
-  return used < plan.maxWebhooks ? null : quotaError(`แพ็กเกจ ${plan.name} ตั้ง Webhook ได้สูงสุด ${fmtLimit(plan.maxWebhooks)} เส้น (ใช้ไป ${used})`);
+  const used = await countIn("webhooks", (await getTenantPool(tenantId)).tenantIds);
+  return used < plan.maxWebhooks ? null : quotaError(`แพ็กเกจ ${plan.name} ตั้ง Webhook ได้สูงสุด ${fmtLimit(plan.maxWebhooks)} เส้น (ใช้ไป ${used} รวมทุก workspace)`);
 }
 
 /** เปิด API รับข้อมูลให้ฟอร์มนี้ได้อีกไหม (นับฟอร์มที่เปิดอยู่ ไม่รวมฟอร์มนี้) */
@@ -203,6 +259,6 @@ export async function gateIntakeEnable(tenantId: string, formId: string): Gate {
   const plan = await getTenantPlan(tenantId);
   if (plan.maxIntakeForms >= UNLIMITED) return null;
   if (plan.maxIntakeForms <= 0) return quotaError(`แพ็กเกจ ${plan.name} ยังใช้ API รับข้อมูลไม่ได้`);
-  const used = await countVia("form_intake", tenantId, (q) => q.eq("enabled", true).neq("form_id", formId));
+  const used = await countIn("form_intake", (await getTenantPool(tenantId)).tenantIds, (q) => q.eq("enabled", true).neq("form_id", formId), "form_id");
   return used < plan.maxIntakeForms ? null : quotaError(`แพ็กเกจ ${plan.name} เปิด API รับข้อมูลได้สูงสุด ${fmtLimit(plan.maxIntakeForms)} ฟอร์ม`);
 }

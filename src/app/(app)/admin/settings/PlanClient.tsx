@@ -21,7 +21,7 @@ const GROUPS: Group[] = [
     nums: [
       { key: "maxForms", label: "จำนวนฟอร์ม" },
       { key: "maxMembers", label: "จำนวนผู้ใช้" },
-      { key: "maxWorkspaces", label: "จำนวน Workspace (ต่อเจ้าของ)" },
+      { key: "maxWorkspaces", label: "จำนวน Workspace" },
       { key: "maxSubmissionsMonth", label: "ส่งฟอร์ม / เดือน" },
       { key: "storageMb", label: "พื้นที่ไฟล์ (MB)", hint: "1 GB = 1024 MB" },
       { key: "auditDays", label: "ประวัติการใช้งาน (วัน)" },
@@ -97,7 +97,7 @@ export default function PlanClient({ plans, configured, tenantCounts = {} }: {
     setMsg({ t: `เพิ่ม "${key}" แล้ว (ยังซ่อนอยู่) — ตั้งชื่อ/ราคา/โควตา แล้วเปิด "แสดงให้ลูกค้า" และกดบันทึก` });
   }
   async function remove(p: Plan) {
-    if ((tenantCounts[p.key] ?? 0) > 0) { setMsg({ t: `มี ${tenantCounts[p.key]} workspace ใช้แพ็กเกจนี้อยู่ — ซ่อนแทนการลบ`, err: true }); return; }
+    if ((tenantCounts[p.key] ?? 0) > 0) { setMsg({ t: `มี ${tenantCounts[p.key]} บัญชีใช้แพ็กเกจนี้อยู่ — ซ่อนแทนการลบ`, err: true }); return; }
     if (!(await confirmDialog({ message: `ลบแพ็กเกจ "${p.name}"? (มีผลเมื่อกดบันทึก)`, danger: true }))) return;
     setRows((s) => s.filter((r) => r.key !== p.key));
     setDirty(true);
@@ -118,7 +118,7 @@ export default function PlanClient({ plans, configured, tenantCounts = {} }: {
         สร้างและตั้งราคา/โควตาของแต่ละแพ็กเกจ — แพ็กเกจที่ “แสดงให้ลูกค้า” จะขึ้นในหน้าแผน/โควตาและหน้า home ทันทีที่บันทึก
         <br />
         <span style={{ color: "var(--ink-3)", fontSize: ".84rem" }}>
-          ของที่ลูกค้ามีอยู่แล้วเกินโควตา “ใช้ต่อได้” — ระบบบล็อกเฉพาะการเพิ่มใหม่ · แพ็กเกจที่ซ่อนยังใช้ได้กับ workspace ที่อยู่ในแพ็กเกจนั้น
+          แพ็กเกจผูกกับบัญชีผู้ใช้ — โควตานับรวมทุก workspace ที่บัญชีนั้นสร้าง · ของที่มีอยู่แล้วเกินโควตา “ใช้ต่อได้” บล็อกเฉพาะการเพิ่มใหม่ · แพ็กเกจที่ซ่อนยังใช้ได้กับบัญชีที่อยู่ในแพ็กเกจนั้น (กำหนดให้ได้ที่หน้าจัดการผู้ใช้)
         </span>
       </p>
 
@@ -138,7 +138,7 @@ export default function PlanClient({ plans, configured, tenantCounts = {} }: {
                 <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: ".88rem" }}>{p.priceThb > 0 ? `฿${p.priceThb.toLocaleString()}` : "ฟรี"}</span>
                 {p.highlight && <Badge c="var(--accent)">แนะนำ</Badge>}
                 {p.visible ? <Badge c="var(--pass)">แสดงให้ลูกค้า</Badge> : <Badge c="var(--ink-3)">ซ่อน</Badge>}
-                <span style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>{users} workspace</span>
+                <span style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>{users} บัญชี</span>
               </button>
               <div style={{ display: "flex", gap: 4 }}>
                 <IconBtn label="เลื่อนขึ้น" onClick={() => move(i, -1)} disabled={i === 0}><Icon icon={ArrowUp} className="h-4 w-4" /></IconBtn>
