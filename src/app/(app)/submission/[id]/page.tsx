@@ -21,7 +21,7 @@ const STATUS_LABEL: Record<string, { t: string; c: string }> = {
 function fmt(ts: string | null) {
   if (!ts) return "—";
   try {
-    return new Date(ts).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+    return new Date(ts).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
   } catch {
     return "—";
   }

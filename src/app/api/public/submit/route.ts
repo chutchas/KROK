@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
+import { sanitizeSchema } from "@/lib/form-schema";
+import { sanitizePublicAnswers } from "@/lib/public-answers";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -24,7 +26,7 @@ export async function POST(req: Request) {
   // ยืนยันว่าฟอร์มนี้เป็น public + เผยแพร่ + ไม่ถูกลบ
   const { data: f } = await admin
     .from("forms")
-    .select("id, tenant_id, title, icon, version, requires_approval, approval_chain, visibility, status, deleted_at")
+    .select("id, tenant_id, title, icon, version, schema, requires_approval, approval_chain, visibility, status, deleted_at")
     .eq("id", formId)
     .maybeSingle();
 
@@ -63,19 +65,29 @@ export async function POST(req: Request) {
   } catch { /* ถ้านับไม่ได้ ไม่บล็อกการส่ง */ }
 
   const userName = String(form.get("user_name") || "").trim().slice(0, 120) || "ผู้ไม่ระบุชื่อ";
-  const result = form.get("result") === "fail" ? "fail" : "pass";
   let duration = parseInt(String(form.get("duration") || "0"), 10) || 0;
   if (duration < 0) duration = 0;
   if (duration > 86400) duration = 86400; // ตัดค่าที่ผิดปกติ
-  let fails: unknown[] = [];
-  let answers: unknown[] = [];
-  try { fails = JSON.parse(String(form.get("fails") || "[]")); } catch { /* keep [] */ }
-  try { answers = JSON.parse(String(form.get("answers") || "[]")); } catch { /* keep [] */ }
-  if (!Array.isArray(fails)) fails = [];
-  if (!Array.isArray(answers)) answers = [];
-  // จำกัดขนาด payload กัน DoS
-  if (answers.length > 500) answers = answers.slice(0, 500);
-  if (fails.length > 500) fails = fails.slice(0, 500);
+
+  // รูป/ลายเซ็นที่รับ: เฉพาะช่องชนิด photo/signature ที่มีอยู่จริงในฟอร์ม, ไม่เกิน 40 ไฟล์, ไฟล์ละ ≤ 4MB
+  let schema;
+  try { schema = sanitizeSchema(f.schema); } catch { return NextResponse.json({ error: "ฟอร์มไม่ถูกต้อง" }, { status: 500 }); }
+  const mediaFields = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "photo" || x.type === "signature").map((x) => x.id)));
+  const MAX_PHOTOS = 40;
+  const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB/ไฟล์
+  const photos: { fieldId: string; file: File }[] = [];
+  for (const [key, value] of form.entries()) {
+    if (!key.startsWith("photo_") || !(value instanceof File)) continue;
+    const fieldId = key.slice("photo_".length);
+    if (!mediaFields.has(fieldId) || value.size > MAX_PHOTO_BYTES || photos.some((p) => p.fieldId === fieldId)) continue;
+    photos.push({ fieldId, file: value });
+    if (photos.length >= MAX_PHOTOS) break;
+  }
+
+  // ไม่เชื่อคำตอบ/ผลจาก client: กรองตาม schema + คำนวณไม่ผ่านใหม่ฝั่ง server
+  let rawAnswers: unknown = [];
+  try { rawAnswers = JSON.parse(String(form.get("answers") || "[]")); } catch { /* keep [] */ }
+  const { answers, fails, result } = sanitizePublicAnswers(schema, rawAnswers, new Set(photos.map((p) => p.fieldId)));
 
   const subId = crypto.randomUUID();
   const { error: subErr } = await admin.from("submissions").insert({
@@ -108,16 +120,8 @@ export async function POST(req: Request) {
     meta: { submission_id: subId, result, source: "public", user_name: userName },
   });
 
-  // อัปโหลดรูป/ลายเซ็น (ไฟล์ชื่อ photo_<fieldId>) — จำกัดจำนวนไฟล์และขนาดต่อไฟล์
-  const MAX_PHOTOS = 40;
-  const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB/ไฟล์
-  let photoCount = 0;
-  for (const [key, value] of form.entries()) {
-    if (!key.startsWith("photo_") || !(value instanceof File)) continue;
-    if (++photoCount > MAX_PHOTOS) break;
-    if (value.size > MAX_PHOTO_BYTES) continue;
-    const fieldId = key.slice("photo_".length).replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
-    if (!fieldId) continue;
+  // อัปโหลดรูป/ลายเซ็น (คัดไว้แล้วด้านบน)
+  for (const { fieldId, file: value } of photos) {
     const path = `${f.tenant_id}/${subId}/${fieldId}.jpg`;
     const buf = Buffer.from(await value.arrayBuffer());
     const { error: upErr } = await admin.storage

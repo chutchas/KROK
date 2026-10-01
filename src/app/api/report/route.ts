@@ -6,6 +6,7 @@ import { answerCell, answersByKey, collectColumns, sheetName } from "@/lib/repor
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const STATUS_TH: Record<string, string> = {
   none: "-",
@@ -54,6 +55,7 @@ export async function GET(req: Request) {
       .select(selectCols)
       .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
       .order("submitted_at", { ascending: false })
+      .order("id", { ascending: false }) // ลำดับตายตัว — กันแถวเวลาเดียวกันซ้ำ/หายระหว่างหน้า
       .range(offset, offset + PAGE - 1);
     if (formId && formId !== "all") q = q.eq("form_id", formId);
     if (from) q = q.gte("submitted_at", from + "T00:00:00");
@@ -108,15 +110,18 @@ export async function GET(req: Request) {
     c.border = { bottom: { style: "thin", color: { argb: "FFCBD5E1" } } };
   });
 
-  for (const s of rows) {
+  // คำตอบแยกตาม key ของแต่ละแถว — คำนวณครั้งเดียว ใช้ทั้งชีตหลักและชีตตาราง
+  const keyed = withAnswers ? rows.map((s) => answersByKey(Array.isArray(s.answers) ? s.answers : [])) : [];
+
+  for (const [ri0, s] of rows.entries()) {
     const fails = (s.fails as string[]) || [];
     let when = "";
     try {
-      when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+      when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
     } catch { /* ignore */ }
     const extra: Record<string, string> = {};
     if (withAnswers) {
-      const byKey = answersByKey(Array.isArray(s.answers) ? s.answers : []);
+      const byKey = keyed[ri0];
       ansCols.forEach((c, i) => {
         const a = byKey.get(c.key);
         extra[`a${i}`] = answerCell(a);
@@ -158,11 +163,11 @@ export async function GET(req: Request) {
     th.font = { bold: true, color: { argb: "FFFFFFFF" } };
     th.eachCell((c) => { c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF2F6FE0" } }; });
 
-    for (const s of rows) {
-      const a = answersByKey(Array.isArray(s.answers) ? s.answers : []).get(t.key);
+    for (const [si, s] of rows.entries()) {
+      const a = keyed[si]?.get(t.key);
       if (!a || !Array.isArray(a.rows) || a.rows.length === 0) continue;
       let when = "";
-      try { when = new Date(s.submitted_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" }); } catch { /* ignore */ }
+      try { when = new Date(s.submitted_at).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" }); } catch { /* ignore */ }
       a.rows.forEach((r, ri) => {
         const rec: Record<string, string | number> = { when, user: s.user_name || "-", no: ri + 1, link: `${origin}/submission/${s.id}` };
         t.columns.forEach((c, i) => {

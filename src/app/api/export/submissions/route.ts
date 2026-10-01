@@ -47,7 +47,7 @@ export async function GET(req: Request) {
     const fails = (s.fails as string[]) || [];
     let when = "";
     try {
-      when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short" });
+      when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
     } catch { /* ignore */ }
     lines.push(
       [

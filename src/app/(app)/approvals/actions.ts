@@ -2,7 +2,6 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
-import { sanitizeChain, type ApprovalHistoryEntry } from "@/lib/approval";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
 
@@ -16,62 +15,18 @@ export async function reviewSubmission(
   if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์อนุมัติ" };
 
   const supabase = await createClient();
-  const { data: sub } = await supabase
-    .from("submissions")
-    .select("id, approval_status, approval_step, approval_chain, approval_history, form_title, form_id")
-    .eq("id", id)
-    .eq("tenant_id", session.tenantId)
-    .maybeSingle();
-  if (!sub) return { error: "ไม่พบรายการ" };
-  if (sub.approval_status !== "pending") return { error: "รายการนี้ถูกดำเนินการไปแล้ว" };
-
-  const chain = sanitizeChain(sub.approval_chain);
-  const step = (sub.approval_step as number) ?? 0;
-  const cur = chain[step];
-
-  // สิทธิ์: ผู้อนุมัติที่ถูกกำหนดของขั้นนี้ หรือ owner (override) หรือ chain ว่าง+เป็นผู้จัดการ
-  const isAssigned = cur ? cur.user_id === session.userId : canManage(session.role);
-  if (!isAssigned && session.role !== "owner")
-    return { error: "ยังไม่ถึงคิวคุณอนุมัติขั้นนี้" };
-
-  const history = (Array.isArray(sub.approval_history) ? sub.approval_history : []) as ApprovalHistoryEntry[];
-  const entry: ApprovalHistoryEntry = {
-    step,
-    label: cur?.label || `ขั้น ${step + 1}`,
-    reviewer_name: session.displayName,
-    decision,
-    note: note.slice(0, 500),
-    at: new Date().toISOString(),
-  };
-
-  let newStatus: "pending" | "approved" | "rejected";
-  let newStep = step;
-  let advanced = false;
-  if (decision === "rejected") {
-    newStatus = "rejected";
-  } else if (chain.length > 0 && step < chain.length - 1) {
-    newStatus = "pending"; // เลื่อนไปขั้นถัดไป
-    newStep = step + 1;
-    advanced = true;
-  } else {
-    newStatus = "approved"; // ขั้นสุดท้าย (หรือ chain ว่าง = ขั้นเดียว)
+  // ตรวจคิวผู้อนุมัติ + เลื่อนขั้น/ปิดงาน ทำใน RPC (ฐานข้อมูลบังคับกติกาเดียวกัน กันการยิง REST ข้ามผู้อนุมัติ)
+  const { data, error } = await supabase.rpc("review_submission", { p_id: id, p_decision: decision, p_note: note.slice(0, 500) });
+  if (error || !data) {
+    const m = error?.message || "อนุมัติไม่สำเร็จ";
+    return { error: /review_submission/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ยังไม่ได้รัน migration 0036_review_rpc.sql" : m };
   }
-
-  const { error } = await supabase
-    .from("submissions")
-    .update({
-      approval_status: newStatus,
-      approval_step: newStep,
-      approval_history: [...history, entry],
-      reviewed_by: session.userId,
-      reviewer_name: session.displayName,
-      reviewed_at: new Date().toISOString(),
-      review_note: note.slice(0, 500),
-    })
-    .eq("id", id)
-    .eq("tenant_id", session.tenantId)
-    .eq("approval_status", "pending"); // กันชนกันหลายคนกดพร้อมกัน
-  if (error) return { error: error.message };
+  const r = data as { status: "pending" | "approved" | "rejected"; step: number; advanced: boolean; form_id: string; form_title: string; tenant_id: string };
+  if (r.tenant_id !== session.tenantId) return { error: "ไม่พบรายการ" };
+  const sub = { form_id: r.form_id, form_title: r.form_title };
+  const newStatus = r.status;
+  const advanced = r.advanced;
+  const entry = { at: new Date().toISOString() };
 
   await supabase.from("audit_log").insert({
     tenant_id: session.tenantId,
@@ -79,7 +34,7 @@ export async function reviewSubmission(
     action: "submission." + decision,
     target_type: "submission",
     target_id: id,
-    meta: { step, note, advanced },
+    meta: { step: r.step, note, advanced },
   });
 
   // แจ้ง webhook เมื่อจบกระบวนการ (อนุมัติครบ หรือ ตีกลับ) — ไม่แจ้งตอนแค่เลื่อนขั้น

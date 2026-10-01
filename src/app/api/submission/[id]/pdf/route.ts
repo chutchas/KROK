@@ -19,7 +19,7 @@ const STATUS: Record<string, { label: string; color: SubmissionPdfData["statusCo
 function fmtDate(ts: string | null): string {
   if (!ts) return "—";
   try {
-    return new Date(ts).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+    return new Date(ts).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
   } catch {
     return "—";
   }
@@ -46,21 +46,19 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .select("field_id, storage_path")
     .eq("submission_id", id);
 
+  // ดาวน์โหลดตรงจาก storage (ไม่ต้องขอ signed URL ทีละรูป) ทีละ 4 รูปพร้อมกัน
   const photoBuf: Record<string, Buffer> = {};
-  for (const p of photoRows || []) {
-    try {
-      const { data: signed } = await supabase.storage
-        .from("submissions")
-        .createSignedUrl(p.storage_path as string, 300);
-      if (!signed?.signedUrl) continue;
-      const res = await fetch(signed.signedUrl);
-      if (!res.ok) continue;
-      const ab = await res.arrayBuffer();
-      // pdfkit รองรับ JPEG/PNG เท่านั้น — 4MB/รูปพอสำหรับเอกสาร
-      if (ab.byteLength <= 4 * 1024 * 1024) photoBuf[p.field_id as string] = Buffer.from(ab);
-    } catch {
-      /* ข้ามรูปที่โหลดไม่ได้ */
-    }
+  const list = photoRows || [];
+  for (let i = 0; i < list.length; i += 4) {
+    await Promise.all(list.slice(i, i + 4).map(async (p) => {
+      try {
+        const { data: blob } = await supabase.storage.from("submissions").download(p.storage_path as string);
+        if (!blob) return;
+        const ab = await blob.arrayBuffer();
+        // pdfkit รองรับ JPEG/PNG เท่านั้น — 4MB/รูปพอสำหรับเอกสาร
+        if (ab.byteLength <= 4 * 1024 * 1024) photoBuf[p.field_id as string] = Buffer.from(ab);
+      } catch { /* ข้ามรูปที่โหลดไม่ได้ */ }
+    }));
   }
 
   const rawAnswers = (sub.answers || []) as AnswerItem[];
