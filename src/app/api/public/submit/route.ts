@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isRowPhotoKey } from "@/lib/table-rows";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
@@ -73,13 +74,16 @@ export async function POST(req: Request) {
   let schema;
   try { schema = sanitizeSchema(f.schema); } catch { return NextResponse.json({ error: "ฟอร์มไม่ถูกต้อง" }, { status: 500 }); }
   const mediaFields = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "photo" || x.type === "signature").map((x) => x.id)));
+  // รูปถ่ายต่อแถวของตาราง: key = <tableId>.<colId>.<สุ่ม> และคอลัมน์ต้องเป็นชนิดรูปถ่ายจริง
+  const photoCols = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "table").flatMap((x) => (x.columns || []).filter((c) => c.type === "photo").map((c) => `${x.id}.${c.id}`))));
+  const allowedMedia = (k: string) => mediaFields.has(k) || (isRowPhotoKey(k) && photoCols.has(k.split(".").slice(0, 2).join(".")));
   const MAX_PHOTOS = 40;
   const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB/ไฟล์
   const photos: { fieldId: string; file: File }[] = [];
   for (const [key, value] of form.entries()) {
     if (!key.startsWith("photo_") || !(value instanceof File)) continue;
     const fieldId = key.slice("photo_".length);
-    if (!mediaFields.has(fieldId) || value.size > MAX_PHOTO_BYTES || photos.some((p) => p.fieldId === fieldId)) continue;
+    if (!allowedMedia(fieldId) || value.size > MAX_PHOTO_BYTES || photos.some((p) => p.fieldId === fieldId)) continue;
     photos.push({ fieldId, file: value });
     if (photos.length >= MAX_PHOTOS) break;
   }

@@ -8,6 +8,7 @@
 // case_save (RPC) รับเฉพาะคำตอบ/ไฟล์ของฟิลด์ในช่วงนั้น ส่วนอื่นคงค่าเดิมบน server
 // ============================================================
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { mediaFieldId } from "@/lib/table-rows";
 import type { FormSchema } from "@/lib/form-schema";
 import type { CaseDocExtract } from "@/lib/case-flow";
 
@@ -77,7 +78,7 @@ export async function saveCase(
   const base = `${snap.tenantId}/${snap.caseId}`;
 
   const files: { key: string; step: number; dataUrl: string; ext: "jpg" | "png" }[] = [];
-  for (const [fid, d] of Object.entries(snap.photos)) { const st = stepOf.get(fid); if (inSeg(st)) files.push({ key: `p:${fid}`, step: st!, dataUrl: d, ext: "jpg" }); }
+  for (const [fid, d] of Object.entries(snap.photos)) { const st = stepOf.get(mediaFieldId(fid)); if (inSeg(st)) files.push({ key: `p:${fid}`, step: st!, dataUrl: d, ext: "jpg" }); }
   for (const [fid, d] of Object.entries(snap.sigs)) { const st = stepOf.get(fid); if (inSeg(st)) files.push({ key: `s:${fid}`, step: st!, dataUrl: d, ext: "png" }); }
 
   const media: Record<string, string> = {};
@@ -96,7 +97,7 @@ export async function saveCase(
 
   // ไฟล์ของช่วงนี้ที่ถูกเอาออก (ล้างรูป/ลายเซ็น) → ลบทิ้ง
   const stale = Object.entries(prevMedia)
-    .filter(([k, p]) => !media[k] && inSeg(stepOf.get(k.slice(2))) && p.startsWith(base + "/"))
+    .filter(([k, p]) => !media[k] && inSeg(stepOf.get(mediaFieldId(k.slice(2)))) && p.startsWith(base + "/"))
     .map(([k, p]) => { uploaded.delete(k); return p; });
   if (stale.length) await supabase.storage.from(CASE_BUCKET).remove(stale);
 

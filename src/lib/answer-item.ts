@@ -21,7 +21,7 @@ export interface AnswerItem {
   fail?: boolean;
   photoField?: string;
   rows?: Record<string, string>[];
-  columns?: { id: string; label: string }[];
+  columns?: { id: string; label: string; type?: string }[];
   src?: AnswerSrc;
   /**
    * รหัสของตัวเลือกจากข้อมูลอ้างอิงที่ "แสดงชื่อ เก็บรหัส"

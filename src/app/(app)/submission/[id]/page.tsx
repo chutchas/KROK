@@ -149,7 +149,18 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                       <tbody>
                         {a.rows.map((r, ri) => (
                           <tr key={ri} style={{ borderBottom: "1px solid var(--line)" }}>
-                            {a.columns!.map((c) => <td key={c.id} style={{ padding: "5px 9px", verticalAlign: "top" }}>{r[c.id] || "—"}</td>)}
+                            {a.columns!.map((c) => {
+                              const pk = r[`${c.id}#photo`];
+                              return (
+                                <td key={c.id} style={{ padding: "5px 9px", verticalAlign: "top" }}>
+                                  {pk && photoMap[pk] ? (
+                                    <a href={photoMap[pk]} target="_blank" rel="noreferrer">
+                                      <img src={photoMap[pk]} alt={`${c.label} ${ri + 1}`} style={{ height: 64, maxWidth: 110, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }} />
+                                    </a>
+                                  ) : (r[c.id] || "—")}
+                                </td>
+                              );
+                            })}
                           </tr>
                         ))}
                       </tbody>

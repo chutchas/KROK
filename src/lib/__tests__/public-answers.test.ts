@@ -27,7 +27,7 @@ describe("sanitizePublicAnswers", () => {
     expect(r.answers[0]).toEqual({ label: "ชื่อ", type: "text", display: "สมชาย" });
     expect(r.answers[3]).toEqual({ label: "รูป", type: "photo", display: "—" });
     expect(r.answers[4].rows).toEqual([{ c1: "น็อต" }]);
-    expect(r.answers[4].columns).toEqual([{ id: "c1", label: "ของ" }]);
+    expect(r.answers[4].columns).toEqual([{ id: "c1", label: "ของ", type: "text" }]);
   });
   it("ช่องที่ไม่ส่งมาได้ — และรูปที่อัปโหลดจริงผูก photoField ด้วย id ของช่อง", () => {
     const r = sanitizePublicAnswers(schema, [{ label: "สภาพ", type: "pass_fail", display: "ไม่ผ่าน", note: "บุบ" }], new Set(["ph"]));

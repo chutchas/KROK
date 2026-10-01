@@ -109,7 +109,7 @@ function coerceRow(cols: TableColumn[], raw: unknown): { row?: TableRow; error?:
     if (!col) continue;
     const s = scalar(v);
     if (s == null || s === "") continue;
-    if (col.type === "formula") continue; // คำนวณเองฝั่ง server
+    if (col.type === "formula" || col.type === "photo") continue; // สูตรคำนวณเอง · รูปส่งผ่าน API ไม่ได้
     if (col.type === "number" && !Number.isFinite(Number(s))) return { error: `คอลัมน์ "${col.label}" ต้องเป็นตัวเลข` };
     if (col.type === "pass_fail") {
       const k = passFailCode(s);
@@ -288,7 +288,7 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
         item.display = `${fin.rows.length} แถว`;
         item.rows = fin.rows;
         if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
-        item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
+        item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
       } else if (f.type === "select" && typeof a.value === "string" && a.value) {
         const name = labelMap(f.options, f.option_labels).get(a.value);
         item.display = name ?? a.value;

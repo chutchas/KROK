@@ -64,3 +64,26 @@ describe("server recompute", () => {
     expect(f[1].columns?.[3].formula).toBe("{q} * {p}");
   });
 });
+
+describe("รูปถ่ายต่อแถว", () => {
+  const t2: FormField = { id: "tb", type: "table", label: "รายการ", required: false, columns: [
+    { id: "n", label: "ชื่อ", type: "text" }, { id: "img", label: "รูป", type: "photo" },
+  ] };
+  it("เก็บ key ไว้ที่ #photo และช่องแสดง 'มีรูป' · ทิ้ง key ที่ไม่ใช่ของช่องนี้/ไม่มีไฟล์", () => {
+    const r = finalizeTableRows(t2, [
+      { n: "A", img: "tb.img.abc12345" },
+      { n: "B", img: "other.img.abc12345" },
+      { img: "tb.img.zzz99999" },
+    ], (k) => k !== "tb.img.zzz99999");
+    expect(r.rows).toEqual([{ n: "A", img: "มีรูป", "img#photo": "tb.img.abc12345" }, { n: "B" }]);
+    expect(r.photoKeys).toEqual(["tb.img.abc12345"]);
+  });
+  it("ฟอร์มสาธารณะ: รับ key จาก #photo เฉพาะที่แนบไฟล์มาจริง", () => {
+    const s3 = { title: "t", steps: [{ id: "s1", title: "s", fields: [t2] }] } as unknown as FormSchema;
+    const res = sanitizePublicAnswers(s3, [{ label: "รายการ", type: "table", rows: [
+      { n: "A", img: "มีรูป", "img#photo": "tb.img.abc12345" },
+      { n: "B", img: "มีรูป", "img#photo": "tb.img.notsent1" },
+    ] }], new Set(["tb.img.abc12345"]));
+    expect(res.answers[0].rows).toEqual([{ n: "A", img: "มีรูป", "img#photo": "tb.img.abc12345" }, { n: "B" }]);
+  });
+});

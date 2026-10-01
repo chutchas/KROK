@@ -44,7 +44,9 @@ export interface PdfAnswer {
   fail?: boolean;
   photo?: Buffer | null;
   rows?: Record<string, string>[];
-  columns?: { id: string; label: string }[];
+  columns?: { id: string; label: string; type?: string }[];
+  /** รูปถ่ายต่อแถวของตาราง (วาดเป็นตารางรูปใต้ตาราง) */
+  rowPhotos?: { caption: string; photo: Buffer }[];
 }
 
 export interface SubmissionPdfData {
@@ -185,6 +187,7 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     for (const a of data.answers) {
       if (a.type === "table" && a.columns && a.columns.length) {
         y = drawTable(doc, a, y + 8, newPage) + 4;
+        if (a.rowPhotos?.length) y = drawPhotoGrid(doc, a.rowPhotos, y, newPage);
         continue;
       }
       const aLabel = clean(a.label) || "—";
@@ -271,6 +274,31 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
 
     doc.end();
   });
+}
+
+// รูปของแถวตาราง: เรียง 4 รูปต่อแถว คำบรรยายใต้รูป · ขึ้นหน้าใหม่ทีละแถวรูป
+function drawPhotoGrid(doc: PDFKit.PDFDocument, photos: { caption: string; photo: Buffer }[], startY: number, newPage: () => void): number {
+  const PER = 4, GAP = 8, BOX_H = 104, CAP_H = 14;
+  const w = (CONTENT_W - GAP * (PER - 1)) / PER;
+  let y = startY;
+  for (let i = 0; i < photos.length; i += PER) {
+    if (y + BOX_H + CAP_H > BOTTOM) { newPage(); y = M; }
+    photos.slice(i, i + PER).forEach((p, j) => {
+      const x = M + j * (w + GAP);
+      doc.rect(x, y, w, BOX_H).lineWidth(0.5).stroke(C.line);
+      try {
+        const dims = (doc as unknown as { openImage: (b: Buffer) => { width: number; height: number } }).openImage(p.photo);
+        const sc = Math.min((w - 6) / dims.width, (BOX_H - 6) / dims.height, 1);
+        const iw = dims.width * sc, ih = dims.height * sc;
+        doc.image(p.photo, x + (w - iw) / 2, y + (BOX_H - ih) / 2, { width: iw, height: ih });
+      } catch {
+        doc.font("th").fontSize(8).fillColor(C.faint).text("(ไม่สามารถแสดงรูปได้)", x, y + BOX_H / 2 - 5, { width: w, align: "center", lineBreak: false });
+      }
+      doc.font("th").fontSize(7.5).fillColor(C.muted).text(clean(p.caption), x, y + BOX_H + 2, { width: w, lineBreak: false, ellipsis: true });
+    });
+    y += BOX_H + CAP_H + 6;
+  }
+  return y + 6;
 }
 
 function fmtDuration(s: number): string {

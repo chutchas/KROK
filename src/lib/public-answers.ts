@@ -8,7 +8,7 @@
 import type { FormField, FormSchema } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
-import { finalizeTableRows } from "@/lib/table-rows";
+import { finalizeTableRows, rowPhotoKeyOf } from "@/lib/table-rows";
 
 const SRC = new Set(["scan", "ai", "ai_edited"]);
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -16,7 +16,7 @@ const str = (v: unknown, max: number): string | undefined => (typeof v === "stri
 function cleanRows(f: FormField, raw: unknown): Record<string, string>[] {
   if (!Array.isArray(raw)) return [];
   const allowed = new Set<string>();
-  for (const c of f.columns || []) { allowed.add(c.id); allowed.add(tableCodeKey(c.id)); }
+  for (const c of f.columns || []) { allowed.add(c.id); allowed.add(tableCodeKey(c.id)); if (c.type === "photo") allowed.add(rowPhotoKeyOf(c.id)); }
   const out: Record<string, string>[] = [];
   for (const r of raw.slice(0, 500)) {
     if (!r || typeof r !== "object" || Array.isArray(r)) continue;
@@ -75,9 +75,9 @@ export function sanitizePublicAnswers(
       item.display = "—";
     } else if (f.type === "table") {
       // คอลัมน์สูตร/ผ่าน-ไม่ผ่าน คำนวณใหม่จากค่าที่กรอก · แถวที่ไม่ผ่าน = เอกสารไม่ผ่าน
-      const fin = finalizeTableRows(f, cleanRows(f, a.rows));
+      const fin = finalizeTableRows(f, cleanRows(f, a.rows), (k) => uploaded.has(k));
       item.rows = fin.rows;
-      item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
+      item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
       item.display = `${fin.rows.length} แถว`;
       if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
     } else {

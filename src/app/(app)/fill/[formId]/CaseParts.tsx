@@ -57,7 +57,7 @@ function MiniTable({ f, rows, paper }: { f: FormField; rows: TableRow[]; paper: 
               {cols.map((c) => {
                 const raw = r[c.id] ?? "";
                 const name = "option_labels" in c && c.option_labels ? labelMap(c.options, c.option_labels).get(raw) : undefined;
-                const coded = c.type === "pass_fail" ? (raw === "pass" ? t("case.pass") : raw === "fail" ? t("case.fail") : raw) : c.type === "checkbox" ? (raw === "1" ? "✓" : "") : raw;
+                const coded = c.type === "photo" ? (raw ? t("ctype.photo") : "") : c.type === "pass_fail" ? (raw === "pass" ? t("case.pass") : raw === "fail" ? t("case.fail") : raw) : c.type === "checkbox" ? (raw === "1" ? "✓" : "") : raw;
                 return <td key={c.id} style={{ padding: "3px 6px", border: bd, color: c.type === "pass_fail" && raw === "fail" ? (paper ? "#dc2626" : "var(--fail)") : undefined, textAlign: c.type === "formula" ? "right" : undefined }}>{name ?? coded}</td>;
               })}
             </tr>

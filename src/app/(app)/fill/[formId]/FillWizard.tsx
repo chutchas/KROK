@@ -22,7 +22,7 @@ import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import LiveScanner from "@/components/LiveScanner";
 import TableCell from "@/components/TableCell";
 import { computeFormulas, computeRow, formatNumber, outOfRange } from "@/lib/formula";
-import { finalizeTableRows } from "@/lib/table-rows";
+import { cellPhotoKey, finalizeTableRows, mediaFieldId, newRowPhotoKey } from "@/lib/table-rows";
 import FillSourceBar, { type AppliedValue, type DocExtractRecord, type FillSrcTag } from "@/components/FillSourceBar";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
 import AttachmentChips from "@/components/AttachmentView";
@@ -42,6 +42,8 @@ import { registerDevice } from "@/app/(app)/settings/devices/actions";
 import { confirmDialog } from "@/components/dialogs";
 
 type TableRow = Record<string, string>;
+/** รูปถ่ายต่อแถวของตาราง: key → dataURL (เก็บรวมกับรูปของฟิลด์ใน state photos) */
+type MediaPhotos = { get: (key: string) => string | undefined; set: (key: string, dataUrl: string | null) => void };
 const asRows = (v: unknown): TableRow[] => (Array.isArray(v) && v.length && typeof v[0] === "object" ? (v as TableRow[]) : []);
 
 type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string; src?: FillSrcTag | "api" };
@@ -224,6 +226,14 @@ export default function FillWizard(props: Props) {
   // ค่าเริ่มต้นคำนวณจากร่าง/งานที่โหลดมา · หลังจากนั้นคำนวณใหม่ทุกครั้งที่คำตอบเปลี่ยน (patchAnswer / applyFill)
   const [formulaVals, setFormulaVals] = useState<Record<string, number | null>>(() =>
     calcFrom(((kase?.answers ?? initialDraft?.answers) as Record<string, Answer>) ?? {}));
+  // รูปถ่ายต่อแถว: อยู่ใน photos เดียวกับรูปของฟิลด์ (แบบร่าง/งาน/ส่งข้อมูลจัดการเหมือนกัน) key = <field>.<col>.<สุ่ม>
+  const mediaPhotos = useMemo<MediaPhotos>(() => ({
+    get: (k) => photos[k],
+    set: (k, d) => {
+      dirty.current++;
+      setPhotos((prev) => { const n = { ...prev }; if (d) n[k] = d; else delete n[k]; return n; });
+    },
+  }), [photos]);
   const refreshFormulas = useCallback(() => { if (hasFormula) setFormulaVals(calcFrom(answers.current)); }, [hasFormula, calcFrom]);
 
   // merge a patch into an answer (ref-owned by this component)
@@ -345,7 +355,7 @@ export default function FillWizard(props: Props) {
             answers: answers.current, photos: ph, sigs: sg, docExtracts: docExtracts.current as CaseDocExtract[], filled, total,
           }, uploadedMedia.current, draftMedia.current);
           const keep = Object.fromEntries(Object.entries(draftMedia.current).filter(([k]) => {
-            const st = stepOfField.get(k.slice(2));
+            const st = stepOfField.get(mediaFieldId(k.slice(2)));
             return st === undefined || st < segStart || st > segEnd;
           }));
           draftMedia.current = { ...keep, ...res.media };
@@ -617,10 +627,11 @@ export default function FillWizard(props: Props) {
             }
           } else if (f.type === "table") {
             const fin = finalizeTableRows(f, asRows(a.value));
+            for (const k of fin.photoKeys) if (photos[k]) photoUploads.push({ fieldId: k, dataUrl: photos[k] });
             item.display = `${fin.rows.length} แถว`;
             item.rows = fin.rows;
             if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
-            item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
+            item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
           } else if (f.type === "select" && f.option_labels && typeof a.value === "string" && a.value) {
             const name = labelMap(f.options, f.option_labels).get(a.value);
             item.display = name ?? a.value;
@@ -1008,6 +1019,7 @@ export default function FillWizard(props: Props) {
         sigUrl={sigs[f.id]}
         error={errors[f.id]}
         formulaValue={f.type === "formula" ? formulaVals[f.id] ?? null : undefined}
+        media={f.type === "table" ? mediaPhotos : undefined}
         onPatch={(patch, render) => {
           patchAnswer(f.id, patch, render);
           if ("value" in patch) pruneChildren(f.id);
@@ -1244,7 +1256,7 @@ function useIsNarrow() {
  * - ทุกครั้งที่แก้: คำนวณคอลัมน์สูตรของแถวนั้นใหม่ แล้วส่งค่าขึ้นไป (คำตอบจึงมีผลสูตรเสมอ)
  * - คอลัมน์สแกน: สแกนต่อเนื่อง ใส่ช่องว่างแรกของคอลัมน์ ไม่มีช่องว่าง → เพิ่มแถวใหม่
  */
-function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Dispatch<React.SetStateAction<TableRow[]>>, onChange: (rows: TableRow[]) => void) {
+function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Dispatch<React.SetStateAction<TableRow[]>>, onChange: (rows: TableRow[]) => void, fieldId = "", media?: MediaPhotos) {
   const [scanOpen, setScanOpen] = useState(false);
   const scanCol = cols.find((c) => c.type === "scan");
   // แถวล่าสุด (สแกนต่อเนื่องเรียกถี่กว่ารอบ render) — แถวเปลี่ยนผ่าน commit เท่านั้น จึงตรงกับ state เสมอ
@@ -1253,7 +1265,22 @@ function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Disp
   const setCell = (ri: number, cid: string, v: string) =>
     commit(live.current.map((r, i) => (i === ri ? computeRow(cols, { ...r, [cid]: v }) : r)));
   const addRow = () => commit([...live.current, {}]);
-  const delRow = (ri: number) => commit(live.current.length > 1 ? live.current.filter((_, i) => i !== ri) : [{}]);
+  const photoCols = cols.filter((c) => c.type === "photo");
+  const dropRowPhotos = (r: TableRow | undefined) => { if (r && media) for (const c of photoCols) { const k = cellPhotoKey(r, c.id); if (k) media.set(k, null); } };
+  const delRow = (ri: number) => { dropRowPhotos(live.current[ri]); commit(live.current.length > 1 ? live.current.filter((_, i) => i !== ri) : [{}]); };
+  /** รูปของช่อง: ย่อรูป → เก็บด้วย key ของช่อง (มีอยู่แล้วใช้ key เดิม = ถ่ายทับ) */
+  const onPhoto = async (ri: number, cid: string, file: File | null) => {
+    if (!media) return;
+    const cur = live.current[ri] ? cellPhotoKey(live.current[ri], cid) : undefined;
+    if (!file) { if (cur) media.set(cur, null); setCell(ri, cid, ""); return; }
+    try {
+      const data = await shrinkImage(file);
+      const key = cur ?? newRowPhotoKey(fieldId, cid);
+      media.set(key, data);
+      setCell(ri, cid, key);
+    } catch { /* อ่านรูปไม่ได้ — ข้าม */ }
+  };
+  const photoOf = (key: string | undefined) => (key && media ? media.get(key) : undefined);
   const onScanned = (code: string) => {
     if (!scanCol) return;
     const cur = live.current;
@@ -1261,13 +1288,15 @@ function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Disp
     if (at >= 0) commit(cur.map((r, i) => (i === at ? computeRow(cols, { ...r, [scanCol.id]: code }) : r)));
     else commit([...cur, computeRow(cols, { [scanCol.id]: code })]);
   };
-  return { commit, setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned };
+  return { commit, setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf };
 }
 
 // ตารางกรอกข้อมูล — desktop = ตาราง, มือถือ = การ์ดต่อแถว
 function TableInput({
-  columns, minRows, initial, onChange, variant,
+  columns, minRows, initial, onChange, variant, fieldId, media,
 }: {
+  fieldId: string;
+  media?: MediaPhotos;
   columns: TableColumn[];
   minRows: number;
   initial: TableRow[];
@@ -1289,11 +1318,12 @@ function TableInput({
     ? { field: "#fff", text: "#111", border: "#c3c8ce", card: "#fafbfc", cardBorder: "#d5d9de", muted: "#555", head: "#444", rule: "#ccc" }
     : { field: "var(--surface)", text: "var(--ink)", border: "var(--line)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
 
-  const { setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned } = useTableRows(cols, rows, setRows, onChange);
+  const { setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf } = useTableRows(cols, rows, setRows, onChange, fieldId, media);
 
   const cellInput = (ri: number, c: TableColumn) => {
     const st: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
-    return <TableCell col={c} value={rows[ri]?.[c.id] ?? ""} onChange={(v) => setCell(ri, c.id, v)} look={small ? "small" : "normal"} style={st} iconOnly={!cards} />;
+    return <TableCell col={c} value={rows[ri]?.[c.id] ?? ""} onChange={(v) => setCell(ri, c.id, v)} look={small ? "small" : "normal"} style={st} iconOnly={!cards}
+      photoUrl={c.type === "photo" ? photoOf(rows[ri] ? cellPhotoKey(rows[ri], c.id) : undefined) : undefined} onPhoto={(f) => void onPhoto(ri, c.id, f)} />;
   };
 
   const btnSt: React.CSSProperties = { marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 };
@@ -1386,8 +1416,11 @@ function FieldControl({
   getParentValue,
   parentLabel,
   formulaValue,
+  media,
 }: {
   field: FormField;
+  /** รูปถ่ายต่อแถวของตาราง */
+  media?: MediaPhotos;
   /** ผลคำนวณของฟิลด์สูตร (null = ยังคำนวณไม่ได้) */
   formulaValue?: number | null;
   /** อ่านค่าของฟิลด์แม่ (dropdown ที่กรองตามกัน) */
@@ -1567,7 +1600,7 @@ function FieldControl({
           </>
         )}
         {f.type === "table" && (
-          <PaperTableField field={f}
+          <PaperTableField field={f} media={media}
             initial={Array.isArray(initial.value) && typeof initial.value[0] === "object" ? (initial.value as TableRow[]) : []}
             onChange={(rows) => onPatch({ value: rows }, false)} />
         )}
@@ -1740,6 +1773,8 @@ function FieldControl({
         {f.type === "signature" && <SignaturePad hasSig={hasSig} onSave={setSig} paper={paper} compact={compact} />}
         {f.type === "table" && (
           <TableInput
+            fieldId={f.id}
+            media={media}
             columns={f.columns || []}
             minRows={f.min_rows || 1}
             initial={Array.isArray(initial.value) && typeof initial.value[0] === "object" ? (initial.value as TableRow[]) : []}
@@ -1851,13 +1886,13 @@ function numOut(f: FormField, value: string): boolean {
 }
 
 /** ตารางในโหมดกระดาษ: ชื่อช่อง + ปุ่ม "+ แถว" ในบรรทัดเดียว แล้วตารางจริงแถวสูงเท่าที่ออกแบบ */
-function PaperTableField({ field: f, initial, onChange }: { field: FormField; initial: TableRow[]; onChange: (rows: TableRow[]) => void }) {
+function PaperTableField({ field: f, initial, onChange, media }: { field: FormField; initial: TableRow[]; onChange: (rows: TableRow[]) => void; media?: MediaPhotos }) {
   const [rows, setRows] = useState<TableRow[]>(() => {
     const base = initial.length ? initial.map((r) => computeRow(f.columns || [], { ...r })) : [];
     while (base.length < Math.max(1, f.min_rows || 1)) base.push({});
     return base;
   });
-  const { commit, setCell, addRow, scanCol, scanOpen, setScanOpen, onScanned } = useTableRows(f.columns || [], rows, setRows, onChange);
+  const { setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf } = useTableRows(f.columns || [], rows, setRows, onChange, f.id, media);
   const { t } = useT();
   return (
     <>
@@ -1876,7 +1911,9 @@ function PaperTableField({ field: f, initial, onChange }: { field: FormField; in
         columns={f.columns || []}
         rows={rows}
         onCell={setCell}
-        onDelete={rows.length > 1 ? (ri) => commit(rows.filter((_, i) => i !== ri)) : undefined}
+        onDelete={rows.length > 1 ? delRow : undefined}
+        photoOf={(ri, cid) => photoOf(rows[ri] ? cellPhotoKey(rows[ri], cid) : undefined)}
+        onPhoto={(ri, cid, file) => void onPhoto(ri, cid, file)}
       />
       {scanOpen && <LiveScanner continuous onResult={onScanned} onClose={() => setScanOpen(false)} />}
     </>

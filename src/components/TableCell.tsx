@@ -4,7 +4,8 @@
 // ค่าที่เก็บ: ผ่าน/ไม่ผ่าน = "pass" | "fail" · ติ๊กถูก = "1" | "" · วันที่ = "YYYY-MM-DDTHH:mm"
 // คอลัมน์สูตร = อ่านอย่างเดียว (คำนวณจากคอลัมน์อื่นในแถว — ดู lib/formula.computeRow)
 // ============================================================
-import { Check, X as XIcon } from "lucide-react";
+import { useRef } from "react";
+import { Camera, Check, X as XIcon } from "lucide-react";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import type { TableColumn } from "@/lib/form-schema";
@@ -15,8 +16,12 @@ export const PASS_C = "#16a34a";
 export const FAIL_C = "#dc2626";
 
 export default function TableCell({
-  col, value, onChange, look, style, iconOnly = false,
+  col, value, onChange, look, style, iconOnly = false, photoUrl, onPhoto,
 }: {
+  /** คอลัมน์รูปถ่าย: รูปของช่องนี้ (dataURL) */
+  photoUrl?: string;
+  /** คอลัมน์รูปถ่าย: เลือกรูปใหม่ (File) หรือลบ (null) — ผู้เรียกย่อรูปและจัดการ key เอง */
+  onPhoto?: (file: File | null) => void;
   /** ผ่าน/ไม่ผ่าน แสดงแค่ไอคอน (ช่องแคบในโหมดตาราง) */
   iconOnly?: boolean;
   col: TableColumn;
@@ -28,6 +33,36 @@ export default function TableCell({
 }) {
   const { t } = useT();
   const paper = look === "paper";
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  if (col.type === "photo") {
+    const h = paper ? (style.height as number) : look === "small" ? 40 : 56;
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 4, height: h, padding: paper ? "1px 3px" : 0, boxSizing: "border-box" }}>
+        <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden
+          onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onPhoto?.(f); }} />
+        {photoUrl ? (
+          <>
+            <button type="button" onClick={() => fileRef.current?.click()} title={t("ctype.photoRetake")} aria-label={t("ctype.photoRetake")}
+              style={{ border: "none", padding: 0, background: "none", cursor: "pointer", height: "100%", display: "flex" }}>
+              <img src={photoUrl} alt={col.label} style={{ height: "100%", maxWidth: paper ? 60 : 90, objectFit: "cover", borderRadius: paper ? 2 : 6, border: paper ? "1px solid #ccc" : "1px solid var(--line)" }} />
+            </button>
+            <button type="button" className="no-print" onClick={() => onPhoto?.(null)} aria-label={t("ctype.photoRemove")} title={t("ctype.photoRemove")}
+              style={{ border: "none", background: "none", color: FAIL_C, cursor: "pointer", display: "inline-flex", padding: 2 }}>
+              <Icon icon={XIcon} className="h-3.5 w-3.5" />
+            </button>
+          </>
+        ) : (
+          <button type="button" onClick={() => fileRef.current?.click()} aria-label={t("ctype.photoTake")} title={t("ctype.photoTake")}
+            style={{ width: "100%", height: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer", fontFamily: "inherit",
+              fontSize: paper ? ".68rem" : ".8rem", color: paper ? "#777" : "var(--ink-3)", background: paper ? "#fff" : "var(--surface)",
+              border: paper ? "none" : "1px dashed var(--line)", borderRadius: paper ? 0 : 6 }}>
+            <Icon icon={Camera} className="h-3.5 w-3.5" />{!paper && !iconOnly && <span>{t("ctype.photoTake")}</span>}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (col.type === "formula") {
     return (

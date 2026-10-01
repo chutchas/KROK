@@ -62,7 +62,22 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   }
 
   const rawAnswers = (sub.answers || []) as AnswerItem[];
-  const answers: PdfAnswer[] = rawAnswers.map((a) => ({
+  const answers: PdfAnswer[] = rawAnswers.map((a) => {
+    // รูปถ่ายต่อแถว: ช่องในตารางแสดง "รูป n" แล้ววาดรูปทั้งหมดเป็นตารางรูปใต้ตาราง
+    let rows = a.rows;
+    const rowPhotos: { caption: string; photo: Buffer }[] = [];
+    if (a.type === "table" && a.rows && a.columns?.some((c) => c.type === "photo")) {
+      rows = a.rows.map((r, ri) => {
+        const o = { ...r };
+        for (const c of a.columns!) {
+          const k = r[`${c.id}#photo`];
+          const buf = k ? photoBuf[k] : undefined;
+          if (buf) { rowPhotos.push({ caption: `รูป ${rowPhotos.length + 1} · แถว ${ri + 1} ${c.label}`, photo: buf }); o[c.id] = `รูป ${rowPhotos.length}`; }
+        }
+        return o;
+      });
+    }
+    return {
     label: a.label,
     type: a.type,
     // ที่มาของค่าต้องปรากฏในเอกสารที่พิมพ์ออกไปด้วย ไม่งั้นตรวจย้อนหลังแยกไม่ออก
@@ -71,9 +86,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     note: a.note,
     fail: a.fail,
     photo: a.photoField ? photoBuf[a.photoField] ?? null : null,
-    rows: a.rows,
+    rows,
     columns: a.columns,
-  }));
+    rowPhotos: rowPhotos.length ? rowPhotos : undefined,
+  };
+  });
 
   const st = STATUS[sub.approval_status as string] || STATUS.none;
   const history = Array.isArray(sub.approval_history)

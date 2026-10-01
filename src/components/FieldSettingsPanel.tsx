@@ -296,6 +296,7 @@ export default function FieldSettingsPanel({
                     <option value="checkbox">{t("ctype.check")}</option>
                     <option value="datetime">{t("ctype.date")}</option>
                     <option value="scan">{t("ctype.scan")}</option>
+                    <option value="photo">{t("ctype.photo")}</option>
                   </select>
                   <label style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("editor.tableWidth")}</label>
                   <input type="number" min={1} max={6} value={c.width ?? 1} onChange={(e) => patchCol(i, { width: Math.min(6, Math.max(1, Number(e.target.value) || 1)) })} style={{ ...sel, width: 56, padding: "6px 8px" }} />
@@ -313,6 +314,7 @@ export default function FieldSettingsPanel({
                 )}
                 {c.type === "pass_fail" && <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("ctype.passFailHint")}</p>}
                 {c.type === "scan" && <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("ctype.scanHint")}</p>}
+                {c.type === "photo" && <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("ctype.photoHint")}</p>}
                 {c.type === "select" && (
                   <div style={{ marginTop: 6 }}>
                     <ColumnSourceEditor col={c} onPatch={(p) => patchCol(i, p)} staticEditor={

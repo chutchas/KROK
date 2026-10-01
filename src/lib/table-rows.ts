@@ -13,6 +13,24 @@ import { computeRow } from "@/lib/formula";
 
 type Row = Record<string, string>;
 
+// ---------- รูปถ่ายต่อแถว ----------
+// ระหว่างกรอก: ช่องเก็บ "media key" = <fieldId>.<colId>.<สุ่ม> (ใช้เป็นชื่อไฟล์/field_id ของ submission_photos)
+// ตอนเก็บ: ช่องแสดง "มีรูป" (อ่านได้ทุกที่ เช่น Excel/PDF) + "<colId>#photo" เก็บ key ไว้ดึงรูป
+export const PHOTO_SUFFIX = "#photo";
+export const rowPhotoKeyOf = (colId: string) => `${colId}${PHOTO_SUFFIX}`;
+const ROW_PHOTO_RE = /^([\w-]+)\.([\w-]+)\.([a-z0-9]{6,16})$/;
+export function newRowPhotoKey(fieldId: string, colId: string): string {
+  return `${fieldId}.${colId}.${Math.random().toString(36).slice(2, 10)}`;
+}
+export function isRowPhotoKey(v: unknown): v is string { return typeof v === "string" && ROW_PHOTO_RE.test(v); }
+/** media key → field id ของตาราง (ใช้หาขั้นตอนของรูป) · key ทั่วไป (รูปของฟิลด์) คืนตัวเอง */
+export function mediaFieldId(key: string): string { return key.split(".")[0]; }
+/** key รูปของช่องนี้ (ค่าระหว่างกรอก หรือค่าที่เก็บแล้ว) */
+export function cellPhotoKey(r: Row, colId: string): string | undefined {
+  const k = r[rowPhotoKeyOf(colId)] ?? r[colId];
+  return isRowPhotoKey(k) ? k : undefined;
+}
+
 export const PASS_WORDS = ["pass", "ผ่าน", "ok", "true", "1"];
 export const FAIL_WORDS = ["fail", "ไม่ผ่าน", "ng", "false", "0"];
 
@@ -36,24 +54,33 @@ export function tableCellDisplay(c: Pick<TableColumn, "type">, v: string | undef
 }
 
 /** แถวที่กรอก (ค่าเป็นรหัส/ค่าดิบ) → แถวที่เก็บ + รายการไม่ผ่าน */
-export function finalizeTableRows(f: FormField, raw: Row[]): { rows: Row[]; fails: string[] } {
+export function finalizeTableRows(f: FormField, raw: Row[], hasPhoto?: (key: string) => boolean): { rows: Row[]; fails: string[]; photoKeys: string[] } {
   const cols = f.columns || [];
   const typeOf = new Map(cols.map((c) => [c.id, c.type]));
   const filled = raw
-    .filter((r) => r && Object.entries(r).some(([k, v]) => String(v ?? "").trim() !== "" && typeOf.get(k) !== "formula" && typeOf.has(k)))
+    .filter((r) => r && Object.entries(r).some(([k, v]) => String(v ?? "").trim() !== "" && typeOf.get(k.replace(PHOTO_SUFFIX, "")) !== "formula" && typeOf.has(k.replace(PHOTO_SUFFIX, ""))))
     .map((r) => {
       // ผ่าน/ไม่ผ่าน + ติ๊กถูก → รหัสก่อน (สูตรอ่านค่าเป็น 1/0)
       const n: Row = { ...r };
       for (const c of cols) {
+        if (c.type === "photo") {
+          const k = cellPhotoKey(r, c.id);
+          delete n[rowPhotoKeyOf(c.id)];
+          // รูปต้องเป็นของช่องนี้จริง และ (ฝั่ง server) ต้องมีไฟล์แนบมาจริง
+          if (k && k.startsWith(`${f.id}.${c.id}.`) && (!hasPhoto || hasPhoto(k))) n[c.id] = k; else delete n[c.id];
+        }
         if (c.type === "pass_fail") { const k = passFailCode(r[c.id]); if (k) n[c.id] = k; else delete n[c.id]; }
         if (c.type === "checkbox") { if (checkCode(r[c.id])) n[c.id] = "1"; else delete n[c.id]; }
       }
       return computeRow(cols, n);
-    });
+    })
+    // หลังแปลงค่า (เช่น รูปที่ไม่มีไฟล์ถูกตัดออก) แถวอาจว่างลง → ตัดอีกรอบ
+    .filter((r) => Object.entries(r).some(([k, v]) => String(v ?? "").trim() !== "" && typeOf.has(k) && typeOf.get(k) !== "formula"));
   const fails: string[] = [];
   filled.forEach((r, ri) => cols.forEach((c) => {
     if (c.type === "pass_fail" && r[c.id] === "fail") fails.push(`${f.label} แถว ${ri + 1}: ${c.label}`);
   }));
+  const photoKeys: string[] = [];
   const rows = filled.map((r) => {
     const out: Row = { ...r };
     for (const c of cols) {
@@ -67,8 +94,13 @@ export function finalizeTableRows(f: FormField, raw: Row[]): { rows: Row[]; fail
         if (d) out[c.id] = d; else delete out[c.id];
       }
       if (c.type === "formula" && !out[c.id]) delete out[c.id];
+      if (c.type === "photo" && r[c.id]) {
+        photoKeys.push(r[c.id]);
+        out[rowPhotoKeyOf(c.id)] = r[c.id];
+        out[c.id] = "มีรูป";
+      }
     }
     return out;
   });
-  return { rows, fails };
+  return { rows, fails, photoKeys };
 }

@@ -495,7 +495,10 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
                     <tbody>
                       {a.rows.map((r, ri) => (
                         <tr key={ri} style={{ borderBottom: "1px solid var(--line)" }}>
-                          {a.columns!.map((c) => <td key={c.id} style={{ padding: "4px 8px", verticalAlign: "top" }}>{r[c.id] || "—"}</td>)}
+                          {a.columns!.map((c) => {
+                            const pk = r[`${c.id}#photo`];
+                            return <td key={c.id} style={{ padding: "4px 8px", verticalAlign: "top" }}>{pk && photos[pk] ? <img src={photos[pk]} alt={`${c.label} ${ri + 1}`} style={{ height: 48, maxWidth: 80, objectFit: "cover", borderRadius: 5 }} /> : (r[c.id] || "—")}</td>;
+                          })}
                         </tr>
                       ))}
                     </tbody>

@@ -44,7 +44,7 @@ export interface OptionsSource {
 }
 
 // คอลัมน์ของฟิลด์ตาราง
-export const TABLE_COL_TYPES = ["text", "number", "select", "formula", "pass_fail", "checkbox", "datetime", "scan"] as const;
+export const TABLE_COL_TYPES = ["text", "number", "select", "formula", "pass_fail", "checkbox", "datetime", "scan", "photo"] as const;
 export type TableColType = (typeof TABLE_COL_TYPES)[number];
 export interface TableColumn {
   id: string;

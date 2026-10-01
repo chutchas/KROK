@@ -237,12 +237,17 @@ export function PaperTable({
   onCell,
   onDelete,
   disabled = false,
+  photoOf,
+  onPhoto,
 }: {
   columns: TableColumn[];
   rows: Record<string, string>[];
   onCell?: (ri: number, colId: string, v: string) => void;
   onDelete?: (ri: number) => void;
   disabled?: boolean;
+  /** คอลัมน์รูปถ่าย */
+  photoOf?: (ri: number, colId: string) => string | undefined;
+  onPhoto?: (ri: number, colId: string, file: File | null) => void;
 }) {
   const { t } = useT();
   const cols = columns.length ? columns : [{ id: "c0", label: t("fw.colItem"), type: "text" as const }];
@@ -267,7 +272,8 @@ export function PaperTable({
           <tr key={ri} style={{ height: TABLE_ROW_H, borderBottom: "1px solid #eee" }}>
             {cols.map((c) => (
               <td key={c.id} style={{ borderRight: "1px solid #eee", padding: 0, background: c.type === "pass_fail" && r[c.id] === "fail" ? "#fdeeee" : undefined }}>
-                {disabled ? null : <TableCell col={c} value={r[c.id] ?? ""} onChange={(v) => onCell?.(ri, c.id, v)} look="paper" style={cell} />}
+                {disabled ? null : <TableCell col={c} value={r[c.id] ?? ""} onChange={(v) => onCell?.(ri, c.id, v)} look="paper" style={cell}
+                  photoUrl={c.type === "photo" ? photoOf?.(ri, c.id) : undefined} onPhoto={(f) => onPhoto?.(ri, c.id, f)} />}
               </td>
             ))}
             {onDelete && (
