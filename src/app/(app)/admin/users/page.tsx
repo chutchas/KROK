@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import AdminUsersClient, { type SysUser } from "./AdminUsersClient";
+import { getPlanCatalog } from "@/lib/plans-server";
 
 export const dynamic = "force-dynamic";
 
@@ -15,11 +16,13 @@ export default async function AdminUsersPage() {
   if (!admin)
     return <div style={{ color: "var(--fail)" }}>ยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY บน server</div>;
 
-  const [{ data: members }, { data: tenants }, { data: profiles }] = await Promise.all([
+  const [{ data: members }, { data: tenants }, { data: profiles }, catalog] = await Promise.all([
     admin.from("memberships").select("user_id, tenant_id, role, role_key, name, email, created_at"),
-    admin.from("tenants").select("id, name"),
+    admin.from("tenants").select("id, name, plan"),
     admin.from("profiles").select("user_id, first_name, last_name, platform_role"),
+    getPlanCatalog(),
   ]);
+  const tPlan = new Map(((tenants || []) as { id: string; plan: string | null }[]).map((t) => [t.id, t.plan || "free"]));
 
   const tName = new Map(((tenants || []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
   const profMap = new Map(
@@ -42,7 +45,7 @@ export default async function AdminUsersPage() {
       };
       byUser.set(m.user_id, u);
     }
-    u.workspaces.push({ tenantId: m.tenant_id, tenantName: tName.get(m.tenant_id) || "—", role: m.role, roleKey: m.role_key || m.role });
+    u.workspaces.push({ tenantId: m.tenant_id, tenantName: tName.get(m.tenant_id) || "—", role: m.role, roleKey: m.role_key || m.role, plan: tPlan.get(m.tenant_id) || "free" });
   }
   // profiles ที่ไม่มี membership (เผื่อมี)
   for (const p of (profiles || []) as { user_id: string; first_name: string | null; last_name: string | null; platform_role: string }[]) {
@@ -60,5 +63,6 @@ export default async function AdminUsersPage() {
 
   const users = Array.from(byUser.values()).sort((a, b) => (a.email || "").localeCompare(b.email || ""));
 
-  return <AdminUsersClient users={users} meId={session.userId} />;
+  const plans = catalog.map((p) => ({ key: p.key, name: p.name, priceThb: p.priceThb, visible: p.visible }));
+  return <AdminUsersClient users={users} meId={session.userId} plans={plans} />;
 }

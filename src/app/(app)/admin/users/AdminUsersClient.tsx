@@ -3,9 +3,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Field, Notice, Pill, Button, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Crown, Code2, UserRound } from "lucide-react";
+import { Crown, Code2, UserRound, Package } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { setPlatformRole, removeFromWorkspace } from "./actions";
+import { setPlatformRole, removeFromWorkspace, setTenantPlan } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
 
 type PlatformRole = "platform_admin" | "developer" | "user";
@@ -14,15 +14,17 @@ export interface SysUser {
   name: string;
   email: string;
   platformRole: PlatformRole;
-  workspaces: { tenantId: string; tenantName: string; role: string; roleKey: string }[];
+  workspaces: { tenantId: string; tenantName: string; role: string; roleKey: string; plan: string }[];
   createdAt: string;
 }
 
 const PR_ICON = { platform_admin: Crown, developer: Code2, user: UserRound } as const;
 
-export default function AdminUsersClient({ users, meId }: { users: SysUser[]; meId: string }) {
+export interface PlanOpt { key: string; name: string; priceThb: number; visible: boolean }
+
+export default function AdminUsersClient({ users, meId, plans = [] }: { users: SysUser[]; meId: string; plans?: PlanOpt[] }) {
   const router = useRouter();
-  const { t } = useT();
+  const { t, tt } = useT();
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
@@ -33,8 +35,22 @@ export default function AdminUsersClient({ users, meId }: { users: SysUser[]; me
   const filtered = useMemo(() => {
     const s = q.trim().toLowerCase();
     if (!s) return users;
-    return users.filter((u) => u.email.toLowerCase().includes(s) || u.name.toLowerCase().includes(s) || u.workspaces.some((w) => w.tenantName.toLowerCase().includes(s)));
-  }, [q, users]);
+    return users.filter((u) => u.email.toLowerCase().includes(s) || u.name.toLowerCase().includes(s)
+      || u.workspaces.some((w) => w.tenantName.toLowerCase().includes(s) || (planName(w.plan) || "").toLowerCase().includes(s) || w.plan.includes(s)));
+  }, [q, users]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function planName(key: string) {
+    return plans.find((p) => p.key === key)?.name ?? key;
+  }
+
+  async function changePlan(u: SysUser, tenantId: string, tenantName: string, plan: string) {
+    if (!(await confirmDialog({ message: tt("admin.planConfirm", { ws: tenantName, plan: planName(plan) }) }))) return;
+    setBusy(u.userId);
+    const res = await setTenantPlan(tenantId, plan);
+    setBusy(null);
+    if ("error" in res) setMsg({ t: res.error, err: true });
+    else { setMsg({ t: tt("admin.planSaved", { ws: tenantName, plan: planName(plan) }) }); router.refresh(); }
+  }
 
   const sel: React.CSSProperties = {
     padding: "7px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
@@ -98,6 +114,25 @@ export default function AdminUsersClient({ users, meId }: { users: SysUser[]; me
                   {u.workspaces.map((w) => (
                     <div key={w.tenantId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".85rem", flexWrap: "wrap" }}>
                       <span style={{ flex: 1, minWidth: 120 }}>{w.tenantName}</span>
+                      {/* แพ็กเกจเป็นของ workspace — แก้ได้ที่แถวของ owner (สมาชิกอื่นเห็นอย่างเดียว) */}
+                      {w.roleKey === "owner" && plans.length > 0 ? (
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6 }} title={t("admin.planHint")}>
+                          <Icon icon={Package} className="h-3.5 w-3.5" />
+                          <select value={w.plan} disabled={busy === u.userId} aria-label={t("admin.plan")}
+                            onChange={(e) => changePlan(u, w.tenantId, w.tenantName, e.target.value)} style={{ ...sel, padding: "5px 8px", fontSize: ".8rem" }}>
+                            {!plans.some((p) => p.key === w.plan) && <option value={w.plan}>{w.plan}</option>}
+                            {plans.map((p) => (
+                              <option key={p.key} value={p.key}>
+                                {p.name} · {p.priceThb > 0 ? `฿${p.priceThb.toLocaleString()}` : t("admin.planFree")}{p.visible ? "" : ` (${t("admin.planHidden")})`}
+                              </option>
+                            ))}
+                          </select>
+                        </label>
+                      ) : (
+                        <span style={{ fontSize: ".74rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <Icon icon={Package} className="h-3.5 w-3.5" />{planName(w.plan)}
+                        </span>
+                      )}
                       <Pill kind={w.roleKey === "owner" ? "pass" : "na"}>{w.roleKey}</Pill>
                       {w.roleKey !== "owner" && (
                         <Button
