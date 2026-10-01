@@ -1,5 +1,6 @@
 "use client";
 import { useRouter } from "next/navigation";
+import { actionLabel } from "@/lib/audit-labels";
 import { Card } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ScrollText, Filter, X } from "lucide-react";
@@ -76,7 +77,7 @@ export default function AuditAdminClient({ rows, facets, filters }: { rows: Audi
           </select>
           <select style={sel} value={filters.action} onChange={(e) => setParam("action", e.target.value)}>
             <option value="">ทุกการกระทำ</option>
-            {facets.actions.map((a) => <option key={a} value={a}>{a}</option>)}
+            {facets.actions.map((a) => <option key={a} value={a}>{actionLabel(a, "th")}</option>)}
           </select>
           {hasFilter && (
             <button onClick={() => router.push("/admin/audit")} className="inline-flex items-center gap-1.5"
@@ -107,7 +108,7 @@ export default function AuditAdminClient({ rows, facets, filters }: { rows: Audi
                   <td style={{ padding: "8px 10px" }}>{r.tenant_name}</td>
                   <td style={{ padding: "8px 10px" }}>{r.actor_name}</td>
                   <td style={{ padding: "8px 10px" }}>
-                    <code style={{ background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "1px 7px", fontSize: ".78rem" }}>{r.action}</code>
+                    <code style={{ background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "1px 7px", fontSize: ".78rem" }} title={r.action}>{actionLabel(r.action, "th")}</code>
                   </td>
                   <td style={{ padding: "8px 10px", color: "var(--ink-2)", minWidth: 220 }}>
                     {r.target_label && <div style={{ fontWeight: 600, color: "var(--ink)" }}>{r.target_label}</div>}

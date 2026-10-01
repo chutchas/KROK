@@ -42,7 +42,12 @@ export default function FormPaperFill({
   useEffect(() => {
     const el = wrapRef.current;
     if (!el) return;
+    // คำนวณใหม่เฉพาะเมื่อ "ความกว้าง" เปลี่ยน — คีย์บอร์ดมือถือเด้ง/สลับภาษาเปลี่ยนแค่ความสูง
+    // ถ้าย่อขยายตามด้วย ช่องที่กำลังพิมพ์จะขยับและบางเครื่องปิดคีย์บอร์ด/ตัดการสลับภาษา
+    let lastW = -1;
     const fit = () => {
+      if (el.clientWidth === lastW) return;
+      lastW = el.clientWidth;
       const w = el.clientWidth - 24;
       const s = Math.min(1, Math.max(0.35, +(w / CANVAS_W).toFixed(3)));
       setFitScale(s);

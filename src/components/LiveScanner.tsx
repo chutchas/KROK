@@ -1,5 +1,6 @@
 "use client";
 import { backdropClose } from "@/lib/backdrop";
+import BodyPortal from "@/components/BodyPortal";
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import { X, ScanLine } from "lucide-react";
@@ -101,6 +102,7 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
   }, []);
 
   return (
+    <BodyPortal>
     <div
       {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
@@ -131,5 +133,6 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
         <div style={{ padding: "10px 14px", fontSize: ".82rem", color: "var(--ink-2)", textAlign: "center" }}>{t("scan.hint")}</div>
       </div>
     </div>
+    </BodyPortal>
   );
 }

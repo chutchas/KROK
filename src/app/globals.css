@@ -182,6 +182,34 @@ a {
   display: none;
 }
 @media print {
+  /* พิมพ์เป็นธีมสว่างเสมอ แม้ผู้ใช้เปิดโหมดมืด (กันพื้นเข้ม/ตัวอักษรขาวบนกระดาษ) */
+  :root:root,
+  :root:root[data-theme="dark"],
+  :root:root:not([data-theme="light"]) {
+    color-scheme: light;
+    --brand-ink: #1c5fd0;
+    --brand-mark-ink: #0f172a;
+    --ground: #ffffff;
+    --surface: #ffffff;
+    --surface-2: #f8fafc;
+    --surface-3: #ffffff;
+    --surface-4: #f1f5f9;
+    --ink: #0f172a;
+    --ink-2: #475569;
+    --ink-3: #64748b;
+    --line: #cbd5e1;
+    --border-soft: rgba(148, 163, 184, 0.35);
+    --accent: var(--brand-primary);
+    --accent-ink: #ffffff;
+    --accent-soft: var(--brand-tint);
+    --amber: var(--brand-primary);
+    --pass: #15803d;
+    --pass-soft: #e7f6ec;
+    --fail: #dc2626;
+    --fail-soft: #fdeaea;
+    --code-bg: #f1f5f9;
+    --shadow: none;
+  }
   .no-print {
     display: none !important;
   }
@@ -189,8 +217,9 @@ a {
     background: #fff;
     color: #000;
   }
-  /* พิมพ์เฉพาะเอกสารกระดาษ ซ่อนส่วนอื่นทั้งหมด */
-  body * {
+  /* หน้าที่มีเอกสารกระดาษสำหรับพิมพ์ (.krok-print-root) → พิมพ์เฉพาะเอกสารนั้น ซ่อนส่วนอื่น
+     หน้าอื่น (เช่น ผลการกรอก, ใบแจ้งหนี้) พิมพ์เนื้อหาปกติ ซ่อนเฉพาะ .no-print */
+  body:has(.krok-print-root) * {
     visibility: hidden !important;
   }
   .krok-print-root {

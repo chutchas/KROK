@@ -59,7 +59,7 @@ export default function DashboardClient({
 }: {
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
 }) {
-  const { t, lang } = useT();
+  const { t, tt, lang } = useT();
   const en = lang === "en";
   const [subs, setSubs] = useState<SubRow[]>(initial);
   const [open, setOpen] = useState<SubRow | null>(null);
@@ -136,9 +136,9 @@ export default function DashboardClient({
       {widgets.length > 0 && (
         <>
           <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 12, marginBottom: 18 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
             {widgets.map((w, i) => (
-              <div key={w.id} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
+              <div key={w.id} style={{ minWidth: 0 }} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
                 <WidgetCard w={w} formName={formName} en={en}
                   onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t}
                   onUp={i > 0 ? () => move(w.id, -1) : undefined}
@@ -170,7 +170,7 @@ export default function DashboardClient({
                 {s.approval_status === "pending" && <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Clock} className="h-3 w-3" /> {t("dash.pending")}</span></Pill>}
                 {s.approval_status === "approved" && <Pill kind="pass">{t("dash.approved")}</Pill>}
                 {s.approval_status === "rejected" && <Pill kind="fail">{t("dash.rejected")}</Pill>}
-                {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {s.fails.length}</span></Pill> : s.result === "pass" ? <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
+                {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("dash.failN", { n: s.fails.length })}</span></Pill> : s.result === "pass" ? <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
               </div>
             </div>
           ))}
@@ -229,7 +229,7 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
   const sub = `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
 
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, height: "100%", display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, height: "100%", display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -248,7 +248,7 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
         <button onClick={onRemove} title={t("common.delete" as never)} aria-label={t("common.delete" as never)} style={iconBtn}><Icon icon={Trash2} className="h-3.5 w-3.5" /></button>
       </div>
 
-      <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
+      <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
         {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
         {res && "error" in res && <div style={{ color: "var(--fail)", fontSize: ".82rem" }}>{res.error}</div>}
         {res && !("error" in res) && (
@@ -273,7 +273,7 @@ function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "sta
     : "";
   return (
     <div>
-      <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1, color: "var(--ink)" }}>
+      <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1, color: "var(--ink)", overflowWrap: "anywhere" }}>
         {fmtValue(metric, res.value, en, tt)}
       </div>
       {extra && <div style={{ color: "var(--ink-3)", fontSize: ".78rem", marginTop: 4 }}>{extra}</div>}
@@ -316,8 +316,8 @@ function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ width: 18, textAlign: "right", color: "var(--ink-3)", fontSize: ".78rem" }}>{i + 1}</span>
           <span style={{ flex: 1, minWidth: 0 }}>
-            <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".84rem" }}>
-              <b style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><InlineFormIcon value={r.icon} size={15} />{r.title}</b>
+            <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".84rem", minWidth: 0 }}>
+              <b title={r.title} style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><InlineFormIcon value={r.icon} size={15} />{r.title}</b>
               <span className="tabnum" style={{ color: "var(--ink-2)", flexShrink: 0 }}>{fmtValue(metric, r.v, en, tt)}</span>
             </span>
             <span style={{ display: "block", height: 5, borderRadius: 4, background: "var(--surface-2)", marginTop: 3, overflow: "hidden" }}>

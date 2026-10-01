@@ -4,6 +4,7 @@ import { Card, Field, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ScrollText, Search } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import { actionKind, actionLabel, describeAudit } from "@/lib/audit-labels";
 
 export interface AuditRow {
   id: number;
@@ -14,39 +15,42 @@ export interface AuditRow {
   target_id: string | null;
   meta: Record<string, unknown>;
   created_at: string;
+  /** ชื่อเป้าหมายจริง (ฟอร์ม/เครื่อง/ชุดข้อมูล/สมาชิก) — ฝั่ง server หาให้ */
+  targetName?: string;
+  /** ชื่อฟอร์มจาก meta.form_id */
+  formName?: string;
 }
 
-// หมวดของ action → สีป้าย
-function kindOf(action: string): "pass" | "fail" | "na" {
-  if (action.includes("delete") || action.includes("archive") || action.includes("cancel")) return "fail";
-  if (action.includes("create") || action.includes("publish") || action.includes("approve")) return "pass";
-  return "na";
-}
-
-export default function AuditClient({ rows, tenantName }: { rows: AuditRow[]; tenantName: string }) {
+export default function AuditClient({ rows, roleNames }: { rows: AuditRow[]; roleNames: Record<string, string> }) {
   const { t, lang } = useT();
   const [q, setQ] = useState("");
   const [action, setAction] = useState("all");
 
-  const actions = useMemo(() => Array.from(new Set(rows.map((r) => r.action))).sort(), [rows]);
+  // แปลทุกแถวครั้งเดียว — ใช้ทั้งแสดงผลและค้นหา (ค้นด้วยคำที่ผู้ใช้เห็นได้)
+  const view = useMemo(
+    () => rows.map((r) => {
+      const label = actionLabel(r.action, lang);
+      const details = describeAudit(r, lang, { targetName: r.targetName, formName: r.formName, roleNames });
+      const hay = `${label} ${r.actorName} ${details.map((d) => `${d.k} ${d.v}`).join(" ")}`.toLowerCase();
+      return { r, label, details, hay };
+    }),
+    [rows, lang, roleNames],
+  );
+
+  const actions = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const v of view) m.set(v.r.action, v.label);
+    return Array.from(m.entries()).sort((a, b) => a[1].localeCompare(b[1], lang));
+  }, [view, lang]);
 
   const filtered = useMemo(() => {
     const term = q.trim().toLowerCase();
-    return rows.filter((r) => {
-      if (action !== "all" && r.action !== action) return false;
-      if (!term) return true;
-      return (
-        r.action.toLowerCase().includes(term) ||
-        r.actorName.toLowerCase().includes(term) ||
-        (r.target_type || "").toLowerCase().includes(term) ||
-        JSON.stringify(r.meta).toLowerCase().includes(term)
-      );
-    });
-  }, [rows, q, action]);
+    return view.filter((v) => (action === "all" || v.r.action === action) && (!term || v.hay.includes(term)));
+  }, [view, q, action]);
 
   const fmt = (iso: string) =>
     new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", {
-      day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit",
+      day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok",
     });
 
   return (
@@ -55,7 +59,7 @@ export default function AuditClient({ rows, tenantName }: { rows: AuditRow[]; te
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={ScrollText} className="h-6 w-6" /> {t("audit.title")}
         </h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{tenantName} · {t("audit.sub")}</p>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("audit.sub")}</p>
       </div>
 
       <Card>
@@ -69,10 +73,11 @@ export default function AuditClient({ rows, tenantName }: { rows: AuditRow[]; te
           <select
             value={action}
             onChange={(e) => setAction(e.target.value)}
-            style={{ padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }}
+            aria-label={t("audit.action")}
+            style={{ padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", maxWidth: "100%" }}
           >
             <option value="all">{t("audit.allActions")}</option>
-            {actions.map((a) => <option key={a} value={a}>{a}</option>)}
+            {actions.map(([a, l]) => <option key={a} value={a}>{l}</option>)}
           </select>
         </div>
 
@@ -94,17 +99,21 @@ export default function AuditClient({ rows, tenantName }: { rows: AuditRow[]; te
                 </tr>
               </thead>
               <tbody>
-                {filtered.map((r) => (
-                  <tr key={r.id} style={{ borderTop: "1px solid var(--line)" }}>
+                {filtered.map(({ r, label, details }) => (
+                  <tr key={r.id} style={{ borderTop: "1px solid var(--line)", verticalAlign: "top" }}>
                     <td className="tabnum" style={{ padding: "8px", color: "var(--ink-2)", whiteSpace: "nowrap" }}>{fmt(r.created_at)}</td>
-                    <td style={{ padding: "8px" }}>{r.actorName}</td>
-                    <td style={{ padding: "8px" }}><Pill kind={kindOf(r.action)}>{r.action}</Pill></td>
-                    <td style={{ padding: "8px", color: "var(--ink-3)", fontSize: ".78rem" }}>
-                      {r.target_type || "—"}
-                      {r.meta && Object.keys(r.meta).length > 0 && (
-                        <code style={{ display: "block", fontSize: ".7rem", color: "var(--ink-3)", maxWidth: 320, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {JSON.stringify(r.meta)}
-                        </code>
+                    <td style={{ padding: "8px", whiteSpace: "nowrap" }}>{r.actorName}</td>
+                    <td style={{ padding: "8px" }}><Pill kind={actionKind(r.action)}>{label}</Pill></td>
+                    <td style={{ padding: "8px", fontSize: ".82rem", minWidth: 220 }}>
+                      {details.length === 0 ? <span style={{ color: "var(--ink-3)" }}>—</span> : (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 14px" }}>
+                          {details.map((d, i) => (
+                            <span key={i} style={{ overflowWrap: "anywhere" }}>
+                              <span style={{ color: "var(--ink-3)" }}>{d.k}: </span>
+                              <span style={{ color: d.warn ? "var(--fail)" : "var(--ink)", fontWeight: i === 0 ? 600 : 400 }}>{d.v}</span>
+                            </span>
+                          ))}
+                        </div>
                       )}
                     </td>
                   </tr>

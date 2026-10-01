@@ -21,14 +21,19 @@ function loadFonts(): { reg: Buffer; bold: Buffer } {
 // จานสีเอกสาร (โหมดพิมพ์ = สว่างเสมอ)
 const C = {
   ink: "#0f172a",
+  ink2: "#334155",
   muted: "#64748b",
   faint: "#94a3b8",
   line: "#e2e8f0",
+  panel: "#f8fafc",
   brand: "#2f6fe0",
   brandSoft: "#eaf1ff",
   fail: "#dc2626",
-  pass: "#16a34a",
-  amber: "#d97706",
+  failSoft: "#fdeeee",
+  pass: "#15803d",
+  passSoft: "#e9f7ee",
+  amber: "#b45309",
+  amberSoft: "#fef6e7",
 };
 
 export interface PdfAnswer {
@@ -63,7 +68,7 @@ export interface SubmissionPdfData {
 
 // ลบ emoji / สัญลักษณ์ที่ Garuda ไม่มี glyph (ไม่งั้นขึ้นเป็นกล่องว่าง)
 // เก็บไทย ละติน ตัวเลข วรรคตอน และ ° ไว้
-function clean(s?: string): string {
+export function clean(s?: string): string {
   if (!s) return "";
   return s
     .replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{2B00}-\u{2BFF}\u{2300}-\u{23FF}\u{FE00}-\u{FE0F}\u{200D}\u{20E3}]/gu, "")
@@ -72,21 +77,30 @@ function clean(s?: string): string {
 }
 
 const PAGE = { w: 595.28, h: 841.89 }; // A4 pt
-const M = 48; // margin
+const M = 44; // ขอบซ้าย/ขวา/บน
+const FOOTER_H = 30; // พื้นที่ท้ายกระดาษ (เลขหน้า) — เนื้อหาห้ามลงมาในส่วนนี้
+const BOTTOM = PAGE.h - M - FOOTER_H + 14; // เส้นล่างสุดของเนื้อหา
 const CONTENT_W = PAGE.w - M * 2;
 
-function statusHex(s?: SubmissionPdfData["statusColor"]): string {
-  if (s === "pass") return C.pass;
-  if (s === "fail") return C.fail;
-  if (s === "amber") return C.amber;
-  return C.muted;
+function statusColors(s?: SubmissionPdfData["statusColor"]): { fg: string; bg: string } {
+  if (s === "pass") return { fg: C.pass, bg: C.passSoft };
+  if (s === "fail") return { fg: C.fail, bg: C.failSoft };
+  if (s === "amber") return { fg: C.amber, bg: C.amberSoft };
+  return { fg: C.muted, bg: C.panel };
 }
 
 /** สร้าง PDF ใบส่งฟอร์มเป็น Buffer (เรียกจาก API route) */
 export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
   return new Promise((resolve, reject) => {
     const fonts = loadFonts();
-    const doc = new PDFDocument({ size: "A4", margins: { top: M, bottom: M, left: M, right: M }, bufferPages: true });
+    // ขอบล่างของ pdfkit ตั้งให้ตรงกับ BOTTOM — ข้อความที่ยาวเกินจะไม่ถูกตัดขึ้นหน้าใหม่เอง
+    // เพราะเราเช็กพื้นที่ (ensure) ก่อนวาดทุกครั้ง
+    const doc = new PDFDocument({
+      size: "A4",
+      margins: { top: M, bottom: PAGE.h - BOTTOM, left: M, right: M },
+      bufferPages: true,
+      info: { Title: clean(data.formTitle) || "KROK", Author: clean(data.tenantName), Creator: "KROK" },
+    });
     doc.registerFont("th", fonts.reg);
     doc.registerFont("th-bold", fonts.bold);
 
@@ -96,212 +110,218 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     doc.on("error", reject);
 
     let y = M;
-    const bottom = PAGE.h - M;
-
-    const ensure = (need: number) => {
-      if (y + need > bottom) {
-        doc.addPage();
-        y = M;
-      }
-    };
+    const newPage = () => { doc.addPage(); y = M; };
+    const ensure = (need: number) => { if (y + need > BOTTOM && y > M) newPage(); };
 
     // ---------- Header ----------
-    // KROK wordmark
-    doc.roundedRect(M, y, 16, 16, 3).fill(C.brand);
-    doc.font("th-bold").fontSize(13).fillColor(C.ink).text("KROK", M + 22, y + 1);
-    // status badge (ขวาบน)
-    const badge = data.statusLabel;
-    const bw = doc.font("th-bold").fontSize(10).widthOfString(badge) + 18;
-    const sc = statusHex(data.statusColor);
-    doc.roundedRect(PAGE.w - M - bw, y - 2, bw, 20, 5).lineWidth(1).stroke(sc);
-    doc.fillColor(sc).text(badge, PAGE.w - M - bw, y + 3, { width: bw, align: "center" });
-    y += 26;
+    doc.roundedRect(M, y, 14, 14, 3).fill(C.brand);
+    doc.font("th-bold").fontSize(11).fillColor(C.ink).text("KROK", M + 20, y + 0.5, { lineBreak: false });
+    const tenant = clean(data.tenantName);
+    if (tenant) {
+      const kw = doc.font("th-bold").fontSize(11).widthOfString("KROK");
+      doc.font("th").fontSize(9).fillColor(C.muted).text(`·  ${tenant}`, M + 26 + kw, y + 2.5, { width: CONTENT_W / 2, lineBreak: false, ellipsis: true });
+    }
+    // เลขที่เอกสาร (ขวาบน)
+    doc.font("th").fontSize(8.5).fillColor(C.muted).text("เลขที่เอกสาร", M, y - 1, { width: CONTENT_W, align: "right", lineBreak: false });
+    doc.font("th-bold").fontSize(11).fillColor(C.ink).text(data.docNo, M, y + 10, { width: CONTENT_W, align: "right", lineBreak: false });
+    y += 34;
 
-    // form title (ตัด emoji icon ออก — Garuda ไม่มี glyph)
-    doc.font("th-bold").fontSize(19).fillColor(C.ink).text(clean(data.formTitle) || "ฟอร์ม", M, y, { width: CONTENT_W });
-    y = doc.y + 2;
-    doc.font("th").fontSize(9).fillColor(C.faint)
-      .text(`${clean(data.tenantName)} · เอกสารเลขที่ ${data.docNo}`, M, y);
-    y = doc.y + 8;
+    // ชื่อฟอร์ม + ป้ายสถานะ
+    const badge = clean(data.statusLabel);
+    doc.font("th-bold").fontSize(9.5);
+    const bw = doc.widthOfString(badge) + 20;
+    const titleW = CONTENT_W - bw - 12;
+    const title = clean(data.formTitle) || "ฟอร์ม";
+    doc.font("th-bold").fontSize(18);
+    const titleH = doc.heightOfString(title, { width: titleW });
+    doc.fillColor(C.ink).text(title, M, y, { width: titleW });
+    const sc = statusColors(data.statusColor);
+    doc.roundedRect(PAGE.w - M - bw, y + 4, bw, 20, 10).fill(sc.bg);
+    doc.font("th-bold").fontSize(9.5).fillColor(sc.fg).text(badge, PAGE.w - M - bw, y + 8.5, { width: bw, align: "center", lineBreak: false });
+    y += Math.max(titleH, 28) + 10;
 
-    // rule
-    doc.moveTo(M, y).lineTo(PAGE.w - M, y).lineWidth(1.5).stroke(C.ink);
-    y += 12;
-
-    // ---------- Meta grid ----------
+    // ---------- กล่องข้อมูลเอกสาร (4 ช่อง) ----------
     const meta: [string, string][] = [
       ["ผู้กรอก", clean(data.userName) || "—"],
-      ["เวลาส่ง", data.submittedAt],
-      ["ใช้เวลา", data.durationS != null ? `${data.durationS} วินาที` : "—"],
+      ["วันเวลาที่ส่ง", data.submittedAt],
+      ["ใช้เวลากรอก", data.durationS != null ? fmtDuration(data.durationS) : "—"],
       ["เวอร์ชันฟอร์ม", `v${data.formVersion}`],
     ];
-    const colW = CONTENT_W / 2;
+    const boxH = 46;
+    const cellW = CONTENT_W / meta.length;
+    doc.roundedRect(M, y, CONTENT_W, boxH, 8).fill(C.panel);
+    doc.roundedRect(M, y, CONTENT_W, boxH, 8).lineWidth(0.6).stroke(C.line);
     meta.forEach(([k, v], i) => {
-      const col = i % 2;
-      const mx = M + col * colW;
-      if (col === 0 && i > 0) y += 18;
-      const line0 = y;
-      doc.font("th").fontSize(9.5).fillColor(C.muted).text(`${k}: `, mx, line0, { continued: true });
-      doc.font("th-bold").fillColor(C.ink).text(v);
-      if (col === 1) { /* stay same row */ }
+      const x = M + i * cellW + 12;
+      if (i > 0) doc.moveTo(M + i * cellW, y + 10).lineTo(M + i * cellW, y + boxH - 10).lineWidth(0.6).stroke(C.line);
+      doc.font("th").fontSize(8).fillColor(C.muted).text(k, x, y + 9, { width: cellW - 20, lineBreak: false, ellipsis: true });
+      doc.font("th-bold").fontSize(10).fillColor(C.ink).text(v, x, y + 22, { width: cellW - 20, lineBreak: false, ellipsis: true });
     });
-    y += 22;
+    y += boxH + 12;
 
-    // result summary line
-    doc.font("th-bold").fontSize(10).fillColor(data.resultFail ? C.fail : C.pass)
-      .text(data.resultFail ? `พบปัญหา ${data.failCount} รายการ` : "ครบถ้วน", M, y);
-    y = doc.y + 10;
+    // ---------- แถบสรุปผล ----------
+    const rc = data.resultFail ? { fg: C.fail, bg: C.failSoft } : { fg: C.pass, bg: C.passSoft };
+    doc.roundedRect(M, y, CONTENT_W, 26, 6).fill(rc.bg);
+    doc.rect(M, y, 4, 26).fill(rc.fg);
+    doc.font("th-bold").fontSize(10.5).fillColor(rc.fg)
+      .text(data.resultFail ? `ผลตรวจ: ไม่ผ่าน ${data.failCount} ข้อ` : "ผลตรวจ: ผ่านทุกข้อ", M + 14, y + 6.5, { lineBreak: false });
+    y += 26 + 16;
 
-    // ---------- Answers ----------
+    // ---------- รายการคำตอบ ----------
+    const sectionTitle = (t: string) => {
+      ensure(40);
+      doc.font("th-bold").fontSize(11).fillColor(C.ink).text(t, M, y, { lineBreak: false });
+      y += 18;
+      doc.moveTo(M, y).lineTo(PAGE.w - M, y).lineWidth(1).stroke(C.ink);
+      y += 2;
+    };
+    sectionTitle("รายละเอียด");
+
+    const labelW = Math.round(CONTENT_W * 0.38);
+    const PAD_X = 8;
+    const valX = M + labelW + 14;
+    const valW = CONTENT_W - labelW - 14 - PAD_X;
+
     for (const a of data.answers) {
       if (a.type === "table" && a.columns && a.columns.length) {
-        drawTable(doc, a, () => y, (ny) => { y = ny; });
+        y = drawTable(doc, a, y + 8, newPage) + 4;
         continue;
       }
-      // ปกติ: label ซ้าย + ค่าขวา (ถ้าเป็นรูป → เต็มความกว้างใต้ label)
-      const labelW = 170;
-      const valX = M + labelW + 12;
-      const valW = CONTENT_W - labelW - 12;
-
       const aLabel = clean(a.label) || "—";
       const aDisplay = clean(a.display) || "—";
       const aNote = clean(a.note);
+      const isSig = a.type === "signature";
 
-      // ประเมินความสูงที่ต้องใช้
-      doc.font("th").fontSize(10);
-      const labelH = doc.heightOfString(aLabel, { width: labelW });
-      let valH = 0;
-      if (a.photo) valH = 0; // รูปจัดการแยก
-      else valH = doc.heightOfString(aDisplay, { width: valW });
-      const noteH = aNote ? doc.font("th").fontSize(8.5).heightOfString(aNote, { width: labelW }) + 2 : 0;
-      const rowH = Math.max(labelH + noteH, valH) + 10;
+      doc.font("th").fontSize(9.5);
+      const labelH = doc.heightOfString(aLabel, { width: labelW - PAD_X });
+      const noteH = aNote ? doc.font("th").fontSize(8.5).heightOfString(aNote, { width: labelW - PAD_X }) + 3 : 0;
 
-      ensure(a.photo ? labelH + 16 : rowH);
-
-      const rowTop = y;
-      doc.font("th").fontSize(10).fillColor(C.muted).text(aLabel, M, rowTop, { width: labelW });
-      if (aNote) {
-        // มาร์คเตือนด้วยจุดสีแดง (แทน emoji ที่ฟอนต์ไม่มี) แล้วตามด้วยข้อความสีแดง
-        doc.font("th").fontSize(8.5).fillColor(C.fail).text(aNote, M, doc.y + 1, { width: labelW });
-      }
-
+      // ขนาดรูปที่จะวาด (ถ้ามี)
+      let img: { w: number; h: number } | null = null;
       if (a.photo) {
-        y = Math.max(doc.y, rowTop) + 6;
         try {
-          const maxW = Math.min(CONTENT_W, 320);
-          const maxH = 220;
-          ensure(maxH + 8);
-          doc.image(a.photo, M, y, { fit: [maxW, maxH] });
-          // openImage มีใน runtime แต่ไม่มีใน @types/pdfkit → cast เพื่อคำนวณความสูงจริง
+          // openImage มีใน runtime แต่ไม่มีใน @types/pdfkit
           const dims = (doc as unknown as { openImage: (b: Buffer) => { width: number; height: number } }).openImage(a.photo);
-          const scale = Math.min(maxW / dims.width, maxH / dims.height);
-          y += dims.height * scale + 10;
-        } catch {
-          doc.font("th").fontSize(9).fillColor(C.faint).text("(ไม่สามารถแสดงรูปได้)", M, y);
-          y = doc.y + 8;
-        }
+          const maxW = isSig ? 190 : Math.min(valW, 300);
+          const maxH = isSig ? 80 : 200;
+          const sc2 = Math.min(maxW / dims.width, maxH / dims.height, 1);
+          img = { w: dims.width * sc2, h: dims.height * sc2 };
+        } catch { img = null; }
+      }
+      const valH = img ? img.h : doc.font("th-bold").fontSize(10).heightOfString(aDisplay, { width: valW });
+      const rowH = Math.max(labelH + noteH, valH) + 14;
+
+      ensure(rowH);
+      const top = y;
+      if (a.fail) {
+        doc.rect(M, top, CONTENT_W, rowH).fill(C.failSoft);
+        doc.rect(M, top, 3, rowH).fill(C.fail);
+      }
+      doc.font("th").fontSize(9.5).fillColor(a.fail ? C.fail : C.muted).text(aLabel, M + PAD_X, top + 7, { width: labelW - PAD_X });
+      if (aNote) doc.font("th").fontSize(8.5).fillColor(C.fail).text(aNote, M + PAD_X, top + 7 + labelH + 3, { width: labelW - PAD_X });
+
+      if (a.photo && img) {
+        doc.image(a.photo, valX, top + 7, { width: img.w, height: img.h });
+        if (isSig) doc.moveTo(valX, top + 7 + img.h).lineTo(valX + Math.max(img.w, 160), top + 7 + img.h).lineWidth(0.6).stroke(C.faint);
+      } else if (a.photo && !img) {
+        doc.font("th").fontSize(9).fillColor(C.faint).text("(ไม่สามารถแสดงรูปได้)", valX, top + 7, { width: valW });
       } else {
-        doc.font("th-bold").fontSize(10).fillColor(a.fail ? C.fail : C.ink)
-          .text(aDisplay, valX, rowTop, { width: valW });
-        y = Math.max(rowTop + rowH, doc.y + 8);
+        doc.font("th-bold").fontSize(10).fillColor(a.fail ? C.fail : C.ink).text(aDisplay, valX, top + 7, { width: valW });
       }
-
-      // เส้นคั่นบาง
-      doc.moveTo(M, y - 4).lineTo(PAGE.w - M, y - 4).lineWidth(0.5).stroke(C.line);
+      y = top + rowH;
+      doc.moveTo(M, y).lineTo(PAGE.w - M, y).lineWidth(0.5).stroke(C.line);
     }
 
-    // ---------- Approval history ----------
+    // ---------- ประวัติการอนุมัติ ----------
     if (data.history && data.history.length) {
-      ensure(30);
-      y += 8;
-      doc.font("th-bold").fontSize(11).fillColor(C.ink).text("ประวัติการอนุมัติ", M, y);
-      y = doc.y + 4;
+      y += 18;
+      sectionTitle("ประวัติการอนุมัติ");
       for (const h of data.history) {
-        ensure(28);
-        const dc = h.approved ? C.pass : C.fail;
-        doc.font("th-bold").fontSize(9.5).fillColor(dc)
-          .text(`${clean(h.label)} — ${h.approved ? "อนุมัติ" : "ตีกลับ"}`, M, y, { continued: true });
-        doc.font("th").fillColor(C.muted).text(`  โดย ${clean(h.reviewer)}  ·  ${h.at}`);
-        y = doc.y + 1;
         const hNote = clean(h.note);
-        if (hNote) {
-          doc.font("th").fontSize(9).fillColor(C.ink).text(`“${hNote}”`, M + 6, y, { width: CONTENT_W - 6 });
-          y = doc.y;
-        }
-        y += 5;
-        doc.moveTo(M, y - 2).lineTo(PAGE.w - M, y - 2).lineWidth(0.5).stroke(C.line);
+        doc.font("th").fontSize(9);
+        const noteH = hNote ? doc.heightOfString(`“${hNote}”`, { width: CONTENT_W - 24 }) + 3 : 0;
+        const rowH = 34 + noteH;
+        ensure(rowH);
+        const top = y;
+        const dc = h.approved ? C.pass : C.fail;
+        doc.circle(M + 6, top + 13, 3.5).fill(dc);
+        doc.font("th-bold").fontSize(10).fillColor(C.ink).text(`${clean(h.label)}`, M + 18, top + 6, { width: CONTENT_W * 0.55, lineBreak: false, ellipsis: true });
+        doc.font("th-bold").fontSize(9.5).fillColor(dc).text(h.approved ? "อนุมัติ" : "ตีกลับ", M, top + 6, { width: CONTENT_W, align: "right", lineBreak: false });
+        doc.font("th").fontSize(8.5).fillColor(C.muted).text(`โดย ${clean(h.reviewer) || "—"}  ·  ${h.at}`, M + 18, top + 20, { width: CONTENT_W - 18, lineBreak: false, ellipsis: true });
+        if (hNote) doc.font("th").fontSize(9).fillColor(C.ink2).text(`“${hNote}”`, M + 18, top + 33, { width: CONTENT_W - 24 });
+        y = top + rowH;
+        doc.moveTo(M, y).lineTo(PAGE.w - M, y).lineWidth(0.5).stroke(C.line);
       }
     }
 
-    // ---------- Footer (ทุกหน้า) ----------
+    // ---------- ท้ายกระดาษ (ทุกหน้า) ----------
+    // วาดใต้ขอบล่างของเนื้อหา → ต้องปิดขอบล่างชั่วคราว ไม่งั้น pdfkit ขึ้นหน้าใหม่ (หน้าว่าง) ให้เอง
     const range = doc.bufferedPageRange();
     for (let i = range.start; i < range.start + range.count; i++) {
       doc.switchToPage(i);
-      const fy = PAGE.h - M + 14;
+      const saved = doc.page.margins.bottom;
+      doc.page.margins.bottom = 0;
+      const fy = PAGE.h - M + 6;
+      doc.moveTo(M, fy - 8).lineTo(PAGE.w - M, fy - 8).lineWidth(0.5).stroke(C.line);
       doc.font("th").fontSize(7.5).fillColor(C.faint);
-      doc.text("สร้างโดย KROK · ฟอร์มดิจิทัลหน้างาน", M, fy, { lineBreak: false });
-      doc.text(`${i + 1}/${range.count}`, PAGE.w - M - 60, fy, { width: 60, align: "right", lineBreak: false });
+      doc.text(`${clean(data.formTitle)} · เลขที่ ${data.docNo} · สร้างโดย KROK`, M, fy, { width: CONTENT_W - 70, lineBreak: false, ellipsis: true });
+      doc.text(`หน้า ${i - range.start + 1}/${range.count}`, PAGE.w - M - 70, fy, { width: 70, align: "right", lineBreak: false });
+      doc.page.margins.bottom = saved;
     }
 
     doc.end();
   });
 }
 
-// ตารางแบบกริด — จัดการ page break เอง (local y) และวาดเส้นแบ่งคอลัมน์ต่อแถว
-// จึงถูกต้องแม้ตารางยาวข้ามหน้า
-function drawTable(
-  doc: PDFKit.PDFDocument,
-  a: PdfAnswer,
-  getY: () => number,
-  setY: (n: number) => void
-) {
+function fmtDuration(s: number): string {
+  if (s < 60) return `${s} วินาที`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m} นาที ${s % 60} วินาที`;
+  return `${Math.floor(m / 60)} ชม. ${m % 60} นาที`;
+}
+
+// ตาราง — ความสูงแถวตามข้อความ (สูงสุด 3 บรรทัด) · ข้ามหน้าแล้ววาดหัวตารางซ้ำ
+function drawTable(doc: PDFKit.PDFDocument, a: PdfAnswer, startY: number, newPage: () => void): number {
   const cols = a.columns!;
   const rows = a.rows || [];
   const colW = CONTENT_W / cols.length;
-  const rowH = 20;
-  const bottom = PAGE.h - M;
+  const PADX = 5;
+  const PADY = 5;
+  const LINE = 11.5;
+  let y = startY;
+  const brk = (need: number) => { if (y + need > BOTTOM) { newPage(); y = M; return true; } return false; };
 
-  let y = getY();
-  const brk = (need: number) => { if (y + need > bottom) { doc.addPage(); y = M; } };
-
-  // เส้นขอบแถว: กรอบนอก + เส้นแบ่งคอลัมน์ (สูงเท่าแถวนี้ → ข้ามหน้าไม่เพี้ยน)
-  const rowBorders = () => {
+  const cellH = (txt: string, bold: boolean) => {
+    doc.font(bold ? "th-bold" : "th").fontSize(bold ? 8.5 : 9);
+    return Math.min(doc.heightOfString(txt, { width: colW - PADX * 2 }), LINE * 3);
+  };
+  const drawRow = (vals: string[], header: boolean) => {
+    const h = Math.max(...vals.map((v) => cellH(v, header))) + PADY * 2;
+    if (header) doc.rect(M, y, CONTENT_W, h).fill(C.brandSoft);
+    vals.forEach((v, i) => {
+      doc.font(header ? "th-bold" : "th").fontSize(header ? 8.5 : 9).fillColor(C.ink)
+        .text(v, M + i * colW + PADX, y + PADY, { width: colW - PADX * 2, height: LINE * 3, ellipsis: true });
+    });
     doc.lineWidth(0.5).strokeColor(C.line);
-    doc.rect(M, y, CONTENT_W, rowH).stroke();
-    for (let i = 1; i < cols.length; i++) doc.moveTo(M + i * colW, y).lineTo(M + i * colW, y + rowH).stroke();
+    doc.rect(M, y, CONTENT_W, h).stroke();
+    for (let i = 1; i < cols.length; i++) doc.moveTo(M + i * colW, y).lineTo(M + i * colW, y + h).stroke();
+    y += h;
+    return h;
   };
+  const headVals = cols.map((c) => clean(c.label) || "—");
+  const headH = Math.max(...headVals.map((v) => cellH(v, true))) + PADY * 2;
 
-  brk(40);
-  doc.font("th").fontSize(9.5).fillColor(C.muted).text(clean(a.label) || "—", M, y);
+  // ชื่อตาราง + หัว + แถวแรก ต้องอยู่หน้าเดียวกัน
+  brk(18 + headH + 24);
+  doc.font("th").fontSize(9.5).fillColor(C.muted).text(clean(a.label) || "—", M, y, { width: CONTENT_W });
   y = doc.y + 4;
+  drawRow(headVals, true);
 
-  const drawHeader = () => {
-    doc.rect(M, y, CONTENT_W, rowH).fill(C.brandSoft);
-    cols.forEach((c, i) => {
-      doc.font("th-bold").fontSize(8.5).fillColor(C.ink)
-        .text(clean(c.label), M + i * colW + 5, y + 5, { width: colW - 10, ellipsis: true, lineBreak: false });
-    });
-    rowBorders();
-    y += rowH;
-  };
-
-  brk(rowH * 2);
-  drawHeader();
-
-  if (!rows.length) {
-    doc.font("th").fontSize(9).fillColor(C.faint).text("—", M + 5, y + 5);
-    rowBorders();
-    y += rowH;
+  const bodyRows = rows.length ? rows.map((r) => cols.map((c) => clean(r[c.id]) || "—")) : [cols.map((_, i) => (i === 0 ? "—" : ""))];
+  for (const vals of bodyRows) {
+    const h = Math.max(...vals.map((v) => cellH(v, false))) + PADY * 2;
+    if (brk(h)) drawRow(headVals, true);
+    drawRow(vals, false);
   }
-  for (const r of rows) {
-    // ขึ้นหน้าใหม่ → วาดหัวตารางซ้ำ
-    if (y + rowH > bottom) { doc.addPage(); y = M; drawHeader(); }
-    cols.forEach((c, i) => {
-      doc.font("th").fontSize(9).fillColor(C.ink)
-        .text(clean(r[c.id]) || "—", M + i * colW + 5, y + 5, { width: colW - 10, ellipsis: true, lineBreak: false });
-    });
-    rowBorders();
-    y += rowH;
-  }
-  setY(y + 10);
+  return y + 10;
 }

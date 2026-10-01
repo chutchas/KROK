@@ -11,6 +11,7 @@ import { labelMap, type FormField, type FormSchema, type FormStep, type TableCol
 import { tableCodeKey } from "@/lib/answer-item";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import FormPaperFill from "@/components/FormPaperFill";
+import BodyPortal from "@/components/BodyPortal";
 import OptionPicker from "@/components/OptionPicker";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
@@ -1818,8 +1819,9 @@ function SignatureModal({ label, initialUrl, onSave, onClose }: { label: string;
   const [temp, setTemp] = useState<string | null>(null);
   const [cleared, setCleared] = useState(false);
   return (
-    <div role="dialog" aria-modal="true" aria-label={tt("fw.sig.aria", { label })} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div style={{ width: "min(640px, 100%)", background: "#fff", color: "#111", borderRadius: 12, padding: 16, boxShadow: "0 10px 40px rgba(0,0,0,.3)" }}>
+    <BodyPortal>
+    <div role="dialog" aria-modal="true" aria-label={tt("fw.sig.aria", { label })} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)", display: "flex", padding: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
+      <div style={{ width: "min(640px, 100%)", margin: "auto", background: "#fff", color: "#111", borderRadius: 12, padding: 16, boxShadow: "0 10px 40px rgba(0,0,0,.3)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <b style={{ fontSize: "1rem" }}>{tt("fw.sig.title", { label })}</b>
           <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "none", cursor: "pointer", color: "#666", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>
@@ -1836,6 +1838,7 @@ function SignatureModal({ label, initialUrl, onSave, onClose }: { label: string;
         </div>
       </div>
     </div>
+    </BodyPortal>
   );
 }
 
