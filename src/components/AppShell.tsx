@@ -128,8 +128,13 @@ export default function AppShell({
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     }
+    // Esc ปิดเมนู/เมนูโปรไฟล์ (คีย์บอร์ด + โปรแกรมอ่านหน้าจอ)
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") { setMenuOpen(false); setProfileOpen(false); }
+    }
     document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); };
   }, []);
   // ปิดเมนูเมื่อเปลี่ยนหน้า
   useEffect(() => {
@@ -267,6 +272,9 @@ export default function AppShell({
               <button
                 onClick={() => setProfileOpen((v) => !v)}
                 title={t("nav.profile")}
+                aria-label={t("nav.profile")}
+                aria-haspopup="menu"
+                aria-expanded={profileOpen}
                 className="inline-flex items-center gap-1.5"
                 style={{
                   fontSize: ".8rem",
@@ -335,6 +343,9 @@ export default function AppShell({
         >
           <aside
             ref={menuRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={tenantName}
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "absolute",
@@ -359,7 +370,7 @@ export default function AppShell({
                   <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>{tenantName}</small>
                 </div>
               </div>
-              <button onClick={() => setMenuOpen(false)} aria-label={t("common.close")} className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
+              <button onClick={() => setMenuOpen(false)} aria-label={t("common.close")} className="inline-flex h-10 w-10 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
                 <Icon icon={X} className="h-5 w-5" />
               </button>
             </div>

@@ -20,7 +20,9 @@ export type { AnswerItem };
 
 export interface SubRow {
   id: string; form_title: string; form_icon: string; user_name: string;
-  result: "pass" | "fail"; fails: string[]; answers: AnswerItem[];
+  result: "pass" | "fail"; fails: string[];
+  /** ไม่มี = ยังไม่ได้โหลด (หน้าต่างรายละเอียดโหลดเองตอนเปิด) */
+  answers?: AnswerItem[];
   duration_s: number | null; submitted_at: string;
   approval_status?: "none" | "pending" | "approved" | "rejected";
 }
@@ -315,8 +317,14 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
   const ranges = RANGES_BY_FORMAT[format];
   const effRange = ranges.includes(range) ? range : ranges[0];
 
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+
   return (
-    <div onClick={(e) => e.target === e.currentTarget && onCancel()}
+    <div onClick={(e) => e.target === e.currentTarget && onCancel()} role="dialog" aria-modal="true" aria-label={t("dash.widgetBuilder" as never)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <h2 style={{ fontSize: "1.15rem", marginBottom: 12 }}>{t("dash.widgetBuilder" as never)}</h2>
@@ -406,25 +414,38 @@ function chip(on: boolean): React.CSSProperties {
 function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string; onClose: () => void }) {
   const { t, tt } = useT();
   const [photos, setPhotos] = useState<Record<string, string>>({});
+  const [loaded, setLoaded] = useState<AnswerItem[] | null>(null);
+  const answers = sub.answers ?? loaded;
 
+  // คำตอบ + รูป: ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const supabase = createClient();
-      const { data } = await supabase.from("submission_photos").select("field_id, storage_path").eq("submission_id", sub.id);
-      if (!data) return;
+      const [ansRes, { data }] = await Promise.all([
+        sub.answers ? Promise.resolve(null) : supabase.from("submissions").select("answers").eq("id", sub.id).maybeSingle(),
+        supabase.from("submission_photos").select("field_id, storage_path").eq("submission_id", sub.id),
+      ]);
+      if (cancelled) return;
+      if (ansRes) setLoaded(((ansRes.data?.answers as AnswerItem[]) ?? []));
+      if (!data?.length) return;
+      const { data: signed } = await supabase.storage.from("submissions").createSignedUrls(data.map((p) => p.storage_path as string), 3600);
+      const urlOf = new Map((signed || []).map((x) => [x.path, x.signedUrl]));
       const out: Record<string, string> = {};
-      for (const p of data) {
-        const { data: signed } = await supabase.storage.from("submissions").createSignedUrl(p.storage_path as string, 3600);
-        if (signed?.signedUrl) out[p.field_id as string] = signed.signedUrl;
-      }
+      for (const p of data) { const u = urlOf.get(p.storage_path as string); if (u) out[p.field_id as string] = u; }
       if (!cancelled) setPhotos(out);
     })();
     return () => { cancelled = true; };
-  }, [sub.id, tenantId]);
+  }, [sub.id, sub.answers, tenantId]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
-    <div onClick={(e) => e.target === e.currentTarget && onClose()}
+    <div onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true" aria-label={sub.form_title}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }} className="no-print">
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -434,7 +455,8 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
           {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
         </p>
-        {sub.answers.map((a, i) =>
+        {answers === null && <div style={{ padding: "16px 0", color: "var(--ink-3)", fontSize: ".88rem" }}>{t("common.loading")}</div>}
+        {(answers ?? []).map((a, i) =>
           a.type === "table" && a.columns ? (
             <div key={i} style={{ padding: "9px 0", borderBottom: "1px solid var(--line)" }}>
               <div style={{ color: "var(--ink-2)", fontSize: ".9rem", marginBottom: 4 }}>{a.label}</div>

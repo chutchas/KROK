@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
+import { aiRateLimited } from "@/lib/rate-limit";
 import { formFromImage } from "@/lib/ai";
 import { consumeAiCredit } from "@/lib/quota";
 
@@ -10,6 +11,8 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp", "image/gif"];
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (await aiRateLimited(session.userId, "from_image"))
+    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
   if (!canManage(session.role))
     return NextResponse.json({ error: "ไม่มีสิทธิ์สร้างฟอร์ม" }, { status: 403 });
 

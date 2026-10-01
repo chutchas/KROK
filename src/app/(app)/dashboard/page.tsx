@@ -12,10 +12,10 @@ export default async function DashboardPage() {
 
   const [snap, recentRes, formsRes, layoutRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
-    // รายการล่าสุด (ครบฟิลด์ สำหรับ list + modal)
+    // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
     supabase
       .from("submissions")
-      .select("id, form_title, form_icon, user_name, result, fails, answers, duration_s, submitted_at, approval_status")
+      .select("id, form_title, form_icon, user_name, result, fails, duration_s, submitted_at, approval_status")
       .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่
       .order("submitted_at", { ascending: false })
       .limit(100),

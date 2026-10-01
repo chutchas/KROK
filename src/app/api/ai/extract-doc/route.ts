@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { aiRateLimited } from "@/lib/rate-limit";
 import { extractDoc, type ExtractKey } from "@/lib/ai";
 import { consumeAiCredit } from "@/lib/quota";
 
@@ -15,6 +16,8 @@ const MAX_KEYS = 12;
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (await aiRateLimited(session.userId, "doc_extract"))
+    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
 
   try {
     const form = await req.formData();

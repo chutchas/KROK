@@ -221,7 +221,7 @@ export default function FieldSettingsPanel({
             {(field.options || []).map((op, i) => (
               <div key={i} style={{ display: "flex", gap: 6 }}>
                 <Field value={op} onChange={(e) => patchField({ options: (field.options || []).map((x, xi) => (xi === i ? e.target.value : x)) })} style={{ flex: 1 }} />
-                <button onClick={() => patchField({ options: (field.options || []).filter((_, xi) => xi !== i) })} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
+                <button onClick={() => patchField({ options: (field.options || []).filter((_, xi) => xi !== i) })} aria-label={t("common.delete")} title={t("common.delete")} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
               </div>
             ))}
             {(field.options || []).length < 12 && (
@@ -256,7 +256,7 @@ export default function FieldSettingsPanel({
               <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 8 }}>
                 <div style={{ display: "flex", gap: 6 }}>
                   <Field value={c.label} onChange={(e) => patchCol(i, { label: e.target.value })} placeholder={t("editor.tableColName")} style={{ flex: 1 }} />
-                  <button onClick={() => removeCol(i)} disabled={cols.length <= 1} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
+                  <button onClick={() => removeCol(i)} disabled={cols.length <= 1} aria-label={t("common.delete")} title={t("common.delete")} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
                   <select value={c.type} onChange={(e) => patchCol(i, { type: e.target.value as TableColType })} style={{ ...sel, width: "auto", flex: "0 0 auto" }}>
@@ -319,7 +319,7 @@ function Shell({ title, onClose, children }: { title: string; onClose: () => voi
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface)", padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".95rem" }}>{title}</b>
-        <button onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}><Icon icon={X} className="h-4 w-4" /></button>
+        <button onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer", minWidth: 40, minHeight: 40, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "-8px -8px -8px 0" }}><Icon icon={X} className="h-5 w-5" /></button>
       </div>
       {children}
     </div>

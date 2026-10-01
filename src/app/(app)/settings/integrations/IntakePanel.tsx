@@ -93,7 +93,23 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   -d '${sample.replace(/'/g, "'\\''")}'`;
 
   async function copy(text: string, tag: string) {
-    try { await navigator.clipboard.writeText(text); setCopied(tag); setTimeout(() => setCopied(null), 1500); } catch { /* ignore */ }
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      // clipboard API ใช้ไม่ได้ (http / browser เก่า) → วิธีสำรองผ่าน textarea ชั่วคราว
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      const ok = document.execCommand("copy");
+      ta.remove();
+      if (!ok) { setMsg({ t: t("intake.copyManual"), err: true }); return; }
+    }
+    setCopied(tag);
+    setTimeout(() => setCopied(null), 1500);
   }
 
   async function save() {

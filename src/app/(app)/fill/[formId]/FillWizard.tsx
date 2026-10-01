@@ -1243,6 +1243,10 @@ function TableInput({
   const narrow = useIsNarrow();
   const cards = narrow || variant === "compact";
   const small = variant !== "normal";
+  // สีกระดาษ (ขาว/ดำ) เฉพาะมุมมองกระดาษ — มุมมองปกติใช้สีตามธีม (โหมดมืดไม่ขาวโพลน)
+  const ink = small
+    ? { field: "#fff", text: "#111", border: "#c3c8ce", card: "#fafbfc", cardBorder: "#d5d9de", muted: "#555", head: "#444", rule: "#ccc" }
+    : { field: "var(--surface)", text: "var(--ink)", border: "var(--line)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
 
   function commit(next: TableRow[]) { setRows(next); onChange(next); }
   const setCell = (ri: number, cid: string, v: string) => commit(rows.map((r, i) => (i === ri ? { ...r, [cid]: v } : r)));
@@ -1251,7 +1255,7 @@ function TableInput({
 
   const cellInput = (ri: number, c: TableColumn) => {
     const v = rows[ri]?.[c.id] ?? "";
-    const st: React.CSSProperties = { width: "100%", padding: small ? "5px 7px" : "8px 9px", border: "1px solid #c3c8ce", borderRadius: 6, background: "#fff", color: "#111", fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
+    const st: React.CSSProperties = { width: "100%", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
     if (c.type === "select") {
       return (
         <select value={v} onChange={(e) => setCell(ri, c.id, e.target.value)} style={st}>
@@ -1277,15 +1281,15 @@ function TableInput({
       <div>
         <div style={{ display: "grid", gap: 8 }}>
           {rows.map((_, ri) => (
-            <div key={ri} style={{ border: "1px solid #d5d9de", borderRadius: 10, padding: 10, background: "#fafbfc" }}>
+            <div key={ri} style={{ border: `1px solid ${ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <b style={{ fontSize: ".78rem", color: "#555" }}>แถวที่ {ri + 1}</b>
-                <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", display: "inline-flex" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                <b style={{ fontSize: ".78rem", color: ink.muted }}>แถวที่ {ri + 1}</b>
+                <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
               </div>
               <div style={{ display: "grid", gap: 7 }}>
                 {cols.map((c) => (
                   <label key={c.id} style={{ display: "grid", gap: 3 }}>
-                    <span style={{ fontSize: ".76rem", color: "#666", fontWeight: 600 }}>{c.label}</span>
+                    <span style={{ fontSize: ".76rem", color: ink.muted, fontWeight: 600 }}>{c.label}</span>
                     {cellInput(ri, c)}
                   </label>
                 ))}
@@ -1309,8 +1313,8 @@ function TableInput({
           </colgroup>
           <thead>
             <tr>
-              {cols.map((c) => <th key={c.id} style={{ textAlign: "left", fontSize: small ? ".76rem" : ".82rem", color: "#444", padding: "4px 6px", borderBottom: "1px solid #ccc", fontWeight: 700 }}>{c.label}</th>)}
-              <th style={{ borderBottom: "1px solid #ccc" }} />
+              {cols.map((c) => <th key={c.id} style={{ textAlign: "left", fontSize: small ? ".76rem" : ".82rem", color: ink.head, padding: "4px 6px", borderBottom: `1px solid ${ink.rule}`, fontWeight: 700 }}>{c.label}</th>)}
+              <th style={{ borderBottom: `1px solid ${ink.rule}` }} />
             </tr>
           </thead>
           <tbody>
@@ -1318,7 +1322,7 @@ function TableInput({
               <tr key={ri}>
                 {cols.map((c) => <td key={c.id} style={{ padding: "3px 5px", verticalAlign: "top" }}>{cellInput(ri, c)}</td>)}
                 <td style={{ padding: "3px 2px", textAlign: "center", verticalAlign: "middle" }}>
-                  <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => delRow(ri)} aria-label="ลบแถว" style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
                 </td>
               </tr>
             ))}

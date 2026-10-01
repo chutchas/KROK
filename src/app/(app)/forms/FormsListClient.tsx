@@ -268,10 +268,9 @@ function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; bus
                 <Icon icon={Trash2} className="h-4 w-4" />
               </button>
               {d.available && (
-                <Link href={`/fill/${d.formId}?draft=${d.id}`} style={{ textDecoration: "none" }}>
-                  <Button variant="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", fontSize: ".88rem" }}>
-                    {t("draft.continue")} <Icon icon={ArrowRight} className="h-4 w-4" />
-                  </Button>
+                <Link href={`/fill/${d.formId}?draft=${d.id}`}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, padding: "8px 14px", borderRadius: 8, fontSize: ".88rem", fontWeight: 600, textDecoration: "none", background: "var(--accent)", border: "1px solid var(--accent)", color: "#fff" }}>
+                  {t("draft.continue")} <Icon icon={ArrowRight} className="h-4 w-4" />
                 </Link>
               )}
             </div>

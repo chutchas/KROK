@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { aiRateLimited } from "@/lib/rate-limit";
 import { checkPhoto } from "@/lib/ai";
 import { consumeAiCredit } from "@/lib/quota";
 
@@ -10,6 +11,8 @@ const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (await aiRateLimited(session.userId, "photo_check"))
+    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
 
   try {
     const form = await req.formData();

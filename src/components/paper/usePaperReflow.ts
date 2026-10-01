@@ -9,32 +9,50 @@ import { blockHeight, reflowTops, type Block } from "@/lib/paper-layout";
  */
 export function usePaperReflow(blocks: Block[], layout: Record<string, PaperBox>) {
   const [measured, setMeasured] = useState<Record<string, number>>({});
-  const observers = useRef(new Map<string, ResizeObserver>());
+  // ResizeObserver ตัวเดียวทั้งหน้า: บล็อกที่เปลี่ยนขนาดพร้อมกัน (ตอน mount / ฟอนต์โหลด) → setState ครั้งเดียว
+  const keyOf = useRef(new WeakMap<Element, string>());
+  const elOf = useRef(new Map<string, HTMLDivElement>());
+  const roRef = useRef<ResizeObserver | null>(null);
   const refFns = useRef(new Map<string, (el: HTMLDivElement | null) => void>());
 
-  // ref callback คงที่ต่อ key — ไม่ถอด/ติด ResizeObserver ใหม่ทุกครั้งที่ render
+  const observer = useCallback((): ResizeObserver => {
+    if (!roRef.current) {
+      roRef.current = new ResizeObserver((entries) => {
+        const changes: Record<string, number> = {};
+        for (const e of entries) {
+          const k = keyOf.current.get(e.target);
+          if (k) changes[k] = (e.target as HTMLElement).offsetHeight; // ขนาดก่อน scale
+        }
+        setMeasured((m) => {
+          let next: Record<string, number> | null = null;
+          for (const [k, h] of Object.entries(changes)) if (m[k] !== h) (next ??= { ...m })[k] = h;
+          return next ?? m;
+        });
+      });
+    }
+    return roRef.current;
+  }, []);
+
+  // ref callback คงที่ต่อ key — ไม่ถอด/ติด observer ใหม่ทุกครั้งที่ render
   const measureRef = useCallback((key: string) => {
     let fn = refFns.current.get(key);
     if (!fn) {
       fn = (el: HTMLDivElement | null) => {
-        observers.current.get(key)?.disconnect();
-        observers.current.delete(key);
-        if (!el) return;
-        const ro = new ResizeObserver(() => {
-          const h = el.offsetHeight; // ขนาดก่อน scale
-          setMeasured((m) => (m[key] === h ? m : { ...m, [key]: h }));
-        });
-        ro.observe(el);
-        observers.current.set(key, ro);
+        const prev = elOf.current.get(key);
+        if (prev && prev !== el) { observer().unobserve(prev); elOf.current.delete(key); }
+        if (!el) { refFns.current.delete(key); return; } // บล็อกถูกลบ → ไม่เก็บ ref ค้าง
+        keyOf.current.set(el, key);
+        elOf.current.set(key, el);
+        observer().observe(el);
       };
       refFns.current.set(key, fn);
     }
     return fn;
-  }, []);
+  }, [observer]);
 
   useEffect(() => {
-    const obs = observers.current;
-    return () => { obs.forEach((o) => o.disconnect()); obs.clear(); };
+    const els = elOf.current;
+    return () => { roRef.current?.disconnect(); roRef.current = null; els.clear(); };
   }, []);
 
   const tops = useMemo(() => reflowTops(blocks, layout, measured), [blocks, layout, measured]);
