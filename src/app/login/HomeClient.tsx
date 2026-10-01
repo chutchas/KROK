@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { LogIn, X } from "lucide-react";
@@ -101,7 +102,7 @@ export default function HomeClient() {
 
       {open && (
         <div
-          onClick={() => setOpen(false)}
+          {...backdropClose(() => setOpen(false))}
           role="dialog"
           aria-modal="true"
           style={{

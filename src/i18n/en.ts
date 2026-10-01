@@ -1432,6 +1432,20 @@ export const en: Record<MessageKey, string> = {
   "icon.byTask": "By task",
   "icon.byIndustry": "By industry",
   "icon.none": "No icons found",
+  "login.forgot": "Forgot password?",
+  "login.resetTitle": "Forgot password",
+  "login.resetHint": "Enter your account email and we'll send you a link to set a new password.",
+  "login.doReset": "Send reset link",
+  "login.backToSignin": "Back to sign in",
+  "login.resetSent": "If {email} has an account, we've sent a reset link — open it in this browser (check spam if you don't see it).",
+  "login.resetLinkFail": "This reset link is invalid or expired — it must be opened in the same browser you requested it from. Try “Forgot password?” again.",
+  "reset.title": "Set a new password",
+  "reset.hint": "Choose a new password for your account (at least 6 characters).",
+  "reset.new": "New password",
+  "reset.confirm": "Confirm new password",
+  "reset.save": "Save new password",
+  "reset.mismatch": "Passwords don't match",
+  "reset.done": "Password updated — taking you to the app…",
 };
 
 export default en;

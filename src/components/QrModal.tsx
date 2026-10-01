@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -50,7 +51,7 @@ export default function QrModal({
   }
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    <div {...backdropClose(onClose)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 380, background: "var(--surface)", borderRadius: 16, border: "1px solid var(--line)", overflow: "hidden" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid var(--line)" }}>
           <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("qr.title")}</b>

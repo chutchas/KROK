@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import { useState } from "react";
 import { Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -55,7 +56,7 @@ export default function ShareScopeModal({
   }
 
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
+    <div {...backdropClose(onClose)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", background: "var(--surface)", borderRadius: 16, border: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--surface)" }}>
           <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("share.title")}</b>

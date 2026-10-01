@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import { useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import { Button } from "@/components/ui";
@@ -329,7 +330,7 @@ function ReviewModal({
   return (
     <div
       style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,.55)", zIndex: 90, display: "flex", alignItems: "center", justifyContent: "center", padding: 14 }}
-      onClick={onCancel}
+      {...backdropClose(onCancel)}
     >
       <div
         onClick={(e) => e.stopPropagation()}

@@ -41,7 +41,8 @@ export async function GET(request: NextRequest) {
   // Supabase ส่ง error มากับลิงก์ (เช่น ลิงก์หมดอายุ) หรือแลก code ไม่ได้
   const desc = url.searchParams.get("error_description") || url.searchParams.get("error");
   const back = new URL("/login", url.origin);
-  if (code && !desc) back.searchParams.set("confirmed", "1"); // ยืนยันแล้ว แต่ต้องล็อกอินเอง (เปิดคนละเครื่อง)
+  if (next.startsWith("/reset-password")) back.searchParams.set("auth_error", "reset"); // ลิงก์รีเซ็ตใช้ไม่ได้/เปิดคนละเบราว์เซอร์ → ขอใหม่
+  else if (code && !desc) back.searchParams.set("confirmed", "1"); // ยืนยันแล้ว แต่ต้องล็อกอินเอง (เปิดคนละเครื่อง)
   else back.searchParams.set("auth_error", desc ? desc.slice(0, 200) : "1");
   return NextResponse.redirect(back);
 }

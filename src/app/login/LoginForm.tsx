@@ -13,7 +13,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const sp = useSearchParams();
   // ลิงก์จากอีเมลเชิญ: /login?invite=<email> → เปิดหน้าสมัครพร้อมอีเมล ไม่ต้องตั้งชื่อองค์กร (เข้า workspace ที่เชิญ)
   const invited = (sp.get("invite") || "").trim().toLowerCase();
-  const [mode, setMode] = useState<"signin" | "signup">(invited ? "signup" : "signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset">(invited ? "signup" : "signin");
   const [email, setEmail] = useState(invited);
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
@@ -22,6 +22,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(() => {
     if (sp.get("confirmed")) return { t: t("login.confirmedOk") };
     const e = sp.get("auth_error");
+    if (e === "reset") return { t: t("login.resetLinkFail"), err: true };
     if (e) return { t: e === "1" ? t("login.confirmFail") : `${t("login.confirmFail")} (${e})`, err: true };
     return null;
   });
@@ -33,6 +34,16 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     setMsg(null);
     const supabase = createClient();
     try {
+      if (mode === "reset") {
+        // ลืมรหัสผ่าน: Supabase ส่งลิงก์ → /auth/confirm แลก session → /reset-password ตั้งรหัสใหม่
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), {
+          redirectTo: `${window.location.origin}/auth/confirm?next=/reset-password`,
+        });
+        if (error) throw error;
+        // ข้อความเดียวกันไม่ว่าอีเมลจะมีบัญชีหรือไม่ (กันเดาว่าอีเมลไหนสมัครไว้)
+        setMsg({ t: tt("login.resetSent", { email: email.trim() }) });
+        return;
+      }
       if (mode === "signup") {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -89,10 +100,10 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
       <Card>
         <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>
-          {mode === "signin" ? t("login.signin") : isInvite ? t("login.inviteTitle") : t("login.signupTitle")}
+          {mode === "signin" ? t("login.signin") : mode === "reset" ? t("login.resetTitle") : isInvite ? t("login.inviteTitle") : t("login.signupTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>
-          {mode === "signin" ? t("login.signinHint") : isInvite ? t("login.inviteHint") : t("login.signupHint")}
+          {mode === "signin" ? t("login.signinHint") : mode === "reset" ? t("login.resetHint") : isInvite ? t("login.inviteHint") : t("login.signupHint")}
         </p>
 
         <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
@@ -111,17 +122,25 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
             required
             autoComplete="email"
           />
-          <Field
-            type="password"
-            placeholder={t("login.password")}
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            minLength={6}
-            autoComplete={mode === "signin" ? "current-password" : "new-password"}
-          />
+          {mode !== "reset" && (
+            <Field
+              type="password"
+              placeholder={t("login.password")}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              minLength={6}
+              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+            />
+          )}
+          {mode === "signin" && (
+            <button type="button" onClick={() => { setMode("reset"); setMsg(null); }}
+              style={{ justifySelf: "end", marginTop: -4, background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem" }}>
+              {t("login.forgot")}
+            </button>
+          )}
           <Button variant="primary" type="submit" disabled={busy} style={{ padding: 13 }}>
-            {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : isInvite ? t("login.doJoin") : t("login.doSignup")}
+            {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : mode === "reset" ? t("login.doReset") : isInvite ? t("login.doJoin") : t("login.doSignup")}
           </Button>
         </form>
 
@@ -142,7 +161,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
             fontSize: ".88rem",
           }}
         >
-          {mode === "signin" ? t("login.toSignup") : t("login.toSignin")}
+          {mode === "signin" ? t("login.toSignup") : mode === "reset" ? t("login.backToSignin") : t("login.toSignin")}
         </button>
       </Card>
     </div>

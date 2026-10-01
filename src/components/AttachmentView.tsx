@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import { useEffect, useState } from "react";
 import Icon from "@/components/Icon";
 import { Paperclip, X, ExternalLink, Download, FileText, Image as ImageIcon, Film, Link2 } from "lucide-react";
@@ -107,7 +108,7 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
 
   return (
     <div
-      onClick={onClose}
+      {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(8,15,30,.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
     >
       <div

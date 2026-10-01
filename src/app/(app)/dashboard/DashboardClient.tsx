@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
@@ -349,7 +350,7 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
   }, [onCancel]);
 
   return (
-    <div onClick={(e) => e.target === e.currentTarget && onCancel()} role="dialog" aria-modal="true" aria-label={t("dash.widgetBuilder" as never)}
+    <div {...backdropClose(onCancel)} role="dialog" aria-modal="true" aria-label={t("dash.widgetBuilder" as never)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <h2 style={{ fontSize: "1.15rem", marginBottom: 12 }}>{t("dash.widgetBuilder" as never)}</h2>
@@ -470,7 +471,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
   }, [onClose]);
 
   return (
-    <div onClick={(e) => e.target === e.currentTarget && onClose()} role="dialog" aria-modal="true" aria-label={sub.form_title}
+    <div {...backdropClose(onClose)} role="dialog" aria-modal="true" aria-label={sub.form_title}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }} className="no-print">
       <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>

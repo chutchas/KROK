@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -6,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
 import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
-import WorkspaceSwitcher, { WorkspaceChip, WsAvatar, type WorkspaceItem } from "@/components/WorkspaceSwitcher";
+import WorkspaceSwitcher, { WorkspaceChip, type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import OfflineSync from "@/components/OfflineSync";
 import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
@@ -344,7 +345,7 @@ export default function AppShell({
       {menuOpen && (
         <div
           className="no-print"
-          onClick={() => setMenuOpen(false)}
+          {...backdropClose(() => setMenuOpen(false))}
           style={{ position: "fixed", inset: 0, zIndex: 50, background: "rgba(10,14,18,.4)", backdropFilter: "blur(2px)", WebkitBackdropFilter: "blur(2px)" }}
         >
           <aside
@@ -421,14 +422,7 @@ export default function AppShell({
         </div>
       )}
 
-      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "14px var(--krok-gutter) 90px" }}>
-        {/* บรรทัดบอก workspace เหนือหัวข้อทุกหน้า (เห็นชัดตอนแคปจอ/ส่งต่อ) */}
-        <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".8rem", color: "var(--ink-2)", fontWeight: 600, marginBottom: 8, minWidth: 0 }}>
-          <WsAvatar name={tenantName} size={18} />
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenantName}</span>
-        </div>
-        {children}
-      </main>
+      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
     </>
   );
 }

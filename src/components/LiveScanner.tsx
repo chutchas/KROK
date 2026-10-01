@@ -1,4 +1,5 @@
 "use client";
+import { backdropClose } from "@/lib/backdrop";
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
 import { X, ScanLine } from "lucide-react";
@@ -101,7 +102,7 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
 
   return (
     <div
-      onClick={onClose}
+      {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
     >
       <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "var(--surface)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)" }}>
