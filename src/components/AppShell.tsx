@@ -364,7 +364,9 @@ export default function AppShell({
                     position: "absolute",
                     top: "calc(100% + 8px)",
                     right: 0,
-                    minWidth: 200,
+                    width: "max-content",
+                    minWidth: 280,
+                    maxWidth: "min(380px, calc(100vw - 24px))",
                     background: "var(--surface)",
                     border: "1px solid var(--line)",
                     borderRadius: 12,
@@ -374,10 +376,10 @@ export default function AppShell({
                   }}
                 >
                   <div style={{ padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
-                    <Avatar url={shownAvatar} size={34} />
-                    <div>
-                      <b style={{ fontSize: ".88rem", display: "block", overflowWrap: "anywhere" }}>{fullName}</b>
-                      <small style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tenantName}</small>
+                    <Avatar url={shownAvatar} size={40} />
+                    <div style={{ minWidth: 0 }}>
+                      <b style={{ fontSize: ".88rem", display: "block", overflowWrap: "break-word" }}>{fullName}</b>
+                      <small style={{ color: "var(--ink-3)", fontSize: ".72rem", display: "block", overflowWrap: "break-word" }}>{tenantName}</small>
                     </div>
                   </div>
                   <Link
