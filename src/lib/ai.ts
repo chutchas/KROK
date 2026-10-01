@@ -1,4 +1,5 @@
 import "server-only";
+import { repairFormulas } from "@/lib/formula";
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 import { sanitizeSchema, type FormSchema } from "./form-schema";
@@ -231,17 +232,29 @@ function extractJson(text: string): unknown {
   return JSON.parse(body.slice(start, end + 1));
 }
 
+// วิธีเขียนสูตร (ใช้ทั้งออกแบบใหม่และคัดลอกจากเอกสาร) — อ้างด้วย id เสมอ ไม่ใช่ชื่อ
+const FORMULA_SPEC = `สูตรคำนวณ (ใช้เมื่อมีค่าที่ "คำนวณได้จากช่องอื่น" เช่น ผลต่าง ผลรวม เปอร์เซ็นต์ ค่าเฉลี่ย จำนวนเงิน):
+- ฟิลด์ type "formula" = คนไม่ต้องกรอก ระบบคำนวณให้ · ใส่ "formula" และ "decimals" (0-4) · ใส่ unit/min/max ได้ (นอกช่วง = ไม่ผ่าน) · required:false
+- อ้างฟิลด์ตัวเลขด้วย {id ของฟิลด์} เช่น {weight_after} - {weight_before} · อ้างได้เฉพาะฟิลด์ type number หรือ formula
+- รวมทั้งคอลัมน์ของตาราง: SUM({id ตาราง.id คอลัมน์}) เช่น SUM({items.amount}) (ใช้ทั้งคอลัมน์ได้เฉพาะใน SUM AVG MIN MAX COUNT)
+- คอลัมน์ type "formula" ในตาราง = คำนวณทีละแถว อ้างคอลัมน์อื่นในแถวเดียวกันด้วย {id คอลัมน์} เช่น {qty} * {price}
+- ใช้ได้: + - * / ^ ( ) > < >= <= = <> และ SUM AVG MIN MAX COUNT ROUND(x,n) ROUNDUP ROUNDDOWN ABS SQRT IF(เงื่อนไข,ค่าจริง,ค่าเท็จ) AND OR NOT · คอลัมน์ pass_fail: ผ่าน=1 ไม่ผ่าน=0 · checkbox: ติ๊ก=1
+- id ที่อ้างต้องตรงกับ id ที่ประกาศในฟอร์มนี้ทุกตัว ห้ามอ้างฟิลด์ข้อความ/ตัวเลือก และอย่าใส่สูตรถ้าไม่มีค่าที่คำนวณได้จริง`;
+
 export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เดียวเท่านั้น ห้ามมีข้อความอื่นนอก JSON ตาม spec นี้:
 {"title":"ชื่อฟอร์ม","description":"อธิบายสั้นๆ ว่าใช้เมื่อไหร่","icon":"ชื่อไอคอน 1 ชื่อจากรายการนี้ที่เข้ากับเอกสารที่สุด: ${ICON_KEY_LIST.join(", ")}",
 "steps":[{"title":"ชื่อขั้นตอน","fields":[{
- "id":"snake_case_id","type":"text|number|select|checkbox|pass_fail|photo|barcode|signature|datetime",
+ "id":"snake_case_id","type":"text|number|select|checkbox|pass_fail|photo|barcode|signature|datetime|table|formula",
  "label":"คำถาม/สิ่งที่ต้องตรวจ (ใช้ภาษาเดียวกับคำขอ)","required":true,
  "tooltip":"คำแนะนำสั้นๆ ช่วยให้กรอกถูกต้อง เช่น จุดที่ต้องดู วิธีวัด",
  "example":"ตัวอย่างคำตอบที่ดี (เฉพาะ text/number)",
  "min":0,"max":100,"unit":"หน่วย (เฉพาะ number ที่มีช่วงค่ามาตรฐาน)",
  "options":["ตัวเลือก"],
  "photo_hint":"รูปต้องเห็นอะไรชัดเจน (เฉพาะ photo)",
- "on_fail_require_note":true}]}]}
+ "on_fail_require_note":true,
+ "columns":[{"id":"snake_id","label":"หัวคอลัมน์","type":"text|number|select|formula|pass_fail|checkbox|datetime|scan","width":2,"options":["เฉพาะ select"],"formula":"เฉพาะ formula","decimals":2}],
+ "min_rows":3,
+ "formula":"สูตร (เฉพาะ type formula)","decimals":2}]}]}
 สำคัญสูงสุด: ถ้าผู้ใช้ระบุจำนวนฟิลด์ จำนวนขั้นตอน หรือสิ่งที่ต้องมี/ไม่ต้องมี (เช่น "5 ช่อง", "3 ขั้นตอน", "ไม่ต้องมีรูป") ให้ทำตามคำขอนั้นก่อนกฎทั่วไปเสมอ
 กติกา (เป็นค่าแนะนำ ปรับตามความเหมาะสมของงานได้ ไม่ใช่กฎตายตัว):
 โดยทั่วไปแบ่ง 2-4 steps ตามลำดับงานจริง (งานสั้นใช้ step เดียวได้ งานยาว/หลายส่วนมีมากกว่า 4 ได้), จำนวนฟิลด์ปกติ 6-14 แต่ปรับให้พอดีเนื้องาน (งานเล็กน้อยกว่านี้ได้ งานละเอียดมากกว่านี้ได้),
@@ -251,6 +264,7 @@ export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เด
 ใช้ number พร้อม min/max/unit เมื่อมีค่ามาตรฐาน,
 เขียน tooltip ทุก field ให้คนหน้างานที่ไม่เคยทำก็เข้าใจ,
 ปิดท้ายด้วย signature ถ้าเหมาะสม,
+${FORMULA_SPEC}
 สำคัญ: เขียนทุกข้อความในฟอร์ม (title, label, tooltip, example, options) ด้วยภาษาเดียวกับคำขอของผู้ใช้ (ไทยหรืออังกฤษ) ห้ามปนภาษาอื่นเช่นจีนเด็ดขาด`;
 
 export async function generateForm(prompt: string): Promise<FormSchema> {
@@ -262,7 +276,7 @@ export async function generateForm(prompt: string): Promise<FormSchema> {
       SCHEMA_SPEC,
     null
   );
-  return sanitizeSchema(extractJson(text));
+  return repairFormulas(sanitizeSchema(extractJson(text)));
 }
 
 export async function refineForm(schema: FormSchema, instruction: string): Promise<FormSchema> {
@@ -276,7 +290,7 @@ export async function refineForm(schema: FormSchema, instruction: string): Promi
       SCHEMA_SPEC,
     null
   );
-  return sanitizeSchema(extractJson(text));
+  return repairFormulas(sanitizeSchema(extractJson(text)));
 }
 
 // spec สำหรับ "คัดลอกฟอร์มเดิมจากรูป/ไฟล์" — เน้นความเหมือน ไม่ใช่ออกแบบใหม่
@@ -288,7 +302,8 @@ export const REPLICATE_SPEC = `ตอบกลับเป็น JSON object เ
  "label":"ข้อความ/หัวข้อช่องกรอก คัดลอกคำต่อคำจากเอกสาร","required":false,
  "width":"full|half",
  "options":["ตัวเลือกตามที่พิมพ์ในเอกสาร"],
- "columns":[{"id":"snake_id","label":"หัวคอลัมน์ตามเอกสาร","type":"text|number|select","width":2}],
+ "columns":[{"id":"snake_id","label":"หัวคอลัมน์ตามเอกสาร","type":"text|number|select|formula|pass_fail|checkbox|datetime|scan","width":2,"formula":"เฉพาะ formula"}],
+ "formula":"สูตร (เฉพาะ type formula)",
  "min":0,"max":100,"unit":"หน่วยที่พิมพ์ข้างช่อง (ถ้ามี)"}]}]}
 
 โหมดนี้คือ "ทำสำเนาดิจิทัลของฟอร์มเดิม" ไม่ใช่ออกแบบฟอร์มใหม่ ให้ยึดหลักนี้อย่างเคร่งครัด:
@@ -304,6 +319,8 @@ export const REPLICATE_SPEC = `ตอบกลับเป็น JSON object เ
 10. ถ้ารูปมีหลายหน้า/หลายส่วนต่อกัน ให้อ่านทุกหน้าจนครบ
 11. ถ้าเอกสารมี "ตารางรายการ" (เช่น รายการสินค้า มีหัวคอลัมน์ Item/รายการ/จำนวน/ราคา/หน่วย) ให้ใช้ type "table" หนึ่งฟิลด์ พร้อม columns ตามหัวคอลัมน์จริง (label คัดลอกจากเอกสาร, type = number สำหรับจำนวน/ราคา ไม่งั้น text, width = ความกว้างสัมพัทธ์ 1-6) ตาราง 1 อัน = 1 field type table (อย่าแตกเป็นหลายฟิลด์) และตั้ง width ของฟิลด์ตารางเป็น full
 12. width = จัดวางให้เหมือนต้นฉบับ: ถ้าเอกสารเรียงช่องเป็น "คอลัมน์เดียว" (บนลงล่าง) ให้ทุกฟิลด์เป็น "full"; ถ้ามีสองช่องสั้นๆ อยู่บรรทัดเดียวกันจริง ให้จับคู่เป็น "half" ทั้งคู่; ฟิลด์ยาว (ชื่อบริษัท, ที่อยู่, รายการสินค้า, หมายเหตุ, ช่องเซ็นชื่อ) ให้ "full" เสมอ
+13. คอลัมน์ตาราง: ช่องติ๊ก ✓ = checkbox, OK/NG หรือ ผ่าน/ไม่ผ่าน = pass_fail, วันที่ = datetime, รหัสสินค้า/serial ที่สแกน = scan, คอลัมน์ "รวม/Amount/จำนวนเงิน" ที่ได้จากคอลัมน์อื่น = formula; ช่อง "รวมทั้งสิ้น/Total" ใต้ตาราง = ฟิลด์ type formula
+${FORMULA_SPEC}
 สำคัญ: ผลลัพธ์ต้องใกล้เคียงฟอร์มเดิม 90%+ ทั้งจำนวนฟิลด์และโครงสร้าง เพื่อให้ผู้ใช้แก้ต่อได้ง่าย`;
 
 export async function formFromImage(
@@ -319,7 +336,7 @@ export async function formFromImage(
     imgs,
     8000
   );
-  return sanitizeSchema(extractJson(text));
+  return repairFormulas(sanitizeSchema(extractJson(text)));
 }
 
 export interface PhotoCheck {

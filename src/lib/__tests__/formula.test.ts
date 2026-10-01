@@ -115,3 +115,33 @@ describe("แปลงชื่อ ↔ id", () => {
     expect(insertables(ctx).map((x) => x.token)).toEqual(["[น้ำหนักก่อน]", "[น้ำหนักหลัง]", "[ผลต่าง]", "[เปอร์เซ็นต์]", "SUM([รายการ.จำนวน])", "SUM([รายการ.ราคา])", "SUM([รายการ.รวม])", "SUM([รายการ.ผ่าน])", "[ผ่านกี่แถว]"]);
   });
 });
+
+import { repairFormulas } from "../formula";
+describe("repairFormulas (ผลจาก AI)", () => {
+  it("เก็บสูตรที่ถูก ล้างสูตรที่อ้างผิด", () => {
+    const s = { title: "t", steps: [{ id: "s1", title: "s", fields: [
+      { id: "a", type: "number", label: "A", required: true },
+      { id: "name", type: "text", label: "ชื่อ", required: true },
+      { id: "ok", type: "formula", label: "OK", required: false, formula: "{a} * 2" },
+      { id: "bad1", type: "formula", label: "B1", required: false, formula: "{nope} + 1" },
+      { id: "bad2", type: "formula", label: "B2", required: false, formula: "{name} + 1" },
+      { id: "bad3", type: "formula", label: "B3", required: false, formula: "{bad3} + 1" },
+      { id: "t", type: "table", label: "T", required: false, columns: [
+        { id: "q", label: "Q", type: "number" }, { id: "n", label: "N", type: "text" },
+        { id: "x", label: "X", type: "formula", formula: "{q} * 3" },
+        { id: "y", label: "Y", type: "formula", formula: "{n} * 3" },
+      ] },
+      { id: "sum", type: "formula", label: "S", required: false, formula: "SUM({t.x})" },
+      { id: "sumbad", type: "formula", label: "SB", required: false, formula: "{t.x} + 1" },
+    ] }] } as FormSchema;
+    const f = repairFormulas(s).steps[0].fields;
+    const by = (id: string) => f.find((x) => x.id === id)!;
+    expect(by("ok").formula).toBe("{a} * 2");
+    expect(by("bad1").formula).toBe("");
+    expect(by("bad2").formula).toBe("");
+    expect(by("bad3").formula).toBe("");
+    expect(by("t").columns!.map((c) => c.formula ?? null)).toEqual([null, null, "{q} * 3", ""]);
+    expect(by("sum").formula).toBe("SUM({t.x})");
+    expect(by("sumbad").formula).toBe("");
+  });
+});

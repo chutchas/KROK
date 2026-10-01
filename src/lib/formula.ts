@@ -457,3 +457,55 @@ export function findCycles(schema: FormSchema): string[] {
   const ok = new Set(topo(fs, (x) => depsOf(x.formula)).map((f) => f.id));
   return fs.filter((f) => !ok.has(f.id)).map((f) => f.label);
 }
+
+/**
+ * ล้างสูตรที่ใช้ไม่ได้ (อ้าง id ที่ไม่มี/ไม่ใช่ตัวเลข/อ้างตัวเอง/รูปแบบผิด/วนอ้างกัน) → สูตรว่าง
+ * ใช้กับผลจาก AI: ให้ผู้ใช้เห็นช่องสูตรว่างแล้วแก้เอง ดีกว่าสูตรที่คำนวณเงียบ ๆ ไม่ได้
+ */
+export function repairFormulas(schema: FormSchema): FormSchema {
+  const fields = schema.steps.flatMap((s) => s.fields);
+  const byId = new Map(fields.map((f) => [f.id, f]));
+  const isNumCol = (c?: Pick<TableColumn, "type">) => !!c && (NUMERIC_COL_TYPES as readonly string[]).includes(c.type);
+  const okField = (f: FormField): boolean => {
+    if (!f.formula) return true;
+    try {
+      const ast = parseFormula(f.formula);
+      for (const r of refsOf(ast)) {
+        const [a, b] = r.split(".");
+        const t = byId.get(a);
+        if (!t || a === f.id) return false;
+        if (b) { if (t.type !== "table" || !isNumCol(t.columns?.find((c) => c.id === b))) return false; }
+        else if (!(NUMERIC_FIELD_TYPES as readonly string[]).includes(t.type)) return false;
+      }
+      evalNode(ast, (id) => (id.includes(".") ? [1] : 1));
+      return true;
+    } catch { return false; }
+  };
+  const okCol = (cols: TableColumn[], c: TableColumn): boolean => {
+    if (!c.formula) return true;
+    try {
+      const ast = parseFormula(c.formula);
+      for (const r of refsOf(ast)) {
+        if (r.includes(".") || r === c.id || !isNumCol(cols.find((x) => x.id === r))) return false;
+      }
+      evalNode(ast, () => 1);
+      return true;
+    } catch { return false; }
+  };
+  const steps = schema.steps.map((s) => ({
+    ...s,
+    fields: s.fields.map((f) => {
+      if (f.type === "formula" && !okField(f)) return { ...f, formula: "" };
+      if (f.type === "table" && f.columns?.some((c) => c.type === "formula")) {
+        const cols = f.columns;
+        const ordered = new Set(topo(cols.filter((c) => c.type === "formula"), (c) => depsOf(c.formula)).map((c) => c.id));
+        return { ...f, columns: cols.map((c) => (c.type === "formula" && (!okCol(cols, c) || !ordered.has(c.id)) ? { ...c, formula: "" } : c)) };
+      }
+      return f;
+    }),
+  }));
+  const out = { ...schema, steps };
+  const cyc = new Set(findCycles(out));
+  if (!cyc.size) return out;
+  return { ...out, steps: out.steps.map((s) => ({ ...s, fields: s.fields.map((f) => (f.type === "formula" && cyc.has(f.label) ? { ...f, formula: "" } : f)) })) };
+}
