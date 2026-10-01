@@ -1401,6 +1401,7 @@ export const en: Record<MessageKey, string> = {
   "wf.waitHr": "Waiting {n} h",
   "wf.waitDay": "Waiting {n} d",
   "list.noMatch": "No items match your search",
+  "editor.asideHint": "Tap a field, step or the document header on the form to configure it here — label, type, options, accepted range, reference docs and step assignee.",
 };
 
 export default en;

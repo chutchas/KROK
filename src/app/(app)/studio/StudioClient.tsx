@@ -6,7 +6,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import TemplateGallery from "./TemplateGallery";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
@@ -311,7 +311,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "hidden" }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: tab === "edit" && draft ? "visible" : "hidden" }}>
       {/* แท็บหลัก 3 แท็บ */}
       <div style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
         {([
@@ -484,7 +484,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       )}
 
       {tab === "edit" && (draft ? (
-        <div className={selKey ? "krok-editwrap krok-has-sel" : "krok-editwrap"}>
+        // จอกว้าง: ฟอร์มซ้าย + แผงตั้งค่าขวาแบบถาวร (ฟอร์มไม่ยืด-หดตอนเลือกฟิลด์) · จอแคบ: แผงลอย/แผ่นเลื่อนขึ้น
+        <div className="krok-editwide">
+        <div className="krok-editgrid">
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
             <div>
@@ -557,14 +559,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} />
                 </div>
               </div>
-            )}
-            {selKey && (
-              <>
-                <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />
-                <div className="krok-settings">
-                  <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
-                </div>
-              </>
             )}
           </div>
 
@@ -736,6 +730,19 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
+        {selKey && <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />}
+        <aside className={selKey ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={t("editor.fieldSettings")}>
+          {selKey ? (
+            <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
+          ) : (
+            <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: "22px 18px", textAlign: "center", color: "var(--ink-3)", background: "var(--surface)" }}>
+              <span style={{ display: "inline-flex", color: "var(--accent)" }}><Icon icon={MousePointerClick} className="h-7 w-7" /></span>
+              <b style={{ display: "block", color: "var(--ink)", margin: "8px 0 4px", fontSize: ".95rem" }}>{t("editor.fieldSettings")}</b>
+              <p style={{ fontSize: ".85rem", margin: 0, lineHeight: 1.55 }}>{t("editor.asideHint")}</p>
+            </div>
+          )}
+        </aside>
+        </div>
         </div>
       ) : (
         <Card>
@@ -847,14 +854,22 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       )}
 
       <style>{`
-        /* แผงตั้งค่าฟิลด์ = drawer ด้านขวาแบบตรึงจอ (เลื่อนหน้าไปก็ยังเห็น ไม่ดันเลย์เอาต์) */
+        /* ===== หน้าแก้ไขฟอร์ม =====
+           จอกว้าง (>=1100px): ขยายออกนอกคอลัมน์ 1040px ของแอป → ฟอร์มซ้าย (เต็มที่) + แผงตั้งค่าขวา 380px แบบถาวร
+           แผงตรึงตอนเลื่อนหน้า, ไม่ได้เลือกฟิลด์ = แสดงคำแนะนำ · ฟอร์มไม่ยืด-หดตอนเลือก/ปิด */
+        .krok-editgrid{ display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
         .krok-settings-backdrop{ display:none; }
-        .krok-settings{ position:fixed; top:74px; right:16px; width:340px; max-width:calc(100vw - 24px);
-          max-height:calc(100vh - 96px); overflow:auto; z-index:50; border-radius:14px; background:var(--surface);
-          box-shadow:0 14px 44px rgba(10,14,18,.28); }
-        /* จอกลาง ๆ: แผงตั้งค่าทับตัวแก้ไข (ชื่อ/ประเภทฟอร์ม/กระดาษ) → เว้นที่ด้านขวาให้แผงตอนเปิดอยู่ */
-        @media(min-width:1100px) and (max-width:1760px){
-          .krok-editwrap.krok-has-sel{ padding-right:356px; transition:padding .15s; }
+        @media(min-width:1100px){
+          .krok-editwide{ --w:min(1480px, calc(100vw - 48px)); width:var(--w); margin-left:calc((100% - var(--w)) / 2); }
+          .krok-editgrid{ grid-template-columns:minmax(0,1fr) 380px; }
+          .krok-aside{ position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto; border-radius:12px; }
+        }
+        /* จอกลาง: ไม่มีคอลัมน์ขวา → แผงลอยด้านขวาเฉพาะตอนเลือกฟิลด์ */
+        @media(max-width:1099px){
+          .krok-aside{ display:none; }
+          .krok-aside.krok-aside-sel{ display:block; position:fixed; top:74px; right:16px; width:360px; max-width:calc(100vw - 24px);
+            max-height:calc(100vh - 96px); overflow:auto; z-index:50; border-radius:14px; background:var(--surface);
+            box-shadow:0 14px 44px rgba(10,14,18,.28); }
         }
         @media(max-width:640px){
           .krok-btn-label{display:none}
@@ -877,7 +892,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-appr-roleline{flex:1 1 100%;width:100%}
           .krok-appr-roleline .krok-appr-role{flex:1 1 auto !important;width:auto !important}
           /* มือถือ: ตั้งค่าฟิลด์เป็น popup ขึ้นจากด้านล่าง */
-          .krok-settings{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
+          .krok-aside.krok-aside-sel{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
             max-height:82vh; border-radius:16px 16px 0 0; z-index:70; }
           .krok-settings-backdrop{ display:block; position:fixed; inset:0; background:rgba(6,10,14,.45); z-index:69; }
         }
