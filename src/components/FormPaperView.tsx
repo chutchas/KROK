@@ -40,15 +40,18 @@ function Blank({ f }: { f: FormField }) {
     return (
       <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".72rem", marginTop: 2 }}>
         <thead>
-          <tr>{cols.map((c) => <th key={c.id} style={{ border: "1px solid #999", padding: "3px 5px", background: "#f0f0f0", textAlign: "left", fontWeight: 700 }}>{c.label}</th>)}</tr>
+          <tr>{cols.map((c) => <th key={c.id} style={{ border: "1px solid #999", padding: "3px 5px", background: "#f0f0f0", textAlign: "left", fontWeight: 700 }}>{c.type === "formula" ? "ƒ " : ""}{c.label}</th>)}</tr>
         </thead>
         <tbody>
           {Array.from({ length: nRows }).map((_, i) => (
-            <tr key={i}>{cols.map((c) => <td key={c.id} style={{ border: "1px solid #ccc", height: 22 }} />)}</tr>
+            <tr key={i}>{cols.map((c) => <td key={c.id} style={{ border: "1px solid #ccc", height: 22, fontSize: ".72rem", textAlign: "center", color: "#555" }}>{c.type === "pass_fail" ? `☐ ${t("fw.pass")}  ☐ ${t("fw.fail")}` : c.type === "checkbox" ? "☐" : ""}</td>)}</tr>
           ))}
         </tbody>
       </table>
     );
+  }
+  if (f.type === "formula") {
+    return <span style={{ display: "block", borderBottom: "1px dotted #999", minHeight: 20, fontSize: ".7rem", color: "#999", textAlign: "right" }}>ƒ {t("formula.auto")}</span>;
   }
   // text / number / barcode / datetime
   return <span style={{ display: "block", borderBottom: "1px dotted #999", minHeight: 20 }} />;

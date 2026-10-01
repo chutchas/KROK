@@ -83,7 +83,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   const sample = useMemo(() => {
     if (!form) return "";
     const data: Record<string, unknown> = {};
-    for (const f of form.fields) if (f.type !== "photo" && f.type !== "signature") data[keyOf(f.id)] = sampleValue(f.type);
+    for (const f of form.fields) if (f.type !== "photo" && f.type !== "signature" && f.type !== "formula") data[keyOf(f.id)] = sampleValue(f.type);
     return JSON.stringify({ data, ref: "ERP-000123", mode: "auto", source: "ERP" }, null, 2);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [form, cfg.fieldKeys]);
@@ -212,14 +212,14 @@ export default function IntakePanel({ forms, intake, teams, members }: {
             <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "4px 0 8px" }}>{t("intake.fieldsHint")}</p>
             <div style={{ display: "grid", gap: 6 }}>
               {form.fields.map((f) => {
-                const media = f.type === "photo" || f.type === "signature";
+                const media = f.type === "photo" || f.type === "signature" || f.type === "formula";
                 return (
                   <div key={f.id} style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr) minmax(120px, 200px)", gap: 8, alignItems: "center" }}>
                     <div style={{ minWidth: 0, fontSize: ".86rem" }}>
                       <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", display: "block" }}>
                         {f.label}{f.required && <span style={{ color: "var(--fail)" }}> *</span>}
                       </span>
-                      <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{f.type}{media ? ` · ${t("intake.noMedia")}` : ""}</span>
+                      <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{f.type}{f.type === "formula" ? ` · ${t("intake.formulaAuto")}` : media ? ` · ${t("intake.noMedia")}` : ""}</span>
                     </div>
                     <div>
                       <Field value={cfg.fieldKeys[f.id] ?? ""} disabled={media} placeholder={f.id}

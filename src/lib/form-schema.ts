@@ -15,6 +15,7 @@ export const FIELD_TYPES = [
   "signature",
   "datetime",
   "table",
+  "formula",
 ] as const;
 
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -43,7 +44,8 @@ export interface OptionsSource {
 }
 
 // คอลัมน์ของฟิลด์ตาราง
-export type TableColType = "text" | "number" | "select";
+export const TABLE_COL_TYPES = ["text", "number", "select", "formula", "pass_fail", "checkbox", "datetime", "scan"] as const;
+export type TableColType = (typeof TABLE_COL_TYPES)[number];
 export interface TableColumn {
   id: string;
   label: string;
@@ -52,6 +54,10 @@ export interface TableColumn {
   options_source?: OptionsSource; // เฉพาะ select — ตัวเลือกจาก dataset
   option_labels?: string[];       // runtime เท่านั้น: ชื่อที่แสดงของแต่ละตัวเลือก (ขนานกับ options)
   width?: number;     // น้ำหนักความกว้างสัมพัทธ์ (>=1) default 1
+  /** เฉพาะ formula — สูตรรายแถว อ้างคอลัมน์อื่นด้วย {colId} (ดู lib/formula.ts) */
+  formula?: string;
+  /** เฉพาะ formula — ทศนิยม (default 2) */
+  decimals?: number;
 }
 
 export interface FormField {
@@ -61,10 +67,14 @@ export interface FormField {
   required: boolean;
   tooltip?: string;
   example?: string;
-  // number
+  // number / formula
   min?: number;
   max?: number;
   unit?: string;
+  /** formula — สูตร อ้างฟิลด์ด้วย {fieldId} และคอลัมน์ตารางด้วย {tableId.colId} (ดู lib/formula.ts) */
+  formula?: string;
+  /** formula — ทศนิยมที่แสดง/ปัด (default 2) */
+  decimals?: number;
   // select / checkbox
   options?: string[];
   /** ตัวเลือกจาก dataset แทน options ที่พิมพ์เอง */
@@ -185,6 +195,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   signature: "ลายเซ็น",
   datetime: "วันเวลา",
   table: "ตาราง",
+  formula: "สูตรคำนวณ",
 };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -343,7 +354,13 @@ export function sanitizeSchema(raw: unknown): FormSchema {
           if (fo.width === "full" || fo.width === "half") o.width = fo.width;
           if (fo.tooltip) o.tooltip = str(fo.tooltip, 300);
           if (fo.example != null && fo.example !== "") o.example = str(fo.example, 120);
-          if (type === "number") {
+          if (type === "formula") {
+            o.required = false; // คำนวณเอง ไม่มีให้กรอก
+            o.formula = str(fo.formula, 500);
+            const d = num(fo.decimals);
+            if (d !== undefined) o.decimals = Math.min(6, Math.max(0, Math.round(d)));
+          }
+          if (type === "number" || type === "formula") {
             const mn = num(fo.min);
             const mx = num(fo.max);
             if (mn !== undefined) o.min = mn;
@@ -365,7 +382,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
               .slice(0, 12)
               .map((c: unknown, ci: number): TableColumn => {
                 const co = (c ?? {}) as Record<string, unknown>;
-                const ct = (["text", "number", "select"].includes(co.type as string) ? co.type : "text") as TableColType;
+                const ct = ((TABLE_COL_TYPES as readonly string[]).includes(co.type as string) ? co.type : "text") as TableColType;
                 const col: TableColumn = {
                   id: str(co.id, 30, `c${ci}`).replace(/[^\w-]/g, "_") || `c${ci}`,
                   label: str(co.label, 60, `คอลัมน์ ${ci + 1}`),
@@ -375,6 +392,11 @@ export function sanitizeSchema(raw: unknown): FormSchema {
                 if (ct === "select") {
                   const os = sanitizeOptionsSource(co.options_source, false);
                   if (os) col.options_source = os;
+                }
+                if (ct === "formula") {
+                  col.formula = str(co.formula, 300);
+                  const d = num(co.decimals);
+                  if (d !== undefined) col.decimals = Math.min(6, Math.max(0, Math.round(d)));
                 }
                 const w = num(co.width);
                 if (w !== undefined && w > 0) col.width = Math.min(6, Math.max(1, Math.round(w)));

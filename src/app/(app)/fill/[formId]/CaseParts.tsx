@@ -31,7 +31,7 @@ function textOf(f: FormField, a: Answer | undefined, t: (k: MessageKey) => strin
     const vals = Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : [String(v)];
     return vals.map((x) => names.get(x) ?? x).join(", ");
   }
-  if (f.type === "number") return `${v}${f.unit ? " " + f.unit : ""}`;
+  if (f.type === "number" || f.type === "formula") return `${v}${f.unit ? " " + f.unit : ""}`;
   if (f.type === "datetime" && typeof v === "string") {
     const d = new Date(v);
     return Number.isNaN(d.getTime()) ? v : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium", timeStyle: "short" });
@@ -57,7 +57,8 @@ function MiniTable({ f, rows, paper }: { f: FormField; rows: TableRow[]; paper: 
               {cols.map((c) => {
                 const raw = r[c.id] ?? "";
                 const name = "option_labels" in c && c.option_labels ? labelMap(c.options, c.option_labels).get(raw) : undefined;
-                return <td key={c.id} style={{ padding: "3px 6px", border: bd }}>{name ?? raw}</td>;
+                const coded = c.type === "pass_fail" ? (raw === "pass" ? t("case.pass") : raw === "fail" ? t("case.fail") : raw) : c.type === "checkbox" ? (raw === "1" ? "✓" : "") : raw;
+                return <td key={c.id} style={{ padding: "3px 6px", border: bd, color: c.type === "pass_fail" && raw === "fail" ? (paper ? "#dc2626" : "var(--fail)") : undefined, textAlign: c.type === "formula" ? "right" : undefined }}>{name ?? coded}</td>;
               })}
             </tr>
           ))}

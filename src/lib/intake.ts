@@ -6,7 +6,8 @@
 // แล้วตัดสินว่า "ครบ" (ส่งเป็นเอกสารได้เลย) หรือ "ยังไม่ครบ" (เปิดงานให้คนกรอกต่อ)
 // ============================================================
 import { labelMap, type FormField, type FormSchema, type TableColumn } from "@/lib/form-schema";
-import { tableCodeKey } from "@/lib/answer-item";
+import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
+import { checkCode, finalizeTableRows, passFailCode } from "@/lib/table-rows";
 
 export const INTAKE_KEY_RE = /^[A-Za-z_][A-Za-z0-9_.-]{0,63}$/;
 export const INTAKE_API_KEY_RE = /^kfi_[A-Za-z0-9_-]{20,}$/;
@@ -108,8 +109,19 @@ function coerceRow(cols: TableColumn[], raw: unknown): { row?: TableRow; error?:
     if (!col) continue;
     const s = scalar(v);
     if (s == null || s === "") continue;
+    if (col.type === "formula") continue; // คำนวณเองฝั่ง server
     if (col.type === "number" && !Number.isFinite(Number(s))) return { error: `คอลัมน์ "${col.label}" ต้องเป็นตัวเลข` };
-    if (col.type === "select") {
+    if (col.type === "pass_fail") {
+      const k = passFailCode(s);
+      if (!k) return { error: `คอลัมน์ "${col.label}" ต้องเป็น "pass" หรือ "fail"` };
+      row[col.id] = k;
+    } else if (col.type === "checkbox") {
+      if (checkCode(s)) row[col.id] = "1";
+    } else if (col.type === "datetime") {
+      const m = s.match(/^(\d{4}-\d{2}-\d{2})(?:[T ](\d{2}:\d{2}))?/);
+      if (!m) return { error: `คอลัมน์ "${col.label}" ต้องเป็นวันที่ YYYY-MM-DD หรือ YYYY-MM-DDTHH:mm` };
+      row[col.id] = `${m[1]}T${m[2] ?? "00:00"}`;
+    } else if (col.type === "select") {
       const code = matchOption(col.options, col.option_labels, s);
       if (code == null) return { error: `คอลัมน์ "${col.label}" ไม่มีตัวเลือก "${s}"` };
       row[col.id] = code;
@@ -142,6 +154,9 @@ export function coerceIntake(schema: FormSchema, fieldKeys: Record<string, strin
     const err = (e: string) => res.errors.push({ key, error: e });
 
     switch (f.type) {
+      case "formula":
+        res.ignored.push(key); // ช่องสูตรคำนวณจากช่องอื่นเสมอ — ไม่รับค่าจากภายนอก
+        break;
       case "photo":
       case "signature":
         err("รูปถ่าย/ลายเซ็นส่งผ่าน API ไม่ได้ — ให้คนหน้างานถ่าย/เซ็นในงาน");
@@ -241,6 +256,10 @@ export function missingRequired(schema: FormSchema, answers: Record<string, Inta
 export function buildAnswerList(schema: FormSchema, answers: Record<string, IntakeAnswer>): { list: Record<string, unknown>[]; fails: string[] } {
   const list: Record<string, unknown>[] = [];
   const fails: string[] = [];
+  const fvals = computeFormulas(schema, {
+    value: (id) => answers[id]?.value,
+    rows: (id) => (Array.isArray(answers[id]?.value) && typeof (answers[id]?.value as unknown[])[0] === "object" ? (answers[id]?.value as TableRow[]) : []),
+  });
   for (const s of schema.steps)
     for (const f of s.fields) {
       const a = answers[f.id] || {};
@@ -260,21 +279,15 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
         item.display = String(a.value ?? "—") + (f.unit && a.value != null ? " " + f.unit : "");
         const v = parseFloat(String(a.value));
         if (Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max))) { item.fail = true; fails.push(f.label + " (ค่านอกช่วง)"); }
+      } else if (f.type === "formula") {
+        const v = fvals[f.id] ?? null;
+        item.display = v == null ? "—" : formatNumber(v, f.decimals ?? 2) + (f.unit ? " " + f.unit : "");
+        if (outOfRange(v, f)) { item.fail = true; fails.push(f.label + " (ค่านอกช่วง)"); }
       } else if (f.type === "table") {
-        const rows = Array.isArray(a.value) ? (a.value as TableRow[]) : [];
-        item.display = `${rows.length} แถว`;
-        const labeled = (f.columns || []).filter((c) => c.option_labels?.length);
-        item.rows = labeled.length
-          ? rows.map((r) => {
-              const o = { ...r };
-              for (const c of labeled) {
-                const code = r[c.id];
-                const name = code ? labelMap(c.options, c.option_labels).get(code) : undefined;
-                if (name) { o[c.id] = name; o[tableCodeKey(c.id)] = code; }
-              }
-              return o;
-            })
-          : rows;
+        const fin = finalizeTableRows(f, Array.isArray(a.value) ? (a.value as TableRow[]) : []);
+        item.display = `${fin.rows.length} แถว`;
+        item.rows = fin.rows;
+        if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
         item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
       } else if (f.type === "select" && typeof a.value === "string" && a.value) {
         const name = labelMap(f.options, f.option_labels).get(a.value);

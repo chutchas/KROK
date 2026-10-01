@@ -11,7 +11,8 @@ import { useT } from "@/i18n/LanguageProvider";
 type BD = { detect: (src: CanvasImageSource) => Promise<{ rawValue: string }[]> };
 type JsQrFn = (data: Uint8ClampedArray, w: number, h: number, opts?: { inversionAttempts?: string }) => { data: string } | null;
 
-export default function LiveScanner({ onResult, onClose }: { onResult: (code: string) => void; onClose: () => void }) {
+// continuous = สแกนต่อเนื่อง (เช่น สแกนทีละชิ้นเพิ่มแถวตาราง) — ไม่ปิดเองหลังอ่านได้ · โค้ดเดิมซ้ำภายใน 2 วิ ไม่นับ
+export default function LiveScanner({ onResult, onClose, continuous = false }: { onResult: (code: string) => void; onClose: () => void; continuous?: boolean }) {
   const { t } = useT();
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,6 +22,9 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
   const jsqrRef = useRef<JsQrFn | null>(null);
   const stopped = useRef(false);
   const [err, setErr] = useState<string | null>(null);
+  const [count, setCount] = useState(0);
+  const [lastCode, setLastCode] = useState("");
+  const last = useRef<{ code: string; at: number }>({ code: "", at: 0 });
 
   useEffect(() => {
     stopped.current = false;
@@ -85,6 +89,18 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
 
     function finish(code: string) {
       if (stopped.current) return;
+      if (continuous) {
+        const now = Date.now();
+        if (!(code === last.current.code && now - last.current.at < 2000)) {
+          onResult(code);
+          setCount((n) => n + 1);
+          setLastCode(code);
+          try { navigator.vibrate?.(60); } catch { /* ไม่รองรับ */ }
+        }
+        last.current = { code, at: now };
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
       cleanup();
       onResult(code);
     }
@@ -130,7 +146,16 @@ export default function LiveScanner({ onResult, onClose }: { onResult: (code: st
           )}
           <canvas ref={canvasRef} style={{ display: "none" }} />
         </div>
-        <div style={{ padding: "10px 14px", fontSize: ".82rem", color: "var(--ink-2)", textAlign: "center" }}>{t("scan.hint")}</div>
+        <div style={{ padding: "10px 14px", fontSize: ".82rem", color: "var(--ink-2)", textAlign: "center" }}>
+          {continuous && count > 0 ? (
+            <><b style={{ color: "var(--pass)" }}>{t("scan.countAdded").replace("{n}", String(count))}</b> · <span style={{ fontFamily: "monospace" }}>{lastCode}</span></>
+          ) : continuous ? t("scan.hintContinuous") : t("scan.hint")}
+        </div>
+        {continuous && (
+          <div style={{ padding: "0 14px 12px", display: "flex", justifyContent: "center" }}>
+            <button type="button" onClick={onClose} style={{ padding: "9px 22px", borderRadius: 8, border: "none", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>{t("scan.done")}</button>
+          </div>
+        )}
       </div>
     </div>
     </BodyPortal>

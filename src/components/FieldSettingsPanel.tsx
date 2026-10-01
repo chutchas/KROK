@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useT } from "@/i18n/LanguageProvider";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
+import FormulaInput from "@/components/FormulaInput";
 import {
   FIELD_TYPES,
   type FieldType,
@@ -189,20 +190,48 @@ export default function FieldSettingsPanel({
         const nt = e.target.value as FieldType;
         if (nt === "table" && !(field.columns && field.columns.length))
           patchField({ type: nt, columns: [{ id: newId("c"), label: "รายการ", type: "text", width: 3 }, { id: newId("c"), label: "จำนวน", type: "number" }], min_rows: field.min_rows ?? 1 });
+        else if (nt === "formula") patchField({ type: nt, required: false, decimals: field.decimals ?? 2 });
         else patchField({ type: nt });
       }} style={sel}>
         {FIELD_TYPES.map((ft) => <option key={ft} value={ft}>{t(`ftype.${ft}`)}</option>)}
       </select>
 
+      {field.type !== "formula" && (
       <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".88rem", color: "var(--ink-2)", cursor: "pointer", marginTop: 10 }}>
         <input type="checkbox" checked={field.required} onChange={(e) => patchField({ required: e.target.checked })} style={{ width: 17, height: 17, accentColor: "var(--accent)" }} />
         {t("editor.required")}
       </label>
+      )}
+
+      {field.type === "formula" && (
+        <div style={{ marginTop: 4 }}>
+          <label style={lbl}>{t("formula.label")}</label>
+          <FormulaInput key={field.id} value={field.formula} onChange={(formula) => patchField({ formula })}
+            ctx={{ fields: schema.steps.flatMap((s) => s.fields), selfId: field.id }} />
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 10, alignItems: "center" }}>
+            <label style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("formula.decimals")}</label>
+            <select value={field.decimals ?? 2} onChange={(e) => patchField({ decimals: Number(e.target.value) })} style={{ ...sel, width: 70, padding: "6px 8px" }}>
+              {[0, 1, 2, 3, 4].map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+            <Field value={field.unit || ""} onChange={(e) => patchField({ unit: e.target.value })} placeholder={t("editor.unit")} style={{ flex: 1, minWidth: 80 }} />
+          </div>
+          <label style={lbl}>{t("formula.range")}</label>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <Field type="number" value={field.min ?? ""} onChange={(e) => patchField({ min: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder={t("editor.min")} style={{ width: 90 }} />
+            <Field type="number" value={field.max ?? ""} onChange={(e) => patchField({ max: e.target.value === "" ? undefined : Number(e.target.value) })} placeholder={t("editor.max")} style={{ width: 90 }} />
+          </div>
+          <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "4px 0 0" }}>{t("formula.rangeHint")}</p>
+        </div>
+      )}
 
       <label style={lbl}>{t("editor.tooltip")}</label>
       <Field value={field.tooltip || ""} onChange={(e) => patchField({ tooltip: e.target.value })} placeholder={t("editor.tooltip")} />
-      <label style={lbl}>{t("editor.example")}</label>
-      <Field value={field.example || ""} onChange={(e) => patchField({ example: e.target.value })} placeholder={t("editor.example")} />
+      {field.type !== "formula" && (
+        <>
+          <label style={lbl}>{t("editor.example")}</label>
+          <Field value={field.example || ""} onChange={(e) => patchField({ example: e.target.value })} placeholder={t("editor.example")} />
+        </>
+      )}
 
       {field.type === "number" && (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 8 }}>
@@ -258,14 +287,32 @@ export default function FieldSettingsPanel({
                   <button onClick={() => removeCol(i)} disabled={cols.length <= 1} aria-label={t("common.delete")} title={t("common.delete")} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
                 </div>
                 <div style={{ display: "flex", gap: 6, marginTop: 6, alignItems: "center", flexWrap: "wrap" }}>
-                  <select value={c.type} onChange={(e) => patchCol(i, { type: e.target.value as TableColType })} style={{ ...sel, width: "auto", flex: "0 0 auto" }}>
+                  <select value={c.type} onChange={(e) => { const ty = e.target.value as TableColType; patchCol(i, ty === "formula" ? { type: ty, decimals: c.decimals ?? 2 } : { type: ty }); }} style={{ ...sel, width: "auto", flex: "0 0 auto" }}>
                     <option value="text">{t("ftype.text")}</option>
                     <option value="number">{t("ftype.number")}</option>
                     <option value="select">{t("editor.tableSelect")}</option>
+                    <option value="formula">{t("ftype.formula")}</option>
+                    <option value="pass_fail">{t("ftype.pass_fail")}</option>
+                    <option value="checkbox">{t("ctype.check")}</option>
+                    <option value="datetime">{t("ctype.date")}</option>
+                    <option value="scan">{t("ctype.scan")}</option>
                   </select>
                   <label style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("editor.tableWidth")}</label>
                   <input type="number" min={1} max={6} value={c.width ?? 1} onChange={(e) => patchCol(i, { width: Math.min(6, Math.max(1, Number(e.target.value) || 1)) })} style={{ ...sel, width: 56, padding: "6px 8px" }} />
                 </div>
+                {c.type === "formula" && (
+                  <div style={{ marginTop: 8 }}>
+                    <FormulaInput key={c.id} value={c.formula} onChange={(formula) => patchCol(i, { formula })} ctx={{ fields: [], rowColumns: cols, selfId: c.id }} />
+                    <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 6 }}>
+                      <label style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("formula.decimals")}</label>
+                      <select value={c.decimals ?? 2} onChange={(e) => patchCol(i, { decimals: Number(e.target.value) })} style={{ ...sel, width: 64, padding: "5px 8px" }}>
+                        {[0, 1, 2, 3, 4].map((d) => <option key={d} value={d}>{d}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                )}
+                {c.type === "pass_fail" && <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("ctype.passFailHint")}</p>}
+                {c.type === "scan" && <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("ctype.scanHint")}</p>}
                 {c.type === "select" && (
                   <div style={{ marginTop: 6 }}>
                     <ColumnSourceEditor col={c} onPatch={(p) => patchCol(i, p)} staticEditor={

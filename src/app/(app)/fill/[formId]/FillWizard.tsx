@@ -8,7 +8,6 @@ import Icon from "@/components/Icon";
 import { Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
-import { tableCodeKey } from "@/lib/answer-item";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import FormPaperFill from "@/components/FormPaperFill";
 import BodyPortal from "@/components/BodyPortal";
@@ -21,6 +20,9 @@ import { CaseBanner, CaseConfirmModal, HandoffModal, ReadonlyField, ReturnModal 
 import { assigneeLabel, segmentEnd, type CaseData, type CaseDocExtract } from "@/lib/case-flow";
 import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import LiveScanner from "@/components/LiveScanner";
+import TableCell from "@/components/TableCell";
+import { computeFormulas, computeRow, formatNumber, outOfRange } from "@/lib/formula";
+import { finalizeTableRows } from "@/lib/table-rows";
 import FillSourceBar, { type AppliedValue, type DocExtractRecord, type FillSrcTag } from "@/components/FillSourceBar";
 import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
 import AttachmentChips from "@/components/AttachmentView";
@@ -40,6 +42,8 @@ import { registerDevice } from "@/app/(app)/settings/devices/actions";
 import { confirmDialog } from "@/components/dialogs";
 
 type TableRow = Record<string, string>;
+const asRows = (v: unknown): TableRow[] => (Array.isArray(v) && v.length && typeof v[0] === "object" ? (v as TableRow[]) : []);
+
 type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: string; src?: FillSrcTag | "api" };
 type Props = {
   formId: string;
@@ -214,6 +218,14 @@ export default function FillWizard(props: Props) {
 
   const step = schema.steps[idx];
 
+  // ฟิลด์สูตร: คำนวณใหม่ทุกครั้งที่ render (เบา) — ช่องตัวเลข/ตารางที่เปลี่ยนจะสั่ง render เมื่อฟอร์มมีสูตร
+  const hasFormula = useMemo(() => schema.steps.some((s) => s.fields.some((f) => f.type === "formula")), [schema]);
+  const calcFrom = useCallback((ans: Record<string, Answer>) => computeFormulas(schema, { value: (id) => ans[id]?.value, rows: (id) => asRows(ans[id]?.value) }), [schema]);
+  // ค่าเริ่มต้นคำนวณจากร่าง/งานที่โหลดมา · หลังจากนั้นคำนวณใหม่ทุกครั้งที่คำตอบเปลี่ยน (patchAnswer / applyFill)
+  const [formulaVals, setFormulaVals] = useState<Record<string, number | null>>(() =>
+    calcFrom(((kase?.answers ?? initialDraft?.answers) as Record<string, Answer>) ?? {}));
+  const refreshFormulas = useCallback(() => { if (hasFormula) setFormulaVals(calcFrom(answers.current)); }, [hasFormula, calcFrom]);
+
   // merge a patch into an answer (ref-owned by this component)
   const patchAnswer = useCallback((id: string, patch: Partial<Answer>, render = false) => {
     const prev = answers.current[id] || {};
@@ -225,8 +237,9 @@ export default function FillWizard(props: Props) {
     }
     answers.current[id] = next;
     dirty.current++;
+    if ("value" in patch) refreshFormulas();
     if (render) rerender();
-  }, [rerender]);
+  }, [rerender, refreshFormulas]);
 
   // ================= แบบร่าง (บันทึกไว้ก่อน ยังไม่ส่ง) =================
   // บันทึกเมื่อ: กดปุ่ม "บันทึกร่าง", เปลี่ยนขั้นตอน, กดออก, สลับแอป/ปิดแท็บ (หน้าถูกซ่อน)
@@ -455,13 +468,14 @@ export default function FillWizard(props: Props) {
       answers.current[v.field_id] = { ...answers.current[v.field_id], value: toCode(fieldById.get(v.field_id), v.value), src: v.src };
     }
     for (const v of values) pruneChildren(v.field_id);
+    refreshFormulas();
     setErrors((e) => {
       const next = { ...e };
       for (const v of values) delete next[v.field_id];
       return next;
     });
     rerender();
-  }, [rerender, pruneChildren, fieldById]);
+  }, [rerender, pruneChildren, fieldById, refreshFormulas]);
 
   const fillBar = (st: FormStep) => (
     <FillSourceBar
@@ -554,6 +568,7 @@ export default function FillWizard(props: Props) {
       const list: Record<string, unknown>[] = [];
       const fails: string[] = [];
       const photoUploads: { fieldId: string; dataUrl: string; ai?: string }[] = [];
+      const fvals = hasFormula ? calcFrom(answers.current) : {};
 
       for (const s of schema.steps)
         for (const f of s.fields) {
@@ -593,24 +608,18 @@ export default function FillWizard(props: Props) {
               item.fail = true;
               fails.push(f.label + " (ค่านอกช่วง)");
             }
+          } else if (f.type === "formula") {
+            const v = fvals[f.id] ?? null;
+            item.display = v == null ? "—" : formatNumber(v, f.decimals ?? 2) + (f.unit ? " " + f.unit : "");
+            if (outOfRange(v, f)) {
+              item.fail = true;
+              fails.push(f.label + " (ค่านอกช่วง)");
+            }
           } else if (f.type === "table") {
-            const trows = Array.isArray(a.value) && a.value.length && typeof a.value[0] === "object" ? (a.value as TableRow[]) : [];
-            const filled = trows.filter((r) => Object.values(r).some((v) => String(v ?? "").trim() !== ""));
-            item.display = `${filled.length} แถว`;
-            // คอลัมน์ที่ "แสดงชื่อ เก็บรหัส": ช่องเดิมเก็บชื่อ (หน้าเอกสาร/PDF แสดงได้ทันที) + "<col>#code" เก็บรหัส
-            const labeled = (f.columns || []).filter((c) => c.option_labels?.length);
-            item.rows = labeled.length
-              ? filled.map((r) => {
-                  const out = { ...r };
-                  for (const c of labeled) {
-                    const code = r[c.id];
-                    if (!code) continue;
-                    const name = labelMap(c.options, c.option_labels).get(code);
-                    if (name) { out[c.id] = name; out[tableCodeKey(c.id)] = code; }
-                  }
-                  return out;
-                })
-              : filled;
+            const fin = finalizeTableRows(f, asRows(a.value));
+            item.display = `${fin.rows.length} แถว`;
+            item.rows = fin.rows;
+            if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
             item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
           } else if (f.type === "select" && f.option_labels && typeof a.value === "string" && a.value) {
             const name = labelMap(f.options, f.option_labels).get(a.value);
@@ -975,7 +984,7 @@ export default function FillWizard(props: Props) {
     if (wf && lockedStep(fStep)) {
       return (
         <div id={"fld-" + f.id} key={f.id}>
-          <ReadonlyField field={f} answer={lockedAnswers[f.id]} photo={photos[f.id]} sig={sigs[f.id]} paper={paper} compact={compact}
+          <ReadonlyField field={f} answer={f.type === "formula" ? { value: formulaVals[f.id] == null ? "" : formatNumber(formulaVals[f.id], f.decimals ?? 2) } : lockedAnswers[f.id]} photo={photos[f.id]} sig={sigs[f.id]} paper={paper} compact={compact}
             pending={kase ? kase.status === "open" && fStep > segmentEnd(schema, kase.stepIdx) : fStep > segEnd} />
         </div>
       );
@@ -998,6 +1007,7 @@ export default function FillWizard(props: Props) {
         hasSig={!!sigs[f.id]}
         sigUrl={sigs[f.id]}
         error={errors[f.id]}
+        formulaValue={f.type === "formula" ? formulaVals[f.id] ?? null : undefined}
         onPatch={(patch, render) => {
           patchAnswer(f.id, patch, render);
           if ("value" in patch) pruneChildren(f.id);
@@ -1226,6 +1236,31 @@ function useIsNarrow() {
   return n;
 }
 
+/**
+ * สถานะแถวของตาราง (ใช้ร่วมทั้งหน้ากรอกปกติและกระดาษ)
+ * - ทุกครั้งที่แก้: คำนวณคอลัมน์สูตรของแถวนั้นใหม่ แล้วส่งค่าขึ้นไป (คำตอบจึงมีผลสูตรเสมอ)
+ * - คอลัมน์สแกน: สแกนต่อเนื่อง ใส่ช่องว่างแรกของคอลัมน์ ไม่มีช่องว่าง → เพิ่มแถวใหม่
+ */
+function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Dispatch<React.SetStateAction<TableRow[]>>, onChange: (rows: TableRow[]) => void) {
+  const [scanOpen, setScanOpen] = useState(false);
+  const scanCol = cols.find((c) => c.type === "scan");
+  // แถวล่าสุด (สแกนต่อเนื่องเรียกถี่กว่ารอบ render) — แถวเปลี่ยนผ่าน commit เท่านั้น จึงตรงกับ state เสมอ
+  const live = useRef(rows);
+  const commit = (next: TableRow[]) => { live.current = next; setRows(next); onChange(next); };
+  const setCell = (ri: number, cid: string, v: string) =>
+    commit(live.current.map((r, i) => (i === ri ? computeRow(cols, { ...r, [cid]: v }) : r)));
+  const addRow = () => commit([...live.current, {}]);
+  const delRow = (ri: number) => commit(live.current.length > 1 ? live.current.filter((_, i) => i !== ri) : [{}]);
+  const onScanned = (code: string) => {
+    if (!scanCol) return;
+    const cur = live.current;
+    const at = cur.findIndex((r) => !String(r[scanCol.id] ?? "").trim());
+    if (at >= 0) commit(cur.map((r, i) => (i === at ? computeRow(cols, { ...r, [scanCol.id]: code }) : r)));
+    else commit([...cur, computeRow(cols, { [scanCol.id]: code })]);
+  };
+  return { commit, setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned };
+}
+
 // ตารางกรอกข้อมูล — desktop = ตาราง, มือถือ = การ์ดต่อแถว
 function TableInput({
   columns, minRows, initial, onChange, variant,
@@ -1239,7 +1274,7 @@ function TableInput({
   const { t, tt } = useT();
   const cols = columns.length ? columns : [{ id: "c0", label: t("fw.colItem"), type: "text" as const }];
   const [rows, setRows] = useState<TableRow[]>(() => {
-    const base = initial.length ? initial.map((r) => ({ ...r })) : [];
+    const base = initial.length ? initial.map((r) => computeRow(cols, { ...r })) : [];
     while (base.length < Math.max(1, minRows)) base.push({});
     return base;
   });
@@ -1251,32 +1286,26 @@ function TableInput({
     ? { field: "#fff", text: "#111", border: "#c3c8ce", card: "#fafbfc", cardBorder: "#d5d9de", muted: "#555", head: "#444", rule: "#ccc" }
     : { field: "var(--surface)", text: "var(--ink)", border: "var(--line)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
 
-  function commit(next: TableRow[]) { setRows(next); onChange(next); }
-  const setCell = (ri: number, cid: string, v: string) => commit(rows.map((r, i) => (i === ri ? { ...r, [cid]: v } : r)));
-  const addRow = () => commit([...rows, {}]);
-  const delRow = (ri: number) => commit(rows.length > 1 ? rows.filter((_, i) => i !== ri) : [{}]);
+  const { setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned } = useTableRows(cols, rows, setRows, onChange);
 
   const cellInput = (ri: number, c: TableColumn) => {
-    const v = rows[ri]?.[c.id] ?? "";
-    const st: React.CSSProperties = { width: "100%", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
-    if (c.type === "select") {
-      return (
-        <select value={v} onChange={(e) => setCell(ri, c.id, e.target.value)} style={st}>
-          <option value="">—</option>
-          {(c.options || []).map((o, i) => {
-            const name = c.option_labels?.[i];
-            return <option key={i} value={o}>{name ? `${name} · ${o}` : o}</option>;
-          })}
-        </select>
-      );
-    }
-    return <input type={c.type === "number" ? "number" : "text"} inputMode={c.type === "number" ? "decimal" : undefined} value={v} onChange={(e) => setCell(ri, c.id, e.target.value)} style={st} />;
+    const st: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
+    return <TableCell col={c} value={rows[ri]?.[c.id] ?? ""} onChange={(v) => setCell(ri, c.id, v)} look={small ? "small" : "normal"} style={st} iconOnly={!cards} />;
   };
 
+  const btnSt: React.CSSProperties = { marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 };
   const addBtn = (
-    <button type="button" onClick={addRow} style={{ marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
-      <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fw.addRow")}
-    </button>
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <button type="button" onClick={addRow} style={btnSt}>
+        <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fw.addRow")}
+      </button>
+      {scanCol && (
+        <button type="button" onClick={() => setScanOpen(true)} style={{ ...btnSt, background: "var(--accent)", color: "var(--accent-ink)" }}>
+          <Icon icon={ScanLine} className="h-3.5 w-3.5" /> {t("ctype.scanAdd")}
+        </button>
+      )}
+      {scanOpen && <LiveScanner continuous onResult={onScanned} onClose={() => setScanOpen(false)} />}
+    </div>
   );
 
   if (cards) {
@@ -1316,7 +1345,7 @@ function TableInput({
           </colgroup>
           <thead>
             <tr>
-              {cols.map((c) => <th key={c.id} style={{ textAlign: "left", fontSize: small ? ".76rem" : ".82rem", color: ink.head, padding: "4px 6px", borderBottom: `1px solid ${ink.rule}`, fontWeight: 700 }}>{c.label}</th>)}
+              {cols.map((c) => <th key={c.id} style={{ textAlign: c.type === "formula" ? "right" : "left", fontSize: small ? ".76rem" : ".82rem", color: ink.head, padding: "4px 6px", borderBottom: `1px solid ${ink.rule}`, fontWeight: 700 }}>{c.type === "formula" ? "ƒ " : ""}{c.label}</th>)}
               <th style={{ borderBottom: `1px solid ${ink.rule}` }} />
             </tr>
           </thead>
@@ -1353,8 +1382,11 @@ function FieldControl({
   publicMode = false,
   getParentValue,
   parentLabel,
+  formulaValue,
 }: {
   field: FormField;
+  /** ผลคำนวณของฟิลด์สูตร (null = ยังคำนวณไม่ได้) */
+  formulaValue?: number | null;
   /** อ่านค่าของฟิลด์แม่ (dropdown ที่กรองตามกัน) */
   getParentValue?: () => unknown;
   parentLabel?: string;
@@ -1464,7 +1496,15 @@ function FieldControl({
     const staticOpts = f.options || [];
     return (
       <div>
-        {f.type !== "table" && <PaperLabel label={f.label} required={f.required} right={f.type === "number" && f.unit ? <span style={{ fontSize: ".72rem", color: "#666", fontWeight: 400 }}>{f.unit}</span> : undefined} />}
+        {f.type !== "table" && <PaperLabel label={f.label} required={f.required} right={(f.type === "number" || f.type === "formula") && f.unit ? <span style={{ fontSize: ".72rem", color: "#666", fontWeight: 400 }}>{f.unit}</span> : undefined} />}
+        {f.type === "formula" && (
+          <div aria-live="polite" title={t("formula.auto")}
+            style={{ ...paperInputStyle, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 6, background: "#f4f6f8", fontWeight: 700, fontVariantNumeric: "tabular-nums",
+              color: formulaValue == null ? "#999" : outOfRange(formulaValue, f) ? "#dc2626" : "#111", ...(outOfRange(formulaValue ?? null, f) ? { borderColor: "#dc2626" } : {}) }}>
+            <span style={{ marginRight: "auto", fontSize: ".66rem", fontWeight: 400, color: "#999" }}>ƒ</span>
+            {formulaValue == null ? t("formula.pending") : formatNumber(formulaValue, f.decimals ?? 2)}
+          </div>
+        )}
         {f.type === "text" && (
           <input type="text" style={paperInputStyle} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : ""} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
@@ -1580,6 +1620,21 @@ function FieldControl({
         {f.type === "datetime" && (
           <input type="datetime-local" style={input} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
+        {f.type === "formula" && (() => {
+          const bad = outOfRange(formulaValue ?? null, f);
+          return (
+            <>
+              <div aria-live="polite" style={{ ...input, display: "flex", alignItems: "center", gap: 10, background: paper ? "#f4f6f8" : "var(--code-bg)", cursor: "default", ...(bad ? { borderColor: "var(--fail)" } : {}) }}>
+                <span style={{ fontSize: ".74rem", color: paper ? "#888" : "var(--ink-3)" }}>ƒ {t("formula.auto")}</span>
+                <b className="tabnum" style={{ marginLeft: "auto", fontSize: "1.05rem", color: formulaValue == null ? (paper ? "#999" : "var(--ink-3)") : bad ? "var(--fail)" : undefined }}>
+                  {formulaValue == null ? t("formula.pending") : formatNumber(formulaValue, f.decimals ?? 2)}
+                </b>
+                {f.unit && formulaValue != null && <span style={{ color: paper ? "#555" : "var(--ink-2)" }}>{f.unit}</span>}
+              </div>
+              {(f.min != null || f.max != null) && <NumHint field={f} value={formulaValue == null ? "" : String(formulaValue)} />}
+            </>
+          );
+        })()}
         {dsBound && (
           waitParent ? (
             <div style={{ fontSize: compact ? ".78rem" : ".88rem", color: paper ? "#777" : "var(--ink-3)", padding: compact ? "2px 0" : "8px 2px" }}>
@@ -1795,20 +1850,32 @@ function numOut(f: FormField, value: string): boolean {
 /** ตารางในโหมดกระดาษ: ชื่อช่อง + ปุ่ม "+ แถว" ในบรรทัดเดียว แล้วตารางจริงแถวสูงเท่าที่ออกแบบ */
 function PaperTableField({ field: f, initial, onChange }: { field: FormField; initial: TableRow[]; onChange: (rows: TableRow[]) => void }) {
   const [rows, setRows] = useState<TableRow[]>(() => {
-    const base = initial.length ? initial.map((r) => ({ ...r })) : [];
+    const base = initial.length ? initial.map((r) => computeRow(f.columns || [], { ...r })) : [];
     while (base.length < Math.max(1, f.min_rows || 1)) base.push({});
     return base;
   });
-  const commit = (next: TableRow[]) => { setRows(next); onChange(next); };
+  const { commit, setCell, addRow, scanCol, scanOpen, setScanOpen, onScanned } = useTableRows(f.columns || [], rows, setRows, onChange);
+  const { t } = useT();
   return (
     <>
-      <PaperLabel label={f.label} required={f.required} right={<PaperAddRow onClick={() => commit([...rows, {}])} />} />
+      <PaperLabel label={f.label} required={f.required} right={
+        <span style={{ display: "inline-flex", gap: 4 }}>
+          {scanCol && (
+            <button type="button" onClick={() => setScanOpen(true)} title={t("ctype.scanAdd")} aria-label={t("ctype.scanAdd")}
+              style={{ display: "inline-flex", alignItems: "center", gap: 3, border: "1px solid #2f6fe0", borderRadius: 4, background: "#2f6fe0", color: "#fff", fontFamily: "inherit", fontSize: ".7rem", fontWeight: 600, padding: "0 6px", cursor: "pointer" }}>
+              <Icon icon={ScanLine} className="h-3 w-3" /> {t("ctype.scan")}
+            </button>
+          )}
+          <PaperAddRow onClick={addRow} />
+        </span>
+      } />
       <PaperTable
         columns={f.columns || []}
         rows={rows}
-        onCell={(ri, cid, v) => commit(rows.map((r, i) => (i === ri ? { ...r, [cid]: v } : r)))}
+        onCell={setCell}
         onDelete={rows.length > 1 ? (ri) => commit(rows.filter((_, i) => i !== ri)) : undefined}
       />
+      {scanOpen && <LiveScanner continuous onResult={onScanned} onClose={() => setScanOpen(false)} />}
     </>
   );
 }

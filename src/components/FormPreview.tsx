@@ -3,8 +3,9 @@ import { Lightbulb, Lock, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import { type FormField, type FormSchema } from "@/lib/form-schema";
+import { toDisplay } from "@/lib/formula";
 
-function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean; onSelect?: () => void }) {
+function FieldCard({ f, selected, onSelect, schemaFields = [] }: { f: FormField; selected?: boolean; onSelect?: () => void; schemaFields?: FormField[] }) {
   const { t, tt } = useT();
   return (
     <div
@@ -47,7 +48,12 @@ function FieldCard({ f, selected, onSelect }: { f: FormField; selected?: boolean
           {t("fw.prev.example")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.example}</code>
         </div>
       )}
-      {f.type === "number" && (f.min != null || f.max != null) && (
+      {f.type === "formula" && f.formula && (
+        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
+          ƒ <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{toDisplay(f.formula, { fields: schemaFields })}</code>
+        </div>
+      )}
+      {(f.type === "number" || f.type === "formula") && (f.min != null || f.max != null) && (
         <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
           {t("fw.rangeLabel")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{tt("fw.rangeVal", { min: f.min ?? "–", max: f.max ?? "–" })} {f.unit || ""}</code>
         </div>
@@ -88,6 +94,7 @@ export default function FormPreview({
 }) {
   const { t } = useT();
   const editable = !!onSelect;
+  const allFields = schema.steps.flatMap((st) => st.fields);
   const addBtn: React.CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
     padding: "9px 12px", margin: "6px 0 2px", borderRadius: 9, border: "1px dashed var(--accent)",
@@ -112,7 +119,7 @@ export default function FormPreview({
               <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent)" : "var(--ink)" }}>{s.title}</h3>
             </div>
             {s.fields.map((f) => (
-              <FieldCard key={f.id} f={f} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined} />
+              <FieldCard key={f.id} f={f} schemaFields={allFields} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined} />
             ))}
             {editable && onAddField && (
               <button data-krok-keep="" onClick={(e) => { e.stopPropagation(); onAddField(i); }} style={addBtn}>

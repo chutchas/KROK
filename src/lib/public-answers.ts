@@ -7,6 +7,8 @@
 // ============================================================
 import type { FormField, FormSchema } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
+import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
+import { finalizeTableRows } from "@/lib/table-rows";
 
 const SRC = new Set(["scan", "ai", "ai_edited"]);
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -68,11 +70,16 @@ export function sanitizePublicAnswers(
       item.display = d;
       const v = parseFloat(d);
       if (Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max))) { item.fail = true; fails.push(f.label + " (ค่านอกช่วง)"); }
+    } else if (f.type === "formula") {
+      // คำนวณใหม่หลังวนครบทุกช่อง (ด้านล่าง) — ไม่เชื่อค่าที่ client ส่งมา
+      item.display = "—";
     } else if (f.type === "table") {
-      const rows = cleanRows(f, a.rows);
-      item.rows = rows;
+      // คอลัมน์สูตร/ผ่าน-ไม่ผ่าน คำนวณใหม่จากค่าที่กรอก · แถวที่ไม่ผ่าน = เอกสารไม่ผ่าน
+      const fin = finalizeTableRows(f, cleanRows(f, a.rows));
+      item.rows = fin.rows;
       item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label }));
-      item.display = `${rows.length} แถว`;
+      item.display = `${fin.rows.length} แถว`;
+      if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
     } else {
       item.display = str(a.display, 5000) ?? "—";
       const code = str(a.code, 1000);
@@ -82,5 +89,20 @@ export function sanitizePublicAnswers(
     }
     answers.push(item);
   });
+
+  // ฟิลด์สูตร: คำนวณจากตัวเลข/ตารางที่ผ่านการกรองแล้วข้างบน
+  if (fields.some((f) => f.type === "formula")) {
+    const byId = new Map(fields.map((f, i) => [f.id, answers[i]]));
+    const fv = computeFormulas(schema, {
+      value: (id) => { const d = byId.get(id)?.display; return typeof d === "string" ? parseFloat(d) : null; },
+      rows: (id) => (byId.get(id)?.rows as Record<string, string>[] | undefined) ?? [],
+    });
+    fields.forEach((f, i) => {
+      if (f.type !== "formula") return;
+      const v = fv[f.id] ?? null;
+      answers[i].display = v == null ? "—" : formatNumber(v, f.decimals ?? 2) + (f.unit ? " " + f.unit : "");
+      if (outOfRange(v, f)) { answers[i].fail = true; fails.push(f.label + " (ค่านอกช่วง)"); }
+    });
+  }
   return { answers, fails, result: fails.length ? "fail" : "pass" };
 }

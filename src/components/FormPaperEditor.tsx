@@ -35,6 +35,7 @@ function FieldPreview({ f }: { f: FormField }) {
   else if ((f.type === "select" || f.type === "checkbox") && f.options_source) body = inputLike(t("fw.dsOptionsPh"));
   else if (f.type === "select" || f.type === "checkbox") body = <PaperChoices name={`p_${f.id}`} options={f.options || []} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? [] : ""} disabled />;
   else if (f.type === "datetime") body = inputLike(t("fw.datePh"));
+  else if (f.type === "formula") body = <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", justifyContent: "space-between", color: "#999", background: "#f4f6f8" }}><span>ƒ</span><span>{t("formula.auto")}</span></div>;
   else body = inputLike(f.example ? tt("fw.examplePh", { ex: f.example }) : "");
   return <>{label}{body}</>;
 }

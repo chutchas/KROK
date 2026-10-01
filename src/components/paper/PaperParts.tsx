@@ -8,6 +8,7 @@
 // กระดาษเป็นสีขาวเสมอ จึงใช้สีคงที่ ไม่ใช้ token ของธีม (กัน dark mode ทำสีเพี้ยน)
 // ============================================================
 import { InlineFormIcon } from "@/components/FormIcon";
+import TableCell from "@/components/TableCell";
 import Icon from "@/components/Icon";
 import { Camera, Check, X, Plus, Trash2, PenLine } from "lucide-react";
 import type { TableColumn } from "@/lib/form-schema";
@@ -254,7 +255,7 @@ export function PaperTable({
       <thead>
         <tr style={{ height: TABLE_HEAD_H, background: "#eee" }}>
           {cols.map((c) => (
-            <th key={c.id} style={{ fontSize: ".7rem", color: "#333", fontWeight: 700, textAlign: "left", padding: "0 5px", borderRight: "1px solid #ddd", borderBottom: `1px solid ${LINE}`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.label}</th>
+            <th key={c.id} title={c.type === "formula" ? t("formula.auto") : undefined} style={{ fontSize: ".7rem", color: "#333", fontWeight: 700, textAlign: c.type === "formula" ? "right" : c.type === "checkbox" || c.type === "pass_fail" ? "center" : "left", padding: "0 5px", borderRight: "1px solid #ddd", borderBottom: `1px solid ${LINE}`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.type === "formula" ? "ƒ " : ""}{c.label}</th>
           ))}
           {onDelete && <th style={{ borderBottom: `1px solid ${LINE}` }} />}
         </tr>
@@ -263,18 +264,8 @@ export function PaperTable({
         {rows.map((r, ri) => (
           <tr key={ri} style={{ height: TABLE_ROW_H, borderBottom: "1px solid #eee" }}>
             {cols.map((c) => (
-              <td key={c.id} style={{ borderRight: "1px solid #eee", padding: 0 }}>
-                {disabled ? null : c.type === "select" ? (
-                  <select value={r[c.id] ?? ""} onChange={(e) => onCell?.(ri, c.id, e.target.value)} style={cell}>
-                    <option value="">—</option>
-                    {(c.options || []).map((o, i) => {
-                      const name = c.option_labels?.[i];
-                      return <option key={i} value={o}>{name ? `${name} · ${o}` : o}</option>;
-                    })}
-                  </select>
-                ) : (
-                  <input type={c.type === "number" ? "number" : "text"} inputMode={c.type === "number" ? "decimal" : undefined} value={r[c.id] ?? ""} onChange={(e) => onCell?.(ri, c.id, e.target.value)} style={cell} />
-                )}
+              <td key={c.id} style={{ borderRight: "1px solid #eee", padding: 0, background: c.type === "pass_fail" && r[c.id] === "fail" ? "#fdeeee" : undefined }}>
+                {disabled ? null : <TableCell col={c} value={r[c.id] ?? ""} onChange={(v) => onCell?.(ri, c.id, v)} look="paper" style={cell} />}
               </td>
             ))}
             {onDelete && (
