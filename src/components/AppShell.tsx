@@ -6,7 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import NotificationBell from "@/components/NotificationBell";
 import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
-import WorkspaceSwitcher, { type WorkspaceItem } from "@/components/WorkspaceSwitcher";
+import WorkspaceSwitcher, { WorkspaceChip, WsAvatar, type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import OfflineSync from "@/components/OfflineSync";
 import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
@@ -188,7 +188,12 @@ export default function AppShell({
           .krok-controls{ flex: 0 0 auto; gap: 6px !important; }
           .krok-brand{ flex: 1 1 auto; min-width: 0; }
           .krok-profile-name{ display: none !important; }
-          .krok-ws-name{ max-width: 84px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          /* มือถือ: ปุ่ม workspace แถวที่ 2 เต็มความกว้าง (ชื่อเต็ม ▾ ชิดขวา) · เมนูหลักแถวที่ 3 */
+          .krok-ws-slot{ order: 2; flex-basis: 100%; margin-left: 0 !important; }
+          .krok-ws-slot > div, .krok-ws-slot .krok-ws-chip{ width: 100%; }
+          .krok-ws-slot .krok-ws-name{ flex: 1 1 auto; max-width: none !important; }
+          .krok-nav{ order: 3; }
+          .krok-ws-menu{ left: 0; }
         }
       `}</style>
       <header
@@ -224,20 +229,11 @@ export default function AppShell({
             <Icon icon={Menu} className="h-5 w-5" />
           </button>
 
-          <div className="krok-brand" style={{ display: "flex", minWidth: 0 }}>
-            {workspaces.length > 1 || canManage ? (
-              <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
-            ) : (
-              <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", minWidth: 0 }}>
-                <LogoMark size={26} variant="compact" title="KROK" />
-                <div style={{ minWidth: 0 }}>
-                  <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
-                  <small className="krok-ws-name" style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>
-                    {tenantName}
-                  </small>
-                </div>
-              </Link>
-            )}
+          <div className="krok-brand" style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
+            <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: "0 0 auto" }} aria-label="KROK">
+              <LogoMark size={26} variant="compact" title="KROK" />
+              <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
+            </Link>
           </div>
 
           <nav className="krok-nav" style={{ display: "flex", gap: 2 }}>
@@ -264,7 +260,16 @@ export default function AppShell({
             })}
           </nav>
 
-          <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+          {/* ปุ่ม workspace (ตัวย่อ + ชื่อตัวหนา ▾) — จอคอม: ฝั่งขวาก่อนปุ่มสลับโหมด · มือถือ: แถวที่ 2 เต็มความกว้าง */}
+          <div className="krok-ws-slot" style={{ display: "flex", alignItems: "center", minWidth: 0, marginLeft: "auto" }}>
+            {workspaces.length > 1 || canManage ? (
+              <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
+            ) : (
+              <WorkspaceChip name={tenantName} />
+            )}
+          </div>
+
+          <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <OfflineSync />
             <ThemeToggle />
             <LanguageToggle />
@@ -416,7 +421,14 @@ export default function AppShell({
         </div>
       )}
 
-      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
+      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "14px var(--krok-gutter) 90px" }}>
+        {/* บรรทัดบอก workspace เหนือหัวข้อทุกหน้า (เห็นชัดตอนแคปจอ/ส่งต่อ) */}
+        <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 6, fontSize: ".8rem", color: "var(--ink-2)", fontWeight: 600, marginBottom: 8, minWidth: 0 }}>
+          <WsAvatar name={tenantName} size={18} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{tenantName}</span>
+        </div>
+        {children}
+      </main>
     </>
   );
 }

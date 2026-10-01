@@ -5,13 +5,43 @@ import { switchWorkspace, createWorkspace } from "@/lib/workspace-actions";
 import { useT } from "@/i18n/LanguageProvider";
 import { ChevronDown, Check, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
-import { LogoMark } from "@/components/Logo";
 import { alertDialog } from "@/components/dialogs";
 
 export interface WorkspaceItem {
   tenantId: string;
   tenantName: string;
   role: "owner" | "admin" | "designer" | "operator";
+}
+
+/** กล่องตัวอักษรย่อของ workspace (ตัวแรกของชื่อ) — ใช้บนแถบบน, ในเมนูสลับ และบรรทัดบนหัวข้อหน้า */
+export function WsAvatar({ name, size = 26 }: { name: string; size?: number }) {
+  const ch = (Array.from(name.trim())[0] || "W").toUpperCase();
+  return (
+    <span aria-hidden style={{ width: size, height: size, flex: "0 0 auto", borderRadius: Math.round(size * 0.28), display: "inline-flex", alignItems: "center", justifyContent: "center",
+      background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
+      fontWeight: 700, fontSize: Math.round(size * 0.5), lineHeight: 1, fontFamily: "var(--font-anuphan)" }}>{ch}</span>
+  );
+}
+
+/** ปุ่ม/ป้าย workspace ปัจจุบัน: [ตัวย่อ] ชื่อตัวหนา ▾ */
+function WsChipBody({ name, chevron }: { name: string; chevron: boolean }) {
+  return (
+    <>
+      <WsAvatar name={name} />
+      <span className="krok-ws-name" style={{ fontWeight: 600, fontSize: ".9rem", color: "var(--ink)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{name}</span>
+      {chevron && <span style={{ flex: "0 0 auto", display: "inline-flex", color: "var(--ink-3)" }}><Icon icon={ChevronDown} className="h-4 w-4" /></span>}
+    </>
+  );
+}
+
+const chipStyle: React.CSSProperties = {
+  display: "flex", alignItems: "center", gap: 8, minWidth: 0, padding: "4px 10px 4px 4px", borderRadius: 10,
+  border: "1px solid var(--line)", background: "var(--surface)", fontFamily: "inherit", textAlign: "left",
+};
+
+/** ป้าย workspace แบบกดไม่ได้ (มี workspace เดียวและไม่ใช่ผู้ดูแล) */
+export function WorkspaceChip({ name }: { name: string }) {
+  return <span className="krok-ws-chip" title={name} style={chipStyle}><WsChipBody name={name} chevron={false} /></span>;
 }
 
 export default function WorkspaceSwitcher({
@@ -73,38 +103,25 @@ export default function WorkspaceSwitcher({
   }
 
   return (
-    <div ref={boxRef} style={{ position: "relative" }}>
+    <div ref={boxRef} style={{ position: "relative", minWidth: 0 }}>
       <button
         onClick={() => setOpen((v) => !v)}
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: 8,
-          textDecoration: "none",
-          background: "none",
-          border: "none",
-          cursor: "pointer",
-          padding: 0,
-          fontFamily: "inherit",
-          textAlign: "left",
-        }}
-        title={t("ws.switch")}
+        className="krok-ws-chip"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        title={`${t("ws.switch")} · ${active?.tenantName ?? ""}`}
+        style={{ ...chipStyle, cursor: "pointer" }}
       >
-        <LogoMark size={26} variant="compact" />
-        <div style={{ minWidth: 0 }}>
-          <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
-          <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "flex", alignItems: "center", gap: 3, lineHeight: 1, minWidth: 0 }}>
-            <span className="krok-ws-name">{active?.tenantName ?? ""}</span> <span style={{ flex: "0 0 auto", display: "inline-flex" }}><Icon icon={ChevronDown} className="h-3 w-3" /></span>
-          </small>
-        </div>
+        <WsChipBody name={active?.tenantName ?? ""} chevron />
       </button>
 
       {open && (
         <div
+          className="krok-ws-menu"
           style={{
             position: "absolute",
             top: "calc(100% + 8px)",
-            left: 0,
+            right: 0, // ปุ่มอยู่ฝั่งขวาของแถบบน → เมนูชิดขอบขวาของปุ่ม
             minWidth: 240,
             background: "var(--surface)",
             border: "1px solid var(--line)",
@@ -140,6 +157,7 @@ export default function WorkspaceSwitcher({
                   fontSize: ".9rem",
                 }}
               >
+                <WsAvatar name={w.tenantName} size={22} />
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.tenantName}</span>
                 {on && <span style={{ color: "var(--accent)", display: "inline-flex" }}><Icon icon={Check} className="h-4 w-4" /></span>}
               </button>
