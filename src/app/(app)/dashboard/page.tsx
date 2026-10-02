@@ -1,6 +1,8 @@
 import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getQuotaSnapshot } from "@/lib/quota";
+import { quotaWarnings } from "@/lib/quota-warn";
+import QuotaBanner from "@/components/QuotaBanner";
 import type { DashWidget } from "@/lib/dashboard-meta";
 import DashboardClient, { type SubRow, type FormOpt, type Summary } from "./DashboardClient";
 
@@ -50,7 +52,8 @@ export default async function DashboardPage() {
 
   const initialWidgets = (layoutRes.data?.widgets as DashWidget[]) ?? [];
 
-  return (
+  return (<>
+    <QuotaBanner warnings={quotaWarnings(snap)} canUpgrade={snap.ownerId ? snap.ownerId === session.userId : session.role === "owner"} />
     <DashboardClient
       tenantId={session.tenantId}
       initial={(recentRes.data || []) as SubRow[]}
@@ -58,5 +61,5 @@ export default async function DashboardPage() {
       summary={summary}
       initialWidgets={initialWidgets}
     />
-  );
+  </>);
 }

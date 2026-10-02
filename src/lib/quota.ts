@@ -176,10 +176,23 @@ export async function canAddForm(tenantId: string): Promise<{ ok: boolean; used:
   return { ok: used < plan.maxForms, used, max: plan.maxForms };
 }
 
-/** ตรวจว่ายังเชิญสมาชิกเพิ่มได้ไหม (คนไม่ซ้ำ รวมทุก workspace ของเจ้าของ) */
-export async function canAddMember(tenantId: string): Promise<{ ok: boolean; used: number; max: number }> {
+/**
+ * ตรวจว่ายังเชิญสมาชิกเพิ่มได้ไหม — นับคนไม่ซ้ำทุก workspace ของเจ้าของ + คำเชิญที่ยังค้าง (กันเชิญล่วงหน้าเกินโควตา)
+ * เชิญคนที่อยู่ใน workspace อื่นของบัญชีอยู่แล้ว / เคยเชิญค้างไว้แล้ว = ไม่เพิ่มยอด → ผ่านเสมอ
+ */
+export async function canAddMember(tenantId: string, email?: string): Promise<{ ok: boolean; used: number; max: number }> {
   const [plan, pool] = await Promise.all([getTenantPlan(tenantId), getTenantPool(tenantId)]);
-  const used = await distinctMembers(pool.tenantIds);
+  const c = await db();
+  const [{ data: mem }, { data: inv }] = await Promise.all([
+    c.from("memberships").select("user_id, email").in("tenant_id", pool.tenantIds).limit(50000),
+    c.from("invites").select("email").in("tenant_id", pool.tenantIds).is("accepted_at", null).limit(50000),
+  ]);
+  const members = (mem || []) as { user_id: string; email: string | null }[];
+  const memberEmails = new Set(members.map((m) => (m.email || "").toLowerCase()).filter(Boolean));
+  const pending = new Set(((inv || []) as { email: string }[]).map((i) => i.email.toLowerCase()).filter((e) => !memberEmails.has(e)));
+  const used = new Set(members.map((m) => m.user_id)).size + pending.size;
+  const e = email?.trim().toLowerCase();
+  if (e && (memberEmails.has(e) || pending.has(e))) return { ok: true, used, max: plan.maxMembers };
   return { ok: used < plan.maxMembers, used, max: plan.maxMembers };
 }
 

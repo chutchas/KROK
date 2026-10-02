@@ -67,9 +67,9 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
   // enum role (ชั้นความปลอดภัย/RLS) จาก can_manage
   const role: Role = roleKey === "owner" ? "owner" : roleDef.can_manage ? "admin" : "operator";
 
-  const q = await canAddMember(session.tenantId);
+  const q = await canAddMember(session.tenantId, clean);
   if (!q.ok)
-    return { error: `แผนปัจจุบันมีสมาชิกได้สูงสุด ${fmtLimit(q.max)} คน (ปัจจุบัน ${q.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` };
+    return { error: `แพ็กเกจปัจจุบันมีผู้ใช้ได้สูงสุด ${fmtLimit(q.max)} คน รวมทุก workspace ของบัญชี (ตอนนี้ ${q.used} คน นับรวมคำเชิญที่ยังไม่ตอบรับ) — ยกเลิกคำเชิญที่ไม่ใช้ หรืออัปเกรดที่หน้า “แพ็กเกจ/โควตา”` };
 
   // ทีมต้องเป็นของ workspace นี้ (กรองทิ้งที่ไม่ใช่)
   let teams: string[] = [];

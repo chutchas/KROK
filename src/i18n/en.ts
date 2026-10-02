@@ -754,6 +754,9 @@ export const en: Record<MessageKey, string> = {
   "sync.pending": "{n} to sync",
   "sync.syncing": "Syncing {n}…",
   "sync.done": "Synced {n}",
+  "sync.quotaBlocked": "{n} not sent — quota reached",
+  "sync.quotaTitle": "Held back: plan quota reached",
+  "sync.quotaHint": "The data is still saved on this device. It will be sent automatically once the account owner upgrades or the new month starts (don't clear browser data).",
   "sync.tapToSync": "Tap to sync now",
   // ---- landing page (public) ----
   "lp.nav.how": "How it works",
