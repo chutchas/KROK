@@ -52,7 +52,7 @@ export default function FieldSettingsPanel({
   /** สมาชิกใน workspace — ตั้งผู้รับผิดชอบเป็นรายบุคคล */
   members?: { user_id: string; name: string }[];
 }) {
-  const { t } = useT();
+  const { t, tt } = useT();
 
   const sel: React.CSSProperties = {
     padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
@@ -145,6 +145,17 @@ export default function FieldSettingsPanel({
   if (selectedKey === "photos") {
     return (
       <Shell title={t("print.photos.title")} onClose={() => onSelect(null)}>
+        {/* ฟิลด์รูปในกล่อง — กดเพื่อตั้งชื่อ/จำนวนรูป/ลบ (หรือคลิกช่องรูปบนกระดาษ) */}
+        <label style={lbl}>{t("print.photos.fieldsInBox")}</label>
+        <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
+          {schema.steps.flatMap((st) => st.fields.filter((f) => f.type === "photo")).map((f) => (
+            <button key={f.id} type="button" data-krok-keep="" onClick={() => onSelect(f.id)}
+              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".86rem", cursor: "pointer", textAlign: "left" }}>
+              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: f.label ? "var(--ink)" : "var(--ink-3)" }}>{f.label || t("fw.noName")}</span>
+              <span style={{ fontSize: ".76rem", color: "var(--ink-3)", whiteSpace: "nowrap" }}>{tt("print.photos.fieldMax", { n: f.max_photos ?? 1 })} ›</span>
+            </button>
+          ))}
+        </div>
         <PhotoPrintSettings schema={schema} onChange={onChange} bare />
       </Shell>
     );

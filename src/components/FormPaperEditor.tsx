@@ -392,8 +392,9 @@ export default function FormPaperEditor({
                 {isStep ? (
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</span>
                 ) : b.kind === "photos" && b.photos ? (
-                  <div style={{ pointerEvents: "none" }}>
-                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), label: photoSlotLabel(c.field.label, c.slot, c.max, t("fw.noName")) }))} />
+                  <div>
+                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} onPickField={(fid) => select(fid)} selectedFieldId={active}
+                      items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), fieldId: c.field.id, label: photoSlotLabel(c.field.label, c.slot, c.max, t("fw.noName")) }))} />
                   </div>
                 ) : (
                   b.field && <div style={{ pointerEvents: "none" }}><FieldPreview f={b.field} /></div>

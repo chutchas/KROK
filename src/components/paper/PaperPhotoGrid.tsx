@@ -16,6 +16,8 @@ export type PhotoGridItem = {
   url?: string;
   /** หน้ากรอก: เนื้อหาเซลล์ที่กดถ่าย/เปลี่ยนรูปได้ (แทนรูปนิ่ง) */
   cell?: React.ReactNode;
+  /** หน้าออกแบบ: ฟิลด์ของช่องนี้ (คลิกช่อง = เลือกฟิลด์) */
+  fieldId?: string;
 };
 
 /** พื้นที่รูป 1 ช่อง — มีรูป = แสดงเต็มกรอบ (ไม่ครอป), ไม่มี = กรอบเส้นประ */
@@ -45,12 +47,17 @@ export default function PaperPhotoGrid({
   imgH,
   title,
   showTitle = true,
+  onPickField,
+  selectedFieldId,
 }: {
   items: PhotoGridItem[];
   cols: number;
   imgH: number;
   title?: string;
   showTitle?: boolean;
+  /** หน้าออกแบบ: คลิกช่องรูป → เปิดตั้งค่าฟิลด์นั้น */
+  onPickField?: (fieldId: string) => void;
+  selectedFieldId?: string | null;
 }) {
   const { t } = useT();
   return (
@@ -58,7 +65,12 @@ export default function PaperPhotoGrid({
       {showTitle && <PaperLabel label={title || t("print.photos.title")} />}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))`, gap: `${PHOTO_GAP}px 10px` }}>
         {items.map((it, i) => (
-          <div key={it.key} style={{ minWidth: 0, breakInside: "avoid" }}>
+          <div key={it.key} data-krok-keep={onPickField ? "" : undefined}
+            onClick={onPickField && it.fieldId ? (e) => { e.stopPropagation(); onPickField(it.fieldId!); } : undefined}
+            onPointerDown={onPickField ? (e) => e.stopPropagation() : undefined}
+            title={onPickField ? t("print.photos.cellHint") : undefined}
+            style={{ minWidth: 0, breakInside: "avoid", cursor: onPickField ? "pointer" : undefined, borderRadius: 4,
+              outline: selectedFieldId && it.fieldId === selectedFieldId ? "2px solid var(--accent)" : undefined, outlineOffset: 2 }}>
             {it.cell ?? <PhotoFrame url={it.url} height={imgH} alt={it.label} />}
             <div title={it.label} style={{ height: PHOTO_CAPTION_H, lineHeight: `${PHOTO_CAPTION_H}px`, fontSize: ".68rem", color: "#444", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               <b style={{ color: "#111" }}>{i + 1}.</b> {it.label || t("fw.noName")}
