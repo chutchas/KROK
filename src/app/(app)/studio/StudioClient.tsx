@@ -260,6 +260,23 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }
 
   // เพิ่มขั้นตอนใหม่ — ไม่ต้องเลือกฟิลด์เดิมก่อน
+  // มุมมองมือถือ: ลากย้ายฟิลด์ (ในขั้นตอนเดียวกันหรือข้ามขั้นตอน) · toIndex นับในรายการเดิมของขั้นตอนปลายทาง
+  function moveField(fieldId: string, toStep: number, toIndex: number) {
+    if (!draft || toStep < 0 || toStep >= draft.steps.length) return;
+    const fromStep = draft.steps.findIndex((st) => st.fields.some((f) => f.id === fieldId));
+    if (fromStep < 0) return;
+    const fromIndex = draft.steps[fromStep].fields.findIndex((f) => f.id === fieldId);
+    let idx = toIndex;
+    if (fromStep === toStep && fromIndex < toIndex) idx -= 1;
+    if (fromStep === toStep && idx === fromIndex) return;
+    const field = draft.steps[fromStep].fields[fromIndex];
+    const steps = draft.steps.map((st) => ({ ...st, fields: st.fields.filter((f) => f.id !== fieldId) }));
+    const target = steps[toStep].fields;
+    steps[toStep] = { ...steps[toStep], fields: [...target.slice(0, idx), field, ...target.slice(idx)] };
+    setDraft({ ...draft, steps });
+    setSelKey(fieldId);
+  }
+
   function addStep() {
     if (!draft) return;
     const id = newKey("s");
@@ -558,7 +575,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
                   <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} />
+                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} />
                 </div>
               </div>
             )}

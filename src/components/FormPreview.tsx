@@ -1,25 +1,34 @@
 "use client";
-import { Lightbulb, Lock, Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { GripVertical, Lightbulb, Lock, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
 import FormIcon from "@/components/FormIcon";
 import { useT } from "@/i18n/LanguageProvider";
 import { type FormField, type FormSchema } from "@/lib/form-schema";
 import { toDisplay } from "@/lib/formula";
 
-function FieldCard({ f, selected, onSelect, schemaFields = [] }: { f: FormField; selected?: boolean; onSelect?: () => void; schemaFields?: FormField[] }) {
+function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = false, dropFid }: {
+  f: FormField; selected?: boolean; onSelect?: () => void; schemaFields?: FormField[];
+  /** ที่จับลากเรียงลำดับ (มุมมองมือถือในหน้าสร้างฟอร์ม) */
+  grip?: React.ReactNode; dragging?: boolean; dropFid?: string;
+}) {
   const { t, tt } = useT();
   return (
     <div
       data-krok-keep=""
+      data-drop-fid={dropFid}
       onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : undefined}
       style={{
+        position: "relative",
+        opacity: dragging ? 0.4 : 1,
         border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-        borderRadius: 10, padding: 14, margin: "10px 0",
+        borderRadius: 10, padding: grip ? "14px 14px 14px 30px" : 14, margin: "10px 0",
         background: selected ? "var(--accent-soft)" : "var(--surface)",
         cursor: onSelect ? "pointer" : "default",
         boxShadow: selected ? "0 2px 10px rgba(0,0,0,.08)" : "none",
       }}
     >
+      {grip}
       <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
         {f.label}
         {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
@@ -86,14 +95,61 @@ export default function FormPreview({
   onSelect,
   onAddField,
   onAddStep,
+  onMoveField,
 }: {
   schema: FormSchema;
   selectedKey?: string | null;
   onSelect?: (key: string | null) => void;
   onAddField?: (stepIndex: number) => void;
   onAddStep?: () => void;
+  /** ลากเรียงฟิลด์: ย้าย fieldId ไปขั้นตอน toStep ก่อนตำแหน่ง toIndex (นับในรายการเดิมของขั้นตอนนั้น) */
+  onMoveField?: (fieldId: string, toStep: number, toIndex: number) => void;
 }) {
   const { t } = useT();
+  // ---- ลากเรียงลำดับฟิลด์ (เมาส์/นิ้ว ผ่านที่จับด้านซ้ายของการ์ด) ----
+  type Drag = { fid: string; step: number; index: number } | null;
+  const [drag, setDragState] = useState<Drag>(null);
+  const dragRef = useRef<Drag>(null);
+  const setDrag = (d: Drag) => { dragRef.current = d; setDragState(d); };
+  const dropAt = (x: number, y: number, fid: string) => {
+    const el = document.elementFromPoint(x, y) as HTMLElement | null;
+    const card = el?.closest<HTMLElement>("[data-drop-fid]");
+    if (card) {
+      const [si, fi] = (card.dataset.dropFid || "").split(":").map(Number);
+      const r = card.getBoundingClientRect();
+      return { fid, step: si, index: fi + (y > r.top + r.height / 2 ? 1 : 0) };
+    }
+    const st = el?.closest<HTMLElement>("[data-drop-step]");
+    if (st) {
+      const [si, where] = (st.dataset.dropStep || "").split(":");
+      return { fid, step: Number(si), index: where === "end" ? schema.steps[Number(si)]?.fields.length ?? 0 : 0 };
+    }
+    return dragRef.current;
+  };
+  const gripFor = (fid: string) => onMoveField ? (
+    <span
+      data-krok-keep=""
+      title={t("editor.dragReorder")}
+      aria-label={t("editor.dragReorder")}
+      onClick={(e) => e.stopPropagation()}
+      onPointerDown={(e) => {
+        e.preventDefault(); e.stopPropagation();
+        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        setDrag(dropAt(e.clientX, e.clientY, fid));
+      }}
+      onPointerMove={(e) => { if (dragRef.current) setDrag(dropAt(e.clientX, e.clientY, fid)); }}
+      onPointerUp={() => {
+        const d = dragRef.current;
+        setDrag(null);
+        if (d) onMoveField(d.fid, d.step, d.index);
+      }}
+      onPointerCancel={() => setDrag(null)}
+      style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-3)", cursor: drag ? "grabbing" : "grab", touchAction: "none", borderRadius: "10px 0 0 10px", background: "var(--code-bg)" }}
+    >
+      <Icon icon={GripVertical} className="h-4 w-4" />
+    </span>
+  ) : undefined;
+  const dropLine = <div aria-hidden style={{ height: 3, borderRadius: 2, background: "var(--accent)", margin: "-6px 0 -3px" }} />;
   const editable = !!onSelect;
   const allFields = schema.steps.flatMap((st) => st.fields);
   const addBtn: React.CSSProperties = {
@@ -123,6 +179,7 @@ export default function FormPreview({
           <div key={s.id}>
             <div
               data-krok-keep=""
+              data-drop-step={`${i}:start`}
               onClick={editable ? (e) => { e.stopPropagation(); onSelect!(stepKey); } : undefined}
               style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
             >
@@ -131,11 +188,16 @@ export default function FormPreview({
               </span>
               <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent)" : "var(--ink)" }}>{s.title}</h3>
             </div>
-            {s.fields.map((f) => (
-              <FieldCard key={f.id} f={f} schemaFields={allFields} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined} />
+            {s.fields.map((f, fi) => (
+              <div key={f.id}>
+                {drag && drag.step === i && drag.index === fi && dropLine}
+                <FieldCard f={f} schemaFields={allFields} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined}
+                  grip={gripFor(f.id)} dragging={drag?.fid === f.id} dropFid={onMoveField ? `${i}:${fi}` : undefined} />
+              </div>
             ))}
+            {drag && drag.step === i && drag.index >= s.fields.length && dropLine}
             {editable && onAddField && (
-              <button data-krok-keep="" onClick={(e) => { e.stopPropagation(); onAddField(i); }} style={addBtn}>
+              <button data-krok-keep="" data-drop-step={`${i}:end`} onClick={(e) => { e.stopPropagation(); onAddField(i); }} style={addBtn}>
                 <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
               </button>
             )}

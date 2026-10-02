@@ -1,14 +1,14 @@
 "use client";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
+import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
 import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
 import { maxPhotosOf, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus } from "lucide-react";
+import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus } from "lucide-react";
 
 let idc = 0;
 const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
@@ -85,6 +85,77 @@ export default function FormPaperEditor({
     return merged;
   }, [blocks, schema.layout]);
 
+  // ---- คลิกขวาบนกระดาษ: เพิ่มฟิลด์ / เพิ่มขั้นตอน ณ ตำแหน่งที่คลิก ----
+  const [ctx, setCtx] = useState<{ cx: number; cy: number; x: number; y: number } | null>(null);
+  useEffect(() => {
+    if (!ctx) return;
+    const close = () => setCtx(null);
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") close(); };
+    window.addEventListener("pointerdown", close);
+    window.addEventListener("scroll", close, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("pointerdown", close);
+      window.removeEventListener("scroll", close, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [ctx]);
+  function onContextMenu(e: React.MouseEvent) {
+    const el = canvasRef.current;
+    if (!el) return;
+    e.preventDefault();
+    const r = el.getBoundingClientRect();
+    const x = (e.clientX - r.left) / scale;
+    const y = (e.clientY - r.top) / scale;
+    // เมนูไม่ล้นขอบจอ
+    const cx = Math.min(e.clientX, window.innerWidth - 220);
+    const cy = Math.min(e.clientY, window.innerHeight - 110);
+    setCtx({ cx, cy, x, y });
+  }
+  /** ขั้นตอนที่ตำแหน่ง y อยู่ใต้หัวข้อ (หัวข้อขั้นตอนล่าสุดที่อยู่เหนือจุดคลิก) */
+  function stepAtY(y: number): number {
+    let si = -1;
+    let best = -Infinity;
+    schema.steps.forEach((st, i) => {
+      const k = `s:${st.id}`;
+      const top = tops[k] ?? layout[k]?.y;
+      if (top != null && top <= y && top > best) { best = top; si = i; }
+    });
+    return si < 0 ? 0 : si;
+  }
+  function addFieldAt(x: number, y: number) {
+    if (!schema.steps.length) return;
+    const si = stepAtY(y);
+    const nf: FormField = { id: newFieldId(), type: "text", label: "", required: true };
+    // ลำดับในขั้นตอน (มุมมองมือถือ/ลำดับกรอก): ต่อจากช่องที่อยู่เหนือจุดคลิก
+    const fields = schema.steps[si].fields;
+    let at = 0;
+    fields.forEach((f, i) => { const b = layout[f.id]; if (b && (tops[f.id] ?? b.y) <= y) at = i + 1; });
+    const steps = schema.steps.map((st, i) => (i === si ? { ...st, fields: [...fields.slice(0, at), nf, ...fields.slice(at)] } : st));
+    const w = Math.floor((CANVAS_W - PAD * 2 - 16) / 2);
+    const box: PaperBox = { x: Math.max(0, Math.min(CANVAS_W - w, snap(x))), y: Math.max(0, snap(y)), w };
+    onChange({ ...schema, steps, layout: { ...layout, [nf.id]: box } });
+    select(nf.id);
+  }
+  function addStepAt(y: number) {
+    const above = schema.steps.length ? stepAtY(y) : -1;
+    // คลิกเหนือหัวข้อขั้นตอนแรก = แทรกเป็นขั้นตอนแรก
+    const firstTop = schema.steps[0] ? (tops[`s:${schema.steps[0].id}`] ?? layout[`s:${schema.steps[0].id}`]?.y ?? 0) : 0;
+    const at = schema.steps.length === 0 ? 0 : y < firstTop ? 0 : above + 1;
+    const sid = newFieldId().replace(/^f_/, "s_");
+    const nf: FormField = { id: newFieldId(), type: "text", label: "", required: true };
+    const steps = [...schema.steps.slice(0, at), { id: sid, title: t("paper.ctx.newStep"), fields: [nf] }, ...schema.steps.slice(at)];
+    const sy = Math.max(0, snap(y));
+    const colW = Math.floor((CANVAS_W - PAD * 2 - 16) / 2);
+    onChange({
+      ...schema, steps,
+      layout: { ...layout, [`s:${sid}`]: { x: PAD, y: sy, w: CANVAS_W - PAD * 2 }, [nf.id]: { x: PAD, y: sy + HEADER_H + GAP_Y, w: colW } },
+    });
+    select(`s:${sid}`);
+  }
+
   // กติกาเดียวกับหน้ากรอก: เนื้อหาเกินกล่อง → ดันบล็อกด้านล่างลง (แสดงผลเท่านั้น ไม่แก้ตำแหน่งที่ออกแบบ)
   const { measureRef, tops, height: canvasH, overflows } = usePaperReflow(blocks, layout);
 
@@ -101,6 +172,7 @@ export default function FormPaperEditor({
     // แตะที่ "ตัวฟิลด์" บนมือถือ = ให้เบราว์เซอร์เลื่อน/แพนกระดาษ (ไม่ลาก)
     // ลากปรับตำแหน่งด้วยนิ้วได้ผ่าน "ที่จับ" (fromHandle) เท่านั้น ส่วนเมาส์ลากได้ทั้งตัว
     if (e.pointerType !== "mouse" && !fromHandle) return;
+    if (e.button !== 0) return; // คลิกขวา = เปิดเมนู ไม่ลาก
     e.preventDefault();
     e.stopPropagation();
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
@@ -232,6 +304,7 @@ export default function FormPaperEditor({
       <div ref={scrollRef} data-paper="" tabIndex={0} onKeyDown={onKeyDown} style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: "16px 16px 16px 30px", outline: "none", WebkitOverflowScrolling: "touch" }}>
         <div
           ref={canvasRef}
+          onContextMenu={onContextMenu}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
           style={{
@@ -337,6 +410,23 @@ export default function FormPaperEditor({
           })}
         </div>
       </div>
+
+      {ctx && (
+        <div data-krok-keep="" role="menu" onPointerDown={(e) => e.stopPropagation()} onContextMenu={(e) => e.preventDefault()}
+          style={{ position: "fixed", left: ctx.cx, top: ctx.cy, zIndex: 90, minWidth: 200, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "0 8px 24px rgba(0,0,0,.18)", padding: 4 }}>
+          {[
+            { k: "field", icon: Plus, label: t("paper.ctx.addField"), run: () => addFieldAt(ctx.x, ctx.y) },
+            { k: "step", icon: ListPlus, label: t("paper.ctx.addStep"), run: () => addStepAt(ctx.y) },
+          ].map((it) => (
+            <button key={it.k} type="button" role="menuitem" data-krok-keep="" onClick={() => { it.run(); setCtx(null); }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px", border: "none", borderRadius: 7, background: "transparent", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", cursor: "pointer", textAlign: "left" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = "var(--accent-soft)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+              <Icon icon={it.icon} className="h-4 w-4" /> {it.label}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ซูม */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, justifyContent: "flex-end" }}>
