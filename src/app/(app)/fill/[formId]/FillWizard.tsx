@@ -1138,13 +1138,21 @@ export default function FillWizard(props: Props) {
     </>
   );
 
+  // คำอธิบายฟอร์ม (ตั้งในหน้าสร้างฟอร์ม) — แสดงใต้ชื่อทั้งมุมมองมือถือและกระดาษ
+  const formDesc = schema.description?.trim() ? (
+    <p style={{ margin: "3px 0 0", fontSize: ".86rem", color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>{schema.description.trim()}</p>
+  ) : null;
+
   // ---------- โหมดกระดาษ: กรอกบนกระดาษ A4 จริง ตามตำแหน่งที่ออกแบบไว้ ----------
   if (mode === "paper") {
     return (
       <div>
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-          <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
+          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+            <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
+            {formDesc}
+          </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
             {viewToggle}
             <Button onClick={() => window.print()} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.printPaper")} aria-label={t("fw.printPaper")}>
@@ -1187,8 +1195,11 @@ export default function FillWizard(props: Props) {
   // ---------- โหมดมือถือ: ทีละขั้นตอน ----------
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+          <h2 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h2>
+          {formDesc}
+        </div>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {viewToggle}
           {draftBtn}
