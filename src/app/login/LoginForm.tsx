@@ -30,6 +30,10 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setMsg({ t: t("login.emailInvalid"), err: true });
+      return;
+    }
     setBusy(true);
     setMsg(null);
     const supabase = createClient();
@@ -70,7 +74,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
         setMsg({ t: tt("login.checkEmail", { email }) });
         setMode("signin");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
         // ล็อกอินสำเร็จ → เข้าแดชบอร์ดเสมอ
         router.push("/dashboard");
@@ -114,13 +118,19 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
               <Field placeholder={t("login.name")} value={name} onChange={(e) => setName(e.target.value)} required />
             </>
           )}
+          {/* Android: type="email" / inputMode="email" ทำให้คีย์บอร์ดเข้าโหมดอีเมล แล้วกดค้างปุ่มเปลี่ยนภาษาแล้วคีย์บอร์ดปิด
+              → ใช้ช่องข้อความธรรมดา (คีย์บอร์ดปกติ เปลี่ยนภาษาได้) แล้วตรวจรูปแบบอีเมลเองตอนกดส่ง */}
           <Field
-            type="email"
+            type="text"
+            name="email"
             placeholder={t("login.email")}
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
-            autoComplete="email"
+            autoComplete="username"
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
           />
           {mode !== "reset" && (
             <Field

@@ -108,10 +108,11 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
           aria-modal="true"
           style={{
             position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)",
-            display: "flex", alignItems: "center", justifyContent: "center", padding: 16, overflow: "auto",
+            display: "flex", justifyContent: "center", padding: 16, overflowY: "auto", overscrollBehavior: "contain",
           }}
         >
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, position: "relative" }}>
+          {/* margin auto = อยู่กลางจอเมื่อพอที่ แต่ไม่กระโดดตามความสูงคีย์บอร์ดมือถือ (align-items:center ทำให้กล่องขยับทุกครั้งที่คีย์บอร์ดเปลี่ยนขนาด) */}
+          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, position: "relative", margin: "auto 0" }}>
             <button
               type="button"
               onClick={() => setOpen(false)}

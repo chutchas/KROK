@@ -475,6 +475,7 @@ export const th = {
   "login.org": "ชื่อองค์กร / บริษัท",
   "login.name": "ชื่อของคุณ",
   "login.email": "อีเมล",
+  "login.emailInvalid": "กรุณากรอกอีเมลให้ถูกต้อง",
   "login.password": "รหัสผ่าน (อย่างน้อย 6 ตัว)",
   "login.doSignin": "เข้าสู่ระบบ",
   "login.doSignup": "สมัครและสร้างองค์กร",

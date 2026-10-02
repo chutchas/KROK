@@ -470,6 +470,7 @@ export const en: Record<MessageKey, string> = {
   "login.org": "Organization / company name",
   "login.name": "Your name",
   "login.email": "Email",
+  "login.emailInvalid": "Please enter a valid email address",
   "login.password": "Password (at least 6 characters)",
   "login.doSignin": "Sign in",
   "login.doSignup": "Sign up & create org",
