@@ -2,6 +2,7 @@
 // ============================================================
 // KROK · ยืนยันก่อนไปหน้าชำระ — แสดงยอด + ขอความยินยอมต่ออายุอัตโนมัติ (บัตร) อย่างชัดเจน
 // ============================================================
+import { backdropClose } from "@/lib/backdrop";
 import { useState } from "react";
 import BodyPortal from "@/components/BodyPortal";
 import { Button } from "@/components/ui";
@@ -23,7 +24,7 @@ export default function PurchaseDialog({ plan, renewing, busy, onConfirm, onClos
   const name = en ? plan.nameEn : plan.name;
   return (
     <BodyPortal>
-      <div role="dialog" aria-modal="true" aria-label={t("buy.title")} onClick={onClose}
+      <div role="dialog" aria-modal="true" aria-label={t("buy.title")} {...backdropClose(onClose)}
         style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(8,12,18,.5)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
         <div onClick={(e) => e.stopPropagation()}
           style={{ width: "min(460px, 100%)", background: "var(--surface)", color: "var(--ink)", borderRadius: 14, border: "1px solid var(--line)", boxShadow: "0 18px 50px rgba(0,0,0,.3)", padding: 20, display: "grid", gap: 12 }}>
