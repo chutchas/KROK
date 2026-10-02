@@ -7,7 +7,8 @@ import { blockHeight, reflowTops, type Block } from "@/lib/paper-layout";
  * วัดความสูงจริงของแต่ละบล็อกบนกระดาษ แล้วคำนวณตำแหน่ง top ใหม่ (ดันบล็อกด้านล่างลงเมื่อเนื้อหางอก)
  * ใช้ร่วมกันใน Editor และหน้ากรอก → ทั้งสองหน้าจัดวางด้วยกติกาเดียวกัน ผลตรงกัน
  */
-export function usePaperReflow(blocks: Block[], layout: Record<string, PaperBox>) {
+export function usePaperReflow(blocks: Block[], layout: Record<string, PaperBox>, opts: { resolveOverlap?: boolean } = {}) {
+  const resolveOverlap = !!opts.resolveOverlap;
   const [measured, setMeasured] = useState<Record<string, number>>({});
   // ResizeObserver ตัวเดียวทั้งหน้า: บล็อกที่เปลี่ยนขนาดพร้อมกัน (ตอน mount / ฟอนต์โหลด) → setState ครั้งเดียว
   const keyOf = useRef(new WeakMap<Element, string>());
@@ -55,7 +56,7 @@ export function usePaperReflow(blocks: Block[], layout: Record<string, PaperBox>
     return () => { roRef.current?.disconnect(); roRef.current = null; els.clear(); };
   }, []);
 
-  const tops = useMemo(() => reflowTops(blocks, layout, measured), [blocks, layout, measured]);
+  const tops = useMemo(() => reflowTops(blocks, layout, measured, resolveOverlap), [blocks, layout, measured, resolveOverlap]);
 
   const height = useMemo(() => {
     let max = 900;

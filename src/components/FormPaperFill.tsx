@@ -37,7 +37,7 @@ export default function FormPaperFill({
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const layout = useMemo(() => resolveLayout(schema, blocks), [schema, blocks]);
   // ความสูงจริงของแต่ละบล็อก → ดันบล็อกด้านล่างลงเมื่อเนื้อหางอกเกินกล่องที่ออกแบบ (ไม่ให้ทับกัน)
-  const { measureRef, tops, height: canvasH } = usePaperReflow(blocks, layout);
+  const { measureRef, tops, height: canvasH } = usePaperReflow(blocks, layout, { resolveOverlap: true });
   const headerBox = schema.layout?.header ?? DEFAULT_HEADER_BOX;
   const metaBox = schema.layout?.meta ?? DEFAULT_META_BOX;
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -117,7 +117,7 @@ export default function FormPaperFill({
                 return (
                   <div key={b.key} ref={measureRef(b.key)} style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
                     <PaperPhotoGrid cols={ph.cols} imgH={ph.imgH}
-                      items={ph.cells.map((c) => { const k = photoSlotKey(c.field.id, c.slot); return { key: k, label: photoSlotLabel(c.field.label, c.slot, c.max), url: photoUrl?.(k), cell: renderPhotoCell?.(c.field, c.slot) }; })} />
+                      items={ph.cells.map((c) => { const k = photoSlotKey(c.field.id, c.slot); return { key: k, label: photoSlotLabel(c.field.label, c.slot, c.max, t("fw.noName")), url: photoUrl?.(k), cell: renderPhotoCell?.(c.field, c.slot) }; })} />
                   </div>
                 );
               }
@@ -136,7 +136,7 @@ export default function FormPaperFill({
       {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
       {pp.mode === "appendix" && (
         <PhotoAppendix title={title} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
-          items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length), url: photoUrl?.(k) })))} />
+          items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName")), url: photoUrl?.(k) })))} />
       )}
 
       {/* แถบซูม */}

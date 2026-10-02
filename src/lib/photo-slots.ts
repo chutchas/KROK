@@ -48,6 +48,7 @@ export function answerPhotoKeys(a: { photoField?: string; photoFields?: string[]
 }
 
 /** ป้ายชื่อของช่องรูป: ฟิลด์หลายรูปต่อท้ายด้วยลำดับ เช่น "รูปสินค้า (2/4)" */
-export function photoSlotLabel(label: string, slot: number, max: number): string {
-  return max > 1 ? `${label} (${slot + 1}/${max})` : label;
+export function photoSlotLabel(label: string, slot: number, max: number, fallback = ""): string {
+  const base = label.trim() || fallback;
+  return max > 1 ? `${base} (${slot + 1}/${max})` : base;
 }

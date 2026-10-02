@@ -89,7 +89,9 @@ export function fieldBoxHeight(f?: FormField): number {
 export function reflowTops(
   blocks: Block[],
   layout: Record<string, PaperBox>,
-  measured: Record<string, number>
+  measured: Record<string, number>,
+  /** หน้ากรอก/พิมพ์: ช่องที่ออกแบบไว้ทับกัน → วางต่อใต้ช่องด้านบน (หน้าออกแบบปิดไว้ ไม่ให้ช่องกระโดดตอนลาก) */
+  resolveOverlap = false
 ): Record<string, number> {
   const items = blocks
     .filter((b) => layout[b.key])
@@ -103,7 +105,13 @@ export function reflowTops(
       if (prev === it) break;
       if (prev.box.y >= it.box.y) continue;
       const overlapX = prev.box.x < it.box.x + it.box.w && it.box.x < prev.box.x + prev.box.w;
-      if (overlapX) shift = Math.max(shift, push[prev.key] ?? 0);
+      if (!overlapX) continue;
+      shift = Math.max(shift, push[prev.key] ?? 0);
+      // ออกแบบไว้ทับกันจริง (เช่น กล่องภาพประกอบสูงขึ้นหลังจัดวางช่องอื่นไว้แล้ว) → วางต่อใต้ช่องด้านบน
+      if (resolveOverlap && it.box.y < prev.box.y + prev.designedH - GRID) {
+        const prevBottom = top[prev.key] + (measured[prev.key] ?? prev.designedH) + GAP_Y;
+        shift = Math.max(shift, prevBottom - it.box.y);
+      }
     }
     top[it.key] = it.box.y + shift;
     const h = measured[it.key] ?? it.designedH;
@@ -190,7 +198,51 @@ export function resolveLayout(schema: FormSchema, blocks?: Block[]): Record<stri
       if (schema.layout[b.key]) merged[b.key] = schema.layout[b.key];
     }
   }
+  placeUnstoredPhotosBox(bl, merged, schema.layout);
   return merged;
+}
+
+/**
+ * กล่องภาพประกอบที่ยังไม่เคยถูกวาง (เพิ่งเปิดโหมดรวม) แต่ช่องอื่นถูกจัดวางเองแล้ว
+ * → ตำแหน่ง auto อาจทับช่องที่จัดไว้ จึงวางไว้ใต้ช่องที่อยู่ล่างสุดแทน
+ */
+export function placeUnstoredPhotosBox(blocks: Block[], merged: Record<string, PaperBox>, stored?: Record<string, PaperBox>) {
+  if (!stored || stored[PHOTOS_KEY] || !merged[PHOTOS_KEY]) return;
+  let bottom = START_Y;
+  for (const b of blocks) {
+    if (b.key === PHOTOS_KEY || !merged[b.key]) continue;
+    bottom = Math.max(bottom, merged[b.key].y + blockHeight(b) + GAP_Y);
+  }
+  merged[PHOTOS_KEY] = { ...merged[PHOTOS_KEY], y: snap(bottom) };
+}
+
+/**
+ * ช่องที่ "สูงขึ้น" จากการตั้งค่า (เช่น กล่องภาพประกอบเพิ่มจำนวนรูป/แถว, ตารางเพิ่มแถวเริ่มต้น)
+ * → ดันช่องที่จัดวางไว้ด้านล่างของมันลงตามส่วนที่สูงขึ้น ไม่ให้ทับกันบนกระดาษ (แก้เฉพาะ layout ที่บันทึกไว้)
+ */
+export function keepClearOnGrow(prev: FormSchema, next: FormSchema): FormSchema {
+  if (!next.layout) return next;
+  const before = new Map(buildBlocks(prev).map((b) => [b.key, blockHeight(b)]));
+  const nextBlocks = buildBlocks(next);
+  const lay = resolveLayout(next, nextBlocks);
+  let layout: Record<string, PaperBox> | null = null;
+  for (const b of nextBlocks) {
+    const h0 = before.get(b.key);
+    const h1 = blockHeight(b);
+    const box = lay[b.key];
+    if (h0 == null || h1 <= h0 || !box) continue;
+    const delta = snap(h1 - h0 + GRID / 2);
+    // ช่องที่เริ่มต่ำกว่าขอบบนของกล่อง (รวมที่ทับกล่องอยู่แล้ว) และซ้อนแนวนอน = ดันลง
+    const edge = box.y + 1;
+    const cur: Record<string, PaperBox> = layout ?? { ...next.layout };
+    for (const [k, v] of Object.entries(cur)) {
+      if (k === b.key || k === "header" || k === "meta") continue;
+      const overlapX = v.x < box.x + box.w && box.x < v.x + v.w;
+      if (overlapX && v.y >= edge) cur[k] = { ...v, y: v.y + delta };
+    }
+    layout = cur;
+  }
+  return layout ? { ...next, layout } : next;
 }
 
 // ความสูงรวมของแคนวาสตาม layout

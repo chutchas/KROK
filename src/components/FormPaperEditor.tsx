@@ -1,7 +1,7 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
+import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight, placeUnstoredPhotosBox } from "@/lib/paper-layout";
 import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
 import { maxPhotosOf, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
@@ -82,6 +82,7 @@ export default function FormPaperEditor({
     // ชื่อเอกสาร + วันที่/เลขที่ เป็นบล็อกลากวางแยกกัน
     merged[HEADER_KEY] = schema.layout?.[HEADER_KEY] || DEFAULT_HEADER_BOX;
     merged[META_KEY] = schema.layout?.[META_KEY] || DEFAULT_META_BOX;
+    placeUnstoredPhotosBox(blocks, merged, schema.layout);
     return merged;
   }, [blocks, schema.layout]);
 
@@ -392,7 +393,7 @@ export default function FormPaperEditor({
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</span>
                 ) : b.kind === "photos" && b.photos ? (
                   <div style={{ pointerEvents: "none" }}>
-                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), label: photoSlotLabel(c.field.label, c.slot, c.max) }))} />
+                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), label: photoSlotLabel(c.field.label, c.slot, c.max, t("fw.noName")) }))} />
                   </div>
                 ) : (
                   b.field && <div style={{ pointerEvents: "none" }}><FieldPreview f={b.field} /></div>

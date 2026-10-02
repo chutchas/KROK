@@ -10,6 +10,7 @@ import TemplateGallery from "./TemplateGallery";
 import { getTemplate } from "@/lib/form-templates";
 import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
+import { keepClearOnGrow } from "@/lib/paper-layout";
 import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
 import FieldSettingsPanel from "@/components/FieldSettingsPanel";
@@ -570,7 +571,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
-              <FormPaperEditor schema={draft} onChange={(s) => setDraft(s)} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()} />
+              <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()} />
             ) : (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
@@ -752,7 +753,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         {selKey && <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />}
         <aside data-tour="studio-aside" className={selKey ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={t("editor.fieldSettings")}>
           {selKey ? (
-            <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft(s)} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
+            <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
           ) : (
             <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: "22px 18px", textAlign: "center", color: "var(--ink-3)", background: "var(--surface)" }}>
               <span style={{ display: "inline-flex", color: "var(--accent)" }}><Icon icon={MousePointerClick} className="h-7 w-7" /></span>

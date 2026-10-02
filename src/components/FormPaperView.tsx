@@ -69,7 +69,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
   const pp = printPhotosOf(schema);
   // grid = รวมรูปไว้กล่องเดียวท้ายเอกสาร · hidden = ไม่พิมพ์ช่องรูป
   const skipPhoto = pp.mode === "grid" || pp.mode === "hidden";
-  const gridPhotos = pp.mode === "grid" ? photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length) }))) : [];
+  const gridPhotos = pp.mode === "grid" ? photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName")) }))) : [];
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
       <div

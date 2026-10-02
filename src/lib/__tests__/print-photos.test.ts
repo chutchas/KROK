@@ -62,3 +62,38 @@ describe("paper layout · photo grid block", () => {
     expect(photosBlockHeight(3, 3, 100)).toBe(photosBlockHeight(1, 3, 100));
   });
 });
+
+describe("keepClearOnGrow / placeUnstoredPhotosBox", () => {
+  it("pushes blocks below the photo box down when it grows", async () => {
+    const { keepClearOnGrow, resolveLayout } = await import("@/lib/paper-layout");
+    const prev = base({ print_photos: { mode: "grid", cols: 3, height_mm: 40 } });
+    prev.steps[1].fields = prev.steps[1].fields.filter((f) => f.type !== "photo" || f.id === "p2");
+    prev.layout = { photos: { x: 40, y: 400, w: 714 }, sig: { x: 40, y: 600, w: 300 }, a: { x: 40, y: 150, w: 300 } };
+    const next = { ...prev, steps: prev.steps.map((s) => ({ ...s, fields: s.fields.map((f) => (f.id === "p2" ? { ...f, max_photos: 6 } : f)) })) };
+    const out = keepClearOnGrow(prev, next);
+    expect(out.layout!.sig.y).toBeGreaterThan(600); // ดันลง
+    expect(out.layout!.a.y).toBe(150);               // ช่องด้านบนไม่ขยับ
+    const lay = resolveLayout(out);
+    expect(lay.sig.y).toBeGreaterThanOrEqual(lay.photos.y + blockHeight(buildBlocks(out).find((b) => b.key === PHOTOS_KEY)!));
+  });
+  it("new photo box goes below manually placed blocks", async () => {
+    const { resolveLayout } = await import("@/lib/paper-layout");
+    const s = base({ print_photos: { mode: "grid" } });
+    s.layout = { sig: { x: 40, y: 900, w: 300 } };
+    expect(resolveLayout(s).photos.y).toBeGreaterThan(900);
+  });
+});
+
+describe("reflowTops · designed overlap", () => {
+  it("moves a block that starts inside the box above it to below that box", async () => {
+    const { reflowTops } = await import("@/lib/paper-layout");
+    const s = base({ print_photos: { mode: "grid", cols: 3, height_mm: 40 } });
+    s.layout = { photos: { x: 40, y: 400, w: 714 }, sig: { x: 40, y: 450, w: 300 }, a: { x: 420, y: 100, w: 300 } };
+    const bl = buildBlocks(s);
+    const lay = (await import("@/lib/paper-layout")).resolveLayout(s, bl);
+    const tops = reflowTops(bl, lay, {}, true);
+    expect(reflowTops(bl, lay, {}).sig).toBe(450); // หน้าออกแบบ: ไม่ขยับ
+    const ph = bl.find((b) => b.key === PHOTOS_KEY)!;
+    expect(tops.sig).toBeGreaterThanOrEqual(400 + blockHeight(ph));
+  });
+});
