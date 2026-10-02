@@ -54,6 +54,8 @@ export interface TableColumn {
   options_source?: OptionsSource; // เฉพาะ select — ตัวเลือกจาก dataset
   option_labels?: string[];       // runtime เท่านั้น: ชื่อที่แสดงของแต่ละตัวเลือก (ขนานกับ options)
   width?: number;     // น้ำหนักความกว้างสัมพัทธ์ (>=1) default 1
+  /** คอลัมน์ที่ต้องกรอกทุกแถว (แถวที่มีข้อมูล) */
+  required?: boolean;
   /** เฉพาะ formula — สูตรรายแถว อ้างคอลัมน์อื่นด้วย {colId} (ดู lib/formula.ts) */
   formula?: string;
   /** เฉพาะ formula — ทศนิยม (default 2) */
@@ -100,11 +102,31 @@ export interface FormField {
   min_photos?: number;
   /** ชื่อใต้รูปแต่ละช่อง (แยกจากชื่อฟิลด์) เช่น ["ด้านหน้า","ด้านข้าง"] — ว่าง = "รูปที่ n" */
   photo_labels?: string[];
+  // text
+  /** ข้อความยาวหลายบรรทัด (ไม่ระบุ = ข้อความสั้นบรรทัดเดียว) */
+  long_text?: boolean;
+  /** รูปแบบข้อความ: เบอร์โทร / อีเมล (คีย์บอร์ดตรงชนิด + ตรวจรูปแบบ) */
+  text_format?: "phone" | "email";
+  // datetime
+  /** วันที่+เวลา (default) / วันที่อย่างเดียว / เวลาอย่างเดียว */
+  dt_mode?: "datetime" | "date" | "time";
+  /** ไม่ใส่วัน/เวลาปัจจุบันให้อัตโนมัติ */
+  dt_no_default?: boolean;
   // pass_fail
   on_fail_require_note?: boolean;
+  /** คำบนปุ่มผ่าน/ไม่ผ่าน (ไม่ระบุ = ผ่าน / ไม่ผ่าน) */
+  pass_label?: string;
+  fail_label?: string;
+  /** มีตัวเลือก "ไม่เกี่ยวข้อง (N/A)" */
+  allow_na?: boolean;
+  // signature
+  /** ให้พิมพ์ชื่อผู้เซ็นกำกับ */
+  sign_name?: boolean;
   // table
   columns?: TableColumn[];
   min_rows?: number; // จำนวนแถวเริ่มต้นที่แสดงตอนกรอก (default 1)
+  /** จำนวนแถวสูงสุดที่เพิ่มได้ (ไม่ระบุ = ไม่จำกัด) */
+  max_rows?: number;
 }
 
 // ============================================================
@@ -409,7 +431,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
             if (fo.unit) o.unit = str(fo.unit, 20);
           }
           if ((type === "select" || type === "checkbox") && Array.isArray(fo.options)) {
-            o.options = fo.options.slice(0, 12).map((x) => str(x, 80));
+            o.options = fo.options.slice(0, 200).map((x) => str(x, 80));
           }
           if (type === "select" || type === "checkbox") {
             const os = sanitizeOptionsSource(fo.options_source, true);
@@ -429,7 +451,21 @@ export function sanitizeSchema(raw: unknown): FormSchema {
               if (labels.some((x) => x.trim())) o.photo_labels = labels;
             }
           }
-          if (type === "pass_fail") o.on_fail_require_note = fo.on_fail_require_note !== false;
+          if (type === "pass_fail") {
+            o.on_fail_require_note = fo.on_fail_require_note !== false;
+            if (typeof fo.pass_label === "string" && fo.pass_label.trim()) o.pass_label = str(fo.pass_label, 30);
+            if (typeof fo.fail_label === "string" && fo.fail_label.trim()) o.fail_label = str(fo.fail_label, 30);
+            if (fo.allow_na === true) o.allow_na = true;
+          }
+          if (type === "text") {
+            if (fo.long_text === true) o.long_text = true;
+            if (fo.text_format === "phone" || fo.text_format === "email") o.text_format = fo.text_format;
+          }
+          if (type === "datetime") {
+            if (fo.dt_mode === "date" || fo.dt_mode === "time") o.dt_mode = fo.dt_mode;
+            if (fo.dt_no_default === true) o.dt_no_default = true;
+          }
+          if (type === "signature" && fo.sign_name === true) o.sign_name = true;
           if (type === "table") {
             const rawCols = Array.isArray(fo.columns) ? fo.columns : [];
             const cols: TableColumn[] = rawCols
@@ -442,7 +478,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
                   label: str(co.label, 60, `คอลัมน์ ${ci + 1}`),
                   type: ct,
                 };
-                if (ct === "select" && Array.isArray(co.options)) col.options = co.options.slice(0, 20).map((x) => str(x, 60));
+                if (ct === "select" && Array.isArray(co.options)) col.options = co.options.slice(0, 100).map((x) => str(x, 60));
+                if (co.required === true && ct !== "formula") col.required = true;
                 if (ct === "select") {
                   const os = sanitizeOptionsSource(co.options_source, false);
                   if (os) col.options_source = os;
@@ -459,6 +496,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
             o.columns = cols.length ? cols : [{ id: "c0", label: "รายการ", type: "text" }];
             const mr = num(fo.min_rows);
             o.min_rows = mr !== undefined ? Math.min(20, Math.max(1, Math.round(mr))) : 1;
+            const xr = num(fo.max_rows);
+            if (xr !== undefined && xr >= 1) o.max_rows = Math.max(o.min_rows, Math.min(500, Math.round(xr)));
           }
           return o;
         });

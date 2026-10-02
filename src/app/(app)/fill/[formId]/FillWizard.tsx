@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Printer, Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
+import { Printer, Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, PenLine } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
@@ -13,7 +13,10 @@ import FormPaperFill from "@/components/FormPaperFill";
 import BodyPortal from "@/components/BodyPortal";
 import OptionPicker from "@/components/OptionPicker";
 import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
-import { mmToPx } from "@/lib/paper-layout";
+import { mmToPx, CONTROL_H } from "@/lib/paper-layout";
+import { dtNowValue, formatDtThai } from "@/lib/dt-format";
+import { pfDisplay } from "@/lib/field-display";
+import { nowMs } from "@/lib/clock";
 import { allPhotoSlotKeys, filledPhotoKeys, maxPhotosOf, minPhotosOf, parsePhotoSlotKey, photoSlotKey } from "@/lib/photo-slots";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
@@ -81,14 +84,15 @@ function shrinkImage(file: File): Promise<string> {
   return new Promise((res, rej) => {
     const img = new Image();
     img.onload = () => {
-      const MAX = 900;
+      // 1600px ด้านยาว — คมพอสำหรับใช้ต่อ/พิมพ์ (เดิม 900px) · ไฟล์ราว 250–450KB ต่อรูป
+      const MAX = 1600;
       const r = Math.min(1, MAX / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.round(img.width * r);
       c.height = Math.round(img.height * r);
       c.getContext("2d")!.drawImage(img, 0, 0, c.width, c.height);
       URL.revokeObjectURL(img.src);
-      res(c.toDataURL("image/jpeg", 0.7));
+      res(c.toDataURL("image/jpeg", 0.78));
     };
     img.onerror = () => rej(new Error("อ่านรูปไม่ได้"));
     img.src = URL.createObjectURL(file);
@@ -491,9 +495,14 @@ export default function FillWizard(props: Props) {
     rerender();
   }, [rerender, pruneChildren, fieldById, refreshFormulas]);
 
+  // แหล่งสแกนที่เติมฟิลด์ข้อความเดียว (เช่น ฟิลด์ "บาร์โค้ด/QR") → ปุ่มสแกนอยู่ในช่องนั้นเลย ไม่ต้องไปอยู่หัวขั้นตอน
+  const inlineScanOf = useCallback((st: FormStep) => new Set((st.fill_sources ?? [])
+    .filter((src) => src.kind === "scan" && (src.parse ?? "raw") === "raw" && src.map.length === 1 && st.fields.find((x) => x.id === src.map[0].field_id)?.type === "text")
+    .map((src) => src.map[0].field_id)), []);
+  const inlineScanIds = useMemo(() => new Set(schema.steps.flatMap((st) => [...inlineScanOf(st)])), [schema, inlineScanOf]);
   const fillBar = (st: FormStep) => (
     <FillSourceBar
-      step={st}
+      step={{ ...st, fill_sources: (st.fill_sources ?? []).filter((src) => !(src.kind === "scan" && src.map.length === 1 && inlineScanOf(st).has(src.map[0].field_id))) }}
       publicMode={props.publicMode}
       shrinkImage={shrinkImage}
       dataUrlToBlob={dataUrlToBlob}
@@ -506,28 +515,68 @@ export default function FillWizard(props: Props) {
     />
   );
 
+  /** ข้อความผิดพลาดของฟิลด์ (undefined = ผ่าน) — บอกชัดว่าต้องทำอะไร ตามชนิดฟิลด์ */
+  function fieldError(f: FormField, ph: Record<string, string> = photos, sg: Record<string, string> = sigs): string | undefined {
+    const a = answers.current[f.id] || {};
+    const str = typeof a.value === "string" ? a.value.trim() : "";
+    // รูปแบบข้อความ (ตรวจแม้ไม่บังคับ เมื่อกรอกมา)
+    if (f.type === "text" && str && f.text_format === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return t("fw.err.email");
+    if (f.type === "text" && str && f.text_format === "phone" && !/^\+?[0-9][0-9\s-]{7,14}$/.test(str)) return t("fw.err.phone");
+    if (f.type === "table") {
+      const rows = asRows(a.value).filter((r) => r && typeof r === "object" && Object.values(r).some((v) => String(v ?? "").trim() !== ""));
+      if (f.required && rows.length === 0) return t("fw.err.tableRow");
+      const reqCols = (f.columns || []).filter((c) => c.required && c.type !== "formula");
+      for (let ri = 0; ri < rows.length; ri++)
+        for (const c of reqCols) {
+          const v = c.type === "photo" ? cellPhotoKey(rows[ri], c.id) : String(rows[ri][c.id] ?? "").trim();
+          if (!v) return tt("fw.err.tableCell", { row: ri + 1, col: c.label });
+        }
+      return undefined;
+    }
+    if (f.type === "pass_fail" && a.value === "fail" && f.on_fail_require_note && !a.note?.trim()) return t("fw.failNoteRequired");
+    if (!f.required) return undefined;
+    switch (f.type) {
+      case "photo": {
+        const have = filledPhotoKeys(f, (k) => !!ph[k]).length;
+        const min = minPhotosOf(f);
+        if (have >= min) return undefined;
+        return min > 1 ? tt("fw.err.photoN", { n: min, have }) : t("fw.err.photo");
+      }
+      case "signature":
+        if (!sg[f.id]) return t("fw.err.signature");
+        return f.sign_name && !str ? t("fw.err.signName") : undefined;
+      case "checkbox": return Array.isArray(a.value) && a.value.length ? undefined : t("fw.err.checkbox");
+      case "select": return str ? undefined : t("fw.err.select");
+      case "pass_fail": return str ? undefined : t("fw.err.passFail");
+      case "formula": return undefined;
+      default: return a.value == null || a.value === "" ? t("fill.required") : undefined;
+    }
+  }
+
   function validate(fields: FormField[] = step.fields): boolean {
     const errs: Record<string, string> = {};
     for (const f of fields) {
-      if (!f.required) continue;
-      const a = answers.current[f.id] || {};
-      let miss = false;
-      if (f.type === "photo") miss = filledPhotoKeys(f, (k) => !!photos[k]).length < minPhotosOf(f);
-      else if (f.type === "signature") miss = !sigs[f.id];
-      else if (f.type === "checkbox") miss = !(Array.isArray(a.value) && a.value.length);
-      else if (f.type === "table")
-        miss = !(Array.isArray(a.value) && (a.value as TableRow[]).some((r) => r && typeof r === "object" && Object.values(r).some((v) => String(v ?? "").trim() !== "")));
-      else miss = a.value == null || a.value === "";
-      if (miss) {
-        errs[f.id] = t("fill.required");
-        continue;
-      }
-      if (f.type === "pass_fail" && a.value === "fail" && f.on_fail_require_note && !a.note?.trim())
-        errs[f.id] = t("fw.failNoteRequired");
+      const e = fieldError(f);
+      if (e) errs[f.id] = e;
     }
     setErrors(errs);
+    if (typeof document !== "undefined") {
+      const first = fields.find((f) => errs[f.id]);
+      if (first) setTimeout(() => document.getElementById("fld-" + first.id)?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
+    }
     return Object.keys(errs).length === 0;
   }
+
+  /** แก้ช่องที่มี error อยู่ → ตรวจช่องนั้นใหม่ทันที (ข้อความหายเมื่อแก้ถูก / เปลี่ยนเป็นข้อความที่ตรงกว่า) */
+  const recheck = (f: FormField, ph?: Record<string, string>, sg?: Record<string, string>) => {
+    setErrors((prev) => {
+      if (!(f.id in prev)) return prev;
+      const e = fieldError(f, ph, sg);
+      const n = { ...prev };
+      if (e) n[f.id] = e; else delete n[f.id];
+      return n;
+    });
+  };
 
   /** ฟิลด์ของช่วงที่ผู้ใช้คนนี้กรอก */
   const segFields = () => (viewOnly ? [] : schema.steps.slice(segStart, segEnd + 1).flatMap((s) => s.fields));
@@ -601,10 +650,11 @@ export default function FillWizard(props: Props) {
             if (sigs[f.id]) {
               photoUploads.push({ fieldId: f.id, dataUrl: sigs[f.id] });
               item.photoField = f.id;
-              item.display = "เซ็นแล้ว";
+              const who = typeof a.value === "string" ? a.value.trim() : "";
+              item.display = who ? `เซ็นแล้ว — ${who}` : "เซ็นแล้ว";
             }
           } else if (f.type === "pass_fail") {
-            item.display = a.value === "pass" ? "ผ่าน" : a.value === "fail" ? "ไม่ผ่าน" : "—";
+            item.display = pfDisplay(f, a.value);
             if (a.value === "fail") {
               item.fail = true;
               item.note = a.note || "";
@@ -642,13 +692,15 @@ export default function FillWizard(props: Props) {
             const name = labelMap(f.options, f.option_labels).get(a.value);
             item.display = name ?? a.value;
             if (name) item.code = a.value; // แสดงชื่อ เก็บรหัส
+          } else if (f.type === "datetime") {
+            item.display = a.value ? formatDtThai(String(a.value), f.dt_mode ?? "datetime") : "—";
           } else item.display = String(a.value ?? "—");
           list.push(item);
         }
 
       const result: "pass" | "fail" = fails.length ? "fail" : "pass";
       // งาน: นับเวลาตั้งแต่เริ่มงาน (ขั้นแรก) จนส่งขั้นสุดท้าย
-      const dur = Math.round((Date.now() - (kase ? new Date(kase.createdAt).getTime() : startedAt)) / 1000);
+      const dur = Math.round((nowMs() - (kase ? new Date(kase.createdAt).getTime() : startedAt)) / 1000);
 
       // โหมดสาธารณะ (ไม่ล็อกอิน) → ส่งผ่าน API ที่ตรวจสิทธิ์ฝั่ง server
       if (props.publicMode) {
@@ -713,7 +765,7 @@ export default function FillWizard(props: Props) {
 
       // ออฟไลน์ → เข้าคิวไว้ก่อน แล้ว sync ทีหลัง
       if (typeof navigator !== "undefined" && navigator.onLine === false) {
-        await enqueue({ ...payload, queuedAt: Date.now() });
+        await enqueue({ ...payload, queuedAt: nowMs() });
         window.dispatchEvent(new Event("krok-queue-changed"));
         // ออฟไลน์ลบร่างบน server ไม่ได้ตอนนี้ — ร่างจะถูกลบเมื่อกลับมาออนไลน์ครั้งถัดไปที่เปิดหน้าแบบร่าง
         // (ถือว่าส่งแล้ว: เก็บ id ไว้ให้หน้าแบบร่างซ่อน/ลบ)
@@ -729,7 +781,7 @@ export default function FillWizard(props: Props) {
         // เกินโควตาแพ็กเกจ → แจ้งผู้ใช้ตรง ๆ (เข้าคิวไปก็ส่งไม่ผ่านอยู่ดี)
         if (isQuotaError(err)) throw new Error(cleanQuotaMessage(String((err as { message?: string }).message)));
         // ส่งไม่ผ่าน (เครือข่ายหลุด) → เก็บเข้าคิวออฟไลน์
-        await enqueue({ ...payload, queuedAt: Date.now() });
+        await enqueue({ ...payload, queuedAt: nowMs() });
         window.dispatchEvent(new Event("krok-queue-changed"));
         rememberSubmittedDraft(draftId.current);
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
@@ -1026,11 +1078,12 @@ export default function FillWizard(props: Props) {
         paper={paper}
         compact={compact}
         photoCell={photoCell ? photoCellH : undefined}
+        inlineScan={inlineScanIds.has(f.id)}
         photoSlot={photoSlot}
         slotPhotos={f.type === "photo" && maxPhotosOf(f) > 1 ? allPhotoSlotKeys(f).map((k) => photos[k]) : undefined}
         setSlotPhoto={(slot, d) => {
           const k = photoSlotKey(f.id, slot);
-          setPhotos((prev) => { const n = { ...prev }; if (d) n[k] = d; else delete n[k]; return n; });
+          setPhotos((prev) => { const n = { ...prev }; if (d) n[k] = d; else delete n[k]; recheck(f, n); return n; });
           patchAnswer(f.id, { ai: undefined });
         }}
         attachments={attByField[f.id] || []}
@@ -1045,12 +1098,14 @@ export default function FillWizard(props: Props) {
         onPatch={(patch, render) => {
           patchAnswer(f.id, patch, render);
           if ("value" in patch) pruneChildren(f.id);
+          recheck(f);
         }}
         setPhoto={(d) => {
           setPhotos((prev) => {
             const nextP = { ...prev };
             if (d) nextP[f.id] = d;
             else delete nextP[f.id];
+            recheck(f, nextP);
             return nextP;
           });
           patchAnswer(f.id, { ai: undefined });
@@ -1061,6 +1116,7 @@ export default function FillWizard(props: Props) {
             const nextS = { ...prev };
             if (d) nextS[f.id] = d;
             else delete nextS[f.id];
+            recheck(f, undefined, nextS);
             return nextS;
           });
         }}
@@ -1242,7 +1298,7 @@ export default function FillWizard(props: Props) {
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 8px" }}>
         <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
-          STEP {idx + 1}/{schema.steps.length}
+          {tt("fw.stepOf", { n: idx + 1, total: schema.steps.length })}
         </span>
         <h3 style={{ fontSize: "1.05rem" }}>{step.title}</h3>
       </div>
@@ -1331,9 +1387,11 @@ function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Disp
 
 // ตารางกรอกข้อมูล — desktop = ตาราง, มือถือ = การ์ดต่อแถว
 function TableInput({
-  columns, minRows, initial, onChange, variant, fieldId, media,
+  columns, minRows, maxRows, initial, onChange, variant, fieldId, media,
 }: {
   fieldId: string;
+  /** จำนวนแถวสูงสุด (ไม่ระบุ = ไม่จำกัด) */
+  maxRows?: number;
   media?: MediaPhotos;
   columns: TableColumn[];
   minRows: number;
@@ -1356,7 +1414,19 @@ function TableInput({
     ? { field: "#fff", text: "#111", border: "#c3c8ce", card: "#fafbfc", cardBorder: "#d5d9de", muted: "#555", head: "#444", rule: "#ccc" }
     : { field: "var(--surface)", text: "var(--ink)", border: "var(--line)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
 
-  const { setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf } = useTableRows(cols, rows, setRows, onChange, fieldId, media);
+  const { setCell, addRow: addRowRaw, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf } = useTableRows(cols, rows, setRows, onChange, fieldId, media);
+  const canAdd = !maxRows || rows.length < maxRows;
+  // มือถือ: เปิดแก้ทีละแถว แถวอื่นพับเป็นบรรทัดสรุป (ตารางหลายคอลัมน์ไม่ยาวเป็นหน้า ๆ)
+  const [openRow, setOpenRow] = useState(() => {
+    const firstEmpty = rows.findIndex((r) => !Object.values(r).some((v) => String(v ?? "").trim()));
+    return firstEmpty >= 0 ? firstEmpty : rows.length - 1;
+  });
+  const addRow = () => { if (!canAdd) return; addRowRaw(); setOpenRow(rows.length); };
+  const colLabel = (c: TableColumn) => <>{c.type === "formula" ? "ƒ " : ""}{c.label}{c.required && <span style={{ color: "var(--fail)" }}> *</span>}</>;
+  const rowSummary = (r: TableRow) => cols
+    .filter((c) => c.type !== "photo")
+    .map((c) => { const v = String(r[c.id] ?? "").trim(); return v ? (c.type === "pass_fail" ? (v === "pass" ? "✓" : v === "fail" ? "✗" : v) : v) : ""; })
+    .filter(Boolean).slice(0, 4).join(" · ");
 
   const cellInput = (ri: number, c: TableColumn) => {
     const st: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
@@ -1367,9 +1437,13 @@ function TableInput({
   const btnSt: React.CSSProperties = { marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 };
   const addBtn = (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-      <button type="button" onClick={addRow} style={btnSt}>
-        <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fw.addRow")}
-      </button>
+      {canAdd ? (
+        <button type="button" onClick={addRow} style={btnSt}>
+          <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("fw.addRow")}
+        </button>
+      ) : (
+        <span style={{ marginTop: 8, fontSize: ".78rem", color: ink.muted }}>{tt("fw.maxRowsReached", { n: maxRows ?? 0 })}</span>
+      )}
       {scanCol && (
         <button type="button" onClick={() => setScanOpen(true)} style={{ ...btnSt, background: "var(--accent)", color: "var(--accent-ink)" }}>
           <Icon icon={ScanLine} className="h-3.5 w-3.5" /> {t("ctype.scanAdd")}
@@ -1383,8 +1457,16 @@ function TableInput({
     return (
       <div>
         <div style={{ display: "grid", gap: 8 }}>
-          {rows.map((_, ri) => (
-            <div key={ri} style={{ border: `1px solid ${ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
+          {rows.map((r, ri) => ri !== openRow && variant !== "compact" ? (
+            // แถวที่พับ: แตะเพื่อแก้
+            <button key={ri} type="button" onClick={() => setOpenRow(ri)}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", border: `1px solid ${ink.cardBorder}`, borderRadius: 10, padding: "10px 12px", background: ink.card, color: ink.text, fontFamily: "inherit", cursor: "pointer" }}>
+              <b style={{ fontSize: ".78rem", color: ink.muted, whiteSpace: "nowrap" }}>{tt("fw.rowN", { n: ri + 1 })}</b>
+              <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: ".86rem", color: rowSummary(r) ? ink.text : ink.muted }}>{rowSummary(r) || t("fw.rowEmpty")}</span>
+              <span style={{ fontSize: ".78rem", color: "var(--accent)", whiteSpace: "nowrap" }}>{t("fw.rowEdit")}</span>
+            </button>
+          ) : (
+            <div key={ri} style={{ border: `1px solid ${variant !== "compact" ? "var(--accent)" : ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <b style={{ fontSize: ".78rem", color: ink.muted }}>{tt("fw.rowN", { n: ri + 1 })}</b>
                 <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
@@ -1392,7 +1474,7 @@ function TableInput({
               <div style={{ display: "grid", gap: 7 }}>
                 {cols.map((c) => (
                   <label key={c.id} style={{ display: "grid", gap: 3 }}>
-                    <span style={{ fontSize: ".76rem", color: ink.muted, fontWeight: 600 }}>{c.label}</span>
+                    <span style={{ fontSize: ".76rem", color: ink.muted, fontWeight: 600 }}>{colLabel(c)}</span>
                     {cellInput(ri, c)}
                   </label>
                 ))}
@@ -1416,7 +1498,7 @@ function TableInput({
           </colgroup>
           <thead>
             <tr>
-              {cols.map((c) => <th key={c.id} style={{ textAlign: c.type === "formula" ? "right" : "left", fontSize: small ? ".76rem" : ".82rem", color: ink.head, padding: "4px 6px", borderBottom: `1px solid ${ink.rule}`, fontWeight: 700 }}>{c.type === "formula" ? "ƒ " : ""}{c.label}</th>)}
+              {cols.map((c) => <th key={c.id} style={{ textAlign: c.type === "formula" ? "right" : "left", fontSize: small ? ".76rem" : ".82rem", color: ink.head, padding: "4px 6px", borderBottom: `1px solid ${ink.rule}`, fontWeight: 700 }}>{colLabel(c)}</th>)}
               <th style={{ borderBottom: `1px solid ${ink.rule}` }} />
             </tr>
           </thead>
@@ -1459,8 +1541,11 @@ function FieldControl({
   photoSlot = 0,
   slotPhotos,
   setSlotPhoto,
+  inlineScan = false,
 }: {
   field: FormField;
+  /** ช่องข้อความที่สแกนบาร์โค้ด/QR ได้ — ปุ่มสแกนอยู่ในช่องนี้เลย */
+  inlineScan?: boolean;
   /** กล่องภาพประกอบ: แสดงเฉพาะช่องรูปสูง photoCell px (กดถ่าย/เปลี่ยนรูป) ไม่มีชื่อช่อง */
   photoCell?: number;
   /** ช่องที่เท่าไรของฟิลด์ (ใช้กับ photoCell) */
@@ -1489,7 +1574,7 @@ function FieldControl({
   compact?: boolean;
   publicMode?: boolean;
 }) {
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
   const [initial] = useState(getInitial);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState(initial.ai || "");
@@ -1583,20 +1668,61 @@ function FieldControl({
   const dsBound = !!f.options_source && !f.options_error && (f.type === "select" || f.type === "checkbox");
   const dsOptions = dsBound ? filterOptions(f.options || [], f.options_parents, parentValue) : [];
   const waitParent = dsBound && !!f.options_parents && (parentValue == null || parentValue === "" || (Array.isArray(parentValue) && parentValue.length === 0));
-  const [dtDefault] = useState(() =>
-    new Date(Date.now() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16)
-  );
+  const dtMode = f.dt_mode ?? "datetime";
+  const dtInputType = dtMode === "date" ? "date" : dtMode === "time" ? "time" : "datetime-local";
+  const [dtDefault] = useState(() => (f.dt_no_default ? "" : dtNowValue(dtMode)));
+  const [dtValue, setDtValue] = useState(() => String(initial.value ?? dtDefault));
   // seed datetime default so an untouched required field still submits
   useEffect(() => {
-    if (f.type === "datetime" && (initial.value == null || initial.value === "")) {
+    if (f.type === "datetime" && dtDefault && (initial.value == null || initial.value === "")) {
       onPatch({ value: dtDefault });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  const passText = f.pass_label?.trim() || t("fw.pass");
+  const failText = f.fail_label?.trim() || t("fw.fail");
+  const textInputProps = {
+    type: f.text_format === "email" ? "email" : f.text_format === "phone" ? "tel" : "text",
+    inputMode: f.text_format === "email" ? ("email" as const) : f.text_format === "phone" ? ("tel" as const) : undefined,
+    autoComplete: f.text_format === "email" ? "email" : f.text_format === "phone" ? "tel" : "off",
+    enterKeyHint: "next" as const,
+  };
+  const textPh = f.example ? tt("fw.examplePh", { ex: f.example }) : f.text_format === "email" ? "name@example.com" : f.text_format === "phone" ? "08x-xxx-xxxx" : t("fw.answerPh");
 
   // ---------- โหมดกระดาษ (compact): ใช้ชิ้นส่วนเดียวกับ Editor ให้พอดีกล่องที่ออกแบบ ----------
   // เนื้อหาที่งอกเกินกล่อง (หมายเหตุตอนไม่ผ่าน, error, เอกสารแนบ, แถวตารางที่เพิ่ม)
   // จะดันช่องด้านล่างลงเอง (FormPaperFill.reflow) — ไม่ทับกัน
+  // ช่องข้อความที่สแกนได้: ช่องกรอก + ปุ่มสแกนในช่องเดียวกัน
+  const scanBox = (small: boolean) => (
+    <>
+      <div style={{ display: "flex", gap: small ? 4 : 8, alignItems: "center" }}>
+        <input type="text" enterKeyHint="next" autoComplete="off" style={small ? { ...paperInputStyle, flex: 1 } : { ...input, flex: 1, minWidth: 0 }} value={scanValue}
+          placeholder={small ? "" : f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.codePh")}
+          onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
+        {small ? (
+          <button type="button" onClick={() => setLiveOpen(true)} aria-label={t("scan.live")} title={t("scan.live")}
+            style={{ height: CONTROL_H, width: 30, flexShrink: 0, border: "1px solid #2f6fe0", borderRadius: 4, background: "#eef4ff", color: "#2f6fe0", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}>
+            <Icon icon={ScanLine} className="h-3.5 w-3.5" />
+          </button>
+        ) : (
+          <Button variant="primary" onClick={() => setLiveOpen(true)} style={{ whiteSpace: "nowrap" }}><Icon icon={ScanLine} className="h-4 w-4" /> {t("scan.live")}</Button>
+        )}
+      </div>
+      {!small && (
+        <button type="button" onClick={() => scanRef.current?.click()}
+          style={{ marginTop: 6, background: "none", border: "none", padding: 0, color: "var(--accent)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+          <Icon icon={Camera} className="h-3.5 w-3.5" /> {t("fw.scan.fromPhoto")}
+        </button>
+      )}
+      <input ref={scanRef} type="file" accept="image/*" capture="environment" hidden onChange={onScan} />
+      {scanMsg && <div style={{ fontSize: small ? ".66rem" : ".8rem", color: small ? "#666" : "var(--ink-3)", marginTop: 4 }}>{scanMsg}</div>}
+      {liveOpen && (
+        <LiveScanner onClose={() => setLiveOpen(false)}
+          onResult={(code) => { setLiveOpen(false); setScanValue(code); onPatch({ value: code }); setScanMsg(tt("fw.scan.read", { code })); }} />
+      )}
+    </>
+  );
+
   if (photoCell && f.type === "photo") {
     const cellUrl = slotPhotos ? slotPhotos[photoSlot] : photo;
     const pickThis = () => (slotPhotos ? pickSlot(photoSlot) : photoRef.current?.click());
@@ -1619,8 +1745,15 @@ function FieldControl({
   // ฟิลด์หลายรูป (นอกกล่องภาพประกอบ): แถบรูปย่อ + เพิ่มรูป
   const multiStrip = slotPhotos && setSlotPhoto ? (
     <>
-      <MultiPhotoStrip urls={slotPhotos} paper={paper} compact={compact} min={minPhotosOf(f)}
-        onAdd={() => pickSlot(null)} onRetake={(i) => pickSlot(i)} onRemove={(i) => setSlotPhoto(i, null)} />
+      {compact ? (
+        <MultiPhotoStrip urls={slotPhotos} paper={paper} compact={compact} min={minPhotosOf(f)} hideMin={!!error}
+          onAdd={() => pickSlot(null)} onRetake={(i) => pickSlot(i)} onRemove={(i) => setSlotPhoto(i, null)} />
+      ) : (
+        // มุมมองมือถือ: ช่องรูปแยกตามจำนวนที่ตั้ง พร้อมชื่อใต้รูป (รู้ว่าต้องถ่ายอะไรในแต่ละช่อง)
+        <PhotoSlots urls={slotPhotos} paper={paper} min={minPhotosOf(f)} hideMin={!!error}
+          captions={slotPhotos.map((_, i) => f.photo_labels?.[i]?.trim() || tt("print.photos.slotN", { n: i + 1 }))}
+          onPick={(i) => pickSlot(i)} onPickMany={() => pickSlot(null)} onRemove={(i) => setSlotPhoto(i, null)} />
+      )}
       <input ref={photoRef} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
     </>
   ) : null;
@@ -1637,14 +1770,15 @@ function FieldControl({
             {formulaValue == null ? t("formula.pending") : formatNumber(formulaValue, f.decimals ?? 2)}
           </div>
         )}
-        {f.type === "text" && (
-          <input type="text" style={paperInputStyle} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : ""} onChange={(e) => onPatch({ value: e.target.value })} />
+        {f.type === "text" && !inlineScan && (
+          <input {...textInputProps} style={paperInputStyle} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : ""} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
+        {f.type === "text" && inlineScan && scanBox(true)}
         {f.type === "number" && (
           <input type="number" inputMode="decimal" style={{ ...paperInputStyle, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? tt("fw.rangeTitle", { min: f.min ?? "–", max: f.max ?? "–" }) : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
         )}
         {f.type === "datetime" && (
-          <input type="datetime-local" style={paperInputStyle} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
+          <input type={dtInputType} style={paperInputStyle} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
         )}
         {(f.type === "select" || f.type === "checkbox") && (
           dsBound ? (
@@ -1672,7 +1806,7 @@ function FieldControl({
         )}
         {f.type === "pass_fail" && (
           <>
-            <PaperPassFail value={pf} onChange={(v) => { setPf(v); onPatch({ value: v }, true); }} />
+            <PaperPassFail value={pf} passLabel={passText} failLabel={failText} allowNa={!!f.allow_na} onChange={(v) => { setPf(v); onPatch({ value: v }, true); }} />
             {pf === "fail" && (
               <textarea style={{ ...paperInputStyle, height: 44, padding: "4px 8px", marginTop: 4, resize: "vertical" }} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
             )}
@@ -1693,6 +1827,7 @@ function FieldControl({
         {f.type === "signature" && (
           <>
             <PaperSignature url={sigUrl} onOpen={() => setSigOpen(true)} />
+            {f.sign_name && <input type="text" style={{ ...paperInputStyle, marginTop: 3 }} defaultValue={String(initial.value ?? "")} placeholder={t("fw.sig.namePh")} onChange={(e) => onPatch({ value: e.target.value })} />}
             {sigOpen && <SignatureModal label={f.label} initialUrl={sigUrl} onClose={() => setSigOpen(false)} onSave={(d) => { setSig(d); setSigOpen(false); }} />}
           </>
         )}
@@ -1711,15 +1846,11 @@ function FieldControl({
   }
 
   return (
-    <div style={{ ...box, ...(error ? (paper ? { borderBottomColor: "var(--fail)" } : { borderColor: "var(--fail)" }) : {}) }}>
+    // ใช้ border แบบเต็ม (ไม่ใช่ borderColor) — React ลบ longhand แล้วสีกรอบกลายเป็นสีดำ
+    <div style={{ ...box, ...(error ? (paper ? { borderBottom: "1px solid var(--fail)" } : { border: "1px solid var(--fail)" }) : {}) }}>
       <div style={{ fontWeight: compact ? 700 : 600, fontSize: compact ? ".78rem" : undefined, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap", color: paper ? "#111" : undefined }}>
         {f.label}
         {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
-        {!paper && (
-          <span style={{ fontFamily: "monospace", fontSize: ".65rem", color: "var(--ink-3)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 6px", marginLeft: "auto" }}>
-            {t(`ftype.${f.type}`)}
-          </span>
-        )}
       </div>
       {!compact && f.tooltip && (
         <div style={{ fontSize: ".83rem", color: paper ? "#555" : "var(--ink-2)", background: paper ? "#f4f5f6" : "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0", display: "flex", gap: 7, alignItems: "flex-start" }}>
@@ -1736,28 +1867,35 @@ function FieldControl({
       )}
 
       <div style={{ marginTop: compact ? 4 : 8 }}>
-        {f.type === "text" && (
-          compact
-            ? <input type="text" style={input} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.answerPh")} onChange={(e) => onPatch({ value: e.target.value })} />
-            : <textarea style={{ ...input, minHeight: 60, resize: "vertical" }} rows={2} defaultValue={String(initial.value ?? "")} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.answerPh")} onChange={(e) => onPatch({ value: e.target.value })} />
+        {f.type === "text" && inlineScan && scanBox(false)}
+        {f.type === "text" && !inlineScan && (
+          f.long_text && !compact
+            ? <textarea style={{ ...input, minHeight: 72, resize: "vertical" }} rows={3} defaultValue={String(initial.value ?? "")} placeholder={textPh} onChange={(e) => onPatch({ value: e.target.value })} />
+            : <input {...textInputProps} style={input} defaultValue={String(initial.value ?? "")} placeholder={textPh} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
         {f.type === "number" && (
           <>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="number" inputMode="decimal" style={{ ...input, flex: 1 }} value={numValue} placeholder={f.example || "0"} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <input type="number" inputMode="decimal" enterKeyHint="next" style={{ ...input, flex: 1 }} value={numValue} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.numPh")} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
               {f.unit && <span style={{ color: "var(--ink-2)" }}>{f.unit}</span>}
             </div>
             {(f.min != null || f.max != null) && <NumHint field={f} value={numValue} />}
           </>
         )}
         {f.type === "datetime" && (
-          <input type="datetime-local" style={input} defaultValue={String(initial.value ?? dtDefault)} onChange={(e) => onPatch({ value: e.target.value })} />
+          <>
+            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+              <input type={dtInputType} style={{ ...input, flex: 1 }} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <Button onClick={() => { const v = dtNowValue(dtMode); setDtValue(v); onPatch({ value: v }); }} style={{ whiteSpace: "nowrap" }}>{dtMode === "date" ? t("fw.dt.today") : t("fw.dt.now")}</Button>
+            </div>
+            {dtValue && <div style={{ fontSize: ".8rem", color: paper ? "#666" : "var(--ink-3)", marginTop: 4 }}>{formatDtThai(dtValue, dtMode, lang === "en" ? "en" : "th")}</div>}
+          </>
         )}
         {f.type === "formula" && (() => {
           const bad = outOfRange(formulaValue ?? null, f);
           return (
             <>
-              <div aria-live="polite" style={{ ...input, display: "flex", alignItems: "center", gap: 10, background: paper ? "#f4f6f8" : "var(--code-bg)", cursor: "default", ...(bad ? { borderColor: "var(--fail)" } : {}) }}>
+              <div aria-live="polite" style={{ ...input, display: "flex", alignItems: "center", gap: 10, background: paper ? "#f4f6f8" : "var(--code-bg)", cursor: "default", ...(bad ? { border: "1px solid var(--fail)" } : {}) }}>
                 <span style={{ fontSize: ".74rem", color: paper ? "#888" : "var(--ink-3)" }}>ƒ {t("formula.auto")}</span>
                 <b className="tabnum" style={{ marginLeft: "auto", fontSize: "1.05rem", color: formulaValue == null ? (paper ? "#999" : "var(--ink-3)") : bad ? "var(--fail)" : undefined }}>
                   {formulaValue == null ? t("formula.pending") : formatNumber(formulaValue, f.decimals ?? 2)}
@@ -1799,14 +1937,28 @@ function FieldControl({
         {f.options_error && (f.type === "select" || f.type === "checkbox") && (
           <div style={{ fontSize: ".76rem", color: "var(--amber)", margin: "4px 0" }}>⚠ {f.options_error}</div>
         )}
-        {f.type === "select" && !dsBound &&
+        {f.type === "select" && !dsBound && (f.options || []).length > MANY_OPTIONS && (
+          <OptionPicker name={"r_" + f.id} options={f.options || []} multiple={false} value={selVal} paper={paper} compact={compact}
+            onChange={(v) => { const one = Array.isArray(v) ? v[0] ?? "" : v; setSelVal(one); onPatch({ value: one || undefined }); }} />
+        )}
+        {f.type === "select" && !dsBound && (f.options || []).length <= MANY_OPTIONS &&
           (f.options || []).map((o) => (
             <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
-              <input type="radio" name={"r_" + f.id} value={o} defaultChecked={initial.value === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => onPatch({ value: o })} />
+              <input type="radio" name={"r_" + f.id} value={o} checked={selVal === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => { setSelVal(o); onPatch({ value: o }); }} />
               {o}
             </label>
           ))}
-        {f.type === "checkbox" && !dsBound &&
+        {f.type === "select" && !dsBound && !f.required && selVal && (f.options || []).length <= MANY_OPTIONS && (
+          <button type="button" onClick={() => { setSelVal(""); onPatch({ value: undefined }); }}
+            style={{ background: "none", border: "none", padding: "2px 4px", color: paper ? "#666" : "var(--ink-3)", fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer", textDecoration: "underline" }}>
+            {t("fw.clearChoice")}
+          </button>
+        )}
+        {f.type === "checkbox" && !dsBound && (f.options || []).length > MANY_OPTIONS && (
+          <OptionPicker name={"r_" + f.id} options={f.options || []} multiple value={cbVals} paper={paper} compact={compact}
+            onChange={(v) => { const arr = Array.isArray(v) ? v : v ? [v] : []; setCbVals(arr); onPatch({ value: arr }); }} />
+        )}
+        {f.type === "checkbox" && !dsBound && (f.options || []).length <= MANY_OPTIONS &&
           (f.options || []).map((o) => (
             <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
               <input
@@ -1825,9 +1977,12 @@ function FieldControl({
           ))}
         {f.type === "pass_fail" && (
           <>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-              <PfBtn active={pf === "pass"} kind="pass" paper={paper} onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> {t("fw.pass")}</span></PfBtn>
-              <PfBtn active={pf === "fail"} kind="fail" paper={paper} onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> {t("fw.fail")}</span></PfBtn>
+            <div style={{ display: "grid", gridTemplateColumns: f.allow_na ? "1fr 1fr auto" : "1fr 1fr", gap: 10 }}>
+              <PfBtn active={pf === "pass"} kind="pass" paper={paper} onClick={() => { setPf("pass"); onPatch({ value: "pass" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> {passText}</span></PfBtn>
+              <PfBtn active={pf === "fail"} kind="fail" paper={paper} onClick={() => { setPf("fail"); onPatch({ value: "fail" }, true); }}><span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}><Icon icon={X} className="h-4 w-4" /> {failText}</span></PfBtn>
+              {f.allow_na && (
+                <PfBtn active={pf === "na"} kind="na" paper={paper} onClick={() => { setPf("na"); onPatch({ value: "na" }, true); }}>{t("fw.na")}</PfBtn>
+              )}
             </div>
             {pf === "fail" && (
               <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
@@ -1868,13 +2023,21 @@ function FieldControl({
             )}
           </>
         )}
-        {f.type === "signature" && <SignaturePad hasSig={hasSig} onSave={setSig} paper={paper} compact={compact} />}
+        {f.type === "signature" && (
+          <>
+            <SignaturePad hasSig={hasSig} initialUrl={sigUrl} onSave={setSig} paper={paper} compact={compact} />
+            {f.sign_name && (
+              <input type="text" style={{ ...input, marginTop: 8 }} defaultValue={String(initial.value ?? "")} placeholder={t("fw.sig.namePh")} onChange={(e) => onPatch({ value: e.target.value })} />
+            )}
+          </>
+        )}
         {f.type === "table" && (
           <TableInput
             fieldId={f.id}
             media={media}
             columns={f.columns || []}
             minRows={f.min_rows || 1}
+            maxRows={f.max_rows}
             initial={Array.isArray(initial.value) && typeof initial.value[0] === "object" ? (initial.value as TableRow[]) : []}
             onChange={(rows) => onPatch({ value: rows }, false)}
             variant={compact ? "compact" : paper ? "paper" : "normal"}
@@ -1887,9 +2050,56 @@ function FieldControl({
   );
 }
 
+/** มุมมองมือถือ: ช่องรูปทีละช่อง (ชื่อใต้รูปตามที่ตั้ง) · แตะช่องว่าง = ถ่าย · แตะรูป = ถ่ายใหม่ · × = ลบ */
+function PhotoSlots({ urls, captions, paper, min, hideMin = false, onPick, onPickMany, onRemove }: {
+  urls: (string | undefined)[]; captions: string[]; paper: boolean; min: number; hideMin?: boolean;
+  onPick: (slot: number) => void; onPickMany: () => void; onRemove: (slot: number) => void;
+}) {
+  const { t, tt } = useT();
+  const filled = urls.filter(Boolean).length;
+  const line = paper ? "#b9bec4" : "var(--line)";
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: `repeat(${urls.length >= 3 ? 3 : urls.length}, minmax(0, 1fr))`, gap: 8 }}>
+        {urls.map((u, i) => (
+          <div key={i} style={{ minWidth: 0 }}>
+            <div style={{ position: "relative", aspectRatio: "4 / 3" }}>
+              <button type="button" data-print-keep={u ? "" : undefined} onClick={() => onPick(i)} aria-label={u ? `${t("fw.paper.retake")} ${captions[i]}` : `${t("fw.takePhoto")} ${captions[i]}`}
+                style={{ position: "absolute", inset: 0, padding: 0, border: u ? `1px solid ${line}` : `2px dashed ${line}`, borderRadius: 10, overflow: "hidden", background: u ? "#000" : "transparent", color: paper ? "#777" : "var(--ink-3)", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, fontFamily: "inherit", fontSize: ".78rem" }}>
+                {u ? <img src={u} alt={captions[i]} style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }} />
+                  : <><Icon icon={Camera} className="h-5 w-5" /> {t("fw.photo.take")}</>}
+              </button>
+              {u && (
+                <button type="button" onClick={() => onRemove(i)} aria-label={t("ctype.photoRemove")} title={t("ctype.photoRemove")}
+                  style={{ position: "absolute", top: -7, right: -7, width: 24, height: 24, borderRadius: 999, border: "2px solid #fff", background: "#dc2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+                  <Icon icon={X} className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+            <div title={captions[i]} style={{ fontSize: ".76rem", color: paper ? "#444" : "var(--ink-2)", marginTop: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: u ? 400 : 600 }}>{captions[i]}</div>
+          </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 6, flexWrap: "wrap" }}>
+        {filled < urls.length && (
+          <button type="button" onClick={onPickMany} style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer" }}>
+            {t("fw.photo.pickMany")}
+          </button>
+        )}
+        <span style={{ fontSize: ".78rem", color: paper ? "#777" : "var(--ink-3)", marginLeft: "auto" }}>
+          {tt("fw.photo.count", { n: filled, max: urls.length })}{min > 1 && filled < min && !hideMin ? ` · ${tt("fw.photo.min", { n: min })}` : ""}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+/** ตัวเลือกที่พิมพ์เองมากกว่านี้ → ใช้ช่องค้นหา (รายการวิทยุยาวเกินบนมือถือ) */
+const MANY_OPTIONS = 8;
+
 /** ฟิลด์หลายรูป: รูปย่อทุกช่องที่มีรูป (แตะ = เปลี่ยน, × = ลบ) + ปุ่มเพิ่มรูปจนครบจำนวนสูงสุด */
-function MultiPhotoStrip({ urls, paper, compact, min, onAdd, onRetake, onRemove }: {
-  urls: (string | undefined)[]; paper: boolean; compact: boolean; min: number;
+function MultiPhotoStrip({ urls, paper, compact, min, hideMin = false, onAdd, onRetake, onRemove }: {
+  urls: (string | undefined)[]; paper: boolean; compact: boolean; min: number; hideMin?: boolean;
   onAdd: () => void; onRetake: (slot: number) => void; onRemove: (slot: number) => void;
 }) {
   const { t, tt } = useT();
@@ -1918,7 +2128,7 @@ function MultiPhotoStrip({ urls, paper, compact, min, onAdd, onRetake, onRemove 
           </button>
         )}
       </div>
-      {min > 1 && filled.length < min && (
+      {min > 1 && filled.length < min && !hideMin && (
         <div style={{ fontSize: compact ? ".64rem" : ".76rem", color: paper || compact ? "#777" : "var(--ink-3)", marginTop: 3 }}>{tt("fw.photo.min", { n: min })}</div>
       )}
     </div>
@@ -1937,10 +2147,12 @@ function NumHint({ field: f, value }: { field: FormField; value?: string }) {
   );
 }
 
-function PfBtn({ active, kind, onClick, children, paper = false }: { active: boolean; kind: "pass" | "fail"; onClick: () => void; children: React.ReactNode; paper?: boolean }) {
+function PfBtn({ active, kind, onClick, children, paper = false }: { active: boolean; kind: "pass" | "fail" | "na"; onClick: () => void; children: React.ReactNode; paper?: boolean }) {
   const on = kind === "pass"
-    ? { background: "var(--pass-soft)", borderColor: "var(--pass)", color: "var(--pass)" }
-    : { background: "var(--fail-soft)", borderColor: "var(--fail)", color: "var(--fail)" };
+    ? { background: "var(--pass-soft)", border: "1px solid var(--pass)", color: "var(--pass)" }
+    : kind === "fail"
+    ? { background: "var(--fail-soft)", border: "1px solid var(--fail)", color: "var(--fail)" }
+    : { background: paper ? "#eef0f2" : "var(--code-bg)", border: `1px solid ${paper ? "#666" : "var(--ink-3)"}`, color: paper ? "#333" : "var(--ink-2)" };
   const base = paper
     ? { border: "1px solid #b9bec4", background: "#fff", color: "#111" }
     : { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" };
@@ -1951,7 +2163,7 @@ function PfBtn({ active, kind, onClick, children, paper = false }: { active: boo
   );
 }
 
-function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasSig: boolean; onSave: (d: string | null) => void; paper?: boolean; compact?: boolean }) {
+function SignaturePad({ hasSig, initialUrl, onSave, paper = false, compact = false }: { hasSig: boolean; initialUrl?: string; onSave: (d: string | null) => void; paper?: boolean; compact?: boolean }) {
   const { t } = useT();
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
@@ -1967,9 +2179,19 @@ function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasS
     ctx.scale(2, 2);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = paper ? "#111" : getComputedStyle(document.body).color;
-  }, [paper, h]);
-  useEffect(() => { setup(); }, [setup]);
+    // หมึกสีเข้มเสมอ (โหมดมืดเดิมได้เส้นสีขาว → พิมพ์บนกระดาษขาวแล้วมองไม่เห็น)
+    ctx.strokeStyle = "#111";
+  }, [h]);
+  useEffect(() => {
+    setup();
+    // กลับมาหน้านี้อีกครั้ง: วาดลายเซ็นเดิมกลับลงไป
+    if (initialUrl && ref.current) {
+      const img = new Image();
+      img.onload = () => { const cv = ref.current; if (cv) cv.getContext("2d")!.drawImage(img, 0, 0, cv.offsetWidth, h); };
+      img.src = initialUrl;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [setup]);
 
   const pos = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect();
@@ -1978,9 +2200,11 @@ function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasS
 
   return (
     <>
+      <div style={{ position: "relative" }}>
       <canvas
         ref={ref}
-        style={{ width: "100%", height: h, border: paper ? "1px dashed #b9bec4" : "1px dashed var(--line)", borderRadius: 10, background: paper ? "#fff" : "var(--surface)", touchAction: "none", display: "block" }}
+        aria-label={t("fw.sig.here")}
+        style={{ width: "100%", height: h, border: paper ? "1px dashed #b9bec4" : "1px dashed var(--line)", borderRadius: 10, background: "#fff", touchAction: "none", display: "block", position: "relative" }}
         onPointerDown={(e) => { drawing.current = true; last.current = pos(e); ref.current!.setPointerCapture(e.pointerId); }}
         onPointerMove={(e) => {
           if (!drawing.current) return;
@@ -1996,6 +2220,14 @@ function SignaturePad({ hasSig, onSave, paper = false, compact = false }: { hasS
         onPointerUp={() => { drawing.current = false; }}
         onPointerCancel={() => { drawing.current = false; }}
       />
+      {/* เส้นเซ็น + คำแนะนำ (หายเมื่อเซ็นแล้ว) */}
+      <div aria-hidden style={{ position: "absolute", left: 16, right: 16, bottom: compact ? 12 : 26, borderBottom: "1px solid #c3c8ce", pointerEvents: "none", zIndex: 1 }} />
+      {!hasSig && (
+        <div aria-hidden style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", gap: 6, color: "#9aa0a6", fontSize: compact ? ".72rem" : ".88rem", pointerEvents: "none", zIndex: 1 }}>
+          <Icon icon={PenLine} className="h-4 w-4" /> {t("fw.sig.here")}
+        </div>
+      )}
+      </div>
       <div style={{ marginTop: 6 }}>
         <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); onSave(null); }}>{t("fw.sig.clear")}</Button>
         {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={Check} className="h-3.5 w-3.5" /> {t("fw.sig.signed")}</span>}
@@ -2040,7 +2272,7 @@ function PaperTableField({ field: f, initial, onChange, media }: { field: FormFi
               <Icon icon={ScanLine} className="h-3 w-3" /> {t("ctype.scan")}
             </button>
           )}
-          <PaperAddRow onClick={addRow} />
+          {(!f.max_rows || rows.length < f.max_rows) && <PaperAddRow onClick={addRow} />}
         </span>
       } />
       <PaperTable

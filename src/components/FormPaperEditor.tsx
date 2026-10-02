@@ -31,12 +31,12 @@ function FieldPreview({ f }: { f: FormField }) {
     return <>{label}<PaperTable columns={f.columns || []} rows={rows} disabled /></>;
   }
   let body: React.ReactNode;
-  if (f.type === "pass_fail") body = <PaperPassFail disabled />;
+  if (f.type === "pass_fail") body = <PaperPassFail disabled passLabel={f.pass_label} failLabel={f.fail_label} allowNa={!!f.allow_na} />;
   else if (f.type === "photo") body = <PaperPhoto disabled />;
   else if (f.type === "signature") body = <PaperSignature disabled />;
   else if ((f.type === "select" || f.type === "checkbox") && f.options_source) body = inputLike(t("fw.dsOptionsPh"));
   else if (f.type === "select" || f.type === "checkbox") body = <PaperChoices name={`p_${f.id}`} options={f.options || []} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? [] : ""} disabled />;
-  else if (f.type === "datetime") body = inputLike(t("fw.datePh"));
+  else if (f.type === "datetime") body = inputLike(f.dt_mode === "date" ? "วว/ดด/ปปปป" : f.dt_mode === "time" ? "--:--" : t("fw.datePh"));
   else if (f.type === "formula") body = <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", justifyContent: "space-between", color: "#999", background: "#f4f6f8" }}><span>ƒ</span><span>{t("formula.auto")}</span></div>;
   else body = inputLike(f.example ? tt("fw.examplePh", { ex: f.example }) : "");
   return <>{label}{body}</>;

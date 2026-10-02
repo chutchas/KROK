@@ -12,8 +12,9 @@ function Blank({ f }: { f: FormField }) {
   if (f.type === "pass_fail") {
     return (
       <span style={{ display: "inline-flex", gap: 14, fontSize: ".82rem" }}>
-        <span>☐ {t("fw.pass")}</span>
-        <span>☐ {t("fw.fail")}</span>
+        <span>☐ {f.pass_label || t("fw.pass")}</span>
+        <span>☐ {f.fail_label || t("fw.fail")}</span>
+        {f.allow_na && <span>☐ {t("fw.na")}</span>}
       </span>
     );
   }

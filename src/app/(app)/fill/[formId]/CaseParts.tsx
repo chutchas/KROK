@@ -1,5 +1,6 @@
 "use client";
 // ชิ้นส่วนหน้าจอของ "งาน" (ฟอร์มกรอกหลายคน): ช่องแบบอ่านอย่างเดียว, แถบสถานะงาน, หน้าต่างส่งต่อ/ส่งกลับ
+import { formatDtThai } from "@/lib/dt-format";
 import { backdropClose } from "@/lib/backdrop";
 import { useEffect, useId, useState } from "react";
 import Link from "next/link";
@@ -25,17 +26,14 @@ const fmtTime = (iso: string, lang: Lang) => {
 function textOf(f: FormField, a: Answer | undefined, t: (k: MessageKey) => string, lang: Lang): string {
   const v = a?.value;
   if (v == null || v === "" || (Array.isArray(v) && !v.length)) return "";
-  if (f.type === "pass_fail") return v === "pass" ? t("case.pass") : v === "fail" ? `${t("case.fail")}${a?.note ? ` — ${a.note}` : ""}` : String(v);
+  if (f.type === "pass_fail") return v === "pass" ? (f.pass_label || t("case.pass")) : v === "fail" ? `${f.fail_label || t("case.fail")}${a?.note ? ` — ${a.note}` : ""}` : v === "na" ? t("fw.na") : String(v);
   if (f.type === "select" || f.type === "checkbox") {
     const names = labelMap(f.options, f.option_labels);
     const vals = Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === "string") : [String(v)];
     return vals.map((x) => names.get(x) ?? x).join(", ");
   }
   if (f.type === "number" || f.type === "formula") return `${v}${f.unit ? " " + f.unit : ""}`;
-  if (f.type === "datetime" && typeof v === "string") {
-    const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? v : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" });
-  }
+  if (f.type === "datetime" && typeof v === "string") return formatDtThai(v, f.dt_mode ?? "datetime", lang === "en" ? "en" : "th");
   return typeof v === "string" ? v : "";
 }
 

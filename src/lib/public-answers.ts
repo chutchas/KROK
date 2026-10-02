@@ -10,6 +10,7 @@ import { tableCodeKey } from "@/lib/answer-item";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, rowPhotoKeyOf } from "@/lib/table-rows";
 import { allPhotoSlotKeys, parsePhotoSlotKey } from "@/lib/photo-slots";
+import { pfCodeOf, pfDisplay } from "@/lib/field-display";
 
 const SRC = new Set(["scan", "ai", "ai_edited"]);
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -69,12 +70,16 @@ export function sanitizePublicAnswers(
         item.display = str(a.display, 500) ?? "—";
       } else item.display = "—";
     } else if (f.type === "signature") {
-      if (uploaded.has(f.id)) { item.photoField = f.id; item.display = "เซ็นแล้ว"; }
+      if (uploaded.has(f.id)) {
+        item.photoField = f.id;
+        const d = str(a.display, 150) ?? "";
+        item.display = d.startsWith("เซ็นแล้ว") ? d : "เซ็นแล้ว"; // "เซ็นแล้ว — ชื่อผู้เซ็น"
+      }
       else item.display = "—";
     } else if (f.type === "pass_fail") {
-      const d = str(a.display, 20);
-      const isFail = d === "ไม่ผ่าน" || a.fail === true;
-      item.display = isFail ? "ไม่ผ่าน" : d === "ผ่าน" ? "ผ่าน" : "—";
+      const code = a.fail === true ? "fail" : pfCodeOf(f, str(a.display, 40));
+      const isFail = code === "fail";
+      item.display = pfDisplay(f, code);
       if (isFail) { item.fail = true; item.note = str(a.note, 1000) ?? ""; fails.push(f.label); }
     } else if (f.type === "number") {
       const d = str(a.display, 100) ?? "—";

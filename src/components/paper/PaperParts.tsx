@@ -169,11 +169,15 @@ export function PaperChoices({
 }
 
 /** ผ่าน / ไม่ผ่าน — ปุ่มเล็กบรรทัดเดียว */
-export function PaperPassFail({ value, onChange, disabled = false }: { value?: string; onChange?: (v: "pass" | "fail") => void; disabled?: boolean }) {
+export function PaperPassFail({ value, onChange, disabled = false, passLabel, failLabel, allowNa = false }: {
+  value?: string; onChange?: (v: "pass" | "fail" | "na") => void; disabled?: boolean;
+  /** คำบนปุ่มที่ตั้งไว้ในฟอร์ม */
+  passLabel?: string; failLabel?: string; allowNa?: boolean;
+}) {
   const { t } = useT();
-  const btn = (kind: "pass" | "fail") => {
+  const btn = (kind: "pass" | "fail" | "na") => {
     const on = value === kind;
-    const color = kind === "pass" ? "#15803d" : "#dc2626";
+    const color = kind === "pass" ? "#15803d" : kind === "fail" ? "#dc2626" : "#444";
     return (
       <button
         type="button"
@@ -181,16 +185,17 @@ export function PaperPassFail({ value, onChange, disabled = false }: { value?: s
         disabled={disabled}
         onClick={() => onChange?.(kind)}
         style={{
-          flex: 1, height: CONTROL_H, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
-          border: `1px solid ${on ? color : LINE}`, borderRadius: 4, background: on ? (kind === "pass" ? "#e7f6ec" : "#fdeaea") : "#fff",
+          height: CONTROL_H, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
+          flex: kind === "na" ? "0 0 auto" : 1, padding: kind === "na" ? "0 8px" : undefined,
+          border: `1px solid ${on ? color : LINE}`, borderRadius: 4, background: on ? (kind === "pass" ? "#e7f6ec" : kind === "fail" ? "#fdeaea" : "#eef0f2") : "#fff",
           color: on ? color : INK, fontFamily: "inherit", fontSize: FONT, fontWeight: 700, cursor: disabled ? "default" : "pointer",
         }}
       >
-        <Icon icon={kind === "pass" ? Check : X} className="h-3.5 w-3.5" /> {kind === "pass" ? t("fw.pass") : t("fw.fail")}
+        {kind !== "na" && <Icon icon={kind === "pass" ? Check : X} className="h-3.5 w-3.5" />} {kind === "pass" ? passLabel || t("fw.pass") : kind === "fail" ? failLabel || t("fw.fail") : t("fw.na")}
       </button>
     );
   };
-  return <div style={{ display: "flex", gap: 6 }}>{btn("pass")}{btn("fail")}</div>;
+  return <div style={{ display: "flex", gap: 6 }}>{btn("pass")}{btn("fail")}{allowNa && btn("na")}</div>;
 }
 
 /** รูปถ่าย — ปุ่มถ่าย + รูปย่อ ในบรรทัดเดียว */
