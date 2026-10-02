@@ -3,6 +3,7 @@ import { InlineFormIcon } from "@/components/FormIcon";
 import { photoFieldsOf, printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
 import { mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
+import { allPhotoSlotKeys, maxPhotosOf, photoSlotLabel } from "@/lib/photo-slots";
 import { useT } from "@/i18n/LanguageProvider";
 
 // มุมมอง "กระดาษจริง" — ฟอร์มเปล่าแบบเอกสาร A4 สำหรับพิมพ์/ตรวจทาน
@@ -34,6 +35,8 @@ function Blank({ f }: { f: FormField }) {
     return <span style={{ display: "block", borderBottom: "1px solid #333", height: 40 }} />;
   }
   if (f.type === "photo") {
+    const n = maxPhotosOf(f);
+    if (n > 1) return <span style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(n, 4)}, 1fr)`, gap: 6 }}>{Array.from({ length: n }, (_, i) => <span key={i} style={{ border: "1px dashed #999", height: 56, borderRadius: 4 }} />)}</span>;
     return <span style={{ display: "block", border: "1px dashed #999", height: 64, borderRadius: 4 }} />;
   }
   if (f.type === "table") {
@@ -66,7 +69,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
   const pp = printPhotosOf(schema);
   // grid = รวมรูปไว้กล่องเดียวท้ายเอกสาร · hidden = ไม่พิมพ์ช่องรูป
   const skipPhoto = pp.mode === "grid" || pp.mode === "hidden";
-  const gridPhotos = pp.mode === "grid" ? photoFieldsOf(schema).map(({ field }) => ({ key: field.id, label: field.label })) : [];
+  const gridPhotos = pp.mode === "grid" ? photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length) }))) : [];
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
       <div

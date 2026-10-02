@@ -3,6 +3,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
 import { CANVAS_W, GRID, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
 import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
+import { maxPhotosOf, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
@@ -22,7 +23,7 @@ const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
 // จึงเห็นขนาด/ระยะตรงกับตอนกรอกจริง
 function FieldPreview({ f }: { f: FormField }) {
   const { t, tt } = useT();
-  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{t(`ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}</span>;
+  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{t(`ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}{maxPhotosOf(f) > 1 ? ` · ≤${maxPhotosOf(f)}` : ""}</span>;
   const label = <PaperLabel label={f.label || t("fw.noName")} required={f.required} right={badge} />;
   const inputLike = (text = "") => <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#aaa" }}>{text}</div>;
   if (f.type === "table") {
@@ -318,7 +319,7 @@ export default function FormPaperEditor({
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</span>
                 ) : b.kind === "photos" && b.photos ? (
                   <div style={{ pointerEvents: "none" }}>
-                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} items={b.photos.fields.map((f) => ({ key: f.id, label: f.label }))} />
+                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), label: photoSlotLabel(c.field.label, c.slot, c.max) }))} />
                   </div>
                 ) : (
                   b.field && <div style={{ pointerEvents: "none" }}><FieldPreview f={b.field} /></div>

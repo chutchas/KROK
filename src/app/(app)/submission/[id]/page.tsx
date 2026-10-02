@@ -9,6 +9,7 @@ import PrintButton from "./PrintButton";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
 import { getFormPrintPhotos } from "@/lib/print-photos-server";
+import { answerPhotoKeys } from "@/lib/photo-slots";
 import { mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
 import type { MessageKey } from "@/i18n/dictionaries";
@@ -87,7 +88,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   const allAnswers = (sub.answers || []) as AnswerItem[];
   // ฟิลด์รูปถ่าย (ตั้งในฟอร์ม): grid = รวมเป็นกล่องภาพประกอบ · appendix = รูปย่อ + หน้าแนบท้ายตอนพิมพ์ · hidden = ไม่พิมพ์
   const photoAnswers = allAnswers.filter((a) => a.type === "photo" && a.photoField);
-  const photoItems = photoAnswers.map((a) => ({ key: a.photoField!, label: a.label, url: photoMap[a.photoField!] }));
+  const photoItems = photoAnswers.flatMap((a) => { const ks = answerPhotoKeys(a); return ks.map((k, i) => ({ key: k, label: ks.length > 1 ? `${a.label} (${i + 1}/${ks.length})` : a.label, url: photoMap[k] })); });
   const answers = pp.mode === "grid" ? allAnswers.filter((a) => a.type !== "photo") : allAnswers;
   const hasPhotos = Object.keys(photoMap).length > 0 && allAnswers.some((a) => (a.type === "photo" && a.photoField) || (a.type === "table" && a.rows?.some((r) => Object.keys(r).some((k) => k.endsWith("#photo") && r[k]))));
   const status = STATUS_LABEL[sub.approval_status as string] || STATUS_LABEL.none;
@@ -199,7 +200,11 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                     </span>
                   )}
                   {a.photoField && photoMap[a.photoField] ? (
-                    <img src={photoMap[a.photoField]} alt={a.label} className={pp.mode === "appendix" && a.type === "photo" ? "krok-sub-thumb" : undefined} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
+                    <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                      {answerPhotoKeys(a).filter((k) => photoMap[k]).map((k, _i, all) => (
+                        <img key={k} src={photoMap[k]} alt={a.label} className={pp.mode === "appendix" && a.type === "photo" ? "krok-sub-thumb" : undefined} style={{ maxWidth: all.length > 1 ? "calc(50% - 4px)" : "100%", maxHeight: all.length > 1 ? 180 : 260, borderRadius: 8, border: "1px solid var(--line)" }} />
+                      ))}
+                    </span>
                   ) : a.photoField ? (
                     <span style={{ color: "var(--ink-3)", fontWeight: 400 }}><T k="sub.fileMissing" /></span>
                   ) : (

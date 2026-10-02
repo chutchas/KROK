@@ -277,6 +277,25 @@ export default function FieldSettingsPanel({
         <>
           <label style={lbl}>{t("editor.photoHint")}</label>
           <Field value={field.photo_hint || ""} onChange={(e) => patchField({ photo_hint: e.target.value })} placeholder={t("editor.photoHint")} />
+          <div style={{ display: "grid", gridTemplateColumns: field.required ? "1fr 1fr" : "1fr", gap: 8 }}>
+            <div>
+              <label style={lbl}>{t("editor.maxPhotos")}</label>
+              <select value={field.max_photos ?? 1} style={sel}
+                onChange={(e) => { const mx = Number(e.target.value); patchField({ max_photos: mx > 1 ? mx : undefined, min_photos: mx > 1 && (field.min_photos ?? 1) > 1 ? Math.min(field.min_photos ?? 1, mx) : undefined }); }}>
+                {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+              </select>
+            </div>
+            {field.required && (
+              <div>
+                <label style={lbl}>{t("editor.minPhotos")}</label>
+                <select value={Math.min(field.min_photos ?? 1, field.max_photos ?? 1)} style={sel} disabled={(field.max_photos ?? 1) <= 1}
+                  onChange={(e) => { const mn = Number(e.target.value); patchField({ min_photos: mn > 1 ? mn : undefined }); }}>
+                  {Array.from({ length: field.max_photos ?? 1 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+            )}
+          </div>
+          {(field.max_photos ?? 1) > 1 && <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("editor.maxPhotosHint")}</p>}
           <PhotoPrintSettings schema={schema} onChange={onChange} />
         </>
       )}

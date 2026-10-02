@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { photoFieldsOf, printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
 import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLayout, blockHeight, mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
+import { allPhotoSlotKeys, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperHeaderContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
@@ -27,8 +28,8 @@ export default function FormPaperFill({
   title: string;
   userName?: string;
   renderField: (f: FormField) => React.ReactNode;
-  /** กล่องภาพประกอบ (print_photos = grid): เนื้อหาช่องรูปที่กดถ่ายได้ */
-  renderPhotoCell?: (f: FormField) => React.ReactNode;
+  /** กล่องภาพประกอบ (print_photos = grid): เนื้อหาช่องรูปที่กดถ่ายได้ (slot = ช่องที่เท่าไรของฟิลด์) */
+  renderPhotoCell?: (f: FormField, slot: number) => React.ReactNode;
   /** รูปที่ถ่ายแล้วของฟิลด์ (ใช้ในหน้าภาพประกอบท้ายเอกสาร) */
   photoUrl?: (fieldId: string) => string | undefined;
 }) {
@@ -116,7 +117,7 @@ export default function FormPaperFill({
                 return (
                   <div key={b.key} ref={measureRef(b.key)} style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
                     <PaperPhotoGrid cols={ph.cols} imgH={ph.imgH}
-                      items={ph.fields.map((f) => ({ key: f.id, label: f.label, url: photoUrl?.(f.id), cell: renderPhotoCell?.(f) }))} />
+                      items={ph.cells.map((c) => { const k = photoSlotKey(c.field.id, c.slot); return { key: k, label: photoSlotLabel(c.field.label, c.slot, c.max), url: photoUrl?.(k), cell: renderPhotoCell?.(c.field, c.slot) }; })} />
                   </div>
                 );
               }
@@ -135,7 +136,7 @@ export default function FormPaperFill({
       {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
       {pp.mode === "appendix" && (
         <PhotoAppendix title={title} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
-          items={photoFieldsOf(schema).map(({ field }) => ({ key: field.id, label: field.label, url: photoUrl?.(field.id) }))} />
+          items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length), url: photoUrl?.(k) })))} />
       )}
 
       {/* แถบซูม */}

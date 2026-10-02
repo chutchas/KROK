@@ -20,6 +20,8 @@ export interface AnswerItem {
   note?: string;
   fail?: boolean;
   photoField?: string;
+  /** ฟิลด์รูปหลายรูป: key ของทุกรูปตามลำดับ (รูปแรก = photoField) */
+  photoFields?: string[];
   rows?: Record<string, string>[];
   columns?: { id: string; label: string; type?: string }[];
   src?: AnswerSrc;

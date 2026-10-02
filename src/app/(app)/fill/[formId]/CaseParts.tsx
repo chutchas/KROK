@@ -69,10 +69,12 @@ function MiniTable({ f, rows, paper }: { f: FormField; rows: TableRow[]; paper: 
 }
 
 /** ช่องของขั้นที่ไม่ใช่ของเรา — แสดงค่าอย่างเดียว แก้ไม่ได้ */
-export function ReadonlyField({ field: f, answer, photo, sig, paper = false, compact = false, pending = false }: {
+export function ReadonlyField({ field: f, answer, photo, morePhotos = [], sig, paper = false, compact = false, pending = false }: {
   field: FormField;
   answer?: Answer;
   photo?: string;
+  /** ฟิลด์หลายรูป: รูปที่ 2 เป็นต้นไป */
+  morePhotos?: string[];
   sig?: string;
   paper?: boolean;
   compact?: boolean;
@@ -85,7 +87,14 @@ export function ReadonlyField({ field: f, answer, photo, sig, paper = false, com
   const rows = Array.isArray(answer?.value) && typeof answer?.value[0] === "object" ? (answer!.value as TableRow[]) : [];
 
   let body: React.ReactNode;
-  if (f.type === "photo") body = photo ? <img src={photo} alt={f.label} style={{ maxHeight: compact ? 44 : 140, maxWidth: "100%", borderRadius: 6, display: "block" }} /> : dash;
+  if (f.type === "photo") {
+    const all = [photo, ...morePhotos].filter((u): u is string => !!u);
+    body = all.length ? (
+      <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {all.map((u, i) => <img key={i} src={u} alt={f.label} style={{ maxHeight: compact ? 44 : all.length > 1 ? 90 : 140, maxWidth: "100%", borderRadius: 6, display: "block" }} />)}
+      </span>
+    ) : dash;
+  }
   else if (f.type === "signature") body = sig ? <img src={sig} alt={f.label} style={{ maxHeight: compact ? 40 : 80, maxWidth: "100%", background: "#fff", display: "block" }} /> : dash;
   else if (f.type === "table") body = <MiniTable f={f} rows={rows} paper={paper} />;
   else {

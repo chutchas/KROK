@@ -78,7 +78,10 @@ export function answerCell(a: AnswerItem | undefined): string {
   if (!a) return "";
   if (a.type === "photo" || a.type === "signature") {
     if (a.display && a.display !== "เซ็นแล้ว") return a.display; // ผล AI ตรวจรูป
-    return a.photoField ? (a.type === "signature" ? "เซ็นแล้ว" : "มีรูป") : "";
+    if (!a.photoField) return "";
+    if (a.type === "signature") return "เซ็นแล้ว";
+    const n = a.photoFields?.length ?? 1;
+    return n > 1 ? `${n} รูป` : "มีรูป";
   }
   const d = a.display == null || a.display === "—" ? "" : String(a.display);
   return a.note ? (d ? `${d} — ${a.note}` : a.note) : d;

@@ -3,6 +3,7 @@ import { isRowPhotoKey } from "@/lib/table-rows";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { dispatchWebhooks } from "@/lib/webhooks";
 import { dispatchNotifications } from "@/lib/notify";
+import { maxPhotosOf, parsePhotoSlotKey } from "@/lib/photo-slots";
 import { sanitizeSchema } from "@/lib/form-schema";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
 import { runLater } from "@/lib/background";
@@ -77,8 +78,11 @@ export async function POST(req: Request) {
   const mediaFields = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "photo" || x.type === "signature").map((x) => x.id)));
   // รูปถ่ายต่อแถวของตาราง: key = <tableId>.<colId>.<สุ่ม> และคอลัมน์ต้องเป็นชนิดรูปถ่ายจริง
   const photoCols = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "table").flatMap((x) => (x.columns || []).filter((c) => c.type === "photo").map((c) => `${x.id}.${c.id}`))));
-  const allowedMedia = (k: string) => mediaFields.has(k) || (isRowPhotoKey(k) && photoCols.has(k.split(".").slice(0, 2).join(".")));
-  const MAX_PHOTOS = 40;
+  // ฟิลด์รูปหลายรูป: ช่องที่ 2.. = <fieldId>.ph.slotNN และต้องไม่เกินจำนวนรูปสูงสุดที่ตั้งไว้
+  const multiPhoto = new Map(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "photo").map((x) => [x.id, maxPhotosOf(x)] as const)));
+  const slotOk = (k: string) => { const p = parsePhotoSlotKey(k); return !!p && p.slot > 0 && p.slot < (multiPhoto.get(p.fieldId) ?? 1); };
+  const allowedMedia = (k: string) => mediaFields.has(k) || slotOk(k) || (isRowPhotoKey(k) && photoCols.has(k.split(".").slice(0, 2).join(".")));
+  const MAX_PHOTOS = 60;
   const MAX_PHOTO_BYTES = 4 * 1024 * 1024; // 4MB/ไฟล์
   const photos: { fieldId: string; file: File }[] = [];
   for (const [key, value] of form.entries()) {

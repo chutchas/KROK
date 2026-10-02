@@ -10,6 +10,7 @@ import {
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
   ChevronUp, ChevronDown,
 } from "lucide-react";
+import { answerPhotoKeys } from "@/lib/photo-slots";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import {
@@ -514,8 +515,11 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
               </div>
               <div style={{ fontWeight: 600, textAlign: "right", overflowWrap: "anywhere", color: a.fail ? "var(--fail)" : a.type === "pass_fail" ? "var(--pass)" : "var(--ink)" }}>
                 {a.photoField ? (
-                  photos[a.photoField] ? <img src={photos[a.photoField]} alt={t("dash.photoAlt")} style={{ maxHeight: 110, borderRadius: 6 }} />
-                    : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
+                  photos[a.photoField] ? (
+                    <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
+                      {answerPhotoKeys(a).map((k) => photos[k] && <img key={k} src={photos[k]} alt={t("dash.photoAlt")} style={{ maxHeight: answerPhotoKeys(a).length > 1 ? 72 : 110, borderRadius: 6 }} />)}
+                    </span>
+                  ) : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
                 ) : (
                   <>
                     {a.display ?? "—"}

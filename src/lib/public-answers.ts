@@ -9,6 +9,7 @@ import type { FormField, FormSchema } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, rowPhotoKeyOf } from "@/lib/table-rows";
+import { allPhotoSlotKeys } from "@/lib/photo-slots";
 
 const SRC = new Set(["scan", "ai", "ai_edited"]);
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -57,8 +58,16 @@ export function sanitizePublicAnswers(
     const src = str(a.src, 20);
     if (src && SRC.has(src)) item.src = src;
 
-    if (f.type === "photo" || f.type === "signature") {
-      if (uploaded.has(f.id)) { item.photoField = f.id; item.display = f.type === "signature" ? "เซ็นแล้ว" : str(a.display, 500) ?? "—"; }
+    if (f.type === "photo") {
+      // หลายรูป: เก็บเฉพาะช่องที่มีไฟล์แนบมาจริง ตามลำดับช่อง
+      const keys = allPhotoSlotKeys(f).filter((k) => uploaded.has(k));
+      if (keys.length) {
+        item.photoField = keys[0];
+        if (keys.length > 1) item.photoFields = keys;
+        item.display = str(a.display, 500) ?? "—";
+      } else item.display = "—";
+    } else if (f.type === "signature") {
+      if (uploaded.has(f.id)) { item.photoField = f.id; item.display = "เซ็นแล้ว"; }
       else item.display = "—";
     } else if (f.type === "pass_fail") {
       const d = str(a.display, 20);

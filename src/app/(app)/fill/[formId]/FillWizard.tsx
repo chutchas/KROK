@@ -14,6 +14,7 @@ import BodyPortal from "@/components/BodyPortal";
 import OptionPicker from "@/components/OptionPicker";
 import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
 import { mmToPx } from "@/lib/paper-layout";
+import { allPhotoSlotKeys, filledPhotoKeys, maxPhotosOf, minPhotosOf, photoSlotKey } from "@/lib/photo-slots";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
@@ -511,7 +512,7 @@ export default function FillWizard(props: Props) {
       if (!f.required) continue;
       const a = answers.current[f.id] || {};
       let miss = false;
-      if (f.type === "photo") miss = !photos[f.id];
+      if (f.type === "photo") miss = filledPhotoKeys(f, (k) => !!photos[k]).length < minPhotosOf(f);
       else if (f.type === "signature") miss = !sigs[f.id];
       else if (f.type === "checkbox") miss = !(Array.isArray(a.value) && a.value.length);
       else if (f.type === "table")
@@ -589,10 +590,10 @@ export default function FillWizard(props: Props) {
           const item: Record<string, unknown> = { id: f.id, label: f.label, type: f.type };
           if (a.src) item.src = a.src; // ที่มาของค่า: scan | ai | ai_edited (ไม่มี = คนกรอกเอง)
           if (f.type === "photo") {
-            if (photos[f.id]) {
-              photoUploads.push({ fieldId: f.id, dataUrl: photos[f.id], ai: a.ai });
-              item.photoField = f.id;
-            }
+            const keys = filledPhotoKeys(f, (k) => !!photos[k]);
+            keys.forEach((k, i) => photoUploads.push({ fieldId: k, dataUrl: photos[k], ai: i === 0 ? a.ai : undefined }));
+            if (keys.length) item.photoField = keys[0];
+            if (keys.length > 1) { item.photoFields = keys; item.display = `${keys.length} รูป`; }
             if (a.ai) item.display = a.ai;
           } else if (f.type === "signature") {
             if (sigs[f.id]) {
@@ -996,15 +997,17 @@ export default function FillWizard(props: Props) {
     );
   }
 
-  const renderField = (f: FormField, paper = false, compact = false, photoCell = false) => {
+  /** photoSlot: แสดงเฉพาะช่องรูปที่ photoSlot ของฟิลด์ (กล่องภาพประกอบ) */
+  const renderField = (f: FormField, paper = false, compact = false, photoSlot?: number) => {
     const fStep = stepOfField.get(f.id) ?? 0;
+    const photoCell = photoSlot !== undefined;
     if (photoCell && wf && lockedStep(fStep)) {
-      return <PhotoFrame url={photos[f.id]} height={photoCellH} alt={f.label} />;
+      return <PhotoFrame url={photos[photoSlotKey(f.id, photoSlot)]} height={photoCellH} alt={f.label} />;
     }
     if (wf && lockedStep(fStep)) {
       return (
         <div id={"fld-" + f.id} key={f.id}>
-          <ReadonlyField field={f} answer={f.type === "formula" ? { value: formulaVals[f.id] == null ? "" : formatNumber(formulaVals[f.id], f.decimals ?? 2) } : lockedAnswers[f.id]} photo={photos[f.id]} sig={sigs[f.id]} paper={paper} compact={compact}
+          <ReadonlyField field={f} answer={f.type === "formula" ? { value: formulaVals[f.id] == null ? "" : formatNumber(formulaVals[f.id], f.decimals ?? 2) } : lockedAnswers[f.id]} photo={photos[f.id]} morePhotos={f.type === "photo" ? allPhotoSlotKeys(f).slice(1).map((k) => photos[k]).filter((u): u is string => !!u) : undefined} sig={sigs[f.id]} paper={paper} compact={compact}
             pending={kase ? kase.status === "open" && fStep > segmentEnd(schema, kase.stepIdx) : fStep > segEnd} />
         </div>
       );
@@ -1021,6 +1024,13 @@ export default function FillWizard(props: Props) {
         paper={paper}
         compact={compact}
         photoCell={photoCell ? photoCellH : undefined}
+        photoSlot={photoSlot}
+        slotPhotos={f.type === "photo" && maxPhotosOf(f) > 1 ? allPhotoSlotKeys(f).map((k) => photos[k]) : undefined}
+        setSlotPhoto={(slot, d) => {
+          const k = photoSlotKey(f.id, slot);
+          setPhotos((prev) => { const n = { ...prev }; if (d) n[k] = d; else delete n[k]; return n; });
+          patchAnswer(f.id, { ai: undefined });
+        }}
         attachments={attByField[f.id] || []}
         publicMode={props.publicMode}
         getInitial={() => answers.current[f.id] || {}}
@@ -1186,7 +1196,7 @@ export default function FillWizard(props: Props) {
           title={props.title}
           userName={props.userName}
           renderField={(f) => renderField(f, true, true)}
-          renderPhotoCell={(f) => renderField(f, true, true, true)}
+          renderPhotoCell={(f, slot) => renderField(f, true, true, slot)}
           photoUrl={(id) => photos[id]}
         />
 
@@ -1444,10 +1454,18 @@ function FieldControl({
   formulaValue,
   media,
   photoCell,
+  photoSlot = 0,
+  slotPhotos,
+  setSlotPhoto,
 }: {
   field: FormField;
   /** กล่องภาพประกอบ: แสดงเฉพาะช่องรูปสูง photoCell px (กดถ่าย/เปลี่ยนรูป) ไม่มีชื่อช่อง */
   photoCell?: number;
+  /** ช่องที่เท่าไรของฟิลด์ (ใช้กับ photoCell) */
+  photoSlot?: number;
+  /** ฟิลด์หลายรูป: รูปของทุกช่องตามลำดับ (undefined = ฟิลด์รูปเดียว) */
+  slotPhotos?: (string | undefined)[];
+  setSlotPhoto?: (slot: number, d: string | null) => void;
   /** รูปถ่ายต่อแถวของตาราง */
   media?: MediaPhotos;
   /** ผลคำนวณของฟิลด์สูตร (null = ยังคำนวณไม่ได้) */
@@ -1479,16 +1497,36 @@ function FieldControl({
   const photoRef = useRef<HTMLInputElement>(null);
   const scanRef = useRef<HTMLInputElement>(null);
 
+  // ฟิลด์หลายรูป: ช่องที่จะใส่รูปถัดไป (null = ช่องว่างช่องแรก · เลือกหลายไฟล์ = ไล่ใส่ช่องว่างถัดไป)
+  const targetSlot = useRef<number | null>(null);
+  const pickSlot = (slot: number | null) => { targetSlot.current = slot; photoRef.current?.click(); };
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = Array.from(e.target.files || []);
+    e.target.value = "";
+    if (!files.length) return;
+    if (slotPhotos && setSlotPhoto) {
+      const taken = slotPhotos.map((u) => !!u);
+      let fixed = targetSlot.current;
+      for (const file of files) {
+        const slot = fixed ?? taken.findIndex((x) => !x);
+        if (slot < 0 || slot >= taken.length) break;
+        try { setSlotPhoto(slot, await shrinkImage(file)); taken[slot] = true; } catch { /* ignore */ }
+        fixed = null;
+      }
+      targetSlot.current = null;
+      setAiResult("");
+      return;
+    }
+    if (photoCell && setSlotPhoto && photoSlot > 0) {
+      try { setSlotPhoto(photoSlot, await shrinkImage(files[0])); } catch { /* ignore */ }
+      return;
+    }
     try {
-      setPhoto(await shrinkImage(file));
+      setPhoto(await shrinkImage(files[0]));
       setAiResult("");
     } catch {
       /* ignore */
     }
-    e.target.value = "";
   }
   async function aiCheck() {
     if (!photo) return;
@@ -1558,22 +1596,32 @@ function FieldControl({
   // เนื้อหาที่งอกเกินกล่อง (หมายเหตุตอนไม่ผ่าน, error, เอกสารแนบ, แถวตารางที่เพิ่ม)
   // จะดันช่องด้านล่างลงเอง (FormPaperFill.reflow) — ไม่ทับกัน
   if (photoCell && f.type === "photo") {
+    const cellUrl = slotPhotos ? slotPhotos[photoSlot] : photo;
+    const pickThis = () => (slotPhotos ? pickSlot(photoSlot) : photoRef.current?.click());
     return (
       <div>
-        <PhotoFrame url={photo} height={photoCell} alt={f.label}>
-          <EmptyPhotoHint onClick={() => photoRef.current?.click()} />
+        <PhotoFrame url={cellUrl} height={photoCell} alt={f.label}>
+          <EmptyPhotoHint onClick={pickThis} />
         </PhotoFrame>
-        {photo && (
-          <button type="button" onClick={() => photoRef.current?.click()} aria-label={t("fw.paper.retake")} title={t("fw.paper.retake")}
+        {cellUrl && (
+          <button type="button" onClick={pickThis} aria-label={t("fw.paper.retake")} title={t("fw.paper.retake")}
             style={{ position: "relative", marginTop: -26, marginLeft: 4, height: 22, display: "inline-flex", alignItems: "center", gap: 3, border: "1px solid #ccc", borderRadius: 4, background: "rgba(255,255,255,.92)", color: "#333", fontFamily: "inherit", fontSize: ".66rem", padding: "0 6px", cursor: "pointer" }}>
             <Icon icon={Camera} className="h-3 w-3" /> {t("fw.paper.retake")}
           </button>
         )}
-        {error && <div style={{ fontSize: ".66rem", color: "#dc2626" }}>{error}</div>}
+        {error && photoSlot === 0 && <div style={{ fontSize: ".66rem", color: "#dc2626" }}>{error}</div>}
         <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
       </div>
     );
   }
+  // ฟิลด์หลายรูป (นอกกล่องภาพประกอบ): แถบรูปย่อ + เพิ่มรูป
+  const multiStrip = slotPhotos && setSlotPhoto ? (
+    <>
+      <MultiPhotoStrip urls={slotPhotos} paper={paper} compact={compact} min={minPhotosOf(f)}
+        onAdd={() => pickSlot(null)} onRetake={(i) => pickSlot(i)} onRemove={(i) => setSlotPhoto(i, null)} />
+      <input ref={photoRef} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+    </>
+  ) : null;
   if (compact) {
     const staticOpts = f.options || [];
     return (
@@ -1628,7 +1676,8 @@ function FieldControl({
             )}
           </>
         )}
-        {f.type === "photo" && (
+        {f.type === "photo" && multiStrip}
+        {f.type === "photo" && !multiStrip && (
           <>
             <PaperPhoto photo={photo} onPick={() => photoRef.current?.click()}
               extra={photo && !publicMode ? (
@@ -1783,7 +1832,8 @@ function FieldControl({
             )}
           </>
         )}
-        {f.type === "photo" && (
+        {f.type === "photo" && multiStrip}
+        {f.type === "photo" && !multiStrip && (
           <>
             <div onClick={() => photoRef.current?.click()} style={{ border: paper ? "2px dashed #b9bec4" : "2px dashed var(--line)", borderRadius: 10, padding: compact ? 8 : 18, textAlign: "center", color: paper ? "#777" : "var(--ink-3)", fontSize: compact ? ".8rem" : ".9rem", cursor: "pointer" }}>
               {photo && <img src={photo} alt={t("fw.photoAlt")} style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "0 auto 8px" }} />}
@@ -1831,6 +1881,44 @@ function FieldControl({
       </div>
 
       {error && <div style={{ fontSize: ".82rem", color: "var(--fail)", marginTop: 6 }}>{error}</div>}
+    </div>
+  );
+}
+
+/** ฟิลด์หลายรูป: รูปย่อทุกช่องที่มีรูป (แตะ = เปลี่ยน, × = ลบ) + ปุ่มเพิ่มรูปจนครบจำนวนสูงสุด */
+function MultiPhotoStrip({ urls, paper, compact, min, onAdd, onRetake, onRemove }: {
+  urls: (string | undefined)[]; paper: boolean; compact: boolean; min: number;
+  onAdd: () => void; onRetake: (slot: number) => void; onRemove: (slot: number) => void;
+}) {
+  const { t, tt } = useT();
+  const filled = urls.map((u, i) => ({ u, i })).filter((x): x is { u: string; i: number } => !!x.u);
+  const size = compact ? 26 : paper ? 64 : 88;
+  const line = paper || compact ? "#b9bec4" : "var(--line)";
+  return (
+    <div>
+      <div style={{ display: "flex", gap: compact ? 4 : 8, flexWrap: "wrap", alignItems: "center" }}>
+        {filled.map(({ u, i }) => (
+          <span key={i} style={{ position: "relative", display: "inline-flex" }}>
+            <button type="button" data-print-keep="" onClick={() => onRetake(i)} title={t("fw.paper.retake")} aria-label={t("fw.paper.retake")}
+              style={{ padding: 0, border: `1px solid ${line}`, borderRadius: compact ? 3 : 8, background: "none", cursor: "pointer", display: "flex", overflow: "hidden" }}>
+              <img src={u} alt={`${i + 1}`} style={{ height: size, width: Math.round(size * 1.33), objectFit: "cover", display: "block" }} />
+            </button>
+            <button type="button" onClick={() => onRemove(i)} aria-label={t("ctype.photoRemove")} title={t("ctype.photoRemove")}
+              style={{ position: "absolute", top: -6, right: -6, width: compact ? 16 : 22, height: compact ? 16 : 22, borderRadius: 999, border: "1px solid #fff", background: "#dc2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
+              <Icon icon={X} className={compact ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />
+            </button>
+          </span>
+        ))}
+        {filled.length < urls.length && (
+          <button type="button" onClick={onAdd}
+            style={{ height: compact ? 26 : size, minWidth: compact ? 0 : Math.round(size * 1.33), padding: compact ? "0 8px" : "0 12px", border: `${compact ? 1 : 2}px dashed ${line}`, borderRadius: compact ? 4 : 10, background: paper || compact ? "#fff" : "transparent", color: paper || compact ? "#777" : "var(--ink-3)", fontFamily: "inherit", fontSize: compact ? ".7rem" : ".82rem", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+            <Icon icon={Camera} className={compact ? "h-3.5 w-3.5" : "h-4 w-4"} /> {tt("fw.photo.add", { n: filled.length, max: urls.length })}
+          </button>
+        )}
+      </div>
+      {min > 1 && filled.length < min && (
+        <div style={{ fontSize: compact ? ".64rem" : ".76rem", color: paper || compact ? "#777" : "var(--ink-3)", marginTop: 3 }}>{tt("fw.photo.min", { n: min })}</div>
+      )}
     </div>
   );
 }

@@ -1,3 +1,4 @@
+import { maxPhotosOf } from "@/lib/photo-slots";
 import { FIELD_TYPE_LABELS, photoFieldsOf, printPhotosOf, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
 
 // ============================================================
@@ -44,7 +45,13 @@ export interface Block {
   field?: FormField;
   stepIndex: number;
   /** kind "photos": ฟิลด์รูปที่อยู่ในกล่อง + การจัดเรียง */
-  photos?: { fields: FormField[]; cols: number; imgH: number };
+  photos?: { fields: FormField[]; cells: PhotoCell[]; cols: number; imgH: number };
+}
+
+/** ช่องรูป 1 ช่องในกล่องภาพประกอบ (ฟิลด์หลายรูป = หลายช่อง) */
+export type PhotoCell = { field: FormField; slot: number; max: number };
+export function photoCellsOf(fields: FormField[]): PhotoCell[] {
+  return fields.flatMap((f) => { const max = maxPhotosOf(f); return Array.from({ length: max }, (_, slot) => ({ field: f, slot, max })); });
 }
 
 /** มม. → px ที่ 96dpi (แคนวาส A4 กว้าง 794px) */
@@ -106,7 +113,7 @@ export function reflowTops(
 }
 
 export function blockHeight(b: Block): number {
-  if (b.kind === "photos" && b.photos) return photosBlockHeight(b.photos.fields.length, b.photos.cols, b.photos.imgH);
+  if (b.kind === "photos" && b.photos) return photosBlockHeight(b.photos.cells.length, b.photos.cols, b.photos.imgH);
   return b.kind === "step" ? HEADER_H : fieldBoxHeight(b.field);
 }
 
@@ -168,7 +175,7 @@ export function buildBlocks(schema: FormSchema): Block[] {
   if (grouped) {
     blocks.push({
       key: PHOTOS_KEY, kind: "photos", label: "", stepIndex: schema.steps.length - 1,
-      photos: { fields: photoFields, cols: pp.cols, imgH: mmToPx(pp.height_mm) },
+      photos: { fields: photoFields, cells: photoCellsOf(photoFields), cols: pp.cols, imgH: mmToPx(pp.height_mm) },
     });
   }
   return blocks;

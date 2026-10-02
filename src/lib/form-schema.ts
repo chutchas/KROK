@@ -94,6 +94,10 @@ export interface FormField {
   width?: "full" | "half";
   // photo
   photo_hint?: string;
+  /** ฟิลด์รูปถ่าย: ใส่ได้สูงสุดกี่รูป (1–12, ไม่ระบุ = 1) */
+  max_photos?: number;
+  /** ฟิลด์รูปถ่ายที่บังคับกรอก: ต้องมีอย่างน้อยกี่รูป (ไม่ระบุ = 1) */
+  min_photos?: number;
   // pass_fail
   on_fail_require_note?: boolean;
   // table
@@ -410,6 +414,14 @@ export function sanitizeSchema(raw: unknown): FormSchema {
             if (os) o.options_source = os;
           }
           if (type === "photo" && fo.photo_hint) o.photo_hint = str(fo.photo_hint, 200);
+          if (type === "photo") {
+            const mx = num(fo.max_photos);
+            if (mx !== undefined && mx > 1) {
+              o.max_photos = Math.min(12, Math.round(mx));
+              const mn = num(fo.min_photos);
+              if (mn !== undefined && mn > 1) o.min_photos = Math.min(o.max_photos, Math.round(mn));
+            }
+          }
           if (type === "pass_fail") o.on_fail_require_note = fo.on_fail_require_note !== false;
           if (type === "table") {
             const rawCols = Array.isArray(fo.columns) ? fo.columns : [];

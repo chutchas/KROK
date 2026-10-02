@@ -3,6 +3,7 @@ import { zipSync } from "fflate";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { AnswerItem } from "@/lib/answer-item";
+import { answerPhotoKeys } from "@/lib/photo-slots";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -36,7 +37,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   // ป้ายชื่อของแต่ละรูป ตามลำดับในเอกสาร
   const labels = new Map<string, string>();
   for (const a of (sub.answers || []) as AnswerItem[]) {
-    if (a.type === "photo" && a.photoField) labels.set(a.photoField, a.label);
+    if (a.type === "photo" && a.photoField) {
+      const ks = answerPhotoKeys(a);
+      ks.forEach((k, i) => labels.set(k, ks.length > 1 ? `${a.label}-${i + 1}` : a.label));
+    }
     if (a.type === "table" && a.rows && a.columns) {
       a.rows.forEach((r, ri) => {
         for (const c of a.columns!) {

@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { buildSubmissionPdf, type PdfAnswer, type SubmissionPdfData } from "@/lib/pdf/submission-pdf";
 import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
 import { getFormPrintPhotos } from "@/lib/print-photos-server";
+import { answerPhotoKeys } from "@/lib/photo-slots";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -89,6 +90,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     note: a.note,
     fail: a.fail,
     photo: a.photoField ? photoBuf[a.photoField] ?? null : null,
+    // ฟิลด์หลายรูป: รูปทั้งหมดพร้อมคำบรรยาย (วาดเป็นตารางรูป)
+    photos: a.type === "photo" && (a.photoFields?.length ?? 0) > 1
+      ? answerPhotoKeys(a).map((k, i, all) => ({ caption: `${a.label} (${i + 1}/${all.length})`, photo: photoBuf[k] })).filter((p): p is { caption: string; photo: Buffer } => !!p.photo)
+      : undefined,
     rows,
     columns: a.columns,
     rowPhotos: rowPhotos.length ? rowPhotos : undefined,

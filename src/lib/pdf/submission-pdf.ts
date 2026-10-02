@@ -45,6 +45,8 @@ export interface PdfAnswer {
   photo?: Buffer | null;
   rows?: Record<string, string>[];
   columns?: { id: string; label: string; type?: string }[];
+  /** ฟิลด์หลายรูป: ทุกรูปพร้อมคำบรรยาย */
+  photos?: { caption: string; photo: Buffer }[];
   /** รูปถ่ายต่อแถวของตาราง (วาดเป็นตารางรูปใต้ตาราง) */
   rowPhotos?: { caption: string; photo: Buffer }[];
 }
@@ -193,8 +195,19 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     for (const a of data.answers) {
       // ฟิลด์รูปถ่าย (ไม่ใช่ลายเซ็น) ตามที่ฟอร์มตั้งไว้: รวมเป็นกล่อง / แนบท้าย / ไม่พิมพ์
       if (pl && a.type === "photo") {
-        if (a.photo) collected.push({ caption: `${collected.length + 1}. ${clean(a.label) || "—"}`, photo: a.photo });
+        if (a.photos?.length) for (const p of a.photos) collected.push({ caption: `${collected.length + 1}. ${clean(p.caption) || "—"}`, photo: p.photo });
+        else if (a.photo) collected.push({ caption: `${collected.length + 1}. ${clean(a.label) || "—"}`, photo: a.photo });
         if (pl.mode !== "appendix") continue;
+      }
+      // ฟิลด์หลายรูป (แบบรูปในแถว): ชื่อฟิลด์ + จำนวนรูป แล้ววาดรูปเป็นตารางใต้แถว
+      if (!pl && a.type === "photo" && a.photos && a.photos.length > 1) {
+        const rowH = 26;
+        ensure(rowH + 120);
+        doc.font("th").fontSize(9.5).fillColor(C.muted).text(clean(a.label) || "—", M + 8, y + 7, { width: CONTENT_W * 0.38 - 8 });
+        doc.font("th-bold").fontSize(10).fillColor(C.ink).text(`${a.photos.length} รูป`, M + Math.round(CONTENT_W * 0.38) + 14, y + 7);
+        y = drawPhotoGrid(doc, a.photos, y + rowH, newPage);
+        doc.moveTo(M, y - 6).lineTo(PAGE.w - M, y - 6).lineWidth(0.5).stroke(C.line);
+        continue;
       }
       if (a.type === "table" && a.columns && a.columns.length) {
         y = drawTable(doc, a, y + 8, newPage) + 4;
