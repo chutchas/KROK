@@ -8,6 +8,8 @@ import { useT } from "@/i18n/LanguageProvider";
 import { DEFAULT_PLANS, UNLIMITED, planFeatures, type PlanKey, type Plan } from "@/lib/plans";
 import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
 import { setPlan, invoiceStatus } from "./actions";
+import PurchaseDialog from "./PurchaseDialog";
+import SubscriptionCard, { type SubscriptionInfo } from "./SubscriptionCard";
 import { useEffect, useSyncExternalStore } from "react";
 
 export default function BillingClient({
@@ -24,7 +26,13 @@ export default function BillingClient({
   expiresAt = null,
   pendingInvoice = null,
   returnInvoice = null,
+  subscription = null,
+  cardReturn = false,
 }: {
+  /** สถานะต่ออายุอัตโนมัติ (0047) */
+  subscription?: SubscriptionInfo | null;
+  /** กลับมาจากหน้าบันทึกบัตรของ Gateway */
+  cardReturn?: boolean;
   /** เปิดรับชำระจริงแล้ว (Payment Gateway ตั้งค่าครบ + PAYMENTS_LIVE) */
   payable?: boolean;
   /** วันหมดอายุของแพ็กเกจปัจจุบัน (null = ไม่หมดอายุ) */
@@ -60,10 +68,18 @@ export default function BillingClient({
   const opt = (n: number | undefined, max: number, label: string, unit?: string) =>
     n === undefined || max <= 0 ? null : <UsageBar key={label} label={label} used={n} max={max} unit={unit} />;
 
-  async function choose(p: PlanKey) {
+  // แพ็กเกจเสียเงิน → เปิดหน้ายืนยัน (ยอด + ความยินยอมต่ออายุอัตโนมัติ) ก่อนไปหน้าชำระ
+  const [buying, setBuying] = useState<Plan | null>(null);
+  function choose(p: PlanKey) {
+    const target = plans.find((x) => x.key === p) ?? (plan.key === p ? plan : null);
+    if (target && target.priceThb > 0) { setBuying(target); return; }
+    void doChoose(p);
+  }
+
+  async function doChoose(p: PlanKey, autoRenew?: boolean) {
     setBusy(p);
     setMsg(null);
-    const res = await setPlan(p);
+    const res = await setPlan(p, { autoRenew });
     if ("checkoutUrl" in res) { window.location.href = res.checkoutUrl; return; } // ไปหน้าชำระของ Gateway
     setBusy(null);
     if ("error" in res) setMsg({ t: res.error, err: true });
@@ -119,17 +135,14 @@ export default function BillingClient({
           </span>
         </Notice>
       )}
-      {daysLeft !== null && plan.priceThb > 0 && (
-        <Notice kind={daysLeft <= 7 ? "error" : "info"}>
-          <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            {daysLeft > 0
-              ? tt("pay.expiresIn", { date: new Date(expiresAt!).toLocaleDateString(en ? "en-GB" : "th-TH", { dateStyle: "medium" }), n: daysLeft })
-              : t("pay.expired")}
-            {isOwner && payable && (
-              <Button onClick={() => choose(plan.key)} disabled={!!busy} loading={busy === plan.key} style={{ padding: "5px 12px", fontSize: ".82rem" }}>{t("pay.renew")}</Button>
-            )}
-          </span>
-        </Notice>
+      {cardReturn && <Notice>{t("sub.cardReturn")}</Notice>}
+      {daysLeft !== null && expiresAt && plan.priceThb > 0 && (
+        <SubscriptionCard plan={plan} expiresAt={expiresAt} daysLeft={daysLeft} sub={subscription} isOwner={isOwner} payable={payable}
+          onRenew={() => choose(plan.key)} renewBusy={busy === plan.key} />
+      )}
+      {buying && (
+        <PurchaseDialog plan={buying} renewing={buying.key === plan.key} busy={busy === buying.key}
+          onClose={() => setBuying(null)} onConfirm={(auto) => void doChoose(buying.key, auto)} />
       )}
 
       <Card>

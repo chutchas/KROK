@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { timingSafeEqual } from "crypto";
+import { cronAuthorized } from "@/lib/cron-auth";
 import { getAdminClient } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -13,17 +13,8 @@ export const dynamic = "force-dynamic";
 //   (สิทธิ์ใช้งานตัดเองอยู่แล้วตอนหมดอายุ งานนี้แค่เก็บข้อมูลให้ตรง)
 // ============================================================
 
-function authorized(req: Request): boolean {
-  const secret = process.env.CRON_SECRET || "";
-  if (secret.length < 16) return false;
-  const got = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "");
-  const a = Buffer.from(got);
-  const b = Buffer.from(secret);
-  return a.length === b.length && timingSafeEqual(a, b);
-}
-
 async function handle(req: Request) {
-  if (!authorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!cronAuthorized(req)) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const admin = getAdminClient();
   if (!admin) return NextResponse.json({ error: "SUPABASE_SERVICE_ROLE_KEY not set" }, { status: 503 });
 

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { gatewayConfig } from "@/lib/billing-gateway";
 import { verifyGatewaySignature, parseGatewayEvent } from "@/lib/billing-sign";
+import { handleRenewalFailure, notifyOwner } from "@/lib/billing-renew";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,9 +48,30 @@ export async function POST(req: Request) {
     return json({ ok: status < 300 && !result.startsWith("error"), result }, status);
   };
 
+  // เปลี่ยนบัตร (ไม่มีใบแจ้งหนี้): reference = card_setups.id
+  if (ev.type.startsWith("payment_method.")) {
+    const { data: setup } = await admin.from("card_setups").select("id, user_id, gateway_ref, status").eq("id", ev.data.reference).maybeSingle();
+    if (!setup) return finish("ignored: unknown card setup");
+    if (setup.gateway_ref && setup.gateway_ref !== ev.data.payment_id) return finish("error: setup id does not match");
+    const pm = ev.data.payment_method;
+    if (ev.type === "payment_method.saved" && pm?.id) {
+      // บัตรใหม่ → ลองตัดรอบที่ค้างได้ทันทีในรอบ cron ถัดไป
+      await admin.from("account_plans").update({
+        payment_method_ref: pm.id, payment_method_label: pm.label, renew_attempts: 0, next_attempt_at: null, last_renew_error: null,
+      }).eq("user_id", setup.user_id);
+      await admin.from("card_setups").update({ status: "saved" }).eq("id", setup.id);
+      return finish("ok");
+    }
+    if (ev.type === "payment_method.failed") {
+      await admin.from("card_setups").update({ status: "failed" }).eq("id", setup.id);
+      return finish("ok");
+    }
+    return finish("ignored: " + ev.type.slice(0, 60));
+  }
+
   const { data: inv } = await admin
     .from("invoices")
-    .select("id, status, gateway_ref")
+    .select("id, status, gateway_ref, kind, auto_renew, amount, months, user_id, plan")
     .eq("id", ev.data.reference)
     .maybeSingle();
   if (!inv) return finish("ignored: unknown invoice");
@@ -65,9 +87,23 @@ export async function POST(req: Request) {
         p_invoice: inv.id, p_amount_satang: ev.data.amount, p_paid_at: ev.data.paid_at ?? new Date().toISOString(),
       });
       if (error) return finish("error: " + error.message.slice(0, 200), 500);
+      // ซื้อครั้งแรกด้วยบัตร + ยินยอมต่ออายุอัตโนมัติ → เก็บ token บัตร + ล็อกราคา
+      const pm = ev.data.payment_method;
+      if (result === "ok" && inv.kind === "checkout" && inv.auto_renew && pm?.id && pm.type === "card") {
+        await admin.from("account_plans").update({
+          auto_renew: true, payment_method_ref: pm.id, payment_method_label: pm.label,
+          renew_price: inv.amount, renew_months: inv.months ?? 1,
+        }).eq("user_id", inv.user_id);
+      }
+      if (result === "ok" && inv.kind === "renewal" && inv.user_id)
+        await notifyOwner(admin, inv.user_id as string, "ต่ออายุแพ็กเกจเรียบร้อย", `ตัดเงิน ฿${Number(inv.amount).toLocaleString()} สำเร็จ`);
       return finish(String(result));
     }
     case "payment.failed":
+      if (inv.kind === "renewal" && inv.user_id && inv.status === "pending") {
+        await handleRenewalFailure(admin, inv.id as string, inv.user_id as string, ev.data.failure_reason || "บัตรถูกปฏิเสธ");
+        return finish("ok");
+      }
       if (inv.status === "pending") await admin.from("invoices").update({ status: "failed" }).eq("id", inv.id);
       return finish("ok");
     case "payment.expired":

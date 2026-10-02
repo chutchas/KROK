@@ -40,6 +40,9 @@ export interface GatewayEvent {
     currency: string;
     method?: string;
     paid_at?: string;
+    /** บัตรที่ Gateway เก็บไว้ (เมื่อขอ save_payment_method / เปลี่ยนบัตร) */
+    payment_method?: { id: string; type: string; label: string | null };
+    failure_reason?: string;
   };
 }
 
@@ -64,6 +67,14 @@ export function parseGatewayEvent(raw: unknown): GatewayEvent | null {
       currency: d.currency.toUpperCase(),
       method: typeof d.method === "string" ? d.method.slice(0, 40) : undefined,
       paid_at: typeof d.paid_at === "string" && !Number.isNaN(Date.parse(d.paid_at)) ? d.paid_at : undefined,
+      payment_method: parsePm(d.payment_method),
+      failure_reason: typeof d.failure_reason === "string" ? d.failure_reason.slice(0, 200) : undefined,
     },
   };
+}
+
+function parsePm(v: unknown): { id: string; type: string; label: string | null } | undefined {
+  const o = v as Record<string, unknown> | null | undefined;
+  if (!o || typeof o.id !== "string" || !o.id || o.id.length > 200 || typeof o.type !== "string") return undefined;
+  return { id: o.id, type: o.type.slice(0, 20), label: typeof o.label === "string" ? o.label.slice(0, 60) : null };
 }

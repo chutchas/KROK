@@ -32,9 +32,76 @@ export interface CheckoutInput {
   returnUrl: string;
   callbackUrl: string;
   metadata: Record<string, string>;
+  /** ลูกค้ายินยอมต่ออายุอัตโนมัติ → ขอให้ Gateway เก็บ token บัตรไว้ (ส่งกลับใน callback ตอนสำเร็จ) */
+  savePaymentMethod?: boolean;
 }
 
 export interface CheckoutResult { paymentId: string; checkoutUrl: string; expiresAt: string | null }
+
+async function gatewayPost(path: string, idempotencyKey: string, body: unknown): Promise<Record<string, unknown>> {
+  const cfg = gatewayConfig();
+  if (!cfg) throw new Error("ยังไม่ได้ตั้งค่า Payment Gateway");
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 20000);
+  try {
+    const res = await fetch(`${cfg.url}${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cfg.apiKey}`, "Idempotency-Key": idempotencyKey },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+      cache: "no-store",
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (!res.ok) throw new Error(`Gateway ตอบ ${res.status}${typeof json.error === "string" ? `: ${json.error.slice(0, 120)}` : ""}`);
+    return json;
+  } catch (e) {
+    if (e instanceof Error && e.name === "AbortError") throw new Error("Gateway ไม่ตอบกลับ (timeout)");
+    throw e;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+export interface ChargeResult { paymentId: string; status: "succeeded" | "pending" | "failed"; failureReason: string | null }
+
+/**
+ * ตัดเงินจากบัตรที่เก็บไว้ (รอบต่ออายุอัตโนมัติ) — POST /v1/charges
+ * ผลอาจรู้ทันที (succeeded/failed) หรือรอ callback (pending) — ผลสุดท้ายยึดตาม callback เสมอ
+ */
+export async function chargeSavedMethod(input: {
+  invoiceId: string; paymentMethodRef: string; amountThb: number; description: string; callbackUrl: string; metadata: Record<string, string>;
+}): Promise<ChargeResult> {
+  const b = await gatewayPost("/v1/charges", input.invoiceId, {
+    reference: input.invoiceId,
+    payment_method: input.paymentMethodRef,
+    amount: Math.round(input.amountThb * 100),
+    currency: "THB",
+    description: input.description,
+    callback_url: input.callbackUrl,
+    metadata: { app: "krok", ...input.metadata },
+  });
+  const id = typeof b.id === "string" ? b.id : "";
+  if (!id) throw new Error("Gateway ตอบรูปแบบไม่ถูกต้อง");
+  const st = b.status === "succeeded" || b.status === "failed" ? b.status : "pending";
+  return { paymentId: id, status: st, failureReason: typeof b.failure_reason === "string" ? b.failure_reason.slice(0, 200) : null };
+}
+
+/** เปิดหน้าให้ลูกค้าเพิ่ม/เปลี่ยนบัตร (ไม่มียอดเงิน) — POST /v1/payment-methods/setup */
+export async function createCardSetup(input: {
+  setupId: string; customer: { email: string | null; name: string | null }; returnUrl: string; callbackUrl: string;
+}): Promise<{ setupRef: string; setupUrl: string }> {
+  const b = await gatewayPost("/v1/payment-methods/setup", input.setupId, {
+    reference: input.setupId,
+    customer: input.customer,
+    return_url: input.returnUrl,
+    callback_url: input.callbackUrl,
+    metadata: { app: "krok" },
+  });
+  const id = typeof b.id === "string" ? b.id : "";
+  const url = typeof b.setup_url === "string" ? b.setup_url : "";
+  if (!id || !/^https:\/\//.test(url)) throw new Error("Gateway ตอบรูปแบบไม่ถูกต้อง");
+  return { setupRef: id, setupUrl: url };
+}
 
 /** สร้างคำขอชำระเงินที่ Gateway → ได้ลิงก์หน้าชำระ (QR / บัตร / pay-in) */
 export async function createCheckout(input: CheckoutInput): Promise<CheckoutResult> {
@@ -59,6 +126,7 @@ export async function createCheckout(input: CheckoutInput): Promise<CheckoutResu
         return_url: input.returnUrl,
         callback_url: input.callbackUrl,
         expires_in: 86400,
+        save_payment_method: !!input.savePaymentMethod,
         metadata: { app: "krok", ...input.metadata },
       }),
       signal: ctrl.signal,

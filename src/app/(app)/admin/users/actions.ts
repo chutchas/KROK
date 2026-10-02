@@ -63,11 +63,14 @@ export async function setUserPlan(userId: string, plan: string): Promise<{ ok: t
   if (from === plan) return { ok: true };
 
   // แอดมินกำหนด = ไม่มีวันหมดอายุ (ดีลพิเศษ/แก้ไขให้ลูกค้า) · ยังไม่รัน 0046 (ไม่มีคอลัมน์) = บันทึกแบบเดิม
-  const row: Record<string, unknown> = { user_id: userId, plan, expires_at: null, updated_at: new Date().toISOString(), updated_by: a.session.userId };
+  // และหยุดตัดเงินอัตโนมัติ (ไม่ให้ตัดบัตรลูกค้าทับดีลที่แอดมินกำหนด)
+  const row: Record<string, unknown> = { user_id: userId, plan, expires_at: null, auto_renew: false, updated_at: new Date().toISOString(), updated_by: a.session.userId };
   let { error } = await a.admin.from("account_plans").upsert(row, { onConflict: "user_id" });
-  if (error && /expires_at/.test(error.message)) {
-    delete row.expires_at;
-    ({ error } = await a.admin.from("account_plans").upsert(row, { onConflict: "user_id" }));
+  for (const col of ["auto_renew", "expires_at"]) {
+    if (error && new RegExp(col).test(error.message)) {
+      delete row[col];
+      ({ error } = await a.admin.from("account_plans").upsert(row, { onConflict: "user_id" }));
+    }
   }
   if (error) return { error: error.message };
 

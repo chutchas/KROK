@@ -8,8 +8,8 @@ import { paymentsEnabled } from "@/lib/billing-gateway";
 
 export const dynamic = "force-dynamic";
 
-export default async function BillingPage({ searchParams }: { searchParams: Promise<{ invoice?: string }> }) {
-  const { invoice } = await searchParams;
+export default async function BillingPage({ searchParams }: { searchParams: Promise<{ invoice?: string; card?: string }> }) {
+  const { invoice, card } = await searchParams;
   const session = await enforceMenu("billing");
 
   const [snap, payMethods, plans] = await Promise.all([
@@ -32,16 +32,26 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
   // วันหมดอายุของแพ็กเกจ (บัญชีเจ้าของ) + ใบแจ้งหนี้ที่ค้างจ่าย (เจ้าของเท่านั้น)
   const admin2 = getAdminClient();
   let expiresAt: string | null = null;
+  let sub: { autoRenew: boolean; cardLabel: string | null; hasCard: boolean; renewPrice: number | null; lastError: string | null; attempts: number } | null = null;
   let pending: { id: string; plan: string; amount: number; url: string } | null = null;
   if (admin2 && snap.ownerId) {
     const [{ data: acct }, { data: inv }] = await Promise.all([
-      admin2.from("account_plans").select("expires_at").eq("user_id", snap.ownerId).maybeSingle(),
+      admin2.from("account_plans").select("*").eq("user_id", snap.ownerId).maybeSingle(),
       isBillingOwner
         ? admin2.from("invoices").select("id, plan, amount, checkout_url, checkout_expires_at").eq("user_id", session.userId)
             .eq("status", "pending").not("checkout_url", "is", null).order("issued_at", { ascending: false }).limit(1).maybeSingle()
         : Promise.resolve({ data: null }),
     ]);
     expiresAt = (acct?.expires_at as string) ?? null;
+    if (acct && "auto_renew" in acct) // ยังไม่รัน 0047 = ไม่มีข้อมูลต่ออายุอัตโนมัติ
+      sub = {
+        autoRenew: !!acct.auto_renew,
+        cardLabel: (acct.payment_method_label as string) ?? null,
+        hasCard: !!acct.payment_method_ref,
+        renewPrice: (acct.renew_price as number) ?? null,
+        lastError: (acct.last_renew_error as string) ?? null,
+        attempts: (acct.renew_attempts as number) ?? 0,
+      };
     if (inv && (!inv.checkout_expires_at || new Date(inv.checkout_expires_at as string) > new Date()))
       pending = { id: inv.id as string, plan: inv.plan as string, amount: inv.amount as number, url: inv.checkout_url as string };
   }
@@ -50,6 +60,8 @@ export default async function BillingPage({ searchParams }: { searchParams: Prom
     <BillingClient
       payable={paymentsEnabled()}
       expiresAt={expiresAt}
+      subscription={sub}
+      cardReturn={typeof card === "string" && /^[0-9a-f-]{36}$/i.test(card)}
       pendingInvoice={pending}
       returnInvoice={typeof invoice === "string" && /^[0-9a-f-]{36}$/i.test(invoice) ? invoice : null}
       isOwner={isBillingOwner}
