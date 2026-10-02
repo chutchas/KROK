@@ -482,6 +482,7 @@ export const en: Record<MessageKey, string> = {
   "print.photos.cellHint": "Click to edit this photo field",
   "print.photos.fieldsInBox": "Photo fields in this box (click to edit)",
   "print.photos.fieldMax": "up to {n}",
+  "editor.tableColNo": "Column {n}",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",

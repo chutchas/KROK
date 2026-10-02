@@ -487,6 +487,7 @@ export const th = {
   "print.photos.cellHint": "คลิกเพื่อตั้งค่าฟิลด์รูปนี้",
   "print.photos.fieldsInBox": "ฟิลด์รูปในกล่อง (กดเพื่อตั้งค่า)",
   "print.photos.fieldMax": "สูงสุด {n} รูป",
+  "editor.tableColNo": "คอลัมน์ที่ {n}",
   "print.photos.title": "ภาพประกอบ",
   "print.photos.section": "การพิมพ์รูปถ่าย",
   "print.photos.hint": "ตั้งครั้งเดียวใช้ทั้งฟอร์ม — มีผลกับมุมมองกระดาษ การพิมพ์ และหน้าผลการกรอก",

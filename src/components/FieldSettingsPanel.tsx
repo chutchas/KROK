@@ -324,7 +324,12 @@ export default function FieldSettingsPanel({
           <div style={{ display: "grid", gap: 8 }}>
             {cols.map((c, i) => (
               <div key={i} style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 8 }}>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  {/* ลำดับคอลัมน์ (ซ้าย → ขวา ในตาราง) */}
+                  <span aria-label={tt("editor.tableColNo", { n: i + 1 })} title={tt("editor.tableColNo", { n: i + 1 })}
+                    style={{ flexShrink: 0, minWidth: 26, height: 26, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", fontWeight: 700, fontSize: ".82rem", display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+                    {i + 1}
+                  </span>
                   <Field value={c.label} onChange={(e) => patchCol(i, { label: e.target.value })} placeholder={t("editor.tableColName")} style={{ flex: 1 }} />
                   <button onClick={() => removeCol(i)} disabled={cols.length <= 1} aria-label={t("common.delete")} title={t("common.delete")} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
                 </div>
