@@ -1,6 +1,7 @@
 "use client";
 import { Lightbulb, Lock, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
+import FormIcon from "@/components/FormIcon";
 import { useT } from "@/i18n/LanguageProvider";
 import { type FormField, type FormSchema } from "@/lib/form-schema";
 import { toDisplay } from "@/lib/formula";
@@ -103,6 +104,18 @@ export default function FormPreview({
   };
   return (
     <div>
+      {/* หัวฟอร์ม: ชื่อ + คำอธิบาย (เหมือนมุมมองกระดาษ) — แก้ได้ที่การ์ดด้านบน */}
+      {(schema.title || schema.description) && (
+        <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "4px 2px 12px", borderBottom: "1px solid var(--line)" }}>
+          <FormIcon value={schema.icon} size={34} />
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div style={{ fontSize: "1.08rem", fontWeight: 700, lineHeight: 1.35, color: "var(--ink)", overflowWrap: "anywhere" }}>{schema.title}</div>
+            {schema.description && (
+              <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginTop: 2, lineHeight: 1.45, overflowWrap: "anywhere" }}>{schema.description}</div>
+            )}
+          </div>
+        </div>
+      )}
       {schema.steps.map((s, i) => {
         const stepKey = `s:${s.id}`;
         const stepSel = selectedKey === stepKey;
