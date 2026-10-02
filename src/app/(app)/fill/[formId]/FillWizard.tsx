@@ -9,7 +9,6 @@ import { Printer, Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camer
 import { useT } from "@/i18n/LanguageProvider";
 import { labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
-import FormPaperFill from "@/components/FormPaperFill";
 import BodyPortal from "@/components/BodyPortal";
 import OptionPicker from "@/components/OptionPicker";
 import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
@@ -47,6 +46,10 @@ import {
 import { registerDevice } from "@/app/(app)/settings/devices/actions";
 import { confirmDialog } from "@/components/dialogs";
 import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
+import dynamic from "next/dynamic";
+
+// โหมดกระดาษใช้เฉพาะบางคน — แยก bundle (หน้ากรอกบนมือถือโหลดเร็วขึ้น)
+const FormPaperFill = dynamic(() => import("@/components/FormPaperFill"), { ssr: false });
 
 type TableRow = Record<string, string>;
 /** รูปถ่ายต่อแถวของตาราง: key → dataURL (เก็บรวมกับรูปของฟิลด์ใน state photos) */

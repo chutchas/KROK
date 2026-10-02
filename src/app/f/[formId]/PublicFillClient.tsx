@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Button, Field } from "@/components/ui";
 import { LogoMark } from "@/components/Logo";
 import Icon from "@/components/Icon";
-import { Globe, Info } from "lucide-react";
+import { Globe, Info, ShieldCheck } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import type { FormSchema } from "@/lib/form-schema";
 import type { Attachment } from "@/lib/attachments";
@@ -11,14 +11,18 @@ import FillWizard from "@/app/(app)/fill/[formId]/FillWizard";
 
 // หน้ากรอกฟอร์มสาธารณะ (ไม่ต้อง login) — ขอชื่อผู้กรอกก่อน แล้วเข้าสู่ wizard เดิมในโหมด public
 export default function PublicFillClient({
-  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false, attachments = [],
+  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false, attachments = [], orgName = "", privacyNotice,
 }: {
   formId: string; title: string; icon: string; version: number;
   requiresApproval: boolean; approvalChain: unknown[]; schema: FormSchema; tenantId: string;
   loggedIn?: boolean;
   attachments?: Attachment[];
+  /** ชื่อองค์กรเจ้าของฟอร์ม (ผู้ควบคุมข้อมูล) */
+  orgName?: string;
+  /** ประกาศความเป็นส่วนตัวที่เจ้าของฟอร์มเขียนเอง */
+  privacyNotice?: string;
 }) {
-  const { t } = useT();
+  const { t, tt } = useT();
   const [name, setName] = useState("");
   const [started, setStarted] = useState(false);
 
@@ -48,6 +52,16 @@ export default function PublicFillClient({
             <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("pubfill.intro")}</p>
             <label style={{ display: "block", fontSize: ".85rem", fontWeight: 600, margin: "12px 0 6px" }}>{t("pubfill.yourName")}</label>
             <Field value={name} onChange={(e) => setName(e.target.value)} placeholder={t("pubfill.namePlaceholder")} style={{ width: "100%" }} maxLength={120} />
+            {/* ประกาศความเป็นส่วนตัว (PDPA ม.23) — แจ้งก่อนเก็บข้อมูล */}
+            <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 14, fontSize: ".8rem", color: "var(--ink-2)", lineHeight: 1.6 }}>
+              <span style={{ flexShrink: 0, marginTop: 2, color: "var(--accent)" }}><Icon icon={ShieldCheck} className="h-4 w-4" /></span>
+              <div style={{ minWidth: 0 }}>
+                <b style={{ color: "var(--ink)" }}>{t("pubfill.privacyTitle")}</b>
+                {privacyNotice && <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", marginTop: 2 }}>{privacyNotice}</div>}
+                <div style={{ marginTop: 2 }}>{tt("pubfill.privacyDefault", { org: orgName || title })}</div>
+                <a href="/privacy" target="_blank" rel="noopener" style={{ display: "inline-block", marginTop: 2 }}>{t("legal.privacy")}</a>
+              </div>
+            </div>
             <Button variant="primary" onClick={() => name.trim() && setStarted(true)} disabled={!name.trim()} style={{ width: "100%", marginTop: 14 }}>
               {t("pubfill.start")}
             </Button>
@@ -69,6 +83,9 @@ export default function PublicFillClient({
           />
         )}
       </main>
+      <footer className="no-print" style={{ textAlign: "center", fontSize: ".76rem", color: "var(--ink-3)", padding: "0 16px 28px" }}>
+        <a href="/privacy" target="_blank" rel="noopener" style={{ color: "inherit" }}>{t("legal.privacy")}</a> · <a href="/terms" target="_blank" rel="noopener" style={{ color: "inherit" }}>{t("legal.terms")}</a>
+      </footer>
     </div>
   );
 }

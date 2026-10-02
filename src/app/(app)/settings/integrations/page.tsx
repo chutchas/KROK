@@ -16,11 +16,14 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     return <div style={{ color: "var(--ink-2)" }}><T k="intg.manageOnly" /></div>;
 
   const supabase = await createClient();
-  const [plan, pool] = await Promise.all([getTenantPlan(session.tenantId), getTenantPool(session.tenantId)]);
   // webhooks + tenant_notify มีความลับ → อ่านด้วย service role (ผูก tenant เอง) · REST ถูกปิดใน 0043
   const admin = getAdminClient();
   const none = Promise.resolve({ data: null });
-  const [{ data: whData }, { data: formData }, { data: nData }] = await Promise.all([
+  const intakeCols = "form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at";
+  // ทุก query ยิงพร้อมกันรอบเดียว (เดิม 3 รอบต่อกัน)
+  const [plan, pool, { data: whData }, { data: formData }, { data: nData }, { data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
+    getTenantPlan(session.tenantId),
+    getTenantPool(session.tenantId),
     admin ? admin
       .from("webhooks")
       .select("id, name, url, events, secret, active, last_status, last_at, form_id, fields")
@@ -33,9 +36,6 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       .is("deleted_at", null)
       .order("title"),
     admin ? admin.from("tenant_notify").select("*").eq("tenant_id", session.tenantId).maybeSingle() : none,
-  ]);
-  const intakeCols = "form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at";
-  const [{ data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
     supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId).order("name"),
     supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
     // ยังไม่ได้รัน migration 0034 → error → ไม่มีค่าตั้ง (แท็บ API จะแจ้งให้รัน migration ตอนบันทึก)

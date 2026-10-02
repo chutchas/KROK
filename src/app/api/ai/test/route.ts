@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
 import { pingModel } from "@/lib/ai";
 import { isAiPurpose } from "@/lib/ai-purpose";
+import { rateLimited } from "@/lib/rate-limit";
 
 export const maxDuration = 60;
 
@@ -11,7 +12,10 @@ export const maxDuration = 60;
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (!canManage(session.role)) return NextResponse.json({ error: "ไม่มีสิทธิ์" }, { status: 403 });
+  if (!canManage(session.role) && !session.isPlatformAdmin) return NextResponse.json({ error: "ไม่มีสิทธิ์" }, { status: 403 });
+  // ไม่หักเครดิต → กันยิงรัวให้เสียค่า LLM ของระบบ: 6 ครั้ง/นาที/ผู้ใช้ (ผู้ดูแลระบบ 30)
+  if (await rateLimited(`ai:test:${session.userId}`, session.isPlatformAdmin ? 30 : 6, 60))
+    return NextResponse.json({ error: "ทดสอบถี่เกินไป โปรดลองใหม่อีกสักครู่" }, { status: 429 });
 
   let purpose = "form_gen";
   try {

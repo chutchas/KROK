@@ -161,6 +161,12 @@ export default function FieldSettingsPanel({
         {cbRow(schema.show_header !== false, t("editor.showHeader"), (v) => toggle("show_header", v))}
         {cbRow(schema.show_meta !== false, t("editor.showMeta"), (v) => toggle("show_meta", v))}
         <PhotoPrintSettings schema={schema} onChange={onChange} />
+        <label style={{ ...lbl, marginTop: 18 }}>{t("editor.privacyNotice")}</label>
+        <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "0 0 6px" }}>{t("editor.privacyNoticeHint")}</p>
+        <textarea value={schema.privacy_notice ?? ""} maxLength={2000} rows={4}
+          placeholder={t("editor.privacyNoticePh")}
+          onChange={(e) => { const n = { ...schema }; if (e.target.value) n.privacy_notice = e.target.value; else delete n.privacy_notice; onChange(n); }}
+          style={{ width: "100%", boxSizing: "border-box", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px", fontFamily: "inherit", fontSize: ".86rem", background: "var(--surface)", color: "var(--ink)", resize: "vertical" }} />
       </Shell>
     );
   }

@@ -1,3 +1,4 @@
+import { runLater } from "@/lib/background";
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { countFields, type FormSchema } from "@/lib/form-schema";
@@ -84,17 +85,20 @@ type ServerClient = Awaited<ReturnType<typeof createClient>>;
 async function loadDrafts(supabase: ServerClient, tenantId: string, userId: string): Promise<DraftListItem[]> {
   try {
     const nowIso = new Date().toISOString();
-    const { data: expired } = await supabase
-      .from("submission_drafts")
-      .select("id, media")
-      .eq("user_id", userId)
-      .lt("expires_at", nowIso)
-      .limit(50);
-    if (expired && expired.length) {
-      const paths = (expired as { media: Record<string, string> }[]).flatMap((d) => Object.values(d.media || {}));
-      if (paths.length) await supabase.storage.from("drafts").remove(paths);
-      await supabase.from("submission_drafts").delete().in("id", (expired as { id: string }[]).map((d) => d.id));
-    }
+    // ลบร่างหมดอายุหลังตอบหน้าแล้ว (ไม่ถ่วงการเปิดหน้า) — รายการด้านล่างกรองที่หมดอายุออกอยู่แล้ว · พลาด = cron เก็บให้
+    runLater(async () => {
+      const { data: expired } = await supabase
+        .from("submission_drafts")
+        .select("id, media")
+        .eq("user_id", userId)
+        .lt("expires_at", nowIso)
+        .limit(50);
+      if (expired && expired.length) {
+        const paths = (expired as { media: Record<string, unknown> }[]).flatMap((d) => Object.values(d.media || {})).filter((x): x is string => typeof x === "string");
+        if (paths.length) await supabase.storage.from("drafts").remove(paths);
+        await supabase.from("submission_drafts").delete().in("id", (expired as { id: string }[]).map((d) => d.id));
+      }
+    });
 
     const { data, error } = await supabase
       .from("submission_drafts")

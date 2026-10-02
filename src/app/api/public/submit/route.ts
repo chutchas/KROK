@@ -7,14 +7,22 @@ import { maxPhotosOf, parsePhotoSlotKey } from "@/lib/photo-slots";
 import { sanitizeSchema } from "@/lib/form-schema";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
 import { runLater } from "@/lib/background";
+import { clientIp, sniffImage } from "@/lib/client-ip";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
+
+const MAX_BODY_BYTES = 40 * 1024 * 1024;
+const UPLOAD_CONCURRENCY = 4;
 
 // รับการส่งฟอร์มสาธารณะ (ไม่ต้อง login) — ตรวจว่าเป็นฟอร์ม public จริงก่อนบันทึกด้วย service role
 export async function POST(req: Request) {
   const admin = getAdminClient();
   if (!admin) return NextResponse.json({ error: "server not configured" }, { status: 500 });
+
+  // กันส่งก้อนใหญ่ผิดปกติ (อ่าน formData ทั้งก้อนเข้าหน่วยความจำ)
+  const len = Number(req.headers.get("content-length") || 0);
+  if (len > MAX_BODY_BYTES) return NextResponse.json({ error: "ข้อมูลใหญ่เกินไป" }, { status: 413 });
 
   let form: FormData;
   try {
@@ -39,9 +47,7 @@ export async function POST(req: Request) {
 
   // กันสแปมระดับ IP (atomic ผ่าน Postgres) — 20 ครั้ง/60 วินาทีต่อ IP ต่อฟอร์ม
   // best-effort: ถ้ายังไม่ได้รัน migration 0016 (ไม่มีฟังก์ชัน) จะข้ามไปใช้ backstop ต่อฟอร์มด้านล่าง
-  const ip = (req.headers.get("x-forwarded-for")?.split(",")[0]?.trim())
-    || req.headers.get("x-real-ip")
-    || "unknown";
+  const ip = clientIp(req);
   try {
     const { data: allowed, error: rlErr } = await admin.rpc("hit_rate_limit", {
       p_key: `pubsubmit:${ip}:${f.id}`,
@@ -129,23 +135,21 @@ export async function POST(req: Request) {
     meta: { submission_id: subId, result, source: "public", user_name: userName },
   });
 
-  // อัปโหลดรูป/ลายเซ็น (คัดไว้แล้วด้านบน)
-  for (const { fieldId, file: value } of photos) {
-    const path = `${f.tenant_id}/${subId}/${fieldId}.jpg`;
-    const buf = Buffer.from(await value.arrayBuffer());
-    const { error: upErr } = await admin.storage
-      .from("submissions")
-      .upload(path, buf, { contentType: "image/jpeg", upsert: true });
-    if (!upErr) {
-      await admin.from("submission_photos").insert({
-        tenant_id: f.tenant_id,
-        submission_id: subId,
-        field_id: fieldId,
-        storage_path: path,
-        ai_check: null,
-      });
-    }
+  // อัปโหลดรูป/ลายเซ็น (คัดไว้แล้วด้านบน) — ทีละ 4 ไฟล์พร้อมกัน · ไฟล์ที่ไม่ใช่รูปจริง (ดู magic bytes) ข้าม
+  const saved: { tenant_id: string; submission_id: string; field_id: string; storage_path: string; ai_check: null }[] = [];
+  for (let i = 0; i < photos.length; i += UPLOAD_CONCURRENCY) {
+    await Promise.all(photos.slice(i, i + UPLOAD_CONCURRENCY).map(async ({ fieldId, file: value }) => {
+      const buf = Buffer.from(await value.arrayBuffer());
+      const type = sniffImage(buf);
+      if (!type) return;
+      const path = `${f.tenant_id}/${subId}/${fieldId}.jpg`;
+      const { error: upErr } = await admin.storage
+        .from("submissions")
+        .upload(path, buf, { contentType: type, upsert: true });
+      if (!upErr) saved.push({ tenant_id: f.tenant_id, submission_id: subId, field_id: fieldId, storage_path: path, ai_check: null });
+    }));
   }
+  if (saved.length) await admin.from("submission_photos").insert(saved);
 
   // แจ้ง webhook (best-effort)
   runLater(() => dispatchWebhooks(f.tenant_id, "submission.created", {

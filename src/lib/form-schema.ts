@@ -212,6 +212,8 @@ export interface FormSchema {
   layout?: Record<string, PaperBox>;
   // การแสดงรูปถ่ายตอนพิมพ์/มุมมองกระดาษ — undefined = thumb (รูปย่อในช่อง เหมือนเดิม)
   print_photos?: PrintPhotos;
+  // ประกาศความเป็นส่วนตัวของเจ้าของฟอร์ม (PDPA) — แสดงก่อนเริ่มกรอกฟอร์มสาธารณะ · ไม่มี = ข้อความมาตรฐาน
+  privacy_notice?: string;
 }
 
 /**
@@ -583,6 +585,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (r.show_header === false) schema.show_header = false;
   if (r.show_meta === false) schema.show_meta = false;
   if (layout) schema.layout = layout;
+  const pn = str(r.privacy_notice, 2000).trim();
+  if (pn) schema.privacy_notice = pn;
   const pp = r.print_photos as Record<string, unknown> | undefined;
   if (pp && typeof pp === "object" && PRINT_PHOTO_MODES.includes(pp.mode as PrintPhotoMode) && pp.mode !== "thumb") {
     schema.print_photos = printPhotosOf({ print_photos: { mode: pp.mode as PrintPhotoMode, cols: num(pp.cols), height_mm: num(pp.height_mm) } });

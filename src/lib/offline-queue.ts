@@ -109,21 +109,18 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
   // 23505 = duplicate key → ถือว่าเคยส่งสำเร็จแล้ว (ไม่ต้องลองซ้ำ)
   if (subErr && subErr.code !== "23505") throw subErr;
 
-  for (const ph of p.photos) {
-    const path = `${p.tenantId}/${p.subId}/${ph.fieldId}.jpg`;
-    const { error: upErr } = await supabase.storage
-      .from("submissions")
-      .upload(path, dataUrlToBlob(ph.dataUrl), { contentType: "image/jpeg", upsert: true });
-    if (!upErr) {
-      await supabase.from("submission_photos").insert({
-        tenant_id: p.tenantId,
-        submission_id: p.subId,
-        field_id: ph.fieldId,
-        storage_path: path,
-        ai_check: ph.ai ?? null,
-      });
-    }
+  // อัปโหลดรูปทีละ 3 ไฟล์พร้อมกัน (เดิมทีละไฟล์ — ฟอร์มที่มีรูปเยอะส่งช้ามากบนเน็ตมือถือ) แล้วบันทึกแถวรูปครั้งเดียว
+  const rows: { tenant_id: string; submission_id: string; field_id: string; storage_path: string; ai_check: unknown }[] = [];
+  for (let i = 0; i < p.photos.length; i += 3) {
+    await Promise.all(p.photos.slice(i, i + 3).map(async (ph) => {
+      const path = `${p.tenantId}/${p.subId}/${ph.fieldId}.jpg`;
+      const { error: upErr } = await supabase.storage
+        .from("submissions")
+        .upload(path, dataUrlToBlob(ph.dataUrl), { contentType: "image/jpeg", upsert: true });
+      if (!upErr) rows.push({ tenant_id: p.tenantId, submission_id: p.subId, field_id: ph.fieldId, storage_path: path, ai_check: ph.ai ?? null });
+    }));
   }
+  if (rows.length) await supabase.from("submission_photos").insert(rows);
 
   // หลักฐานการอ่านเอกสาร — เก็บรูปต้นฉบับ + ค่าที่ AI อ่านได้ทั้งหมด + ค่าที่คนยืนยัน
   for (const ex of p.docExtracts ?? []) {

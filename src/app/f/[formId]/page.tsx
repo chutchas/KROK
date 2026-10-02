@@ -24,6 +24,19 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
 
   if (!admin) return notAvailable;
 
+  // ฟอร์ม / เอกสารแนบ / สถานะล็อกอิน — โหลดพร้อมกัน (เดิมรอทีละตัว)
+  const attP: Promise<Attachment[]> = Promise.resolve(admin
+    .from("form_attachments")
+    .select("id, field_id, kind, name, mime, size_bytes, url")
+    .eq("form_id", formId)
+    .order("sort", { ascending: true })
+    .order("created_at", { ascending: true }))
+    .then((r) => (r.data || []).map((x) => rowToAttachment(x as Record<string, unknown>)), () => []);
+  // ผู้เปิดล็อกอินอยู่ไหม (tenant ไหนก็ได้) → แจ้งว่ากรอกในฐานะ guest · getClaims ตรวจ JWT ในเครื่อง ไม่ยิง Auth server
+  const loggedInP: Promise<boolean> = createClient()
+    .then((sb) => sb.auth.getClaims())
+    .then((r) => !!r.data?.claims?.sub, () => false);
+
   const { data } = await admin
     .from("forms")
     .select("id, tenant_id, title, icon, schema, version, requires_approval, approval_chain, visibility, status, deleted_at")
@@ -32,33 +45,17 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
 
   if (!data || data.visibility !== "public" || data.status !== "published" || data.deleted_at) return notAvailable;
 
-  // ถ้าผู้เปิดกำลังล็อกอินอยู่ (ไม่ว่าจะ tenant ไหน) การส่งฟอร์มสาธารณะจะไม่ผูกกับบัญชี
-  // → แจ้งเตือนให้รู้ตัวว่ากรอกในฐานะ guest (กันสับสนเคสล็อกอิน tenant อื่นแล้วสแกน QR)
-  // เอกสารที่เกี่ยวข้อง — ฟอร์มสาธารณะอ่านผ่าน service role
-  let attachments: Attachment[] = [];
-  try {
-    const { data: att } = await admin
-      .from("form_attachments")
-      .select("id, field_id, kind, name, mime, size_bytes, url")
-      .eq("form_id", formId)
-      .order("sort", { ascending: true })
-      .order("created_at", { ascending: true });
-    attachments = (att || []).map((r) => rowToAttachment(r as Record<string, unknown>));
-  } catch { /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
-
-  let loggedIn = false;
-  try {
-    const supabase = await createClient();
-    const { data: u } = await supabase.auth.getUser();
-    loggedIn = !!u.user;
-  } catch { /* ไม่รู้สถานะล็อกอิน = ถือว่าไม่ล็อกอิน */ }
-
   // ตัวเลือกจากข้อมูลอ้างอิง: อ่านด้วย service role จึงต้องจำกัดเฉพาะ dataset ของ tenant เจ้าของฟอร์ม
   // (resolveFormOptions กรอง tenant ให้) — ค่าในคอลัมน์ที่ใช้จะมองเห็นได้โดยทุกคนที่มีลิงก์
-  let schema = readSchema(data.schema);
-  try {
-    schema = await resolveFormOptions(schema, admin, data.tenant_id as string);
-  } catch { /* ใช้ schema เดิม */ }
+  const raw = readSchema(data.schema);
+  const [schema, attachments, loggedIn, orgName] = await Promise.all([
+    resolveFormOptions(raw, admin, data.tenant_id as string).catch(() => raw),
+    attP,
+    loggedInP,
+    // ชื่อองค์กรเจ้าของฟอร์ม = ผู้ควบคุมข้อมูล (แสดงในประกาศความเป็นส่วนตัว)
+    Promise.resolve(admin.from("tenants").select("name").eq("id", data.tenant_id as string).maybeSingle())
+      .then((r) => (r.data?.name as string | undefined) || "", () => ""),
+  ]);
 
   return (
     <PublicFillClient
@@ -73,6 +70,8 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       tenantId={data.tenant_id as string}
       loggedIn={loggedIn}
       attachments={attachments}
+      orgName={orgName}
+      privacyNotice={schema.privacy_notice}
     />
   );
 }

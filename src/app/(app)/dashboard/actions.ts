@@ -128,6 +128,15 @@ async function computeWidgetSql(supabase: Awaited<ReturnType<typeof createClient
   }
 }
 
+/**
+ * คำนวณหลาย widget ในคำขอเดียว — server action ถูกเรียกเรียงทีละตัวจากฝั่ง client
+ * (widget 6 ตัว = 6 รอบ round-trip ต่อกัน) จึงรวมเป็นก้อนเดียวแล้วคำนวณขนานกันฝั่ง server
+ */
+export async function computeWidgets(ws: DashWidget[]): Promise<WidgetResult[]> {
+  if (!Array.isArray(ws)) return [];
+  return Promise.all(ws.slice(0, 30).map((w) => computeWidget(w).catch(() => ({ error: "คำนวณไม่สำเร็จ" }) as WidgetResult)));
+}
+
 export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };

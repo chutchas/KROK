@@ -128,18 +128,18 @@ function toUsage(raw: unknown): Record<AiPurpose, number> {
 }
 
 /** ภาพรวมโควตาปัจจุบันของ workspace (ใช้ในหน้าแผน/โควตา) */
-export async function getQuotaSnapshot(tenantId: string): Promise<QuotaSnapshot> {
+export const getQuotaSnapshot = cache(async (tenantId: string): Promise<QuotaSnapshot> => {
   const supabase = await createClient();
   const period = currentPeriod();
-  const pool = await getTenantPool(tenantId);
+  const [pool, c] = await Promise.all([getTenantPool(tenantId), db()]);
   const ids = pool.tenantIds;
-  const c = await db();
-  const pooledAi = await c.rpc("ai_usage_pool_all", { p_tenant: tenantId, p_period: period });
   const [plan, formsUsed, membersUsed, ai, subs, storage, datasets, datasetApi, webhooks, intakeForms, devices] = await Promise.all([
     getTenantPlan(tenantId),
     countIn("forms", ids, (q) => q.is("deleted_at", null)),
     distinctMembers(ids),
-    pooledAi.error ? supabase.rpc("ai_usage_all", { p_tenant: tenantId, p_period: period }) : Promise.resolve(pooledAi),
+    // ยังไม่รัน 0045 = ใช้ยอดของ workspace นี้ (ยิงพร้อมตัวอื่น ไม่รอก่อน)
+    Promise.resolve(c.rpc("ai_usage_pool_all", { p_tenant: tenantId, p_period: period })).then((r) =>
+      r.error ? supabase.rpc("ai_usage_all", { p_tenant: tenantId, p_period: period }) : r),
     countIn("submissions", ids, (q) => q.gte("submitted_at", monthStart())),
     Promise.resolve(c.rpc("pool_storage_bytes", { p_tenant: tenantId })).then(async (r) =>
       r.error ? Number((await supabase.rpc("tenant_storage_bytes", { p_tenant: tenantId })).data) || 0 : Number(r.data) || 0, () => 0),
@@ -167,7 +167,7 @@ export async function getQuotaSnapshot(tenantId: string): Promise<QuotaSnapshot>
     intakeForms,
     devices,
   };
-}
+});
 
 /** ตรวจว่ายังสร้างฟอร์มเพิ่มได้ไหม (นับรวมทุก workspace ของเจ้าของ) */
 export async function canAddForm(tenantId: string): Promise<{ ok: boolean; used: number; max: number }> {

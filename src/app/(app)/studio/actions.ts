@@ -52,7 +52,11 @@ async function notifyNewForm(
         userIds = (data || []).map((r) => r.user_id as string);
       }
     } else if (vis.mode === "users") {
-      userIds = vis.userIds;
+      // เฉพาะผู้ใช้ที่เป็นสมาชิก workspace นี้จริง (กันยิงแจ้งเตือนไปหาคนนอกด้วย user id ที่ส่งมาเอง)
+      if (vis.userIds.length) {
+        const { data } = await admin.from("memberships").select("user_id").eq("tenant_id", tenantId).in("user_id", vis.userIds.slice(0, 500));
+        userIds = (data || []).map((r) => r.user_id as string);
+      }
     } else {
       // public / all → สมาชิกทั้ง workspace
       const { data } = await admin.from("memberships").select("user_id").eq("tenant_id", tenantId);
@@ -74,12 +78,14 @@ async function notifyNewForm(
   }
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function sanitizeVisibility(v: unknown): Visibility {
   const o = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const mode =
     o.mode === "public" || o.mode === "teams" || o.mode === "users" ? o.mode : "all";
   const asIds = (x: unknown) =>
-    Array.isArray(x) ? Array.from(new Set(x.filter((s): s is string => typeof s === "string"))) : [];
+    Array.isArray(x) ? Array.from(new Set(x.filter((s): s is string => typeof s === "string" && UUID_RE.test(s)))).slice(0, 500) : [];
   return {
     mode,
     teamIds: mode === "teams" ? asIds(o.teamIds) : [],

@@ -137,3 +137,15 @@ describe("sanitizeSchema", () => {
     expect(Object.keys(s.layout).sort()).toEqual(["a", "header", "meta"]);
   });
 });
+
+describe("privacy_notice", () => {
+  const base = { title: "t", steps: [{ id: "s1", title: "s", fields: [{ id: "f1", label: "a", type: "text" }] }] };
+  it("keeps a trimmed notice capped at 2000 chars", () => {
+    expect(sanitizeSchema({ ...base, privacy_notice: "  เก็บชื่อเพื่อติดต่อกลับ  " }).privacy_notice).toBe("เก็บชื่อเพื่อติดต่อกลับ");
+    expect(sanitizeSchema({ ...base, privacy_notice: "x".repeat(3000) }).privacy_notice?.length).toBe(2000);
+  });
+  it("drops empty notices", () => {
+    expect(sanitizeSchema({ ...base, privacy_notice: "   " }).privacy_notice).toBeUndefined();
+    expect(sanitizeSchema(base).privacy_notice).toBeUndefined();
+  });
+});

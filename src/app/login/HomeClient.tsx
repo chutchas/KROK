@@ -68,6 +68,8 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
             {NAV.map((n) => (
               <a key={n.href} href={n.href}>{t(n.k)}</a>
             ))}
+            <a href="/privacy">{t("legal.privacy")}</a>
+            <a href="/terms">{t("legal.terms")}</a>
           </nav>
           <span style={{ flex: 1 }} />
           <ThemeToggle />
@@ -97,6 +99,8 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
             {NAV.slice(1).map((n) => (
               <a key={n.href} href={n.href}>{t(n.k)}</a>
             ))}
+            <a href="/privacy">{t("legal.privacy")}</a>
+            <a href="/terms">{t("legal.terms")}</a>
           </nav>
         </div>
       </footer>

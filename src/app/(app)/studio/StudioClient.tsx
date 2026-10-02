@@ -6,18 +6,14 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import TemplateGallery from "./TemplateGallery";
 import { getTemplate } from "@/lib/form-templates";
 import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick } from "lucide-react";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
-import FormPaperEditor from "@/components/FormPaperEditor";
 import FormPaperView from "@/components/FormPaperView";
 import FieldSettingsPanel from "@/components/FieldSettingsPanel";
-import AttachmentsPanel from "@/components/AttachmentsPanel";
 import FormDevicePicker from "@/components/FormDevicePicker";
-import QrModal from "@/components/QrModal";
-import ShareScopeModal, { type ShareValue } from "@/components/ShareScopeModal";
+import type { ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY, buildPrompt } from "@/lib/prompt-library";
 import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
@@ -25,6 +21,14 @@ import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./ac
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
+import dynamic from "next/dynamic";
+
+// ส่วนที่เปิดเฉพาะเมื่อใช้งาน — แยก bundle ออกจากหน้า Studio (โหลดหน้าแรกเร็วขึ้น)
+const TemplateGallery = dynamic(() => import("./TemplateGallery"), { ssr: false });
+const FormPaperEditor = dynamic(() => import("@/components/FormPaperEditor"), { ssr: false, loading: () => <div style={{ padding: 24, display: "flex", justifyContent: "center" }}><Spinner /></div> });
+const AttachmentsPanel = dynamic(() => import("@/components/AttachmentsPanel"), { ssr: false });
+const QrModal = dynamic(() => import("@/components/QrModal"), { ssr: false });
+const ShareScopeModal = dynamic(() => import("@/components/ShareScopeModal"), { ssr: false });
 
 interface Member { user_id: string; name: string; role: string }
 interface Team { id: string; name: string }

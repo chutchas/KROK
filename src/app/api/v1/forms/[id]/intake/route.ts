@@ -1,3 +1,4 @@
+import { clientIp } from "@/lib/client-ip";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
@@ -32,7 +33,6 @@ const MAX_BODY = 512 * 1024;
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
 const DISABLED = { error: "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้ผู้ดูแลเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล", code: "intake_disabled" };
-const clientIp = (req: Request) => (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || req.headers.get("x-real-ip") || "unknown";
 
 async function authenticate(req: Request, formId: string, admin: Admin) {
   const auth = req.headers.get("authorization") || "";

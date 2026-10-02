@@ -42,13 +42,11 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .maybeSingle();
   if (!sub) return NextResponse.json({ error: "not found" }, { status: 404 });
 
-  const pp = await getFormPrintPhotos(supabase, sub.form_id as string | null);
-
-  // ดึงรูป/ลายเซ็น → signed URL → โหลดไบต์มาแนบใน PDF
-  const { data: photoRows } = await supabase
-    .from("submission_photos")
-    .select("field_id, storage_path")
-    .eq("submission_id", id);
+  // ตั้งค่าการพิมพ์รูป + รายการรูป — โหลดพร้อมกัน
+  const [pp, { data: photoRows }] = await Promise.all([
+    getFormPrintPhotos(supabase, sub.form_id as string | null),
+    supabase.from("submission_photos").select("field_id, storage_path").eq("submission_id", id),
+  ]);
 
   // ดาวน์โหลดตรงจาก storage (ไม่ต้องขอ signed URL ทีละรูป) ทีละ 4 รูปพร้อมกัน
   const photoBuf: Record<string, Buffer> = {};

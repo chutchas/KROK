@@ -25,12 +25,31 @@ export default async function FillPage({
   if (!session) redirect(`/login?next=/fill/${formId}`);
 
   const supabase = await createClient();
-  const { data } = await supabase
+  // เริ่มทุก query ที่ไม่ต้องรอกันพร้อมกัน (ฟอร์ม / งาน / แบบร่าง / เอกสารแนบ) — เดิมรอทีละตัว
+  const formP = supabase
     .from("forms")
     .select("id, title, icon, schema, version, requires_approval, approval_chain, require_approved_device")
     .eq("id", formId)
     .is("deleted_at", null)
     .maybeSingle();
+  const caseP = caseParam && /^[0-9a-f-]{36}$/i.test(caseParam)
+    ? Promise.resolve(supabase
+        .from("form_cases")
+        .select("*")
+        .eq("id", caseParam)
+        .eq("form_id", formId)
+        .maybeSingle()).then((r) => r.data as Record<string, unknown> | null, () => null)
+    : null;
+  const draftP = !caseParam && draftParam && /^[0-9a-f-]{36}$/i.test(draftParam)
+    ? Promise.resolve(supabase
+        .from("submission_drafts")
+        .select("id, form_version, title, step_idx, mode, answers, media, doc_extracts, updated_at")
+        .eq("id", draftParam)
+        .eq("form_id", formId)
+        .eq("user_id", session.userId)
+        .maybeSingle()).then((r) => r.data as Record<string, unknown> | null, () => null)
+    : Promise.resolve(null);
+  const { data } = await formP;
 
   // ไม่พบในองค์กรที่ล็อกอินอยู่ — อาจเป็นฟอร์ม "สาธารณะ" ของ tenant อื่น
   // (เช่น สแกน QR ของ Tenant A ขณะล็อกอิน Tenant B) → พาไปหน้ากรอกสาธารณะแทน
@@ -69,39 +88,34 @@ export default async function FillPage({
   // งาน (ฟอร์มกรอกหลายคน) — ใช้ schema ของฟอร์ม ณ ตอนเริ่มงาน (แก้ฟอร์มกลางทางไม่กระทบงานที่ค้าง)
   let caseData: CaseData | null = null;
   let caseSchemaRaw: unknown = null;
-  if (caseParam && /^[0-9a-f-]{36}$/i.test(caseParam)) {
-    try {
-      const { data: c } = await supabase
-        .from("form_cases")
-        .select("*")
-        .eq("id", caseParam)
-        .eq("form_id", formId)
-        .maybeSingle();
-      if (c) {
-        caseData = rowToCase(c as Record<string, unknown>);
-        caseSchemaRaw = (c as { schema: unknown }).schema;
-      }
-    } catch { /* ยังไม่ได้รัน migration 0033 */ }
+  if (caseP) {
+    const c = await caseP; // ยังไม่ได้รัน migration 0033 = null
+    if (c) {
+      caseData = rowToCase(c);
+      caseSchemaRaw = (c as { schema: unknown }).schema;
+    }
     if (!caseData) notFound();
   }
 
-  let schema = readSchema(caseSchemaRaw ?? data.schema);
-  try {
-    schema = await resolveFormOptions(schema, supabase, session.tenantId);
-  } catch { /* ใช้ schema เดิม */ }
-
+  const rawSchema = readSchema(caseSchemaRaw ?? data.schema);
   // ทีม (ชื่อทีมของแต่ละขั้น + ทีมที่ผู้ใช้อยู่) — ใช้เฉพาะฟอร์มกรอกหลายคน
   // งานที่เปิดจาก API ของฟอร์มคนเดียวก็ใช้โหมดงาน (มีผู้ถือ + ปิดงานตอนส่ง)
-  const workflow = isWorkflowSchema(schema) || !!caseData;
+  const workflow = isWorkflowSchema(rawSchema) || !!caseData;
   let teams: Record<string, string> = {};
   let users: Record<string, string> = {};
   let myTeams: string[] = [];
-  if (workflow) {
-    const [{ data: tRows }, { data: mine }, { data: mRows }] = await Promise.all([
-      supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId),
-      supabase.rpc("my_team_ids"),
-      supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
-    ]);
+  const [schema, wf] = await Promise.all([
+    resolveFormOptions(rawSchema, supabase, session.tenantId).catch(() => rawSchema),
+    workflow
+      ? Promise.all([
+          supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId),
+          supabase.rpc("my_team_ids"),
+          supabase.from("memberships").select("user_id, name, email").eq("tenant_id", session.tenantId),
+        ])
+      : null,
+  ]);
+  if (wf) {
+    const [{ data: tRows }, { data: mine }, { data: mRows }] = wf;
     teams = Object.fromEntries(((tRows || []) as { id: string; name: string }[]).map((r) => [r.id, r.name]));
     users = Object.fromEntries(((mRows || []) as { user_id: string; name: string | null; email: string | null }[]).map((r) => [r.user_id, r.name || r.email || "สมาชิก"]));
     myTeams = ((mine as string[] | null) || []).map(String);
@@ -115,29 +129,19 @@ export default async function FillPage({
 
   // กรอกต่อจากแบบร่าง (ของผู้ใช้คนนี้เท่านั้น — RLS)
   let draft: DraftData | null = null;
-  if (!caseData && draftParam && /^[0-9a-f-]{36}$/i.test(draftParam)) {
-    try {
-      const { data: d } = await supabase
-        .from("submission_drafts")
-        .select("id, form_version, title, step_idx, mode, answers, media, doc_extracts, updated_at")
-        .eq("id", draftParam)
-        .eq("form_id", formId)
-        .eq("user_id", session.userId)
-        .maybeSingle();
-      if (d)
-        draft = {
-          id: d.id as string,
-          formVersion: (d.form_version as number) ?? 1,
-          title: (d.title as string) || "",
-          stepIdx: (d.step_idx as number) ?? 0,
-          mode: d.mode === "paper" ? "paper" : "mobile",
-          answers: (d.answers as Record<string, unknown>) || {},
-          media: (d.media as Record<string, string>) || {},
-          docExtracts: Array.isArray(d.doc_extracts) ? (d.doc_extracts as DraftData["docExtracts"]) : [],
-          updatedAt: d.updated_at as string,
-        };
-    } catch { /* ยังไม่ได้รัน migration 0032 = เปิดฟอร์มเปล่า */ }
-  }
+  const d = caseData ? null : await draftP; // ยังไม่ได้รัน migration 0032 = เปิดฟอร์มเปล่า
+  if (d)
+    draft = {
+      id: d.id as string,
+      formVersion: (d.form_version as number) ?? 1,
+      title: (d.title as string) || "",
+      stepIdx: (d.step_idx as number) ?? 0,
+      mode: d.mode === "paper" ? "paper" : "mobile",
+      answers: (d.answers as Record<string, unknown>) || {},
+      media: (d.media as Record<string, string>) || {},
+      docExtracts: Array.isArray(d.doc_extracts) ? (d.doc_extracts as DraftData["docExtracts"]) : [],
+      updatedAt: d.updated_at as string,
+    };
 
   const attachments = await attachmentsP;
 

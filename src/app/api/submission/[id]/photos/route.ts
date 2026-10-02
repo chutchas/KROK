@@ -58,21 +58,27 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { data: rows } = await supabase.from("submission_photos").select("field_id, storage_path").eq("submission_id", id);
   const byKey = new Map((rows || []).map((r) => [r.field_id as string, r.storage_path as string]));
 
+  // ดาวน์โหลดทีละ 6 ไฟล์พร้อมกัน แล้วเรียงตามลำดับในฟอร์ม
+  const list = [...labels].map(([key, label]) => ({ label, path: byKey.get(key) })).filter((x): x is { label: string; path: string } => !!x.path);
+  const bufs: (Uint8Array | null)[] = new Array(list.length).fill(null);
+  for (let i = 0; i < list.length; i += 6) {
+    await Promise.all(list.slice(i, i + 6).map(async (x, j) => {
+      try {
+        const { data: blob } = await supabase.storage.from("submissions").download(x.path);
+        if (blob) bufs[i + j] = new Uint8Array(await blob.arrayBuffer());
+      } catch { /* ข้ามรูปที่โหลดไม่ได้ */ }
+    }));
+  }
   const files: Record<string, Uint8Array> = {};
   let total = 0, n = 0;
-  for (const [key, label] of labels) {
-    const path = byKey.get(key);
-    if (!path) continue;
-    try {
-      const { data: blob } = await supabase.storage.from("submissions").download(path);
-      if (!blob) continue;
-      const buf = new Uint8Array(await blob.arrayBuffer());
-      if (total + buf.byteLength > MAX_TOTAL) break;
-      total += buf.byteLength;
-      n += 1;
-      const ext = (path.match(/\.([a-z0-9]{2,5})$/i)?.[1] || "jpg").toLowerCase();
-      files[`${String(n).padStart(2, "0")}-${safeName(label)}.${ext}`] = buf;
-    } catch { /* ข้ามรูปที่โหลดไม่ได้ */ }
+  for (let i = 0; i < list.length; i++) {
+    const buf = bufs[i];
+    if (!buf) continue;
+    if (total + buf.byteLength > MAX_TOTAL) break;
+    total += buf.byteLength;
+    n += 1;
+    const ext = (list[i].path.match(/\.([a-z0-9]{2,5})$/i)?.[1] || "jpg").toLowerCase();
+    files[`${String(n).padStart(2, "0")}-${safeName(list[i].label)}.${ext}`] = buf;
   }
   if (n === 0) return NextResponse.json({ error: "no photos" }, { status: 404 });
 

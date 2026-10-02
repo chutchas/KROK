@@ -18,7 +18,26 @@ import {
   formatLabel, formatHint, metricLabel, rangeLabel, metricUnit,
   type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
-import { saveDashboardLayout, computeWidget, type WidgetResult } from "./actions";
+import { saveDashboardLayout, computeWidgets, type WidgetResult } from "./actions";
+
+// รวมคำขอของทุก widget ที่ขอพร้อมกันเป็นการเรียก server ครั้งเดียว
+let widgetQueue: { w: DashWidget; resolve: (r: WidgetResult) => void }[] = [];
+function loadWidget(w: DashWidget): Promise<WidgetResult> {
+  return new Promise((resolve) => {
+    widgetQueue.push({ w, resolve });
+    if (widgetQueue.length === 1) setTimeout(flushWidgets, 0);
+  });
+}
+async function flushWidgets() {
+  const batch = widgetQueue;
+  widgetQueue = [];
+  try {
+    const rs = await computeWidgets(batch.map((b) => b.w));
+    batch.forEach((b, i) => b.resolve(rs[i] ?? { error: "คำนวณไม่สำเร็จ" }));
+  } catch {
+    batch.forEach((b) => b.resolve({ error: "คำนวณไม่สำเร็จ" }));
+  }
+}
 import { type AnswerItem } from "@/lib/answer-item";
 export type { AnswerItem };
 
@@ -221,7 +240,7 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
   useEffect(() => {
     let active = true;
     setRes(null);
-    computeWidget(w).then((r) => { if (active) setRes(r); });
+    loadWidget(w).then((r) => { if (active) setRes(r); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);

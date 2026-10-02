@@ -6,6 +6,7 @@ import { Button, Card, Field, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { LogoMark } from "@/components/Logo";
+import { LEGAL_VERSION } from "@/lib/legal";
 
 export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
@@ -18,6 +19,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
   const [name, setName] = useState("");
+  const [agree, setAgree] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(() => {
     if (sp.get("confirmed")) return { t: t("login.confirmedOk") };
@@ -49,11 +51,13 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
         return;
       }
       if (mode === "signup") {
+        if (!agree) { setMsg({ t: t("legal.mustAgree"), err: true }); return; }
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: {
-            data: { org_name: isInvite ? "" : org, display_name: name },
+            // หลักฐานการยอมรับข้อกำหนด/รับทราบนโยบาย (ฉบับไหน เมื่อไร) — เก็บใน user metadata
+            data: { org_name: isInvite ? "" : org, display_name: name, terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() },
             // ลิงก์ในอีเมลยืนยันพากลับมาที่แอปแล้วเข้าสู่ระบบให้เลย
             emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
           },
@@ -149,6 +153,15 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
               {t("login.forgot")}
             </button>
           )}
+          {mode === "signup" && (
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: ".84rem", color: "var(--ink-2)", cursor: "pointer", lineHeight: 1.5 }}>
+              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} required
+                style={{ width: 17, height: 17, marginTop: 2, flexShrink: 0, accentColor: "var(--accent)" }} />
+              <span>
+                {t("legal.agreePre")} <a href="/terms" target="_blank" rel="noopener" style={legalLink}>{t("legal.terms")}</a> {t("legal.agreeMid")} <a href="/privacy" target="_blank" rel="noopener" style={legalLink}>{t("legal.privacy")}</a>
+              </span>
+            </label>
+          )}
           <Button variant="primary" type="submit" disabled={busy} style={{ padding: 13 }}>
             {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : mode === "reset" ? t("login.doReset") : isInvite ? t("login.doJoin") : t("login.doSignup")}
           </Button>
@@ -174,6 +187,13 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           {mode === "signin" ? t("login.toSignup") : mode === "reset" ? t("login.backToSignin") : t("login.toSignin")}
         </button>
       </Card>
+      {!embedded && (
+        <div style={{ marginTop: 16, textAlign: "center", fontSize: ".8rem", color: "var(--ink-3)" }}>
+          <a href="/privacy" style={{ color: "inherit" }}>{t("legal.privacy")}</a> · <a href="/terms" style={{ color: "inherit" }}>{t("legal.terms")}</a>
+        </div>
+      )}
     </div>
   );
 }
+
+const legalLink: React.CSSProperties = { color: "var(--accent)", textDecoration: "underline" };

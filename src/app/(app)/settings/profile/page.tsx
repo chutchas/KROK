@@ -2,6 +2,10 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ProfileClient, { type ProfileData } from "./ProfileClient";
+import Link from "next/link";
+import { Card } from "@/components/ui";
+import { T } from "@/i18n/T";
+import { privacyRequestHref } from "@/lib/legal";
 
 export const dynamic = "force-dynamic";
 
@@ -28,5 +32,32 @@ export default async function ProfilePage() {
     user_id: session.userId,
   };
 
-  return <ProfileClient initial={profile} />;
+  // สิทธิของเจ้าของข้อมูล (PDPA ม.30–36): ขอสำเนา / ขอลบ — ส่งคำขอทางอีเมลผู้ให้บริการ
+  const subj = (what: string) => `[KROK PDPA] ${what} — ${session.email} (${session.userId})`;
+  const copyHref = privacyRequestHref(subj("ขอสำเนาข้อมูลส่วนบุคคล"));
+  const delHref = privacyRequestHref(subj("ขอลบบัญชีและข้อมูลส่วนบุคคล"));
+  const btn: React.CSSProperties = { display: "inline-flex", alignItems: "center", border: "1px solid var(--line)", borderRadius: 8, padding: "7px 12px", fontSize: ".86rem", color: "var(--ink)", textDecoration: "none", background: "var(--surface)" };
+
+  return (
+    <>
+      <ProfileClient initial={profile} />
+      <div style={{ marginTop: 16, minWidth: 0 }}>
+        <Card>
+          <h3 style={{ fontSize: "1rem", margin: "0 0 4px" }}><T k="legal.myData" /></h3>
+          <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}><T k="legal.myDataHint" /></p>
+          {copyHref && delHref ? (
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <a href={copyHref} style={btn}><T k="legal.reqCopy" /></a>
+              <a href={delHref} style={{ ...btn, color: "var(--fail)" }}><T k="legal.reqDelete" /></a>
+            </div>
+          ) : (
+            <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: 0 }}><T k="legal.noEmail" /></p>
+          )}
+          <div style={{ marginTop: 10, fontSize: ".82rem" }}>
+            <Link href="/privacy" target="_blank"><T k="legal.privacy" /></Link> · <Link href="/terms" target="_blank"><T k="legal.terms" /></Link>
+          </div>
+        </Card>
+      </div>
+    </>
+  );
 }

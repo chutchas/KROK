@@ -29,5 +29,17 @@ export default async function ApprovalsPage() {
     return cur.user_id === session.userId || session.role === "owner";
   });
 
-  return <ApprovalsClient initial={mine} myId={session.userId} isOwner={session.role === "owner"} />;
+  // ส่งไป client เฉพาะที่หน้านี้ใช้ (ตัดค่าดิบ/แถวตาราง/ข้อความยาว) — คิว 500 รายการไม่ทำให้หน้าบวม
+  const slim: PendingSub[] = mine.map((s) => ({
+    ...s,
+    answers: (Array.isArray(s.answers) ? s.answers : []).map((a) => ({
+      label: a.label,
+      type: a.type,
+      display: typeof a.display === "string" && a.display.length > 300 ? a.display.slice(0, 300) + "…" : a.display,
+      note: a.note,
+      fail: a.fail,
+    })),
+  }));
+
+  return <ApprovalsClient initial={slim} myId={session.userId} isOwner={session.role === "owner"} />;
 }

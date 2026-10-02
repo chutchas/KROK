@@ -49,14 +49,17 @@ export async function GET(req: Request) {
   };
   const rows: Row[] = [];
   const selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id${withAnswers ? ", answers" : ""}`;
-  for (let offset = 0; offset < MAX_ROWS; offset += PAGE) {
+  // keyset pagination (submitted_at, id) — offset ลึก ๆ ช้าลงเรื่อย ๆ เพราะ DB ต้องข้ามแถวก่อนหน้าทุกครั้ง
+  let cursor: { at: string; id: string } | null = null;
+  while (rows.length < MAX_ROWS) {
     let q = supabase
       .from("submissions")
       .select(selectCols)
       .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
       .order("submitted_at", { ascending: false })
       .order("id", { ascending: false }) // ลำดับตายตัว — กันแถวเวลาเดียวกันซ้ำ/หายระหว่างหน้า
-      .range(offset, offset + PAGE - 1);
+      .limit(PAGE);
+    if (cursor) q = q.or(`submitted_at.lt."${cursor.at}",and(submitted_at.eq."${cursor.at}",id.lt.${cursor.id})`);
     if (formId && formId !== "all") q = q.eq("form_id", formId);
     if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
     if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
@@ -68,6 +71,8 @@ export async function GET(req: Request) {
     const batch = (data || []) as unknown as Row[];
     rows.push(...batch);
     if (batch.length < PAGE) break; // ครบแล้ว
+    const last = batch[batch.length - 1];
+    cursor = { at: last.submitted_at, id: last.id };
   }
 
   const origin = url.origin;

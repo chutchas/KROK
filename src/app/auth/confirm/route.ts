@@ -13,15 +13,21 @@ import { createClient } from "@/lib/supabase/server";
 
 const OTP_TYPES: EmailOtpType[] = ["signup", "invite", "magiclink", "recovery", "email_change", "email"];
 
-/** กันเปิด redirect ไปเว็บอื่น: รับเฉพาะ path ภายใน */
-function safeNext(raw: string | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//") || raw.startsWith("/\\")) return "/dashboard";
-  return raw;
+/** กันเปิด redirect ไปเว็บอื่น: รับเฉพาะ path ภายใน (parse จริงแล้วเทียบ origin — กัน "/\t/evil.com" ที่ browser ตัด tab ทิ้ง) */
+function safeNext(raw: string | null, origin: string): string {
+  if (!raw || !raw.startsWith("/")) return "/dashboard";
+  try {
+    const u = new URL(raw, origin);
+    if (u.origin !== origin) return "/dashboard";
+    return u.pathname + u.search + u.hash;
+  } catch {
+    return "/dashboard";
+  }
 }
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const next = safeNext(url.searchParams.get("next"));
+  const next = safeNext(url.searchParams.get("next"), url.origin);
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;

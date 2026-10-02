@@ -59,7 +59,19 @@ export async function updateRole(
     .eq("tenant_id", a.session.tenantId)
     .eq("key", key);
   if (error) return { error: error.message };
+  // สิทธิ์จริงที่ RLS ใช้ = memberships.role (enum) — ต้องซิงก์ตาม can_manage ทุกครั้ง
+  // ไม่งั้นถอดสิทธิ์จัดการแล้วสมาชิกยังเขียนข้อมูลผ่าน REST ได้ (หรือให้สิทธิ์แล้วยังใช้ไม่ได้)
+  if (typeof patch.canManage === "boolean") {
+    const { error: syncErr } = await supabase
+      .from("memberships")
+      .update({ role: patch.canManage ? "admin" : "operator" })
+      .eq("tenant_id", a.session.tenantId)
+      .eq("role_key", key)
+      .neq("role", "owner");
+    if (syncErr) return { error: syncErr.message };
+  }
   revalidatePath("/settings/roles");
+  revalidatePath("/settings/team");
   revalidatePath("/", "layout");
   return { ok: true };
 }

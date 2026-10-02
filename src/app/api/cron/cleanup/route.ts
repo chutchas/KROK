@@ -23,12 +23,16 @@ async function handle(req: Request) {
   for (let round = 0; round < 20; round++) {
     const { data, error } = await admin
       .from("submission_drafts")
-      .select("id, media")
+      .select("id, tenant_id, user_id, media")
       .lt("expires_at", new Date().toISOString())
       .limit(200);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     if (!data || data.length === 0) break;
-    const paths = (data as { media: Record<string, string> }[]).flatMap((d) => Object.values(d.media || {}));
+    // ลบเฉพาะไฟล์ในโฟลเดอร์ของร่างนั้นจริง (<tenant>/<user>/<draft>/) — media เป็นค่าที่ client เขียนได้
+    const paths = (data as { id: string; tenant_id: string; user_id: string; media: Record<string, unknown> }[]).flatMap((d) => {
+      const prefix = `${d.tenant_id}/${d.user_id}/${d.id}/`;
+      return Object.values(d.media || {}).filter((p): p is string => typeof p === "string" && p.startsWith(prefix) && !p.includes(".."));
+    });
     if (paths.length) {
       await admin.storage.from("drafts").remove(paths);
       files += paths.length;
