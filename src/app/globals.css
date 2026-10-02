@@ -260,6 +260,52 @@ a {
     box-shadow: none !important;
     zoom: 0.9; /* แคนวาส A4 794px → พอดีพื้นที่พิมพ์เมื่อมีขอบกระดาษ */
   }
+  /* หน้ากรอก (กระดาษ) ตอนพิมพ์: แสดงเฉพาะข้อมูล ไม่แสดง UI ของเว็บ
+     - ปุ่มทั้งหมดซ่อน (ถ่ายรูป, AI ตรวจรูป, สแกน, เพิ่มแถว ...) ยกเว้นที่เป็นข้อมูล: data-print-keep
+       (ผ่าน/ไม่ผ่านที่เลือก, เส้น/รูปลายเซ็น, รูปในตาราง)
+     - ช่องกรอก/dropdown/วันที่: ไม่มีกรอบ ลูกศร ไอคอนปฏิทิน หรือข้อความตัวอย่าง — เหลือค่า + เส้นใต้ */
+  .krok-print-live button:not([data-print-keep]) {
+    display: none !important;
+  }
+  .krok-print-live button[data-print-keep] {
+    cursor: default !important;
+  }
+  .krok-print-live input:not([type="checkbox"]):not([type="radio"]),
+  .krok-print-live select,
+  .krok-print-live textarea {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    background: transparent !important;
+    background-image: none !important;
+    border: none !important;
+    border-bottom: 1px solid #9ca3af !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    resize: none !important;
+    color: #000 !important;
+  }
+  .krok-print-live table input:not([type="checkbox"]):not([type="radio"]),
+  .krok-print-live table select,
+  .krok-print-live table textarea {
+    border-bottom: none !important;
+  }
+  /* dropdown ที่ยังไม่เลือก ("—") = ช่องว่าง */
+  .krok-print-live select:has(option:checked[value=""]) {
+    color: transparent !important;
+  }
+  .krok-print-live ::placeholder {
+    color: transparent !important;
+  }
+  .krok-print-live input::-webkit-calendar-picker-indicator,
+  .krok-print-live input::-webkit-inner-spin-button,
+  .krok-print-live input::-webkit-outer-spin-button {
+    display: none !important;
+    -webkit-appearance: none !important;
+  }
+  .krok-print-live col.krok-print-col-off {
+    visibility: collapse;
+    width: 0 !important;
+  }
   body:has(.krok-print-root) .krok-print-root,
   body:has(.krok-print-root) .krok-print-root * {
     visibility: visible !important;

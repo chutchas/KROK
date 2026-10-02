@@ -177,6 +177,7 @@ export function PaperPassFail({ value, onChange, disabled = false }: { value?: s
     return (
       <button
         type="button"
+        data-print-keep={on || !value ? "" : undefined}
         disabled={disabled}
         onClick={() => onChange?.(kind)}
         style={{
@@ -206,7 +207,7 @@ export function PaperPhoto({ photo, onPick, disabled = false, extra }: { photo?:
       >
         <Icon icon={Camera} className="h-3.5 w-3.5" /> {photo ? t("fw.paper.retake") : t("fw.paper.takePhoto")}
       </button>
-      {extra}
+      {extra && <span className="no-print" style={{ display: "contents" }}>{extra}</span>}
     </div>
   );
 }
@@ -217,6 +218,7 @@ export function PaperSignature({ url, onOpen, disabled = false }: { url?: string
   return (
     <button
       type="button"
+      data-print-keep=""
       disabled={disabled}
       onClick={onOpen}
       style={{ width: "100%", height: CONTROL_H, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: url ? "flex-start" : "center", gap: 5, border: "none", borderBottom: `1px solid ${INK}`, background: "#fff", color: MUTED, fontFamily: "inherit", fontSize: FONT, cursor: disabled ? "default" : "pointer", padding: 0 }}
@@ -224,7 +226,7 @@ export function PaperSignature({ url, onOpen, disabled = false }: { url?: string
       {url ? (
         <img src={url} alt={t("fw.paper.sigAlt")} style={{ height: CONTROL_H - 2, maxWidth: "100%", objectFit: "contain" }} />
       ) : (
-        <><Icon icon={PenLine} className="h-3.5 w-3.5" /> {t("fw.paper.tapToSign")}</>
+        <span className="no-print" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon icon={PenLine} className="h-3.5 w-3.5" /> {t("fw.paper.tapToSign")}</span>
       )}
     </button>
   );
@@ -257,14 +259,14 @@ export function PaperTable({
     <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed", border: `1px solid ${LINE}` }}>
       <colgroup>
         {cols.map((c) => <col key={c.id} style={{ width: `${((c.width || 1) / totalW) * 100}%` }} />)}
-        {onDelete && <col style={{ width: 24 }} />}
+        {onDelete && <col className="krok-print-col-off" style={{ width: 24 }} />}
       </colgroup>
       <thead>
         <tr style={{ height: TABLE_HEAD_H, background: "#eee" }}>
           {cols.map((c) => (
             <th key={c.id} title={c.type === "formula" ? t("formula.auto") : undefined} style={{ fontSize: ".7rem", color: "#333", fontWeight: 700, textAlign: c.type === "formula" ? "right" : c.type === "checkbox" || c.type === "pass_fail" ? "center" : "left", padding: "0 5px", borderRight: "1px solid #ddd", borderBottom: `1px solid ${LINE}`, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{c.type === "formula" ? "ƒ " : ""}{c.label}</th>
           ))}
-          {onDelete && <th style={{ borderBottom: `1px solid ${LINE}` }} />}
+          {onDelete && <th className="no-print" style={{ borderBottom: `1px solid ${LINE}` }} />}
         </tr>
       </thead>
       <tbody>
@@ -277,8 +279,8 @@ export function PaperTable({
               </td>
             ))}
             {onDelete && (
-              <td style={{ textAlign: "center", padding: 0 }}>
-                <button type="button" className="no-print" onClick={() => onDelete(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", padding: 2 }}>
+              <td className="no-print" style={{ textAlign: "center", padding: 0 }}>
+                <button type="button" onClick={() => onDelete(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "#dc2626", cursor: "pointer", display: "inline-flex", padding: 2 }}>
                   <Icon icon={Trash2} className="h-3.5 w-3.5" />
                 </button>
               </td>

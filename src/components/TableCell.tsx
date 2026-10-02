@@ -43,7 +43,7 @@ export default function TableCell({
           onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) onPhoto?.(f); }} />
         {photoUrl ? (
           <>
-            <button type="button" onClick={() => fileRef.current?.click()} title={t("ctype.photoRetake")} aria-label={t("ctype.photoRetake")}
+            <button type="button" data-print-keep="" onClick={() => fileRef.current?.click()} title={t("ctype.photoRetake")} aria-label={t("ctype.photoRetake")}
               style={{ border: "none", padding: 0, background: "none", cursor: "pointer", height: "100%", display: "flex" }}>
               <img src={photoUrl} alt={col.label} style={{ height: "100%", maxWidth: paper ? 60 : 90, objectFit: "cover", borderRadius: paper ? 2 : 6, border: paper ? "1px solid #ccc" : "1px solid var(--line)" }} />
             </button>
@@ -79,7 +79,7 @@ export default function TableCell({
       const on = value === k;
       const c = k === "pass" ? PASS_C : FAIL_C;
       return (
-        <button type="button" aria-pressed={on} onClick={() => onChange(on ? "" : k)} aria-label={k === "pass" ? t("fw.pass") : t("fw.fail")}
+        <button type="button" aria-pressed={on} data-print-keep={on || !value ? "" : undefined} onClick={() => onChange(on ? "" : k)} aria-label={k === "pass" ? t("fw.pass") : t("fw.fail")}
           style={{ flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3, cursor: "pointer", fontFamily: "inherit",
             fontSize: paper ? ".68rem" : look === "small" ? ".76rem" : ".84rem", fontWeight: 600, padding: paper ? 0 : "4px 6px",
             borderRadius: paper ? 3 : 6, border: `1px solid ${on ? c : paper ? "#c3c8ce" : "var(--line)"}`,
