@@ -194,10 +194,24 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     const collected: { caption: string; photo: Buffer }[] = [];
     for (const a of data.answers) {
       // ฟิลด์รูปถ่าย (ไม่ใช่ลายเซ็น) ตามที่ฟอร์มตั้งไว้: รวมเป็นกล่อง / แนบท้าย / ไม่พิมพ์
+      const shots = a.type === "photo" ? (a.photos?.length ? a.photos : a.photo ? [{ caption: "", photo: a.photo }] : []) : [];
       if (pl && a.type === "photo") {
-        if (a.photos?.length) for (const p of a.photos) collected.push({ caption: `${collected.length + 1}. ${clean(p.caption) || "—"}`, photo: p.photo });
-        else if (a.photo) collected.push({ caption: `${collected.length + 1}. ${clean(a.label) || "—"}`, photo: a.photo });
-        if (pl.mode !== "appendix") continue;
+        if (pl.mode === "hidden") continue;
+        if (pl.mode === "grid") {
+          // กล่องรูปของฟิลด์ (ตามที่ตั้งในฟอร์ม): ชื่อฟิลด์ + รูปเรียงตามจำนวนต่อแถว พร้อมชื่อใต้รูป
+          ensure(30 + Math.round(pl.heightMm * MM));
+          doc.font("th-bold").fontSize(9.5).fillColor(C.ink).text(clean(a.label) || "—", M + 8, y + 7, { width: CONTENT_W - 16 });
+          y = shots.length
+            ? drawPhotoGrid(doc, shots, y + 24, newPage, { per: pl.cols, boxH: Math.round(pl.heightMm * MM) })
+            : (doc.font("th").fontSize(9).fillColor(C.faint).text("—", M + 8, y + 24), y + 44);
+          doc.moveTo(M, y - 6).lineTo(PAGE.w - M, y - 6).lineWidth(0.5).stroke(C.line);
+          continue;
+        }
+        // appendix: รูปใหญ่ไปหน้าแนบท้าย (แถวนี้แสดงรูปย่อ)
+        for (const p of shots) {
+          const cap = [clean(a.label), clean(p.caption)].filter(Boolean).join(" — ") || "—";
+          collected.push({ caption: `${collected.length + 1}. ${cap}`, photo: p.photo });
+        }
       }
       // ฟิลด์หลายรูป (แบบรูปในแถว): ชื่อฟิลด์ + จำนวนรูป แล้ววาดรูปเป็นตารางใต้แถว
       if (!pl && a.type === "photo" && a.photos && a.photos.length > 1) {
@@ -260,14 +274,7 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       doc.moveTo(M, y).lineTo(PAGE.w - M, y).lineWidth(0.5).stroke(C.line);
     }
 
-    // ---------- กล่องภาพประกอบ (ต่อจากรายละเอียด) ----------
     const gridOpts = pl ? { per: pl.cols, boxH: Math.round(pl.heightMm * MM) } : undefined;
-    if (pl?.mode === "grid" && collected.length) {
-      y += 18;
-      ensure(40);
-      sectionTitle("ภาพประกอบ");
-      y = drawPhotoGrid(doc, collected, y + 4, newPage, gridOpts);
-    }
 
     // ---------- ประวัติการอนุมัติ ----------
     if (data.history && data.history.length) {

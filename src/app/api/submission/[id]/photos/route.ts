@@ -39,7 +39,10 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   for (const a of (sub.answers || []) as AnswerItem[]) {
     if (a.type === "photo" && a.photoField) {
       const ks = answerPhotoKeys(a);
-      ks.forEach((k, i) => labels.set(k, ks.length > 1 ? `${a.label}-${i + 1}` : a.label));
+      ks.forEach((k, i) => {
+        const cap = a.photoLabels?.[i]?.trim();
+        labels.set(k, cap ? `${a.label}-${cap}` : ks.length > 1 ? `${a.label}-${i + 1}` : a.label);
+      });
     }
     if (a.type === "table" && a.rows && a.columns) {
       a.rows.forEach((r, ri) => {

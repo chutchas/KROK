@@ -9,7 +9,7 @@ import type { FormField, FormSchema } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, rowPhotoKeyOf } from "@/lib/table-rows";
-import { allPhotoSlotKeys } from "@/lib/photo-slots";
+import { allPhotoSlotKeys, parsePhotoSlotKey } from "@/lib/photo-slots";
 
 const SRC = new Set(["scan", "ai", "ai_edited"]);
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" ? v.slice(0, max) : undefined);
@@ -64,6 +64,8 @@ export function sanitizePublicAnswers(
       if (keys.length) {
         item.photoField = keys[0];
         if (keys.length > 1) item.photoFields = keys;
+        const caps = keys.map((k) => f.photo_labels?.[parsePhotoSlotKey(k)?.slot ?? 0]?.trim() || "");
+        if (caps.some(Boolean)) item.photoLabels = caps;
         item.display = str(a.display, 500) ?? "—";
       } else item.display = "—";
     } else if (f.type === "signature") {

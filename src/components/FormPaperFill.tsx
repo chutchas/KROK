@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { photoFieldsOf, printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
 import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLayout, blockHeight, mmToPx } from "@/lib/paper-layout";
-import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
+import PaperPhotoGrid, { PhotoAppendix, photoCaption } from "@/components/paper/PaperPhotoGrid";
 import { allPhotoSlotKeys, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperHeaderContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
@@ -33,7 +33,7 @@ export default function FormPaperFill({
   /** รูปที่ถ่ายแล้วของฟิลด์ (ใช้ในหน้าภาพประกอบท้ายเอกสาร) */
   photoUrl?: (fieldId: string) => string | undefined;
 }) {
-  const { t, lang } = useT();
+  const { t, tt, lang } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const layout = useMemo(() => resolveLayout(schema, blocks), [schema, blocks]);
   // ความสูงจริงของแต่ละบล็อก → ดันบล็อกด้านล่างลงเมื่อเนื้อหางอกเกินกล่องที่ออกแบบ (ไม่ให้ทับกัน)
@@ -116,8 +116,8 @@ export default function FormPaperFill({
                 const ph = b.photos;
                 return (
                   <div key={b.key} ref={measureRef(b.key)} style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
-                    <PaperPhotoGrid cols={ph.cols} imgH={ph.imgH}
-                      items={ph.cells.map((c) => { const k = photoSlotKey(c.field.id, c.slot); return { key: k, label: photoSlotLabel(c.field.label, c.slot, c.max, t("fw.noName")), url: photoUrl?.(k), cell: renderPhotoCell?.(c.field, c.slot) }; })} />
+                    <PaperPhotoGrid cols={ph.cols} imgH={ph.imgH} numbered={false} title={b.field?.label || t("fw.noName")} required={b.field?.required}
+                      items={ph.cells.map((c) => { const k = photoSlotKey(c.field.id, c.slot); return { key: k, label: photoCaption(c.field, c.slot, c.max, (n) => tt("print.photos.slotN", { n })), url: photoUrl?.(k), cell: renderPhotoCell?.(c.field, c.slot) }; })} />
                   </div>
                 );
               }
@@ -136,7 +136,7 @@ export default function FormPaperFill({
       {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
       {pp.mode === "appendix" && (
         <PhotoAppendix title={title} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
-          items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName")), url: photoUrl?.(k) })))} />
+          items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName"), field.photo_labels?.[i]), url: photoUrl?.(k) })))} />
       )}
 
       {/* แถบซูม */}

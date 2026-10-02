@@ -1,9 +1,9 @@
 "use client";
 import { InlineFormIcon } from "@/components/FormIcon";
-import { photoFieldsOf, printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
+import { printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
 import { mmToPx } from "@/lib/paper-layout";
-import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
-import { allPhotoSlotKeys, maxPhotosOf, photoSlotLabel } from "@/lib/photo-slots";
+import PaperPhotoGrid, { photoCaption } from "@/components/paper/PaperPhotoGrid";
+import { allPhotoSlotKeys, maxPhotosOf } from "@/lib/photo-slots";
 import { useT } from "@/i18n/LanguageProvider";
 
 // มุมมอง "กระดาษจริง" — ฟอร์มเปล่าแบบเอกสาร A4 สำหรับพิมพ์/ตรวจทาน
@@ -68,8 +68,9 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
   const { t } = useT();
   const pp = printPhotosOf(schema);
   // grid = รวมรูปไว้กล่องเดียวท้ายเอกสาร · hidden = ไม่พิมพ์ช่องรูป
-  const skipPhoto = pp.mode === "grid" || pp.mode === "hidden";
-  const gridPhotos = pp.mode === "grid" ? photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName")) }))) : [];
+  const { tt } = useT();
+  const skipPhoto = pp.mode === "hidden";
+  const grid = pp.mode === "grid";
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
       <div
@@ -111,7 +112,14 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
                 {s.fields.filter((f) => !(skipPhoto && f.type === "photo")).map((f) =>
-                  f.type === "table" ? (
+                  grid && f.type === "photo" ? (
+                    <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5", breakInside: "avoid" }}>
+                      <td colSpan={2} style={{ padding: "8px 0" }}>
+                        <PaperPhotoGrid numbered={false} title={f.label || t("fw.noName")} required={f.required} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
+                          items={allPhotoSlotKeys(f).map((k, i, all) => ({ key: k, label: photoCaption(f, i, all.length, (n) => tt("print.photos.slotN", { n })) }))} />
+                      </td>
+                    </tr>
+                  ) : f.type === "table" ? (
                     <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
                       <td colSpan={2} style={{ padding: "8px 0" }}>
                         <div style={{ color: "#222", marginBottom: 4 }}>{f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}</div>
@@ -134,12 +142,6 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
             </table>
           </div>
         ))}
-
-        {gridPhotos.length > 0 && (
-          <div style={{ marginBottom: 18, breakInside: "avoid" }}>
-            <PaperPhotoGrid items={gridPhotos} cols={pp.cols} imgH={mmToPx(pp.height_mm)} />
-          </div>
-        )}
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28, fontSize: ".82rem", color: "#333" }}>
           <div>{t("fw.paper.inspector")} ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>{t("fw.paper.signDate")}</span></div>

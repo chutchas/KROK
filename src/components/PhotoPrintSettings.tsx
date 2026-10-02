@@ -1,7 +1,6 @@
 "use client";
 import { useT } from "@/i18n/LanguageProvider";
 import { PRINT_PHOTO_MODES, photoFieldsOf, printPhotosOf, type FormSchema, type PrintPhotoMode } from "@/lib/form-schema";
-import { PHOTOS_KEY } from "@/lib/paper-layout";
 
 // ============================================================
 // ตั้งค่าการแสดงรูปถ่ายบนเอกสารกระดาษ/ตอนพิมพ์ (ระดับฟอร์ม)
@@ -20,10 +19,10 @@ export default function PhotoPrintSettings({ schema, onChange, bare = false }: {
     const n: FormSchema = { ...schema };
     if (next.mode === "thumb") delete n.print_photos;
     else n.print_photos = next;
-    // ออกจากโหมดกล่องรวม → ตำแหน่งกล่องเดิมไม่ใช้แล้ว
-    if (next.mode !== "grid" && n.layout?.[PHOTOS_KEY]) {
+    // ตำแหน่งกล่องรวมแบบเดิม (เวอร์ชันก่อน) ไม่ใช้แล้ว
+    if (n.layout?.photos) {
       const l = { ...n.layout };
-      delete l[PHOTOS_KEY];
+      delete l.photos;
       n.layout = l;
     }
     onChange(n);

@@ -91,8 +91,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     fail: a.fail,
     photo: a.photoField ? photoBuf[a.photoField] ?? null : null,
     // ฟิลด์หลายรูป: รูปทั้งหมดพร้อมคำบรรยาย (วาดเป็นตารางรูป)
-    photos: a.type === "photo" && (a.photoFields?.length ?? 0) > 1
-      ? answerPhotoKeys(a).map((k, i, all) => ({ caption: `${a.label} (${i + 1}/${all.length})`, photo: photoBuf[k] })).filter((p): p is { caption: string; photo: Buffer } => !!p.photo)
+    photos: a.type === "photo"
+      ? answerPhotoKeys(a).map((k, i, all) => ({ caption: a.photoLabels?.[i]?.trim() || (all.length > 1 ? `รูปที่ ${i + 1}` : ""), photo: photoBuf[k] })).filter((p): p is { caption: string; photo: Buffer } => !!p.photo)
       : undefined,
     rows,
     columns: a.columns,

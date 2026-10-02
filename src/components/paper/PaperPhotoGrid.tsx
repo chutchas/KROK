@@ -10,6 +10,12 @@ import { PaperLabel } from "@/components/paper/PaperParts";
 // ใช้ร่วม: หน้าออกแบบกระดาษ (ตัวอย่าง), หน้ากรอก (กดถ่ายได้), พิมพ์, หน้าภาพประกอบท้ายเอกสาร
 // ============================================================
 
+/** ชื่อใต้รูปในกล่องของฟิลด์: ชื่อที่ตั้งเอง → "รูปที่ n" (หลายรูป) → ว่าง (รูปเดียว) */
+export function photoCaption(f: { photo_labels?: string[] }, slot: number, max: number, slotN: (n: number) => string): string {
+  const s = f.photo_labels?.[slot]?.trim();
+  return s || (max > 1 ? slotN(slot + 1) : "");
+}
+
 export type PhotoGridItem = {
   key: string;
   label: string;
@@ -49,6 +55,9 @@ export default function PaperPhotoGrid({
   showTitle = true,
   onPickField,
   selectedFieldId,
+  required = false,
+  numbered = true,
+  selectedKey,
 }: {
   items: PhotoGridItem[];
   cols: number;
@@ -56,24 +65,30 @@ export default function PaperPhotoGrid({
   title?: string;
   showTitle?: boolean;
   /** หน้าออกแบบ: คลิกช่องรูป → เปิดตั้งค่าฟิลด์นั้น */
-  onPickField?: (fieldId: string) => void;
+  onPickField?: (fieldId: string, itemKey: string) => void;
   selectedFieldId?: string | null;
+  /** หัวกล่อง = ชื่อฟิลด์ที่บังคับกรอก */
+  required?: boolean;
+  /** ใส่ลำดับ "1." หน้าชื่อใต้รูป (หน้าแนบท้าย) */
+  numbered?: boolean;
+  /** ช่องที่กำลังแก้ชื่อใต้รูป (เน้นกรอบ) */
+  selectedKey?: string | null;
 }) {
   const { t } = useT();
   return (
     <div>
-      {showTitle && <PaperLabel label={title || t("print.photos.title")} />}
+      {showTitle && <PaperLabel label={title || t("print.photos.title")} required={required} />}
       <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.max(1, cols)}, minmax(0, 1fr))`, gap: `${PHOTO_GAP}px 10px` }}>
         {items.map((it, i) => (
           <div key={it.key} data-krok-keep={onPickField ? "" : undefined}
-            onClick={onPickField && it.fieldId ? (e) => { e.stopPropagation(); onPickField(it.fieldId!); } : undefined}
+            onClick={onPickField && it.fieldId ? (e) => { e.stopPropagation(); onPickField(it.fieldId!, it.key); } : undefined}
             onPointerDown={onPickField ? (e) => e.stopPropagation() : undefined}
             title={onPickField ? t("print.photos.cellHint") : undefined}
             style={{ minWidth: 0, breakInside: "avoid", cursor: onPickField ? "pointer" : undefined, borderRadius: 4,
-              outline: selectedFieldId && it.fieldId === selectedFieldId ? "2px solid var(--accent)" : undefined, outlineOffset: 2 }}>
+              outline: selectedKey === it.key ? "2px solid var(--accent)" : selectedFieldId && it.fieldId === selectedFieldId ? "1px dashed var(--accent)" : undefined, outlineOffset: 2 }}>
             {it.cell ?? <PhotoFrame url={it.url} height={imgH} alt={it.label} />}
             <div title={it.label} style={{ height: PHOTO_CAPTION_H, lineHeight: `${PHOTO_CAPTION_H}px`, fontSize: ".68rem", color: "#444", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              <b style={{ color: "#111" }}>{i + 1}.</b> {it.label || t("fw.noName")}
+              {numbered ? <><b style={{ color: "#111" }}>{i + 1}.</b> {it.label || t("fw.noName")}</> : it.label}
             </div>
           </div>
         ))}

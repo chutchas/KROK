@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { printPhotosOf, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
-import { buildBlocks, autoLayout, blockHeight, photosBlockHeight, mmToPx, PHOTOS_KEY } from "@/lib/paper-layout";
+import { buildBlocks, autoLayout, blockHeight, photosBlockHeight, mmToPx } from "@/lib/paper-layout";
 
 const base = (extra: Partial<FormSchema> = {}): FormSchema => ({
   title: "t", description: "", icon: "", flow: "sequential",
@@ -34,28 +34,23 @@ describe("sanitizeSchema print_photos", () => {
   });
 });
 
-describe("paper layout · photo grid block", () => {
-  it("thumb: photo fields stay as their own blocks", () => {
-    const keys = buildBlocks(base()).map((b) => b.key);
-    expect(keys).toContain("p1");
-    expect(keys).not.toContain(PHOTOS_KEY);
+describe("paper layout · photo boxes (grid mode)", () => {
+  it("thumb: photo fields are normal field blocks", () => {
+    const b = buildBlocks(base()).find((x) => x.key === "p1")!;
+    expect(b.kind).toBe("field");
   });
-  it("grid: photo fields move into one photos block at the end (signature stays)", () => {
-    const blocks = buildBlocks(base({ print_photos: { mode: "grid", cols: 2, height_mm: 40 } }));
+  it("grid: each photo field is its own box, in place, with one cell per photo", () => {
+    const s = base({ print_photos: { mode: "grid", cols: 2, height_mm: 40 } });
+    s.steps[1].fields = s.steps[1].fields.map((f) => (f.id === "p2" ? { ...f, max_photos: 4 } : f));
+    const blocks = buildBlocks(s);
     const keys = blocks.map((b) => b.key);
-    expect(keys).not.toContain("p1");
-    expect(keys).toContain("sig");
-    const pb = blocks[blocks.length - 1];
-    expect(pb.key).toBe(PHOTOS_KEY);
-    expect(pb.photos?.fields.map((f) => f.id)).toEqual(["p1", "p2", "p3"]);
-    expect(blockHeight(pb)).toBe(photosBlockHeight(3, 2, mmToPx(40)));
-    const lay = autoLayout(blocks);
-    expect(lay[PHOTOS_KEY].w).toBeGreaterThan(600); // เต็มแถว
-  });
-  it("grid with no photo fields adds no block", () => {
-    const s = base({ print_photos: { mode: "grid" } });
-    s.steps = [{ id: "s1", title: "A", fields: [{ id: "a", type: "text", label: "A", required: false }] }] as FormSchema["steps"];
-    expect(buildBlocks(s).some((b) => b.key === PHOTOS_KEY)).toBe(false);
+    expect(keys).toEqual(["s:s1", "a", "p1", "s:s2", "p2", "p3", "sig"]); // ลำดับเดิม
+    const p2 = blocks.find((b) => b.key === "p2")!;
+    expect(p2.kind).toBe("photos");
+    expect(p2.photos?.cells.length).toBe(4);
+    expect(blockHeight(p2)).toBe(photosBlockHeight(4, 2, mmToPx(40)));
+    expect(blocks.find((b) => b.key === "p1")!.photos?.cells.length).toBe(1);
+    expect(autoLayout(blocks).p2.w).toBeGreaterThan(600); // เต็มแถว
   });
   it("height grows by rows", () => {
     expect(photosBlockHeight(6, 3, 100)).toBeGreaterThan(photosBlockHeight(3, 3, 100));
@@ -63,37 +58,28 @@ describe("paper layout · photo grid block", () => {
   });
 });
 
-describe("keepClearOnGrow / placeUnstoredPhotosBox", () => {
-  it("pushes blocks below the photo box down when it grows", async () => {
+describe("keepClearOnGrow", () => {
+  it("pushes blocks below a photo box down when it gets more photos", async () => {
     const { keepClearOnGrow, resolveLayout } = await import("@/lib/paper-layout");
     const prev = base({ print_photos: { mode: "grid", cols: 3, height_mm: 40 } });
-    prev.steps[1].fields = prev.steps[1].fields.filter((f) => f.type !== "photo" || f.id === "p2");
-    prev.layout = { photos: { x: 40, y: 400, w: 714 }, sig: { x: 40, y: 600, w: 300 }, a: { x: 40, y: 150, w: 300 } };
+    prev.layout = { p2: { x: 40, y: 400, w: 714 }, p3: { x: 40, y: 640, w: 714 }, sig: { x: 40, y: 900, w: 300 }, a: { x: 40, y: 150, w: 300 } };
     const next = { ...prev, steps: prev.steps.map((s) => ({ ...s, fields: s.fields.map((f) => (f.id === "p2" ? { ...f, max_photos: 6 } : f)) })) };
     const out = keepClearOnGrow(prev, next);
-    expect(out.layout!.sig.y).toBeGreaterThan(600); // ดันลง
-    expect(out.layout!.a.y).toBe(150);               // ช่องด้านบนไม่ขยับ
+    expect(out.layout!.p3.y).toBeGreaterThan(640);
+    expect(out.layout!.a.y).toBe(150);
     const lay = resolveLayout(out);
-    expect(lay.sig.y).toBeGreaterThanOrEqual(lay.photos.y + blockHeight(buildBlocks(out).find((b) => b.key === PHOTOS_KEY)!));
-  });
-  it("new photo box goes below manually placed blocks", async () => {
-    const { resolveLayout } = await import("@/lib/paper-layout");
-    const s = base({ print_photos: { mode: "grid" } });
-    s.layout = { sig: { x: 40, y: 900, w: 300 } };
-    expect(resolveLayout(s).photos.y).toBeGreaterThan(900);
+    expect(lay.p3.y).toBeGreaterThanOrEqual(lay.p2.y + blockHeight(buildBlocks(out).find((b) => b.key === "p2")!));
   });
 });
 
 describe("reflowTops · designed overlap", () => {
-  it("moves a block that starts inside the box above it to below that box", async () => {
-    const { reflowTops } = await import("@/lib/paper-layout");
+  it("fill/print moves a block that starts inside the box above it; editor keeps it", async () => {
+    const { reflowTops, resolveLayout } = await import("@/lib/paper-layout");
     const s = base({ print_photos: { mode: "grid", cols: 3, height_mm: 40 } });
-    s.layout = { photos: { x: 40, y: 400, w: 714 }, sig: { x: 40, y: 450, w: 300 }, a: { x: 420, y: 100, w: 300 } };
+    s.layout = { p2: { x: 40, y: 400, w: 714 }, sig: { x: 40, y: 450, w: 300 } };
     const bl = buildBlocks(s);
-    const lay = (await import("@/lib/paper-layout")).resolveLayout(s, bl);
-    const tops = reflowTops(bl, lay, {}, true);
-    expect(reflowTops(bl, lay, {}).sig).toBe(450); // หน้าออกแบบ: ไม่ขยับ
-    const ph = bl.find((b) => b.key === PHOTOS_KEY)!;
-    expect(tops.sig).toBeGreaterThanOrEqual(400 + blockHeight(ph));
+    const lay = resolveLayout(s, bl);
+    expect(reflowTops(bl, lay, {}).sig).toBe(450);
+    expect(reflowTops(bl, lay, {}, true).sig).toBeGreaterThanOrEqual(400 + blockHeight(bl.find((b) => b.key === "p2")!));
   });
 });

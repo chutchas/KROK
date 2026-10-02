@@ -14,7 +14,7 @@ import BodyPortal from "@/components/BodyPortal";
 import OptionPicker from "@/components/OptionPicker";
 import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
 import { mmToPx } from "@/lib/paper-layout";
-import { allPhotoSlotKeys, filledPhotoKeys, maxPhotosOf, minPhotosOf, photoSlotKey } from "@/lib/photo-slots";
+import { allPhotoSlotKeys, filledPhotoKeys, maxPhotosOf, minPhotosOf, parsePhotoSlotKey, photoSlotKey } from "@/lib/photo-slots";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
@@ -594,6 +594,8 @@ export default function FillWizard(props: Props) {
             keys.forEach((k, i) => photoUploads.push({ fieldId: k, dataUrl: photos[k], ai: i === 0 ? a.ai : undefined }));
             if (keys.length) item.photoField = keys[0];
             if (keys.length > 1) { item.photoFields = keys; item.display = `${keys.length} รูป`; }
+            const caps = keys.map((k) => f.photo_labels?.[parsePhotoSlotKey(k)?.slot ?? 0]?.trim() || "");
+            if (caps.some(Boolean)) item.photoLabels = caps; // ชื่อใต้รูป (ไปแสดงในหน้าผล/PDF/zip)
             if (a.ai) item.display = a.ai;
           } else if (f.type === "signature") {
             if (sigs[f.id]) {

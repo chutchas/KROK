@@ -22,6 +22,8 @@ export interface AnswerItem {
   photoField?: string;
   /** ฟิลด์รูปหลายรูป: key ของทุกรูปตามลำดับ (รูปแรก = photoField) */
   photoFields?: string[];
+  /** ชื่อใต้รูปของแต่ละรูป (ตรงกับ photoFields / photoField) — ไม่มี = ไม่ได้ตั้ง */
+  photoLabels?: string[];
   rows?: Record<string, string>[];
   columns?: { id: string; label: string; type?: string }[];
   src?: AnswerSrc;

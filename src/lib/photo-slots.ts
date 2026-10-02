@@ -47,8 +47,16 @@ export function answerPhotoKeys(a: { photoField?: string; photoFields?: string[]
   return a.photoField ? [a.photoField] : [];
 }
 
-/** ป้ายชื่อของช่องรูป: ฟิลด์หลายรูปต่อท้ายด้วยลำดับ เช่น "รูปสินค้า (2/4)" */
-export function photoSlotLabel(label: string, slot: number, max: number, fallback = ""): string {
+/** ป้ายชื่อของช่องรูป (ใช้นอกกล่องรูป เช่น หน้าแนบท้าย/zip): "ชื่อฟิลด์ — ชื่อใต้รูป" หรือ "ชื่อฟิลด์ (2/4)" */
+export function photoSlotLabel(label: string, slot: number, max: number, fallback = "", sub?: string): string {
   const base = label.trim() || fallback;
+  const s = sub?.trim();
+  if (s) return base ? `${base} — ${s}` : s;
   return max > 1 ? `${base} (${slot + 1}/${max})` : base;
+}
+
+/** ชื่อใต้รูปที่ตั้งไว้ของช่องนี้ (ไม่ได้ตั้ง = undefined) */
+export function photoSubLabel(f: Pick<FormField, "photo_labels">, slot: number): string | undefined {
+  const s = f.photo_labels?.[slot]?.trim();
+  return s || undefined;
 }

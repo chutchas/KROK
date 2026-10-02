@@ -1,5 +1,5 @@
 import { maxPhotosOf } from "@/lib/photo-slots";
-import { FIELD_TYPE_LABELS, photoFieldsOf, printPhotosOf, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { FIELD_TYPE_LABELS, printPhotosOf, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
 
 // ============================================================
 // ตรรกะการจัดวาง "กระดาษ A4" ที่ใช้ร่วมกันระหว่าง
@@ -33,8 +33,6 @@ export const HEADER_KEY = "header"; // ชื่อเอกสาร
 export const META_KEY = "meta";     // วันที่ / เลขที่
 export const DEFAULT_HEADER_BOX: PaperBox = { x: 32, y: 26, w: 500 };
 export const DEFAULT_META_BOX: PaperBox = { x: 596, y: 26, w: CANVAS_W - 32 - 596 };
-// กล่องภาพประกอบ (print_photos.mode = "grid") — รวมฟิลด์รูปทั้งหมดเป็นกล่องเดียว
-export const PHOTOS_KEY = "photos";
 
 export type BlockKind = "step" | "field" | "photos";
 export interface Block {
@@ -164,12 +162,18 @@ export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
 export function buildBlocks(schema: FormSchema): Block[] {
   const blocks: Block[] = [];
   const pp = printPhotosOf(schema);
-  const photoFields = pp.mode === "grid" ? photoFieldsOf(schema).map((p) => p.field) : [];
-  const grouped = photoFields.length > 0;
+  const grid = pp.mode === "grid";
   schema.steps.forEach((s, si) => {
     blocks.push({ key: `s:${s.id}`, kind: "step", label: `${si + 1}. ${s.title}`, stepIndex: si });
     s.fields.forEach((f) => {
-      if (grouped && f.type === "photo") return; // อยู่ในกล่องภาพประกอบแทน
+      // โหมดกล่องภาพประกอบ: ฟิลด์รูปแต่ละฟิลด์เป็นกล่องของตัวเอง (หัวกล่อง = ชื่อฟิลด์, ช่อง = จำนวนรูปที่ตั้ง)
+      if (grid && f.type === "photo") {
+        blocks.push({
+          key: f.id, kind: "photos", label: f.label, field: f, stepIndex: si,
+          photos: { fields: [f], cells: photoCellsOf([f]), cols: pp.cols, imgH: mmToPx(pp.height_mm) },
+        });
+        return;
+      }
       blocks.push({
         key: f.id,
         kind: "field",
@@ -180,12 +184,6 @@ export function buildBlocks(schema: FormSchema): Block[] {
       });
     });
   });
-  if (grouped) {
-    blocks.push({
-      key: PHOTOS_KEY, kind: "photos", label: "", stepIndex: schema.steps.length - 1,
-      photos: { fields: photoFields, cells: photoCellsOf(photoFields), cols: pp.cols, imgH: mmToPx(pp.height_mm) },
-    });
-  }
   return blocks;
 }
 
@@ -198,22 +196,7 @@ export function resolveLayout(schema: FormSchema, blocks?: Block[]): Record<stri
       if (schema.layout[b.key]) merged[b.key] = schema.layout[b.key];
     }
   }
-  placeUnstoredPhotosBox(bl, merged, schema.layout);
   return merged;
-}
-
-/**
- * กล่องภาพประกอบที่ยังไม่เคยถูกวาง (เพิ่งเปิดโหมดรวม) แต่ช่องอื่นถูกจัดวางเองแล้ว
- * → ตำแหน่ง auto อาจทับช่องที่จัดไว้ จึงวางไว้ใต้ช่องที่อยู่ล่างสุดแทน
- */
-export function placeUnstoredPhotosBox(blocks: Block[], merged: Record<string, PaperBox>, stored?: Record<string, PaperBox>) {
-  if (!stored || stored[PHOTOS_KEY] || !merged[PHOTOS_KEY]) return;
-  let bottom = START_Y;
-  for (const b of blocks) {
-    if (b.key === PHOTOS_KEY || !merged[b.key]) continue;
-    bottom = Math.max(bottom, merged[b.key].y + blockHeight(b) + GAP_Y);
-  }
-  merged[PHOTOS_KEY] = { ...merged[PHOTOS_KEY], y: snap(bottom) };
 }
 
 /**

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { photoSlotKey, parsePhotoSlotKey, maxPhotosOf, minPhotosOf, filledPhotoKeys, answerPhotoKeys, allPhotoSlotKeys } from "@/lib/photo-slots";
 import { sanitizeSchema, type FormField, type FormSchema } from "@/lib/form-schema";
-import { buildBlocks, PHOTOS_KEY } from "@/lib/paper-layout";
+import { buildBlocks } from "@/lib/paper-layout";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
 import { isRowPhotoKey, mediaFieldId } from "@/lib/table-rows";
 
@@ -51,8 +51,17 @@ describe("schema + layout + public answers", () => {
   });
   it("grid box has one cell per slot", () => {
     const s = { ...schema({ max_photos: 4 }), print_photos: { mode: "grid" as const } };
-    const b = buildBlocks(s).find((x) => x.key === PHOTOS_KEY)!;
+    const b = buildBlocks(s).find((x) => x.key === "p")!;
     expect(b.photos?.cells.map((c) => c.slot)).toEqual([0, 1, 2, 3]);
+  });
+  it("sanitize keeps photo captions trimmed to max", () => {
+    const f = sanitizeSchema(schema({ max_photos: 2, photo_labels: ["หน้า", "ข้าง", "บน"] })).steps[0].fields[0];
+    expect(f.photo_labels).toEqual(["หน้า", "ข้าง"]);
+    expect(sanitizeSchema(schema({ max_photos: 2, photo_labels: ["", " "] })).steps[0].fields[0].photo_labels).toBeUndefined();
+  });
+  it("public answers keep captions of uploaded slots", () => {
+    const r = sanitizePublicAnswers(schema({ max_photos: 3, photo_labels: ["หน้า", "ข้าง", "บน"] }), [{ label: "รูป", type: "photo" }], new Set(["p", "p.ph.slot02"]));
+    expect(r.answers[0]).toMatchObject({ photoFields: ["p", "p.ph.slot02"], photoLabels: ["หน้า", "บน"] });
   });
   it("public answers keep only uploaded slots in order", () => {
     const r = sanitizePublicAnswers(schema({ max_photos: 3 }), [{ label: "รูป", type: "photo" }], new Set(["p.ph.slot02", "p"]));

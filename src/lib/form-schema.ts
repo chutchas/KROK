@@ -98,6 +98,8 @@ export interface FormField {
   max_photos?: number;
   /** ฟิลด์รูปถ่ายที่บังคับกรอก: ต้องมีอย่างน้อยกี่รูป (ไม่ระบุ = 1) */
   min_photos?: number;
+  /** ชื่อใต้รูปแต่ละช่อง (แยกจากชื่อฟิลด์) เช่น ["ด้านหน้า","ด้านข้าง"] — ว่าง = "รูปที่ n" */
+  photo_labels?: string[];
   // pass_fail
   on_fail_require_note?: boolean;
   // table
@@ -420,6 +422,11 @@ export function sanitizeSchema(raw: unknown): FormSchema {
               o.max_photos = Math.min(12, Math.round(mx));
               const mn = num(fo.min_photos);
               if (mn !== undefined && mn > 1) o.min_photos = Math.min(o.max_photos, Math.round(mn));
+            }
+            if (Array.isArray(fo.photo_labels)) {
+              const max = (o.max_photos as number | undefined) ?? 1;
+              const labels = fo.photo_labels.slice(0, max).map((x) => (typeof x === "string" ? x.slice(0, 80) : ""));
+              if (labels.some((x) => x.trim())) o.photo_labels = labels;
             }
           }
           if (type === "pass_fail") o.on_fail_require_note = fo.on_fail_require_note !== false;

@@ -141,26 +141,6 @@ export default function FieldSettingsPanel({
     );
   }
 
-  // ----- กล่องภาพประกอบ (print_photos = grid) -----
-  if (selectedKey === "photos") {
-    return (
-      <Shell title={t("print.photos.title")} onClose={() => onSelect(null)}>
-        {/* ฟิลด์รูปในกล่อง — กดเพื่อตั้งชื่อ/จำนวนรูป/ลบ (หรือคลิกช่องรูปบนกระดาษ) */}
-        <label style={lbl}>{t("print.photos.fieldsInBox")}</label>
-        <div style={{ display: "grid", gap: 6, marginBottom: 12 }}>
-          {schema.steps.flatMap((st) => st.fields.filter((f) => f.type === "photo")).map((f) => (
-            <button key={f.id} type="button" data-krok-keep="" onClick={() => onSelect(f.id)}
-              style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".86rem", cursor: "pointer", textAlign: "left" }}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", color: f.label ? "var(--ink)" : "var(--ink-3)" }}>{f.label || t("fw.noName")}</span>
-              <span style={{ fontSize: ".76rem", color: "var(--ink-3)", whiteSpace: "nowrap" }}>{tt("print.photos.fieldMax", { n: f.max_photos ?? 1 })} ›</span>
-            </button>
-          ))}
-        </div>
-        <PhotoPrintSettings schema={schema} onChange={onChange} bare />
-      </Shell>
-    );
-  }
-
   // ----- document header / meta selected -----
   if (selectedKey === "header" || selectedKey === "meta") {
     const toggle = (key: "show_header" | "show_meta", v: boolean) => {
@@ -307,6 +287,25 @@ export default function FieldSettingsPanel({
             )}
           </div>
           {(field.max_photos ?? 1) > 1 && <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("editor.maxPhotosHint")}</p>}
+          {/* ชื่อใต้รูปแต่ละช่อง — แยกจากชื่อฟิลด์ (ชื่อฟิลด์ = หัวกล่องรูป) */}
+          <label style={lbl}>{t("editor.photoLabels")}</label>
+          <div style={{ display: "grid", gap: 6 }}>
+            {Array.from({ length: field.max_photos ?? 1 }, (_, i) => {
+              const key = i === 0 ? field.id : `${field.id}.ph.slot${String(i).padStart(2, "0")}`;
+              return (
+                <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ flexShrink: 0, minWidth: 24, height: 24, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", fontWeight: 700, fontSize: ".78rem", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                  <Field id={`pcap-${key}`} value={field.photo_labels?.[i] ?? ""} placeholder={(field.max_photos ?? 1) > 1 ? tt("print.photos.slotN", { n: i + 1 }) : t("editor.photoLabels")} style={{ flex: 1 }}
+                    onChange={(e) => {
+                      const n = Array.from({ length: field.max_photos ?? 1 }, (_, j) => field.photo_labels?.[j] ?? "");
+                      n[i] = e.target.value;
+                      patchField({ photo_labels: n.some((x) => x.trim()) ? n : undefined });
+                    }} />
+                </div>
+              );
+            })}
+          </div>
+          <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("editor.photoLabelsHint")}</p>
           <PhotoPrintSettings schema={schema} onChange={onChange} />
         </>
       )}

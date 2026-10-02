@@ -1,9 +1,9 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight, placeUnstoredPhotosBox } from "@/lib/paper-layout";
-import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
-import { maxPhotosOf, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
+import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
+import PaperPhotoGrid, { photoCaption } from "@/components/paper/PaperPhotoGrid";
+import { maxPhotosOf, photoSlotKey } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
@@ -59,9 +59,10 @@ export default function FormPaperEditor({
   onAddField?: () => void;
   onAddStep?: () => void;
 }) {
-  const { t } = useT();
+  const { t, tt } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const photosHidden = schema.print_photos?.mode === "hidden";
+  const [capKey, setCapKey] = useState<string | null>(null); // ช่องรูปที่คลิกล่าสุด (แก้ชื่อใต้รูป)
   const canvasRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const clip = useRef<FormField | null>(null);
@@ -82,7 +83,6 @@ export default function FormPaperEditor({
     // ชื่อเอกสาร + วันที่/เลขที่ เป็นบล็อกลากวางแยกกัน
     merged[HEADER_KEY] = schema.layout?.[HEADER_KEY] || DEFAULT_HEADER_BOX;
     merged[META_KEY] = schema.layout?.[META_KEY] || DEFAULT_META_BOX;
-    placeUnstoredPhotosBox(blocks, merged, schema.layout);
     return merged;
   }, [blocks, schema.layout]);
 
@@ -393,8 +393,16 @@ export default function FormPaperEditor({
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</span>
                 ) : b.kind === "photos" && b.photos ? (
                   <div>
-                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} onPickField={(fid) => select(fid)} selectedFieldId={active}
-                      items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), fieldId: c.field.id, label: photoSlotLabel(c.field.label, c.slot, c.max, t("fw.noName")) }))} />
+                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} numbered={false}
+                      title={b.field?.label || t("fw.noName")} required={b.field?.required}
+                      selectedFieldId={active} selectedKey={active === b.key ? capKey : null}
+                      onPickField={(fid, key) => {
+                        // คลิกช่องรูป = เลือกฟิลด์ + ไปที่ช่อง "ชื่อใต้รูป" ของช่องนั้นในแผงตั้งค่า
+                        select(fid);
+                        setCapKey(key);
+                        setTimeout(() => { const el = document.getElementById(`pcap-${key}`) as HTMLInputElement | null; el?.focus(); el?.select(); }, 60);
+                      }}
+                      items={b.photos.cells.map((c) => ({ key: photoSlotKey(c.field.id, c.slot), fieldId: c.field.id, label: photoCaption(c.field, c.slot, c.max, (n) => tt("print.photos.slotN", { n })) }))} />
                   </div>
                 ) : (
                   b.field && <div style={{ pointerEvents: "none" }}><FieldPreview f={b.field} /></div>
