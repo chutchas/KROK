@@ -1062,7 +1062,7 @@ export default function FillWizard(props: Props) {
       {draftState.kind === "saving" && <span>{t("draft.saving")}</span>}
       {draftState.kind === "saved" && draftState.at && (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { hour: "2-digit", minute: "2-digit" }))}
+          <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
         </span>
       )}
       {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}

@@ -28,7 +28,7 @@ type Filters = { tenant: string; actor: string; form: string; action: string };
 
 function fmt(iso: string) {
   const d = new Date(iso);
-  return d.toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short" });
+  return d.toLocaleString("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" });
 }
 
 export default function AuditAdminClient({ rows, facets, filters }: { rows: AuditRow[]; facets: Facet; filters: Filters }) {

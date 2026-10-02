@@ -18,7 +18,7 @@ interface Notif {
 
 function fmt(ts: string, lang: string) {
   try {
-    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }

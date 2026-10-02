@@ -29,7 +29,7 @@ export default function SubscriptionCard({ plan, expiresAt, daysLeft, sub, isOwn
   const en = lang === "en";
   const [busy, setBusy] = useState<"" | "toggle" | "card">("");
   const [err, setErr] = useState<string | null>(null);
-  const date = new Date(expiresAt).toLocaleDateString(en ? "en-GB" : "th-TH", { dateStyle: "medium" });
+  const date = new Date(expiresAt).toLocaleDateString(en ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium" });
   const price = (sub?.renewPrice ?? plan.priceThb).toLocaleString("en-US");
   const auto = !!sub?.autoRenew && !!sub.hasCard;
 

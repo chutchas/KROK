@@ -20,7 +20,7 @@ export interface InvoiceRow {
 
 function fmt(ts: string, lang: string) {
   try {
-    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    return new Date(ts).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
   } catch {
     return "";
   }

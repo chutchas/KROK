@@ -17,7 +17,7 @@ type Answer = { value?: string | string[] | TableRow[]; note?: string; ai?: stri
 
 const fmtTime = (iso: string, lang: Lang) => {
   try {
-    return new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+    return new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 };
 
@@ -34,7 +34,7 @@ function textOf(f: FormField, a: Answer | undefined, t: (k: MessageKey) => strin
   if (f.type === "number" || f.type === "formula") return `${v}${f.unit ? " " + f.unit : ""}`;
   if (f.type === "datetime" && typeof v === "string") {
     const d = new Date(v);
-    return Number.isNaN(d.getTime()) ? v : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium", timeStyle: "short" });
+    return Number.isNaN(d.getTime()) ? v : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" });
   }
   return typeof v === "string" ? v : "";
 }

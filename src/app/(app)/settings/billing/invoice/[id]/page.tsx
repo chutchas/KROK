@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 function fmt(ts: string) {
   try {
-    return new Date(ts).toLocaleDateString("th-TH", { day: "numeric", month: "long", year: "numeric" });
+    return new Date(ts).toLocaleDateString("th-TH", { timeZone: "Asia/Bangkok", day: "numeric", month: "long", year: "numeric" });
   } catch {
     return "";
   }

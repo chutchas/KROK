@@ -44,7 +44,7 @@ const useMounted = () => useSyncExternalStore(noop, () => true, () => false);
 let PAGE_NOW = 0;
 const useNow = () => useSyncExternalStore(noop, () => (PAGE_NOW ||= Date.now()), () => 0);
 
-const fmt = (s: string | null, lang: string) => (s ? new Date(s).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short" }) : "—");
+const fmt = (s: string | null, lang: string) => (s ? new Date(s).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "short", timeStyle: "short" }) : "—");
 
 export default function IntakePanel({ forms, intake, teams, members }: {
   forms: FormOption[];

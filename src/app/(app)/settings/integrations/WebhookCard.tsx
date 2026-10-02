@@ -34,7 +34,7 @@ export default function WebhookCard({ w, forms, onMsg }: {
   const failed = webhookStatusFailed(w.lastStatus);
   // เวลาแสดงตามเขตเวลาของเครื่องผู้ใช้ → render หลัง mount เท่านั้น (กัน hydration mismatch กับ server ที่เป็น UTC)
   const mounted = useSyncExternalStore(noopSub, () => true, () => false);
-  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "medium" });
+  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "short", timeStyle: "medium" });
 
   async function run<T>(k: typeof busy, fn: () => Promise<T>): Promise<T> {
     setBusy(k);

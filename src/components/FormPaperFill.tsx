@@ -35,7 +35,7 @@ export default function FormPaperFill({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);
   const [fitScale, setFitScale] = useState(0.5);
-  const today = new Date().toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { year: "numeric", month: "short", day: "numeric" });
+  const today = new Date().toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "short", day: "numeric" });
 
   // ปรับให้พอดีความกว้างจอครั้งแรก + เมื่อ resize (ถ้าผู้ใช้ยังไม่ได้ซูมเอง)
   const userZoomed = useRef(false);

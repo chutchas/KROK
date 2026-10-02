@@ -22,7 +22,7 @@ export function fmtTime(s: string | null, lang: string): string {
   if (!s) return "—";
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short" });
+  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "short", timeStyle: "short" });
 }
 
 export function SyncBadge({ ds }: { ds: Pick<DatasetMeta, "lastSyncStatus" | "lastSyncedAt" | "lastSyncError"> }) {
