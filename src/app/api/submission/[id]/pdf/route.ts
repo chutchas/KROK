@@ -3,6 +3,7 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { buildSubmissionPdf, type PdfAnswer, type SubmissionPdfData } from "@/lib/pdf/submission-pdf";
 import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
+import { getFormPrintPhotos } from "@/lib/print-photos-server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -39,6 +40,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
   if (!sub) return NextResponse.json({ error: "not found" }, { status: 404 });
+
+  const pp = await getFormPrintPhotos(supabase, sub.form_id as string | null);
 
   // ดึงรูป/ลายเซ็น → signed URL → โหลดไบต์มาแนบใน PDF
   const { data: photoRows } = await supabase
@@ -119,6 +122,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     formVersion: (sub.form_version as number) ?? 1,
     answers,
     history,
+    photoLayout: { mode: pp.mode, cols: pp.cols, heightMm: pp.height_mm },
   };
 
   let pdf: Buffer;

@@ -182,6 +182,41 @@ export interface FormSchema {
   // ตำแหน่ง element บนมุมมองกระดาษ (px บนแคนวาส A4 กว้าง 794)
   // key = field id, "s:<stepId>" สำหรับหัวข้อขั้นตอน, "header" = หัวเอกสาร
   layout?: Record<string, PaperBox>;
+  // การแสดงรูปถ่ายตอนพิมพ์/มุมมองกระดาษ — undefined = thumb (รูปย่อในช่อง เหมือนเดิม)
+  print_photos?: PrintPhotos;
+}
+
+/**
+ * การแสดงรูปถ่ายบนเอกสารกระดาษ
+ * - thumb: รูปย่อในช่องของแต่ละฟิลด์ (ค่าเริ่มต้น)
+ * - grid: รวมฟิลด์รูปทั้งหมดเป็น "กล่องภาพประกอบ" กล่องเดียวบนกระดาษ จัดเรียง cols รูปต่อแถว สูง height_mm
+ * - appendix: รูปย่อในช่อง + หน้าภาพประกอบท้ายเอกสาร (cols รูปต่อแถว สูง height_mm) ตอนพิมพ์
+ * - hidden: ไม่พิมพ์รูป (ยังถ่าย/เก็บในระบบตามปกติ)
+ */
+export type PrintPhotoMode = "thumb" | "grid" | "appendix" | "hidden";
+export interface PrintPhotos {
+  mode: PrintPhotoMode;
+  cols?: number;      // 1–4 รูปต่อแถว
+  height_mm?: number; // 20–120 มม.
+}
+export const PRINT_PHOTO_MODES: PrintPhotoMode[] = ["thumb", "grid", "appendix", "hidden"];
+export const PRINT_PHOTO_DEFAULT = { cols: 3, height_mm: 45 } as const;
+
+/** ค่าที่ใช้จริง (เติมค่าเริ่มต้น + จำกัดช่วง) */
+export function printPhotosOf(schema: Pick<FormSchema, "print_photos">): Required<PrintPhotos> {
+  const p = schema.print_photos;
+  return {
+    mode: p?.mode && PRINT_PHOTO_MODES.includes(p.mode) ? p.mode : "thumb",
+    cols: Math.min(4, Math.max(1, Math.round(p?.cols ?? PRINT_PHOTO_DEFAULT.cols))),
+    height_mm: Math.min(120, Math.max(20, Math.round(p?.height_mm ?? PRINT_PHOTO_DEFAULT.height_mm))),
+  };
+}
+
+/** ฟิลด์รูปถ่ายทั้งหมดตามลำดับในฟอร์ม (ไม่รวมคอลัมน์รูปในตาราง) */
+export function photoFieldsOf(schema: FormSchema): { field: FormField; stepIndex: number }[] {
+  const out: { field: FormField; stepIndex: number }[] = [];
+  schema.steps.forEach((s, si) => s.fields.forEach((f) => { if (f.type === "photo") out.push({ field: f, stepIndex: si }); }));
+  return out;
 }
 
 export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
@@ -455,7 +490,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
     }
 
   // เก็บ layout กระดาษ (ลากวาง) เฉพาะ key ที่ตรงกับ field id / "s:<stepId>" ที่มีจริง
-  const validKeys = new Set<string>(["header", "meta"]);
+  const validKeys = new Set<string>(["header", "meta", "photos"]);
   for (const s of steps) {
     validKeys.add(`s:${s.id}`);
     for (const f of s.fields) validKeys.add(f.id);
@@ -490,6 +525,10 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (r.show_header === false) schema.show_header = false;
   if (r.show_meta === false) schema.show_meta = false;
   if (layout) schema.layout = layout;
+  const pp = r.print_photos as Record<string, unknown> | undefined;
+  if (pp && typeof pp === "object" && PRINT_PHOTO_MODES.includes(pp.mode as PrintPhotoMode) && pp.mode !== "thumb") {
+    schema.print_photos = printPhotosOf({ print_photos: { mode: pp.mode as PrintPhotoMode, cols: num(pp.cols), height_mm: num(pp.height_mm) } });
+  }
   return schema;
 }
 

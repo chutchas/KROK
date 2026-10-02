@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useMemo, useRef, useState } from "react";
 import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, fieldBoxHeight } from "@/lib/paper-layout";
+import { CANVAS_W, GRID, START_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
+import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
@@ -59,6 +60,7 @@ export default function FormPaperEditor({
 }) {
   const { t } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
+  const photosHidden = schema.print_photos?.mode === "hidden";
   const canvasRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const clip = useRef<FormField | null>(null);
@@ -299,10 +301,12 @@ export default function FormPaperEditor({
                   left: box.x,
                   top: tops[b.key] ?? box.y,
                   width: box.w,
-                  ...(isStep ? { overflow: "visible" } : { minHeight: fieldBoxHeight(b.field), background: "#fff" }),
+                  ...(isStep ? { overflow: "visible" } : { minHeight: blockHeight(b), background: "#fff" }),
                   cursor: "grab",
                   userSelect: "none",
                   borderColor: on ? "var(--accent)" : "transparent",
+                  // ฟอร์มตั้ง "ไม่พิมพ์รูป" → ช่องรูปจางลง (ยังถ่ายได้ตอนกรอก แต่ไม่ออกในกระดาษที่พิมพ์)
+                  opacity: photosHidden && b.field?.type === "photo" ? 0.45 : 1,
                   outline: on ? "none" : !isStep && overflows(b) ? "1px dashed #f59e0b" : "1px dashed #d0d0d0",
                   boxShadow: on ? "0 2px 10px rgba(0,0,0,.15)" : "none",
                 }}
@@ -312,6 +316,10 @@ export default function FormPaperEditor({
 
                 {isStep ? (
                   <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{b.label}</span>
+                ) : b.kind === "photos" && b.photos ? (
+                  <div style={{ pointerEvents: "none" }}>
+                    <PaperPhotoGrid cols={b.photos.cols} imgH={b.photos.imgH} items={b.photos.fields.map((f) => ({ key: f.id, label: f.label }))} />
+                  </div>
                 ) : (
                   b.field && <div style={{ pointerEvents: "none" }}><FieldPreview f={b.field} /></div>
                 )}

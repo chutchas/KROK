@@ -1,6 +1,8 @@
 "use client";
 import { InlineFormIcon } from "@/components/FormIcon";
-import { type FormField, type FormSchema } from "@/lib/form-schema";
+import { photoFieldsOf, printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
+import { mmToPx } from "@/lib/paper-layout";
+import PaperPhotoGrid from "@/components/paper/PaperPhotoGrid";
 import { useT } from "@/i18n/LanguageProvider";
 
 // มุมมอง "กระดาษจริง" — ฟอร์มเปล่าแบบเอกสาร A4 สำหรับพิมพ์/ตรวจทาน
@@ -61,6 +63,10 @@ function Blank({ f }: { f: FormField }) {
 // จงใจไม่ใช้ absolute-canvas ตอนพิมพ์ เพราะ browser แบ่งหน้า absolute ได้ไม่ดี
 export default function FormPaperView({ schema }: { schema: FormSchema }) {
   const { t } = useT();
+  const pp = printPhotosOf(schema);
+  // grid = รวมรูปไว้กล่องเดียวท้ายเอกสาร · hidden = ไม่พิมพ์ช่องรูป
+  const skipPhoto = pp.mode === "grid" || pp.mode === "hidden";
+  const gridPhotos = pp.mode === "grid" ? photoFieldsOf(schema).map(({ field }) => ({ key: field.id, label: field.label })) : [];
   return (
     <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
       <div
@@ -101,7 +107,7 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
             </div>
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <tbody>
-                {s.fields.map((f) =>
+                {s.fields.filter((f) => !(skipPhoto && f.type === "photo")).map((f) =>
                   f.type === "table" ? (
                     <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
                       <td colSpan={2} style={{ padding: "8px 0" }}>
@@ -125,6 +131,12 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
             </table>
           </div>
         ))}
+
+        {gridPhotos.length > 0 && (
+          <div style={{ marginBottom: 18, breakInside: "avoid" }}>
+            <PaperPhotoGrid items={gridPhotos} cols={pp.cols} imgH={mmToPx(pp.height_mm)} />
+          </div>
+        )}
 
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 28, fontSize: ".82rem", color: "#333" }}>
           <div>{t("fw.paper.inspector")} ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>{t("fw.paper.signDate")}</span></div>

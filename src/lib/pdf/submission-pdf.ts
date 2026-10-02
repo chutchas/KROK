@@ -66,7 +66,11 @@ export interface SubmissionPdfData {
   answers: PdfAnswer[];
   history?: { label: string; reviewer: string; approved: boolean; note?: string; at: string }[];
   review?: { approved: boolean; reviewer: string; at: string; note?: string } | null;
+  /** การแสดงรูปถ่าย (ตั้งในฟอร์ม) — ไม่ระบุ = thumb (รูปในแถวของฟิลด์ เหมือนเดิม) */
+  photoLayout?: { mode: "thumb" | "grid" | "appendix" | "hidden"; cols: number; heightMm: number };
 }
+
+const MM = 2.8346; // pt ต่อ มม.
 
 // ลบ emoji / สัญลักษณ์ที่ Garuda ไม่มี glyph (ไม่งั้นขึ้นเป็นกล่องว่าง)
 // เก็บไทย ละติน ตัวเลข วรรคตอน และ ° ไว้
@@ -184,7 +188,14 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     const valX = M + labelW + 14;
     const valW = CONTENT_W - labelW - 14 - PAD_X;
 
+    const pl = data.photoLayout && data.photoLayout.mode !== "thumb" ? data.photoLayout : null;
+    const collected: { caption: string; photo: Buffer }[] = [];
     for (const a of data.answers) {
+      // ฟิลด์รูปถ่าย (ไม่ใช่ลายเซ็น) ตามที่ฟอร์มตั้งไว้: รวมเป็นกล่อง / แนบท้าย / ไม่พิมพ์
+      if (pl && a.type === "photo") {
+        if (a.photo) collected.push({ caption: `${collected.length + 1}. ${clean(a.label) || "—"}`, photo: a.photo });
+        if (pl.mode !== "appendix") continue;
+      }
       if (a.type === "table" && a.columns && a.columns.length) {
         y = drawTable(doc, a, y + 8, newPage) + 4;
         if (a.rowPhotos?.length) y = drawPhotoGrid(doc, a.rowPhotos, y, newPage);
@@ -205,8 +216,9 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
         try {
           // openImage มีใน runtime แต่ไม่มีใน @types/pdfkit
           const dims = (doc as unknown as { openImage: (b: Buffer) => { width: number; height: number } }).openImage(a.photo);
-          const maxW = isSig ? 190 : Math.min(valW, 300);
-          const maxH = isSig ? 80 : 200;
+          const thumb = pl?.mode === "appendix" && a.type === "photo"; // รูปใหญ่อยู่หน้าแนบท้าย
+          const maxW = isSig ? 190 : thumb ? 90 : Math.min(valW, 300);
+          const maxH = isSig ? 80 : thumb ? 60 : 200;
           const sc2 = Math.min(maxW / dims.width, maxH / dims.height, 1);
           img = { w: dims.width * sc2, h: dims.height * sc2 };
         } catch { img = null; }
@@ -235,6 +247,15 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       doc.moveTo(M, y).lineTo(PAGE.w - M, y).lineWidth(0.5).stroke(C.line);
     }
 
+    // ---------- กล่องภาพประกอบ (ต่อจากรายละเอียด) ----------
+    const gridOpts = pl ? { per: pl.cols, boxH: Math.round(pl.heightMm * MM) } : undefined;
+    if (pl?.mode === "grid" && collected.length) {
+      y += 18;
+      ensure(40);
+      sectionTitle("ภาพประกอบ");
+      y = drawPhotoGrid(doc, collected, y + 4, newPage, gridOpts);
+    }
+
     // ---------- ประวัติการอนุมัติ ----------
     if (data.history && data.history.length) {
       y += 18;
@@ -257,6 +278,13 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       }
     }
 
+    // ---------- หน้าภาพประกอบท้ายเอกสาร ----------
+    if (pl?.mode === "appendix" && collected.length) {
+      newPage();
+      sectionTitle("ภาพประกอบ");
+      y = drawPhotoGrid(doc, collected, y + 4, newPage, gridOpts);
+    }
+
     // ---------- ท้ายกระดาษ (ทุกหน้า) ----------
     // วาดใต้ขอบล่างของเนื้อหา → ต้องปิดขอบล่างชั่วคราว ไม่งั้น pdfkit ขึ้นหน้าใหม่ (หน้าว่าง) ให้เอง
     const range = doc.bufferedPageRange();
@@ -277,8 +305,9 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
 }
 
 // รูปของแถวตาราง: เรียง 4 รูปต่อแถว คำบรรยายใต้รูป · ขึ้นหน้าใหม่ทีละแถวรูป
-function drawPhotoGrid(doc: PDFKit.PDFDocument, photos: { caption: string; photo: Buffer }[], startY: number, newPage: () => void): number {
-  const PER = 4, GAP = 8, BOX_H = 104, CAP_H = 14;
+function drawPhotoGrid(doc: PDFKit.PDFDocument, photos: { caption: string; photo: Buffer }[], startY: number, newPage: () => void, opts?: { per: number; boxH: number }): number {
+  const PER = Math.min(4, Math.max(1, opts?.per ?? 4)), GAP = 8, CAP_H = 14;
+  const BOX_H = Math.min(BOTTOM - M - CAP_H - 10, Math.max(40, opts?.boxH ?? 104));
   const w = (CONTENT_W - GAP * (PER - 1)) / PER;
   let y = startY;
   for (let i = 0; i < photos.length; i += PER) {

@@ -7,6 +7,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
 import FormulaInput from "@/components/FormulaInput";
+import PhotoPrintSettings from "@/components/PhotoPrintSettings";
 import {
   FIELD_TYPES,
   type FieldType,
@@ -140,6 +141,15 @@ export default function FieldSettingsPanel({
     );
   }
 
+  // ----- กล่องภาพประกอบ (print_photos = grid) -----
+  if (selectedKey === "photos") {
+    return (
+      <Shell title={t("print.photos.title")} onClose={() => onSelect(null)}>
+        <PhotoPrintSettings schema={schema} onChange={onChange} bare />
+      </Shell>
+    );
+  }
+
   // ----- document header / meta selected -----
   if (selectedKey === "header" || selectedKey === "meta") {
     const toggle = (key: "show_header" | "show_meta", v: boolean) => {
@@ -158,6 +168,7 @@ export default function FieldSettingsPanel({
         <p style={{ fontSize: ".85rem", color: "var(--ink-2)", marginTop: 0 }}>{t("editor.docHeaderHint")}</p>
         {cbRow(schema.show_header !== false, t("editor.showHeader"), (v) => toggle("show_header", v))}
         {cbRow(schema.show_meta !== false, t("editor.showMeta"), (v) => toggle("show_meta", v))}
+        <PhotoPrintSettings schema={schema} onChange={onChange} />
       </Shell>
     );
   }
@@ -266,6 +277,7 @@ export default function FieldSettingsPanel({
         <>
           <label style={lbl}>{t("editor.photoHint")}</label>
           <Field value={field.photo_hint || ""} onChange={(e) => patchField({ photo_hint: e.target.value })} placeholder={t("editor.photoHint")} />
+          <PhotoPrintSettings schema={schema} onChange={onChange} />
         </>
       )}
 

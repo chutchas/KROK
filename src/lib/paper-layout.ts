@@ -1,4 +1,4 @@
-import { FIELD_TYPE_LABELS, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { FIELD_TYPE_LABELS, photoFieldsOf, printPhotosOf, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
 
 // ============================================================
 // ตรรกะการจัดวาง "กระดาษ A4" ที่ใช้ร่วมกันระหว่าง
@@ -32,8 +32,10 @@ export const HEADER_KEY = "header"; // ชื่อเอกสาร
 export const META_KEY = "meta";     // วันที่ / เลขที่
 export const DEFAULT_HEADER_BOX: PaperBox = { x: 32, y: 26, w: 500 };
 export const DEFAULT_META_BOX: PaperBox = { x: 596, y: 26, w: CANVAS_W - 32 - 596 };
+// กล่องภาพประกอบ (print_photos.mode = "grid") — รวมฟิลด์รูปทั้งหมดเป็นกล่องเดียว
+export const PHOTOS_KEY = "photos";
 
-export type BlockKind = "step" | "field";
+export type BlockKind = "step" | "field" | "photos";
 export interface Block {
   key: string;
   kind: BlockKind;
@@ -41,6 +43,19 @@ export interface Block {
   sub?: string;
   field?: FormField;
   stepIndex: number;
+  /** kind "photos": ฟิลด์รูปที่อยู่ในกล่อง + การจัดเรียง */
+  photos?: { fields: FormField[]; cols: number; imgH: number };
+}
+
+/** มม. → px ที่ 96dpi (แคนวาส A4 กว้าง 794px) */
+export const mmToPx = (mm: number) => Math.round(mm * 3.7795);
+export const PHOTO_CAPTION_H = 18; // ชื่อฟิลด์ใต้รูป
+export const PHOTO_GAP = 8;
+
+/** ความสูงกล่องภาพประกอบ: ขอบ + padding + หัวกล่อง + แถวรูป */
+export function photosBlockHeight(count: number, cols: number, imgH: number): number {
+  const rows = Math.max(1, Math.ceil(count / Math.max(1, cols)));
+  return BOX_BORDER * 2 + BOX_PAD_Y * 2 + LABEL_H + LABEL_GAP + rows * (imgH + PHOTO_CAPTION_H) + (rows - 1) * PHOTO_GAP;
 }
 
 export function snap(n: number) {
@@ -91,6 +106,7 @@ export function reflowTops(
 }
 
 export function blockHeight(b: Block): number {
+  if (b.kind === "photos" && b.photos) return photosBlockHeight(b.photos.fields.length, b.photos.cols, b.photos.imgH);
   return b.kind === "step" ? HEADER_H : fieldBoxHeight(b.field);
 }
 
@@ -107,6 +123,10 @@ export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
       col = 0;
       out[b.key] = { x: PAD, y, w: usable };
       y += HEADER_H + GAP_Y;
+    } else if (b.kind === "photos") {
+      if (col === 1) { y += FIELD_H + GAP_Y; col = 0; }
+      out[b.key] = { x: PAD, y, w: usable };
+      y += blockHeight(b) + GAP_Y;
     } else if (b.field?.width === "full" || b.field?.type === "table") {
       // ฟิลด์เต็มแถว (รวมตาราง) — ปิดคู่ครึ่งแถวที่ค้างก่อน
       if (col === 1) { y += FIELD_H + GAP_Y; col = 0; }
@@ -128,9 +148,13 @@ export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
 
 export function buildBlocks(schema: FormSchema): Block[] {
   const blocks: Block[] = [];
+  const pp = printPhotosOf(schema);
+  const photoFields = pp.mode === "grid" ? photoFieldsOf(schema).map((p) => p.field) : [];
+  const grouped = photoFields.length > 0;
   schema.steps.forEach((s, si) => {
     blocks.push({ key: `s:${s.id}`, kind: "step", label: `${si + 1}. ${s.title}`, stepIndex: si });
     s.fields.forEach((f) => {
+      if (grouped && f.type === "photo") return; // อยู่ในกล่องภาพประกอบแทน
       blocks.push({
         key: f.id,
         kind: "field",
@@ -141,6 +165,12 @@ export function buildBlocks(schema: FormSchema): Block[] {
       });
     });
   });
+  if (grouped) {
+    blocks.push({
+      key: PHOTOS_KEY, kind: "photos", label: "", stepIndex: schema.steps.length - 1,
+      photos: { fields: photoFields, cols: pp.cols, imgH: mmToPx(pp.height_mm) },
+    });
+  }
   return blocks;
 }
 

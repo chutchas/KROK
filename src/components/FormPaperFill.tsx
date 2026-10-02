@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { type FormField, type FormSchema } from "@/lib/form-schema";
-import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLayout, blockHeight } from "@/lib/paper-layout";
+import { photoFieldsOf, printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
+import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLayout, blockHeight, mmToPx } from "@/lib/paper-layout";
+import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperHeaderContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
@@ -18,12 +19,18 @@ export default function FormPaperFill({
   title,
   userName,
   renderField,
+  renderPhotoCell,
+  photoUrl,
 }: {
   schema: FormSchema;
   icon: string;
   title: string;
   userName?: string;
   renderField: (f: FormField) => React.ReactNode;
+  /** กล่องภาพประกอบ (print_photos = grid): เนื้อหาช่องรูปที่กดถ่ายได้ */
+  renderPhotoCell?: (f: FormField) => React.ReactNode;
+  /** รูปที่ถ่ายแล้วของฟิลด์ (ใช้ในหน้าภาพประกอบท้ายเอกสาร) */
+  photoUrl?: (fieldId: string) => string | undefined;
 }) {
   const { t, lang } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
@@ -35,6 +42,7 @@ export default function FormPaperFill({
   const wrapRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.5);
   const [fitScale, setFitScale] = useState(0.5);
+  const pp = printPhotosOf(schema);
   const today = new Date().toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "short", day: "numeric" });
 
   // ปรับให้พอดีความกว้างจอครั้งแรก + เมื่อ resize (ถ้าผู้ใช้ยังไม่ได้ซูมเอง)
@@ -103,9 +111,19 @@ export default function FormPaperFill({
                   </div>
                 );
               }
+              if (b.kind === "photos" && b.photos) {
+                const ph = b.photos;
+                return (
+                  <div key={b.key} ref={measureRef(b.key)} style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
+                    <PaperPhotoGrid cols={ph.cols} imgH={ph.imgH}
+                      items={ph.fields.map((f) => ({ key: f.id, label: f.label, url: photoUrl?.(f.id), cell: renderPhotoCell?.(f) }))} />
+                  </div>
+                );
+              }
               const f = b.field!;
               return (
-                <div key={b.key} ref={measureRef(b.key)} style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
+                <div key={b.key} ref={measureRef(b.key)} className={pp.mode === "hidden" && f.type === "photo" ? "krok-print-hide" : undefined}
+                  style={{ ...paperBoxStyle, left: box.x, top, width: box.w, minHeight: blockHeight(b) }}>
                   {renderField(f)}
                 </div>
               );
@@ -113,6 +131,12 @@ export default function FormPaperFill({
           </div>
         </div>
       </div>
+
+      {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
+      {pp.mode === "appendix" && (
+        <PhotoAppendix title={title} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
+          items={photoFieldsOf(schema).map(({ field }) => ({ key: field.id, label: field.label, url: photoUrl?.(field.id) }))} />
+      )}
 
       {/* แถบซูม */}
       <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>

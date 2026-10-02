@@ -8,6 +8,9 @@ import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
+import { getFormPrintPhotos } from "@/lib/print-photos-server";
+import { mmToPx } from "@/lib/paper-layout";
+import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
 import type { MessageKey } from "@/i18n/dictionaries";
 
 export const dynamic = "force-dynamic";
@@ -37,7 +40,8 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   // งาน (ผู้กรอกแต่ละขั้น) + รูป + หลักฐาน AI อ่านเอกสาร — ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
   // งาน: อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
   const caseDb = getAdminClient() ?? supabase;
-  const [caseRes, { data: photoRows }, { data: extractRows }] = await Promise.all([
+  const [pp, caseRes, { data: photoRows }, { data: extractRows }] = await Promise.all([
+    getFormPrintPhotos(supabase, sub.form_id as string | null),
     sub.case_id
       ? caseDb.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -80,7 +84,12 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
     extracts.push({ id: String(ex.id), url: ex.storage_path ? signedOf.get(ex.storage_path as string) ?? null : null, count: acc.length, edited: acc.filter((a) => a.edited).length });
   }
 
-  const answers = (sub.answers || []) as AnswerItem[];
+  const allAnswers = (sub.answers || []) as AnswerItem[];
+  // ฟิลด์รูปถ่าย (ตั้งในฟอร์ม): grid = รวมเป็นกล่องภาพประกอบ · appendix = รูปย่อ + หน้าแนบท้ายตอนพิมพ์ · hidden = ไม่พิมพ์
+  const photoAnswers = allAnswers.filter((a) => a.type === "photo" && a.photoField);
+  const photoItems = photoAnswers.map((a) => ({ key: a.photoField!, label: a.label, url: photoMap[a.photoField!] }));
+  const answers = pp.mode === "grid" ? allAnswers.filter((a) => a.type !== "photo") : allAnswers;
+  const hasPhotos = Object.keys(photoMap).length > 0 && allAnswers.some((a) => (a.type === "photo" && a.photoField) || (a.type === "table" && a.rows?.some((r) => Object.keys(r).some((k) => k.endsWith("#photo") && r[k]))));
   const status = STATUS_LABEL[sub.approval_status as string] || STATUS_LABEL.none;
 
   const label: React.CSSProperties = { color: "var(--ink-2)", fontSize: ".85rem", width: 200, flexShrink: 0 };
@@ -90,7 +99,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="sub.backDashboard" /></a>
-        <PrintButton submissionId={String(sub.id)} />
+        <PrintButton submissionId={String(sub.id)} hasPhotos={hasPhotos} />
       </div>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
@@ -169,7 +178,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                 ) : <span style={{ color: "var(--ink-3)" }}>—</span>}
               </div>
             ) : (
-              <div key={i} className="krok-sub-row" style={row}>
+              <div key={i} className={`krok-sub-row${pp.mode === "hidden" && a.type === "photo" ? " no-print" : ""}`} style={row}>
                 <div className="krok-sub-label" style={label}>
                   {a.label}
                   {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
@@ -190,7 +199,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                     </span>
                   )}
                   {a.photoField && photoMap[a.photoField] ? (
-                    <img src={photoMap[a.photoField]} alt={a.label} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
+                    <img src={photoMap[a.photoField]} alt={a.label} className={pp.mode === "appendix" && a.type === "photo" ? "krok-sub-thumb" : undefined} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, border: "1px solid var(--line)" }} />
                   ) : a.photoField ? (
                     <span style={{ color: "var(--ink-3)", fontWeight: 400 }}><T k="sub.fileMissing" /></span>
                   ) : (
@@ -204,6 +213,13 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
             )
           )}
         </div>
+
+        {/* กล่องภาพประกอบ (ฟอร์มตั้งให้รวมรูป) */}
+        {pp.mode === "grid" && photoItems.length > 0 && (
+          <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10, background: "#fff", color: "#111" }}>
+            <PaperPhotoGrid items={photoItems} cols={pp.cols} imgH={mmToPx(pp.height_mm)} />
+          </div>
+        )}
 
         {/* เอกสารต้นฉบับที่ AI อ่าน */}
         {extracts.length > 0 && (
@@ -272,7 +288,11 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           <span style={{ wordBreak: "break-all" }}>{String(sub.id)}</span>
         </div>
       </div>
-      <style>{`@media(max-width:600px){ .krok-sub-row{flex-direction:column;gap:4px} .krok-sub-label{width:auto !important} }`}</style>
+      {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
+      {pp.mode === "appendix" && (
+        <PhotoAppendix items={photoItems} cols={pp.cols} imgH={mmToPx(pp.height_mm)} title={String(sub.form_title || "")} />
+      )}
+      <style>{`@media(max-width:600px){ .krok-sub-row{flex-direction:column;gap:4px} .krok-sub-label{width:auto !important} } @media print{ .krok-sub-thumb{max-height:64px !important; max-width:110px !important} }`}</style>
     </div>
   );
 }

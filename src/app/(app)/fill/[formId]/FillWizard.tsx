@@ -7,11 +7,13 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Printer, Clock, CheckCircle2, AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles, Lock, CloudOff, Plus, Trash2, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { labelMap, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
+import { labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep, type TableColumn } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import FormPaperFill from "@/components/FormPaperFill";
 import BodyPortal from "@/components/BodyPortal";
 import OptionPicker from "@/components/OptionPicker";
+import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
+import { mmToPx } from "@/lib/paper-layout";
 import { PaperAddRow, PaperChoices, PaperLabel, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperInputStyle } from "@/components/paper/PaperParts";
 import { filterOptions } from "@/lib/datasets";
 import { notifySubmission } from "./actions";
@@ -994,8 +996,11 @@ export default function FillWizard(props: Props) {
     );
   }
 
-  const renderField = (f: FormField, paper = false, compact = false) => {
+  const renderField = (f: FormField, paper = false, compact = false, photoCell = false) => {
     const fStep = stepOfField.get(f.id) ?? 0;
+    if (photoCell && wf && lockedStep(fStep)) {
+      return <PhotoFrame url={photos[f.id]} height={photoCellH} alt={f.label} />;
+    }
     if (wf && lockedStep(fStep)) {
       return (
         <div id={"fld-" + f.id} key={f.id}>
@@ -1015,6 +1020,7 @@ export default function FillWizard(props: Props) {
         parentLabel={parentId ? fieldById.get(parentId)?.label : undefined}
         paper={paper}
         compact={compact}
+        photoCell={photoCell ? photoCellH : undefined}
         attachments={attByField[f.id] || []}
         publicMode={props.publicMode}
         getInitial={() => answers.current[f.id] || {}}
@@ -1138,6 +1144,9 @@ export default function FillWizard(props: Props) {
     </>
   );
 
+  // ความสูงช่องรูปในกล่องภาพประกอบ (print_photos = grid)
+  const photoCellH = mmToPx(printPhotosOf(schema).height_mm);
+
   // คำอธิบายฟอร์ม (ตั้งในหน้าสร้างฟอร์ม) — แสดงใต้ชื่อทั้งมุมมองมือถือและกระดาษ
   const formDesc = schema.description?.trim() ? (
     <p style={{ margin: "3px 0 0", fontSize: ".86rem", color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>{schema.description.trim()}</p>
@@ -1177,6 +1186,8 @@ export default function FillWizard(props: Props) {
           title={props.title}
           userName={props.userName}
           renderField={(f) => renderField(f, true, true)}
+          renderPhotoCell={(f) => renderField(f, true, true, true)}
+          photoUrl={(id) => photos[id]}
         />
 
         {!viewOnly && (
@@ -1432,8 +1443,11 @@ function FieldControl({
   parentLabel,
   formulaValue,
   media,
+  photoCell,
 }: {
   field: FormField;
+  /** กล่องภาพประกอบ: แสดงเฉพาะช่องรูปสูง photoCell px (กดถ่าย/เปลี่ยนรูป) ไม่มีชื่อช่อง */
+  photoCell?: number;
   /** รูปถ่ายต่อแถวของตาราง */
   media?: MediaPhotos;
   /** ผลคำนวณของฟิลด์สูตร (null = ยังคำนวณไม่ได้) */
@@ -1543,6 +1557,23 @@ function FieldControl({
   // ---------- โหมดกระดาษ (compact): ใช้ชิ้นส่วนเดียวกับ Editor ให้พอดีกล่องที่ออกแบบ ----------
   // เนื้อหาที่งอกเกินกล่อง (หมายเหตุตอนไม่ผ่าน, error, เอกสารแนบ, แถวตารางที่เพิ่ม)
   // จะดันช่องด้านล่างลงเอง (FormPaperFill.reflow) — ไม่ทับกัน
+  if (photoCell && f.type === "photo") {
+    return (
+      <div>
+        <PhotoFrame url={photo} height={photoCell} alt={f.label}>
+          <EmptyPhotoHint onClick={() => photoRef.current?.click()} />
+        </PhotoFrame>
+        {photo && (
+          <button type="button" onClick={() => photoRef.current?.click()} aria-label={t("fw.paper.retake")} title={t("fw.paper.retake")}
+            style={{ position: "relative", marginTop: -26, marginLeft: 4, height: 22, display: "inline-flex", alignItems: "center", gap: 3, border: "1px solid #ccc", borderRadius: 4, background: "rgba(255,255,255,.92)", color: "#333", fontFamily: "inherit", fontSize: ".66rem", padding: "0 6px", cursor: "pointer" }}>
+            <Icon icon={Camera} className="h-3 w-3" /> {t("fw.paper.retake")}
+          </button>
+        )}
+        {error && <div style={{ fontSize: ".66rem", color: "#dc2626" }}>{error}</div>}
+        <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
+      </div>
+    );
+  }
   if (compact) {
     const staticOpts = f.options || [];
     return (

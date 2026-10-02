@@ -181,7 +181,19 @@ a {
 .krok-print-root {
   display: none;
 }
+/* แสดงเฉพาะตอนพิมพ์ (เช่น หน้าภาพประกอบท้ายเอกสาร) */
+.krok-print-only {
+  display: none;
+}
+
 @media print {
+  .krok-print-only {
+    display: block !important;
+  }
+  /* ฟอร์มตั้ง "ไม่พิมพ์รูป" — ซ่อนช่องรูปตอนพิมพ์ (คงตำแหน่งช่องอื่นไว้) */
+  .krok-print-hide {
+    visibility: hidden !important;
+  }
   /* พิมพ์เป็นธีมสว่างเสมอ แม้ผู้ใช้เปิดโหมดมืด (กันพื้นเข้ม/ตัวอักษรขาวบนกระดาษ) */
   :root:root,
   :root:root[data-theme="dark"],
