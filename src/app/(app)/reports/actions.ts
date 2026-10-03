@@ -1,5 +1,5 @@
 "use server";
-import { getSession } from "@/lib/session";
+import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ReportFilters {
@@ -29,6 +29,7 @@ export async function previewReport(
 ): Promise<{ rows: PreviewRow[]; total: number } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
+  if (!(await hasMenu(session, "reports"))) return { error: "ไม่มีสิทธิ์ใช้เมนูรายงาน" };
 
   const supabase = await createClient();
 

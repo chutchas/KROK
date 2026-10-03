@@ -1,4 +1,6 @@
 "use server";
+import { rateLimited } from "@/lib/rate-limit";
+import { writeAudit } from "@/lib/audit";
 import { createHash } from "crypto";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -84,6 +86,15 @@ export async function registerDevice(
     };
   }
 
+  // กันสร้างเครื่องรออนุมัติรัว ๆ (สคริปต์ใช้ device key สุ่มใหม่ทุกครั้ง) และแจ้งเตือนถล่มผู้ดูแล
+  if (await rateLimited(`devreg:${session.userId}`, 10, 3600)) return { error: "ลงทะเบียนเครื่องถี่เกินไป โปรดลองใหม่ภายหลัง" };
+  const { count: pendingCount } = await admin
+    .from("devices")
+    .select("id", { count: "exact", head: true })
+    .eq("tenant_id", session.tenantId)
+    .eq("status", "pending");
+  if ((pendingCount ?? 0) >= 50) return { error: "มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้ผู้ดูแลอนุมัติ/ลบก่อน" };
+
   const { data, error } = await admin
     .from("devices")
     .insert({
@@ -100,8 +111,8 @@ export async function registerDevice(
 
   if (error || !data) return { error: error?.message || "ลงทะเบียนเครื่องไม่สำเร็จ" };
 
-  // แจ้งผู้ดูแลว่ามีเครื่องรออนุมัติ (best-effort)
-  try {
+  // แจ้งผู้ดูแลว่ามีเครื่องรออนุมัติ (best-effort) — ค้างเกิน 10 เครื่องแล้วไม่แจ้งเพิ่ม (ดูได้ที่หน้าจัดการเครื่อง)
+  if ((pendingCount ?? 0) < 10) try {
     const { data: admins } = await admin
       .from("memberships")
       .select("user_id, role")
@@ -137,8 +148,7 @@ async function manageGuard(): Promise<Guard> {
 async function audit(action: string, deviceId: string, meta: Record<string, unknown> = {}) {
   const session = await getSession();
   if (!session) return;
-  const supabase = await createClient();
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId,
     actor_id: session.userId,
     action,

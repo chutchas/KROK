@@ -1,4 +1,5 @@
 "use server";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -56,8 +57,7 @@ async function loadOwn(id: string, session: KrokSession): Promise<(DatasetMeta &
 
 async function audit(session: KrokSession, action: string, id: string, meta: Record<string, unknown> = {}) {
   try {
-    const supabase = await createClient();
-    await supabase.from("audit_log").insert({
+    await writeAudit({
       tenant_id: session.tenantId,
       actor_id: session.userId,
       action,

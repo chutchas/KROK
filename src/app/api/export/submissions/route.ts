@@ -1,4 +1,5 @@
-import { getSession } from "@/lib/session";
+import { rateLimited } from "@/lib/rate-limit";
+import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,8 @@ function csvCell(v: unknown): string {
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) return new Response("unauthorized", { status: 401 });
+  if (!(await hasMenu(session, "reports", "dashboard"))) return new Response("forbidden", { status: 403 });
+  if (await rateLimited(`export:${session.userId}`, 10, 60)) return new Response("ดาวน์โหลดถี่เกินไป โปรดลองใหม่อีกสักครู่", { status: 429 });
 
   const url = new URL(req.url);
   const from = url.searchParams.get("from"); // YYYY-MM-DD (optional)

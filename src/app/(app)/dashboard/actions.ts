@@ -1,6 +1,6 @@
 "use server";
 import { createClient } from "@/lib/supabase/server";
-import { getSession } from "@/lib/session";
+import { getSession, hasMenu } from "@/lib/session";
 import {
   WIDGET_FORMATS,
   WIDGET_METRICS,
@@ -140,6 +140,7 @@ export async function computeWidgets(ws: DashWidget[]): Promise<WidgetResult[]> 
 export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
+  if (!(await hasMenu(session, "dashboard"))) return { error: "ไม่มีสิทธิ์ใช้แดชบอร์ด" };
   if (!WIDGET_FORMATS.includes(w.format) || !WIDGET_METRICS.includes(w.metric)) return { error: "bad widget" };
   if (!RANGES.includes(w.range)) return { error: "bad widget" };
 

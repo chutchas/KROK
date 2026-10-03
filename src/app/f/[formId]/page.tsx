@@ -48,7 +48,9 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
 
   // ตัวเลือกจากข้อมูลอ้างอิง: อ่านด้วย service role จึงต้องจำกัดเฉพาะ dataset ของ tenant เจ้าของฟอร์ม
   // (resolveFormOptions กรอง tenant ให้) — ค่าในคอลัมน์ที่ใช้จะมองเห็นได้โดยทุกคนที่มีลิงก์
+  // schema ที่ผ่านการกรองไม่ได้ = ไม่เปิดให้คนนอก (กันค่าดิบ เช่น สี/URL ที่ไม่ผ่านการตรวจ หลุดไปถึงหน้าเว็บ)
   const raw = readSchema(data.schema);
+  if (!raw) return notAvailable;
   const [schema, attachments, loggedIn, orgName, branding] = await Promise.all([
     resolveFormOptions(raw, admin, data.tenant_id as string).catch(() => raw),
     attP,
@@ -84,10 +86,10 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
  * นอกจากกันข้อมูลเพี้ยนแล้ว ยังแปลงฟิลด์ชนิด "barcode" ของเดิม
  * ให้เป็น text + แหล่งเติมข้อมูลแบบสแกน เพื่อให้ฟอร์มเก่ายังมีปุ่มสแกนเหมือนเดิม
  */
-function readSchema(raw: unknown): FormSchema {
+function readSchema(raw: unknown): FormSchema | null {
   try {
     return sanitizeSchema(raw);
   } catch {
-    return raw as FormSchema;
+    return null;
   }
 }

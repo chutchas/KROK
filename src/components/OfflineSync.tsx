@@ -1,12 +1,18 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { getAllPending, removePending, pushSubmission } from "@/lib/offline-queue";
+import { getAllPending, removePending, pushSubmission, PermanentSubmitError } from "@/lib/offline-queue";
 import { notifySubmission } from "@/app/(app)/fill/[formId]/actions";
 import Icon from "@/components/Icon";
 import { CloudOff, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
+import { peekDeviceKey } from "@/lib/device-client";
+
+/** ผู้ใช้ที่ล็อกอินอยู่ในเบราว์เซอร์นี้ (อ่านจาก session ในเครื่อง ไม่ยิงเครือข่าย) */
+async function currentUserId(): Promise<string | null> {
+  try { return (await createClient().auth.getSession()).data.session?.user.id ?? null; } catch { return null; }
+}
 
 /** รายการที่ติดโควตาแพ็กเกจ: พักไว้ 10 นาทีก่อนลองใหม่ (ไม่ยิงซ้ำทุก 30 วิ และไม่บังรายการอื่น) */
 const QUOTA_RETRY_MS = 10 * 60_000;
@@ -20,12 +26,15 @@ export default function OfflineSync() {
   const [justSynced, setJustSynced] = useState(0);
   /** เหตุผลที่ส่งไม่ได้เพราะโควตาเต็ม (แสดงให้ผู้ใช้รู้ว่าทำไมค้าง) */
   const [quotaMsg, setQuotaMsg] = useState<string | null>(null);
+  /** quota = โควตาเต็ม · blocked = server ไม่รับ (ฟอร์มปิด/ไม่มีสิทธิ์/เครื่องไม่ได้อนุมัติ) */
+  const [msgKind, setMsgKind] = useState<"quota" | "blocked">("quota");
   const [showMsg, setShowMsg] = useState(false);
   const busy = useRef(false);
   const blockedUntil = useRef<Map<string, number>>(new Map());
 
   const refreshCount = useCallback(async () => {
-    setPending((await getAllPending()).length);
+    const me = await currentUserId();
+    setPending(me ? (await getAllPending()).filter((p) => p.userId === me).length : 0);
   }, []);
 
   const flush = useCallback(async () => {
@@ -34,14 +43,18 @@ export default function OfflineSync() {
     setSyncing(true);
     let done = 0;
     let quota: string | null = null;
+    let kind: "quota" | "blocked" = "quota";
     try {
       const supabase = createClient();
-      const queue = await getAllPending();
+      // คิวของผู้ใช้ที่ล็อกอินอยู่เท่านั้น (เครื่องที่ใช้ร่วมกัน: คิวของคนอื่นไม่ส่งในชื่อเรา และไม่ขวางคิวเรา)
+      const me = await currentUserId();
+      if (!me) return;
+      const queue = (await getAllPending()).filter((p) => p.userId === me);
       for (const p of queue) {
         const until = blockedUntil.current.get(p.subId) ?? 0;
         if (until > Date.now()) { quota = quota ?? "quota"; continue; }
         try {
-          await pushSubmission(supabase, p);
+          await pushSubmission(supabase, p, { deviceKey: p.deviceKey ?? peekDeviceKey() });
           await removePending(p.subId);
           blockedUntil.current.delete(p.subId);
           void notifySubmission(p.subId).catch(() => {});
@@ -53,11 +66,18 @@ export default function OfflineSync() {
             blockedUntil.current.set(p.subId, Date.now() + QUOTA_RETRY_MS);
             continue;
           }
+          // ลองใหม่ก็ไม่ผ่าน (ฟอร์มปิด/ไม่มีสิทธิ์): พักรายการนี้ไว้นาน ๆ แล้วส่งรายการอื่นต่อ (ยังเก็บในเครื่อง)
+          if (e instanceof PermanentSubmitError) {
+            blockedUntil.current.set(p.subId, Date.now() + 6 * 60 * 60_000);
+            quota = quota ?? e.message;
+            kind = "blocked";
+            continue;
+          }
           break; // เครือข่ายหลุดอีก — หยุดไว้ ลองใหม่รอบหน้า
         }
       }
     } finally {
-      if (quota !== "quota") setQuotaMsg(quota); // "quota" = ยังอยู่ในช่วงพัก ใช้ข้อความเดิม
+      if (quota !== "quota") { setQuotaMsg(quota); setMsgKind(kind); } // "quota" = ยังอยู่ในช่วงพัก ใช้ข้อความเดิม
       busy.current = false;
       setSyncing(false);
       if (done > 0) { setJustSynced(done); setTimeout(() => setJustSynced(0), 4000); }
@@ -93,7 +113,7 @@ export default function OfflineSync() {
   let icon = CloudOff;
   if (!online) { text = pending > 0 ? tt("sync.offlinePending", { n: pending }) : t("sync.offline"); }
   else if (syncing) { text = tt("sync.syncing", { n: pending }); icon = RefreshCw; }
-  else if (blocked) { text = tt("sync.quotaBlocked", { n: pending }); color = "var(--fail)"; icon = CloudOff; }
+  else if (blocked) { text = tt(msgKind === "quota" ? "sync.quotaBlocked" : "sync.blockedBadge", { n: pending }); color = "var(--fail)"; icon = CloudOff; }
   else if (pending > 0) { text = tt("sync.pending", { n: pending }); icon = RefreshCw; }
   else if (justSynced > 0) { text = tt("sync.done", { n: justSynced }); color = "var(--pass)"; icon = CheckCircle2; }
 
@@ -114,9 +134,9 @@ export default function OfflineSync() {
     </button>
     {blocked && showMsg && (
       <span role="status" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 280, zIndex: 60, background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,.18)", padding: 12, fontSize: ".8rem", lineHeight: 1.55, whiteSpace: "normal" }}>
-        <b style={{ display: "block", marginBottom: 4, color: "var(--fail)" }}>{t("sync.quotaTitle")}</b>
+        <b style={{ display: "block", marginBottom: 4, color: "var(--fail)" }}>{t(msgKind === "quota" ? "sync.quotaTitle" : "sync.blockedTitle")}</b>
         {quotaMsg}
-        <span style={{ display: "block", marginTop: 6, color: "var(--ink-3)" }}>{t("sync.quotaHint")}</span>
+        <span style={{ display: "block", marginTop: 6, color: "var(--ink-3)" }}>{t(msgKind === "quota" ? "sync.quotaHint" : "sync.blockedHint")}</span>
       </span>
     )}
     </span>

@@ -54,7 +54,14 @@ export async function GET(
   // ลิงก์ภายนอก — ไม่ต้องออก signed URL
   if (att.kind === "link") {
     if (!att.url) return NextResponse.json({ error: "ลิงก์ว่าง" }, { status: 404 });
-    return NextResponse.redirect(att.url as string);
+    // ไม่ redirect อัตโนมัติ (กันใช้โดเมน KROK เป็นทางผ่านไปเว็บหลอกลวง) — แสดงหน้าคั่นให้ผู้ใช้เห็นปลายทางก่อนกด
+    let target: URL;
+    try { target = new URL(att.url as string); } catch { return NextResponse.json({ error: "ลิงก์ไม่ถูกต้อง" }, { status: 400 }); }
+    if (target.protocol !== "https:" && target.protocol !== "http:") return NextResponse.json({ error: "ลิงก์ไม่ถูกต้อง" }, { status: 400 });
+    return new NextResponse(leavePage(target.toString(), String(att.name || "")), {
+      status: 200,
+      headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
+    });
   }
 
   // path ที่บันทึกไว้ต้องอยู่ใต้ <tenant>/<form>/ ของเอกสารนี้จริง (กันข้อมูลเก่าที่มี ".." หลุดมา)
@@ -71,4 +78,22 @@ export async function GET(
     return NextResponse.json({ error: "เปิดเอกสารไม่ได้" }, { status: 500 });
 
   return NextResponse.redirect(signed.signedUrl);
+}
+
+const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+/** หน้าคั่นก่อนออกไปเว็บภายนอก */
+function leavePage(url: string, name: string): string {
+  const u = esc(url);
+  let host = "";
+  try { host = esc(new URL(url).host); } catch { /* ignore */ }
+  return `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>ลิงก์ภายนอก</title></head>
+<body style="font-family:system-ui,-apple-system,'Segoe UI',sans-serif;background:#f4f6f8;color:#0f172a;margin:0;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:16px">
+<main style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;max-width:440px;width:100%;padding:22px;box-sizing:border-box">
+<h1 style="font-size:1.1rem;margin:0 0 6px">กำลังออกจาก KROK</h1>
+<p style="margin:0 0 12px;color:#475569;font-size:.9rem">${name ? `เอกสาร “${esc(name)}” เป็น` : ""}ลิงก์ไปเว็บภายนอก ตรวจชื่อเว็บก่อนเปิด</p>
+<div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px;font-size:.85rem;overflow-wrap:anywhere"><b>${host}</b><br><span style="color:#64748b">${u}</span></div>
+<a href="${u}" rel="noopener noreferrer nofollow" style="display:block;text-align:center;margin-top:14px;padding:11px;border-radius:9px;background:#2559c4;color:#fff;text-decoration:none;font-weight:600">เปิดลิงก์</a>
+</main></body></html>`;
 }

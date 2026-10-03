@@ -43,6 +43,9 @@ export function sanitizePublicAnswers(
   const fields = schema.steps.flatMap((s) => s.fields);
   const used = new Set<number>();
   const pick = (f: FormField, i: number): Record<string, unknown> | null => {
+    // id ของฟิลด์ตรงกัน = ช่องเดียวกันแน่นอน (แม้ชื่อช่องถูกแก้ระหว่างที่คิวออฟไลน์ค้าง) — ชนิดต้องยังเหมือนเดิม
+    const byId = list.findIndex((x, k) => !used.has(k) && x && typeof x === "object" && (x as Record<string, unknown>).id === f.id && (x as Record<string, unknown>).type === f.type);
+    if (byId >= 0) { used.add(byId); return list[byId] as Record<string, unknown>; }
     const at = list[i] as Record<string, unknown> | undefined;
     if (at && typeof at === "object" && at.label === f.label && at.type === f.type && !used.has(i)) { used.add(i); return at; }
     const j = list.findIndex((x, k) => !used.has(k) && x && typeof x === "object" && (x as Record<string, unknown>).label === f.label && (x as Record<string, unknown>).type === f.type);

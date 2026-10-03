@@ -210,9 +210,18 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
   // อ่านของเดิมเพื่อคงค่า secret ถ้าผู้ใช้ไม่ได้กรอกใหม่
   const { data: cur } = await admin
     .from("tenant_notify")
-    .select("line_token, smtp_pass, line_enabled, email_enabled")
+    .select("line_token, smtp_pass, line_enabled, email_enabled, smtp_host, smtp_port, smtp_user, line_broadcast")
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
+
+  // รหัสที่เก็บไว้ใช้ได้กับปลายทางเดิมเท่านั้น — เปลี่ยนเซิร์ฟเวอร์/ผู้ใช้ SMTP ต้องกรอกรหัสใหม่
+  // (กันเปลี่ยน host เป็นเซิร์ฟเวอร์ของผู้ไม่หวังดีแล้วกด "ทดสอบ" เพื่อดักรหัสเดิม)
+  const smtpTargetChanged = !!cur?.smtp_pass && (
+    (cur.smtp_host || "") !== host || (Number(cur.smtp_port) || 0) !== port || (cur.smtp_user || "") !== (input.smtp_user?.trim() || ""));
+  if (smtpTargetChanged && !input.smtp_pass) return { error: "เปลี่ยนเซิร์ฟเวอร์/พอร์ต/ชื่อผู้ใช้ SMTP แล้ว ต้องกรอกรหัสผ่าน SMTP ใหม่" };
+  // เปิด "ส่งถึงผู้ติดตามทั้งหมด" = ส่งหาลูกค้าทุกคนของ LINE OA → ต้องยืนยันด้วยการกรอก token ใหม่
+  if (input.line_broadcast && cur?.line_broadcast === false && cur?.line_token && !input.line_token)
+    return { error: "เปิดส่งถึงผู้ติดตามทั้งหมด ต้องกรอก LINE Channel access token อีกครั้ง" };
 
   // แพ็กเกจ: เปิดช่องทางใหม่ต้องมีสิทธิ์แจ้งเตือน (ที่เปิดอยู่แล้วใช้ต่อได้)
   const turningOn = (!!input.line_enabled && !cur?.line_enabled) || (!!input.email_enabled && !cur?.email_enabled);

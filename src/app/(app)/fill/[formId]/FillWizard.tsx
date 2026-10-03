@@ -24,7 +24,7 @@ import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, mediaFieldId } from "@/lib/table-rows";
 import FillSourceBar, { type AppliedValue } from "@/components/FillSourceBar";
-import { enqueue, pushSubmission, type PendingSubmission } from "@/lib/offline-queue";
+import { enqueue, pushSubmission, PermanentSubmitError, type PendingSubmission } from "@/lib/offline-queue";
 import AttachmentChips from "@/components/AttachmentView";
 import { groupAttachments, type Attachment } from "@/lib/attachments";
 import { defaultDeviceName, deviceShortCode, freshApproved, freshFormAllow, getDeviceKey, guessPlatform, writeDeviceState, writeFormAllow, type DeviceStatus } from "@/lib/device-client";
@@ -34,6 +34,7 @@ import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
 import dynamic from "next/dynamic";
 import { printWhenReady } from "@/lib/print";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
+import type { CaptchaHandle } from "@/components/Turnstile";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
 import { Answer, DocRec, MediaPhotos, asRows, dataUrlToBlob, shrinkImage } from "./fill-types";
 import { firstBadRow, rowHasValue } from "./FillTable";
@@ -57,6 +58,8 @@ type Props = {
   publicMode?: boolean;
   /** แบรนด์ของ workspace (โลโก้/ธีมสี) — ฟอร์มตั้งทับได้ใน schema.theme */
   branding?: WorkspaceBranding | null;
+  /** ฟอร์มสาธารณะ: CAPTCHA (Turnstile) */
+  captcha?: React.MutableRefObject<CaptchaHandle | null>;
   /** เอกสารที่เกี่ยวข้อง (ระดับฟอร์ม + ระดับฟิลด์) */
   attachments?: Attachment[];
   /** ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว */
@@ -658,8 +661,11 @@ export default function FillWizard(props: Props) {
           fd.append("fails", JSON.stringify(fails));
           fd.append("answers", JSON.stringify(list));
           fd.append("duration", String(dur));
+          const cf = props.captcha?.current?.token();
+          if (cf) fd.append("cf_token", cf);
           for (const p of photoUploads) fd.append(`photo_${p.fieldId}`, dataUrlToBlob(p.dataUrl), `${p.fieldId}.jpg`);
           const res = await fetch("/api/public/submit", { method: "POST", body: fd });
+          props.captcha?.current?.reset(); // token ใช้ได้ครั้งเดียว
           if (!res.ok) {
             const j = await res.json().catch(() => ({}));
             throw new Error(j.error || t("fw.submitFailed"));
@@ -693,6 +699,7 @@ export default function FillWizard(props: Props) {
         photos: photoUploads,
         docExtracts: docExtracts.current,
         deviceId: device.id,
+        deviceKey: deviceLocked ? getDeviceKey() : null,
         queuedAt: 0,
       };
 
@@ -700,7 +707,7 @@ export default function FillWizard(props: Props) {
       if (wf) {
         if (!kase) throw new Error(t("fw.caseNotFound"));
         if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error(t("fw.offlineFinalStep"));
-        try { await pushSubmission(supabase, payload); }
+        try { await pushSubmission(supabase, payload, { caseId: kase.id }); }
         catch (err) { throw new Error(cleanQuotaMessage(String((err as { message?: string })?.message ?? err))); }
         const r = await completeCaseAction(kase.id, subId);
         void notifySubmission(subId).catch(() => {});
@@ -721,11 +728,14 @@ export default function FillWizard(props: Props) {
         return;
       }
 
+      let saved: { result?: "pass" | "fail"; fails?: string[] } = {};
       try {
-        await pushSubmission(supabase, payload);
+        saved = await pushSubmission(supabase, payload);
       } catch (err) {
         // เกินโควตาแพ็กเกจ → แจ้งผู้ใช้ตรง ๆ (เข้าคิวไปก็ส่งไม่ผ่านอยู่ดี)
         if (isQuotaError(err)) throw new Error(cleanQuotaMessage(String((err as { message?: string }).message)));
+        // ไม่มีสิทธิ์ / ฟอร์มปิด / เครื่องไม่ได้อนุมัติ → แจ้งผู้ใช้ (เข้าคิวไปก็ไม่ผ่าน)
+        if (err instanceof PermanentSubmitError) throw err;
         // ส่งไม่ผ่าน (เครือข่ายหลุด) → เก็บเข้าคิวออฟไลน์
         await enqueue({ ...payload, queuedAt: nowMs() });
         window.dispatchEvent(new Event("krok-queue-changed"));
@@ -739,7 +749,8 @@ export default function FillWizard(props: Props) {
       void notifySubmission(subId).catch(() => {});
       void clearDraftAfterSubmit();
 
-      setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
+      // ผลที่ server คำนวณ (เชื่อถือได้) — ไม่มี = ใช้ผลในเครื่อง
+      setDone({ result: saved.result ?? result, fails: saved.fails ?? fails, dur, pending: props.requiresApproval, offline: false });
       window.scrollTo(0, 0);
     } catch (e) {
       const fid = (lockedStep(idx) ? segFields()[0] : step.fields[0])?.id ?? step.fields[0].id;

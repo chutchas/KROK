@@ -1,4 +1,5 @@
 "use server";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { createClient } from "@/lib/supabase/server";
@@ -18,7 +19,7 @@ export async function renameWorkspace(name: string): Promise<{ ok: true } | { er
   const { error } = await supabase.rpc("rename_workspace", { p_tenant: session.tenantId, p_name: clean });
   if (error) return { error: error.message };
 
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId,
     actor_id: session.userId,
     action: "workspace.rename",
@@ -76,7 +77,7 @@ export async function saveBranding(input: { logo_url?: string | null; primary?: 
   });
   if (error) return { error: /tenant_branding/.test(error.message) ? "ยังไม่ได้รัน migration 0056_branding" : error.message };
 
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId,
     actor_id: session.userId,
     action: "workspace.branding",
@@ -126,7 +127,7 @@ export async function deleteBrandAssets(paths: string[]): Promise<{ deleted: num
   if (del.length) {
     const { error } = await supabase.storage.from("branding").remove(del);
     if (error) return { error: error.message };
-    await supabase.from("audit_log").insert({
+    await writeAudit({
       tenant_id: session.tenantId,
       actor_id: session.userId,
       action: "workspace.branding.delete_files",

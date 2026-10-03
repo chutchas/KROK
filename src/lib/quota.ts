@@ -221,6 +221,15 @@ export async function consumeAiCredit(tenantId: string, purpose: AiPurpose): Pro
   const max = plan.aiCredits[purpose] ?? 0;
   const label = PURPOSE_LABELS[purpose];
 
+  // ทางหลัก (0057): ตรวจ + นับในคำสั่งเดียวแบบล็อก — ยิงพร้อมกันกี่ครั้งก็ไม่เกินโควตา
+  const adminTake = getAdminClient();
+  if (adminTake) {
+    const { data, error } = await adminTake.rpc("ai_credit_take", { p_tenant: tenantId, p_period: period, p_purpose: purpose, p_max: max });
+    if (!error && typeof data === "number") {
+      return data < 0 ? { ok: false, used: max, max, purpose, label } : { ok: true, used: data, max, purpose, label };
+    }
+  }
+
   // ยอดรวมทั้งกลุ่ม workspace ของเจ้าของ (ยังไม่รัน 0045 = ของ workspace นี้)
   let cur = await supabase.rpc("ai_usage_pool_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });
   if (cur.error) cur = await supabase.rpc("ai_usage_get_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });

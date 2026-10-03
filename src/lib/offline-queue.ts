@@ -29,6 +29,8 @@ export interface PendingSubmission {
     accepted: { key: string; field_id: string; value: string; edited: boolean }[];
   }[];
   deviceId?: string | null;
+  /** คีย์ประจำเครื่อง (พิสูจน์ว่าเป็นเครื่องที่อนุมัติ — server ตรวจ hash) */
+  deviceKey?: string | null;
   queuedAt: number;
 }
 
@@ -84,72 +86,64 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
-// ส่งจริงขึ้น Supabase — ใช้ทั้งตอนออนไลน์และตอน flush คิว
-// คืน true ถ้าสำเร็จ (แถวถูกบันทึก), throw ถ้าเครือข่าย/ผิดพลาดควรลองใหม่
-export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmission): Promise<void> {
-  const { error: subErr } = await supabase.from("submissions").insert({
-    id: p.subId,
-    tenant_id: p.tenantId,
-    form_id: p.formId,
-    form_title: p.title,
-    form_icon: p.icon,
-    form_version: p.version,
-    submitted_by: p.userId,
-    user_name: p.userName,
-    result: p.result,
-    fails: p.fails,
-    answers: p.answers,
-    duration_s: p.dur,
-    device_id: p.deviceId ?? null,
-    approval_status: p.requiresApproval ? "pending" : "none",
-    approval_chain: p.requiresApproval ? p.approvalChain : [],
-    approval_step: 0,
-    approval_history: [],
-  });
-  // 23505 = duplicate key → ถือว่าเคยส่งสำเร็จแล้ว (ไม่ต้องลองซ้ำ)
-  if (subErr && subErr.code !== "23505") throw subErr;
+/** ไฟล์นี้มีอยู่แล้ว (อัปโหลดรอบก่อน / ใบส่งไปแล้ว) — ไม่ใช่ปัญหา ให้ server ตัดสิน */
+function alreadyThere(e: { message?: string; statusCode?: string | number }): boolean {
+  return String(e.statusCode ?? "") === "409" || /exists|duplicate/i.test(e.message || "");
+}
 
-  // อัปโหลดรูปทีละ 3 ไฟล์พร้อมกัน (เดิมทีละไฟล์ — ฟอร์มที่มีรูปเยอะส่งช้ามากบนเน็ตมือถือ) แล้วบันทึกแถวรูปครั้งเดียว
-  const rows: { tenant_id: string; submission_id: string; field_id: string; storage_path: string; ai_check: unknown }[] = [];
+/** ส่งไม่ผ่านแบบที่ลองใหม่ก็ไม่ผ่าน (ฟอร์มปิด/ไม่มีสิทธิ์/เครื่องไม่ได้อนุมัติ) — คิวข้ามไปรายการถัดไป */
+export class PermanentSubmitError extends Error {
+  status: number;
+  constructor(message: string, status: number) { super(message); this.status = status; }
+}
+
+// ส่งจริง — ใช้ทั้งตอนออนไลน์และตอน flush คิว
+//   1) อัปโหลดรูปไป storage (ทีละ 3 ไฟล์)  2) ให้ server ตรวจสิทธิ์/เครื่อง คำนวณผลใหม่ แล้วบันทึก (/api/submit)
+// สำเร็จ = return · throw Error = ลองใหม่ได้ · throw PermanentSubmitError = ลองใหม่ก็ไม่ผ่าน
+export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmission, extra: { caseId?: string | null; deviceKey?: string | null } = {}): Promise<{ result?: "pass" | "fail"; fails?: string[] }> {
+  // ใบที่ส่งสำเร็จไปแล้ว storage จะไม่รับไฟล์เพิ่ม (0057) — error ตรงนี้ไม่ใช่ปัญหา ให้ server ตัดสิน
+  // อัปโหลดไม่ขึ้น (ยกเว้นไฟล์มีอยู่แล้วจากรอบก่อน) → หยุด ให้ลองใหม่/เข้าคิว — ไม่ส่งใบที่รูปหาย
+  let sent: boolean | null = null;
+  const up = async (path: string, dataUrl: string) => {
+    const { error } = await supabase.storage.from("submissions").upload(path, dataUrlToBlob(dataUrl), { contentType: "image/jpeg", upsert: false });
+    if (!error || alreadyThere(error)) return;
+    // ใบที่ส่งสำเร็จไปแล้ว storage ไม่รับไฟล์เพิ่ม (RLS) → ถ้าใบนั้นมีอยู่แล้ว ปล่อยให้ server ตอบว่าเคยส่ง
+    if (sent === null) sent = !!(await supabase.from("submissions").select("id").eq("id", p.subId).maybeSingle()).data;
+    if (!sent) throw new Error(error.message || "upload failed"); // เช่น พื้นที่ไฟล์เต็ม / เน็ตหลุด → ลองใหม่ ไม่ส่งใบที่รูปหาย
+  };
   for (let i = 0; i < p.photos.length; i += 3) {
-    await Promise.all(p.photos.slice(i, i + 3).map(async (ph) => {
-      const path = `${p.tenantId}/${p.subId}/${ph.fieldId}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from("submissions")
-        .upload(path, dataUrlToBlob(ph.dataUrl), { contentType: "image/jpeg", upsert: true });
-      if (!upErr) rows.push({ tenant_id: p.tenantId, submission_id: p.subId, field_id: ph.fieldId, storage_path: path, ai_check: ph.ai ?? null });
-    }));
+    await Promise.all(p.photos.slice(i, i + 3).map((ph) => up(`${p.tenantId}/${p.subId}/${ph.fieldId}.jpg`, ph.dataUrl)));
   }
-  if (rows.length) await supabase.from("submission_photos").insert(rows);
-
-  // หลักฐานการอ่านเอกสาร — เก็บรูปต้นฉบับ + ค่าที่ AI อ่านได้ทั้งหมด + ค่าที่คนยืนยัน
   for (const ex of p.docExtracts ?? []) {
-    let path: string | null = null;
-    if (ex.dataUrl) {
-      const p2 = `${p.tenantId}/${p.subId}/doc_${ex.source_id}.jpg`;
-      const { error: upErr } = await supabase.storage
-        .from("submissions")
-        .upload(p2, dataUrlToBlob(ex.dataUrl), { contentType: "image/jpeg", upsert: true });
-      if (!upErr) path = p2;
-    }
-    await supabase.from("submission_doc_extracts").insert({
-      tenant_id: p.tenantId,
-      submission_id: p.subId,
-      source_id: ex.source_id,
-      storage_path: path,
-      raw: ex.raw,
-      accepted: ex.accepted,
-      created_by: p.userId,
-    });
+    if (ex.dataUrl) await up(`${p.tenantId}/${p.subId}/doc_${ex.source_id}.jpg`, ex.dataUrl);
   }
 
-  // query builder ของ supabase ไม่ยิงจนกว่าจะ await/then — void เฉย ๆ = ไม่ได้บันทึก
-  void supabase.from("audit_log").insert({
-    tenant_id: p.tenantId,
-    actor_id: p.userId,
-    action: "submission.create",
-    target_type: "submission",
-    target_id: p.subId,
-    meta: { form_id: p.formId, result: p.result, fails: p.fails.length, offline: p.queuedAt > 0 },
-  }).then(() => {}, () => {});
+  let res: Response;
+  try {
+    res = await fetch("/api/submit", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subId: p.subId,
+        tenantId: p.tenantId,
+        formId: p.formId,
+        version: p.version,
+        caseId: extra.caseId ?? null,
+        answers: p.answers,
+        dur: p.dur,
+        deviceKey: extra.deviceKey ?? p.deviceKey ?? null,
+        photos: p.photos.map((ph) => ({ fieldId: ph.fieldId, ai: ph.ai })),
+        docExtracts: (p.docExtracts ?? []).map((ex) => ({ source_id: ex.source_id, raw: ex.raw, accepted: ex.accepted })),
+        offline: p.queuedAt > 0,
+      }),
+    });
+  } catch (e) {
+    throw e instanceof Error ? e : new Error(String(e)); // เครือข่ายหลุด → ลองใหม่
+  }
+  const j = (await res.json().catch(() => ({}))) as { error?: string; result?: "pass" | "fail"; fails?: string[] };
+  if (res.ok) return { result: j.result, fails: j.fails };
+  const msg = j.error || `HTTP ${res.status}`;
+  // 401 = session หมด/ยังไม่ผ่าน 2FA · 402 = โควตาเต็ม (ข้อความมีแท็ก [quota:…]) · 408/429/5xx = ลองใหม่ได้ · 4xx อื่น = ไม่ผ่านถาวร
+  if (res.status === 401 || res.status === 402 || res.status === 408 || res.status === 429 || res.status >= 500) throw new Error(msg);
+  throw new PermanentSubmitError(msg, res.status);
 }

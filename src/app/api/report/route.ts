@@ -1,4 +1,5 @@
-import { getSession } from "@/lib/session";
+import { rateLimited } from "@/lib/rate-limit";
+import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ExcelJS from "exceljs";
 import { tableCodeKey, type AnswerItem } from "@/lib/answer-item";
@@ -19,6 +20,9 @@ const STATUS_TH: Record<string, string> = {
 export async function GET(req: Request) {
   const session = await getSession();
   if (!session) return new Response("unauthorized", { status: 401 });
+  if (!(await hasMenu(session, "reports"))) return new Response("forbidden", { status: 403 });
+  // ไฟล์ใหญ่ใช้หน่วยความจำมาก — จำกัดความถี่ต่อผู้ใช้
+  if (await rateLimited(`report:${session.userId}`, 10, 60)) return new Response("ดาวน์โหลดถี่เกินไป โปรดลองใหม่อีกสักครู่", { status: 429 });
 
   const url = new URL(req.url);
   const formId = url.searchParams.get("form_id"); // uuid หรือ "all"/ว่าง

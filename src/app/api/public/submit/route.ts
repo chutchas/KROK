@@ -21,7 +21,10 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "server not configured" }, { status: 500 });
 
   // กันส่งก้อนใหญ่ผิดปกติ (อ่าน formData ทั้งก้อนเข้าหน่วยความจำ)
-  const len = Number(req.headers.get("content-length") || 0);
+  // ต้องบอกขนาดมาก่อน (คำขอแบบ chunked ไม่มี content-length จะข้ามการตรวจขนาดได้) — เบราว์เซอร์ส่ง FormData พร้อมขนาดเสมอ
+  const lenHeader = req.headers.get("content-length");
+  if (!lenHeader) return NextResponse.json({ error: "length required" }, { status: 411 });
+  const len = Number(lenHeader) || 0;
   if (len > MAX_BODY_BYTES) return NextResponse.json({ error: "ข้อมูลใหญ่เกินไป" }, { status: 413 });
 
   let form: FormData;
@@ -73,6 +76,27 @@ export async function POST(req: Request) {
     }
   } catch { /* ถ้านับไม่ได้ ไม่บล็อกการส่ง */ }
 
+  // เพดานต่อวันต่อฟอร์ม: คนนอกยิงถล่มจนโควตารายเดือนของทั้ง workspace หมดไม่ได้
+  const dailyLimit = Math.max(1, Number(process.env.PUBLIC_FORM_DAILY_LIMIT) || 500);
+  try {
+    const bkk = new Date(Date.now() + 7 * 3600_000);
+    const dayStart = new Date(Date.UTC(bkk.getUTCFullYear(), bkk.getUTCMonth(), bkk.getUTCDate()) - 7 * 3600_000).toISOString();
+    const { count } = await admin
+      .from("submissions")
+      .select("id", { count: "exact", head: true })
+      .eq("form_id", f.id)
+      .is("submitted_by", null)
+      .gte("submitted_at", dayStart);
+    if ((count ?? 0) >= dailyLimit) {
+      return NextResponse.json({ error: "ฟอร์มนี้รับข้อมูลครบจำนวนของวันนี้แล้ว โปรดลองใหม่พรุ่งนี้" }, { status: 429 });
+    }
+  } catch { /* นับไม่ได้ → ไม่บล็อก */ }
+
+  // CAPTCHA (Cloudflare Turnstile) — เปิดเมื่อตั้งค่า TURNSTILE_SECRET_KEY
+  if (!(await turnstileOk(String(form.get("cf_token") || ""), ip))) {
+    return NextResponse.json({ error: "ยืนยันว่าไม่ใช่บอทไม่สำเร็จ — โปรดลองกดส่งอีกครั้ง", captcha: true }, { status: 403 });
+  }
+
   const userName = String(form.get("user_name") || "").trim().slice(0, 120) || "ผู้ไม่ระบุชื่อ";
   let duration = parseInt(String(form.get("duration") || "0"), 10) || 0;
   if (duration < 0) duration = 0;
@@ -123,7 +147,12 @@ export async function POST(req: Request) {
     approval_step: 0,
     approval_history: [],
   });
-  if (subErr) return NextResponse.json({ error: subErr.message }, { status: 500 });
+  if (subErr) {
+    // ไม่ส่งข้อความ error ดิบของฐานข้อมูลให้คนนอก (ยกเว้นข้อความโควตาที่ตั้งใจให้เห็น)
+    if (/\[quota:[a-z_]+\]/.test(subErr.message)) return NextResponse.json({ error: subErr.message.replace(/\s*\[quota:[a-z_]+\]/, "") }, { status: 429 });
+    console.error("[krok] public submit failed:", subErr.message);
+    return NextResponse.json({ error: "บันทึกไม่สำเร็จ โปรดลองใหม่" }, { status: 500 });
+  }
 
   // audit: บันทึกการส่งฟอร์มสาธารณะ (ให้ Platform Admin ตรวจย้อนหลังได้)
   await admin.from("audit_log").insert({
@@ -156,8 +185,15 @@ export async function POST(req: Request) {
       submission_id: subId, id: subId, form_id: f.id, form_title: f.title, result, fails, answers, user_name: userName, submitted_at: new Date().toISOString(), source: "public",
     }, f.id));
 
-  // แจ้งเตือน LINE/Email (best-effort)
-  runLater(() => dispatchNotifications(f.tenant_id, "submission.created", {
+  // แจ้งเตือน LINE/Email (best-effort) — ฟอร์มสาธารณะที่ถูกส่งรัว ๆ (>20 ใบ/ชม.) หยุดแจ้งชั่วคราว
+  // กันเผาโควตาข้อความ LINE OA / สแปมผู้ติดตาม (ยังดูรายการได้ในแดชบอร์ดตามปกติ)
+  let flood = false;
+  try {
+    const { count } = await admin.from("submissions").select("id", { count: "exact", head: true })
+      .eq("form_id", f.id).is("submitted_by", null).gte("submitted_at", new Date(Date.now() - 3600_000).toISOString());
+    flood = (count ?? 0) > 20;
+  } catch { /* นับไม่ได้ → แจ้งตามปกติ */ }
+  if (!flood) runLater(() => dispatchNotifications(f.tenant_id, "submission.created", {
       formTitle: f.title as string,
       formIcon: f.icon as string,
       userName,
@@ -167,4 +203,20 @@ export async function POST(req: Request) {
     }));
 
   return NextResponse.json({ ok: true, id: subId });
+}
+
+/** ตรวจ token ของ Cloudflare Turnstile — ไม่ได้ตั้ง secret = ปิด CAPTCHA (ผ่านเสมอ) */
+async function turnstileOk(token: string, ip: string): Promise<boolean> {
+  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
+  if (!secret) return true;
+  if (!token || token.length > 4096) return false;
+  try {
+    const body = new URLSearchParams({ secret, response: token });
+    if (ip && ip !== "unknown") body.set("remoteip", ip);
+    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body, signal: AbortSignal.timeout(8000) });
+    const j = (await r.json().catch(() => ({}))) as { success?: boolean };
+    return j.success === true;
+  } catch {
+    return false;
+  }
 }

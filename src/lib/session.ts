@@ -161,7 +161,9 @@ async function bundleFromQueries(supabase: ServerClient, userId: string, wanted:
 const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null> => {
   const supabase = await createClient();
   const store = await cookies();
-  const wanted = store.get(WS_COOKIE)?.value ?? null;
+  // cookie ต้องเป็น uuid (ค่าแปลก ๆ ทำให้ RPC error แล้วไปทางสำรองโดยไม่จำเป็น)
+  const rawWanted = store.get(WS_COOKIE)?.value ?? null;
+  const wanted = rawWanted && /^[0-9a-f-]{36}$/i.test(rawWanted) ? rawWanted : null;
 
   const [{ data: claimData }, rpcRes] = await Promise.all([
     supabase.auth.getClaims(),
@@ -186,6 +188,13 @@ const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null>
   if (rpcRes.error) console.error("[krok] session_bundle rpc failed, falling back:", rpcRes.error.message);
   try {
     const bundle = await bundleFromQueries(supabase, user.id, wanted);
+    // ทางสำรองไม่รู้สถานะ 2FA → ถามระดับการยืนยันตัวตนตรง ๆ · ถามไม่ได้ = ถือว่ายังไม่ผ่าน (fail closed)
+    try {
+      const { data: aal, error: aalErr } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      bundle.mfa = aalErr || !aal ? true : aal.nextLevel === "aal2";
+    } catch {
+      bundle.mfa = true;
+    }
     return { user, bundle };
   } catch (e) {
     console.error("[krok] session fallback query failed:", e);
@@ -281,6 +290,12 @@ export function canManage(role: KrokSession["role"]) {
  * ถ้าไม่มี → redirect ไปหน้าที่เข้าได้หน้าแรก (กัน loop) หรือหน้าโปรไฟล์
  * คืน session เมื่อผ่าน
  */
+/** ผู้ใช้มีเมนูนี้ไหม — ใช้ใน API/server action ที่เมนูนั้นเรียก (สิทธิ์เมนูต้องบังคับฝั่ง server ด้วย ไม่ใช่แค่ซ่อนปุ่ม) */
+export async function hasMenu(session: KrokSession, ...menus: MenuKey[]): Promise<boolean> {
+  const allowed = await getAllowedMenus(session.tenantId, session.roleKey);
+  return menus.some((m) => allowed.includes(m));
+}
+
 export async function enforceMenu(menu: MenuKey): Promise<KrokSession> {
   const session = await getSession();
   if (!session) redirect("/login");

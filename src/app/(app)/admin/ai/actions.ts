@@ -31,8 +31,14 @@ export async function savePlatformAi(input: SavePlatformAiInput): Promise<{ ok: 
 
   // ต้องมีคีย์เดิมของ purpose นี้ หรือคีย์ใหม่
   const { data: existing } = await admin
-    .from("platform_ai_profiles").select("api_key").eq("purpose", purpose).maybeSingle();
+    .from("platform_ai_profiles").select("api_key, provider, base_url, azure_endpoint").eq("purpose", purpose).maybeSingle();
   if (!newKey && !existing?.api_key) return { error: "กรุณาใส่ API key" };
+  // เปลี่ยนผู้ให้บริการ/ปลายทาง แต่ใช้คีย์เดิม → ต้องกรอกคีย์ใหม่ (กันส่งคีย์เดิมไปเซิร์ฟเวอร์อื่น)
+  if (!newKey && existing && (
+    (existing.provider || "") !== provider ||
+    (existing.base_url || "") !== (input.base_url?.trim() || "") ||
+    (existing.azure_endpoint || "") !== (input.azure_endpoint?.trim() || "")
+  )) return { error: "เปลี่ยนผู้ให้บริการหรือ URL แล้ว ต้องกรอก API key ใหม่" };
 
   const patch: Record<string, unknown> = {
     purpose,

@@ -83,15 +83,16 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           password,
           options: {
             // หลักฐานการยอมรับข้อกำหนด/รับทราบนโยบาย (ฉบับไหน เมื่อไร) — เก็บใน user metadata
-            data: { org_name: isInvite ? "" : org, display_name: name, terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() },
+            data: { org_name: isInvite ? "" : org, ...(isInvite ? { via_invite: true } : {}), display_name: name, terms_version: LEGAL_VERSION, terms_accepted_at: new Date().toISOString() },
             // ลิงก์ในอีเมลยืนยันพากลับมาที่แอปแล้วเข้าสู่ระบบให้เลย
             emailRedirectTo: `${window.location.origin}/auth/confirm?next=/dashboard`,
           },
         });
         if (error) throw error;
         // Supabase ไม่บอก error เมื่ออีเมลนี้มีบัญชีแล้ว (กันเดาอีเมล) แต่ identities จะว่าง
+        // ตอบเหมือนสมัครสำเร็จ (ไม่บอกว่าอีเมลนี้มีบัญชีแล้ว — กันเดารายชื่ออีเมลผู้ใช้)
         if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
-          setMsg({ t: t("login.alreadyRegistered"), err: true });
+          setMsg({ t: tt("login.checkEmail", { email }) });
           setMode("signin");
           return;
         }

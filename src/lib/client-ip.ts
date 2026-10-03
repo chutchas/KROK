@@ -1,11 +1,19 @@
 // ============================================================
-// IP ของผู้เรียก (ใช้จำกัดความถี่) — บน Vercel ใช้ x-vercel-forwarded-for / x-real-ip ที่ Vercel ตั้งเอง
-// (x-forwarded-for ตัวแรก client ปลอมได้ → หลบ rate limit ได้ จึงใช้เป็นตัวสุดท้าย)
+// IP ของผู้เรียก (ใช้จำกัดความถี่)
+// - Vercel: x-vercel-forwarded-for / x-real-ip ที่ Vercel เขียนทับเอง (client ปลอมไม่ได้)
+// - ที่อื่น (Docker/ECS หลัง load balancer): header เหล่านั้น client ส่งมาเองได้ → ใช้ x-forwarded-for
+//   นับจากขวาตามจำนวน proxy ที่ไว้ใจ (TRUSTED_PROXY_HOPS, ค่าเริ่มต้น 1 = ALB ตัวเดียว)
+//   ค่าทางซ้ายสุดคือค่าที่ client ใส่มาเอง ห้ามใช้
 // ============================================================
 export function clientIp(req: Request): string {
   const h = req.headers;
-  const first = (v: string | null) => (v || "").split(",")[0].trim();
-  return first(h.get("x-vercel-forwarded-for")) || first(h.get("x-real-ip")) || first(h.get("x-forwarded-for")) || "unknown";
+  const list = (v: string | null) => (v || "").split(",").map((x) => x.trim()).filter(Boolean);
+  if (process.env.VERCEL) {
+    return list(h.get("x-vercel-forwarded-for"))[0] || list(h.get("x-real-ip"))[0] || list(h.get("x-forwarded-for")).at(-1) || "unknown";
+  }
+  const hops = Math.max(1, Math.min(5, Number(process.env.TRUSTED_PROXY_HOPS) || 1));
+  const xff = list(h.get("x-forwarded-for"));
+  return xff[Math.max(0, xff.length - hops)] || "unknown";
 }
 
 /** ไฟล์รูปจริงไหม (ดู magic bytes) → content type ที่ถูกต้อง · ไม่ใช่รูป = null */

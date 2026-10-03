@@ -1,4 +1,5 @@
 "use server";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, type KrokSession } from "@/lib/session";
@@ -116,7 +117,7 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
   if (error) return { error: error.message };
 
   const { link, sent } = await sendInviteMail(supabase, session, { email: clean, role_key: roleKey, team_ids: teams });
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.invite", target_type: "invite",
     meta: { email: clean, role_key: roleKey, teams: teams.length, emailed: sent.ok, ...(sent.ok ? { email_id: sent.id } : { email_error: sent.error }) },
@@ -134,7 +135,7 @@ export async function resendInvite(id: string): Promise<InviteResult> {
     .from("invites").select("email, role_key, team_ids").eq("id", id).eq("tenant_id", a.session.tenantId).is("accepted_at", null).maybeSingle();
   if (!inv) return { error: "ไม่พบคำเชิญนี้ หรือมีคนรับไปแล้ว" };
   const { link, sent } = await sendInviteMail(supabase, a.session, inv as { email: string; role_key: string | null; team_ids: string[] | null });
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: a.session.tenantId, actor_id: a.session.userId,
     action: "member.invite_resend", target_type: "invite", target_id: id,
     meta: { email: inv.email, emailed: sent.ok, ...(sent.ok ? { email_id: sent.id } : { email_error: sent.error }) },
@@ -189,7 +190,7 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
     .from("memberships").update({ role: enumRole, role_key: roleKey })
     .eq("tenant_id", session.tenantId).eq("user_id", userId);
   if (error) return { error: error.message };
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.role_change", target_type: "user", target_id: userId, meta: { role_key: roleKey },
   });
@@ -220,7 +221,7 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
   const { error } = await supabase
     .from("memberships").update({ role }).eq("tenant_id", session.tenantId).eq("user_id", userId);
   if (error) return { error: error.message };
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.role_change", target_type: "user", target_id: userId, meta: { role },
   });
@@ -247,7 +248,7 @@ export async function removeMember(userId: string, confirmPlan = false): Promise
   const { error } = await supabase
     .from("memberships").delete().eq("tenant_id", session.tenantId).eq("user_id", userId);
   if (error) return { error: error.message };
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.remove", target_type: "user", target_id: userId,
   });

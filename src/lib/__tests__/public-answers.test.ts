@@ -40,3 +40,15 @@ describe("sanitizePublicAnswers", () => {
     expect(sanitizePublicAnswers(schema, { a: 1 }, new Set()).answers.length).toBe(5);
   });
 });
+
+describe("sanitizePublicAnswers — match by field id", () => {
+  it("keeps the answer when the field was renamed after filling (offline queue)", async () => {
+    const { sanitizePublicAnswers } = await import("@/lib/public-answers");
+    const schema = { title: "t", icon: "x", flow: "sequential", steps: [{ id: "s", title: "s", fields: [
+      { id: "temp", type: "number", label: "อุณหภูมิใหม่", required: false, max: 50 },
+    ] }] } as never;
+    const r = sanitizePublicAnswers(schema, [{ id: "temp", label: "อุณหภูมิ", type: "number", display: "80" }], new Set());
+    expect(r.answers[0].display).toBe("80");
+    expect(r.result).toBe("fail");
+  });
+});

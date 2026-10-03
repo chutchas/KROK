@@ -36,6 +36,12 @@ export async function savePaymentProvider(
   const providers = ((row?.providers as Record<string, Record<string, unknown>>) ?? {});
   const prev = providers[input.provider] || {};
 
+  // เปลี่ยนค่าที่ไม่ใช่ความลับ (เช่น URL/รหัสร้านค้า) แต่ใช้ secret เดิม → ต้องกรอก secret ใหม่
+  // (กันชี้ปลายทางไปเซิร์ฟเวอร์อื่นแล้วให้ระบบส่ง secret เดิมออกไป)
+  const nonSecretChanged = meta.fields.some((f) => !f.secret && (input.values?.[f.key] ?? "").toString().trim().slice(0, 300) !== String(prev[f.key] ?? ""));
+  const reusesSecret = meta.fields.some((f) => f.secret && !(input.values?.[f.key] ?? "").toString().trim() && typeof prev[f.key] === "string" && prev[f.key]);
+  if (nonSecretChanged && reusesSecret) return { error: "เปลี่ยนการตั้งค่าแล้ว ต้องกรอกคีย์ลับ (secret) ทุกช่องใหม่" };
+
   // ประกอบ config ใหม่ของ provider นี้
   const next: Record<string, unknown> = { enabled: !!input.enabled };
   let lastSecret = "";

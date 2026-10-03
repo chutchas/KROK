@@ -1,4 +1,6 @@
 "use client";
+import { getAllPending } from "@/lib/offline-queue";
+import { confirmDialog } from "@/components/dialogs";
 import { backdropClose } from "@/lib/backdrop";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -77,7 +79,7 @@ export default function AppShell({
 }) {
   const path = usePathname();
   const router = useRouter();
-  const { t } = useT();
+  const { t, tt } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
   // ชื่อที่เพิ่งบันทึกในหน้าโปรไฟล์ — แสดงทันที จนกว่า server จะส่งชื่อใหม่มา (base = ชื่อจาก server ตอนที่รับ event)
   const [liveName, setLiveName] = useState<{ name: string; base: string } | null>(null);
@@ -120,7 +122,14 @@ export default function AppShell({
   }, [path]);
 
   async function signOut() {
-    await createClient().auth.signOut();
+    // ยังมีใบที่รอส่ง (ออฟไลน์) → เตือนก่อน: รายการยังเก็บในเครื่อง และส่งเมื่อคนนี้ล็อกอินกลับมา
+    const sb = createClient();
+    try {
+      const me = (await sb.auth.getSession()).data.session?.user.id;
+      const n = me ? (await getAllPending()).filter((p) => p.userId === me).length : 0;
+      if (n > 0 && !(await confirmDialog({ message: tt("sync.signOutPending", { n }), confirmLabel: t("sync.signOutAnyway") }))) return;
+    } catch { /* อ่านคิวไม่ได้ → ออกจากระบบตามปกติ */ }
+    await sb.auth.signOut();
     router.push("/login");
     router.refresh();
   }

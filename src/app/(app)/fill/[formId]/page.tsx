@@ -100,6 +100,7 @@ export default async function FillPage({
   }
 
   const rawSchema = readSchema(caseSchemaRaw ?? data.schema);
+  if (!rawSchema) notFound();
   // ทีม (ชื่อทีมของแต่ละขั้น + ทีมที่ผู้ใช้อยู่) — ใช้เฉพาะฟอร์มกรอกหลายคน
   // งานที่เปิดจาก API ของฟอร์มคนเดียวก็ใช้โหมดงาน (มีผู้ถือ + ปิดงานตอนส่ง)
   const workflow = isWorkflowSchema(rawSchema) || !!caseData;
@@ -175,10 +176,10 @@ export default async function FillPage({
  * นอกจากกันข้อมูลเพี้ยนแล้ว ยังแปลงฟิลด์ชนิด "barcode" ของเดิม
  * ให้เป็น text + แหล่งเติมข้อมูลแบบสแกน เพื่อให้ฟอร์มเก่ายังมีปุ่มสแกนเหมือนเดิม
  */
-function readSchema(raw: unknown): FormSchema {
+function readSchema(raw: unknown): FormSchema | null {
   try {
     return sanitizeSchema(raw);
   } catch {
-    return raw as FormSchema;
+    return null; // schema เสีย → ไม่เปิดกรอก (ไม่ใช้ค่าดิบที่ไม่ผ่านการกรอง)
   }
 }

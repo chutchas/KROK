@@ -1,4 +1,5 @@
 "use server";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -16,8 +17,7 @@ async function audit(
   targetId: string | null,
   meta: Record<string, unknown> = {}
 ) {
-  const supabase = await createClient();
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: tenantId,
     actor_id: actorId,
     action,

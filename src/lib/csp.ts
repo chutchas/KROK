@@ -17,13 +17,16 @@ function supabaseOrigins(): string {
 
 export function buildCsp(nonce: string): string {
   const dev = process.env.NODE_ENV === "development";
+  // CAPTCHA ฟอร์มสาธารณะ (Cloudflare Turnstile) — เปิดเฉพาะเมื่อตั้งค่า site key
+  const cf = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ? " https://challenges.cloudflare.com" : "";
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data: https://fonts.gstatic.com",
-    `connect-src 'self' ${supabaseOrigins()}`,
+    `connect-src 'self' ${supabaseOrigins()}${cf}`,
+    ...(cf ? [`frame-src 'self'${cf}`] : []),
     "worker-src 'self' blob:",
     "media-src 'self' blob:",
     "object-src 'none'",

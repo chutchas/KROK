@@ -1,15 +1,19 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterEach } from "vitest";
 import { clientIp, sniffImage } from "./client-ip";
 
 const req = (h: Record<string, string>) => new Request("https://x.test/", { headers: h });
 
 describe("clientIp", () => {
-  it("prefers the Vercel header over a spoofable x-forwarded-for", () => {
+  afterEach(() => { delete process.env.VERCEL; delete process.env.TRUSTED_PROXY_HOPS; });
+  it("on Vercel prefers the Vercel header over a spoofable x-forwarded-for", () => {
+    process.env.VERCEL = "1";
     expect(clientIp(req({ "x-forwarded-for": "1.1.1.1", "x-vercel-forwarded-for": "9.9.9.9" }))).toBe("9.9.9.9");
-  });
-  it("falls back to x-real-ip then x-forwarded-for", () => {
     expect(clientIp(req({ "x-real-ip": "2.2.2.2", "x-forwarded-for": "1.1.1.1" }))).toBe("2.2.2.2");
-    expect(clientIp(req({ "x-forwarded-for": "1.1.1.1, 3.3.3.3" }))).toBe("1.1.1.1");
+  });
+  it("elsewhere ignores client-set headers and uses the proxy-appended XFF hop", () => {
+    expect(clientIp(req({ "x-real-ip": "6.6.6.6", "x-vercel-forwarded-for": "7.7.7.7", "x-forwarded-for": "1.1.1.1, 3.3.3.3" }))).toBe("3.3.3.3");
+    process.env.TRUSTED_PROXY_HOPS = "2";
+    expect(clientIp(req({ "x-forwarded-for": "spoof, 4.4.4.4, 10.0.0.1" }))).toBe("4.4.4.4");
     expect(clientIp(req({}))).toBe("unknown");
   });
 });

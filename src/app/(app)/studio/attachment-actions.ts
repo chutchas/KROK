@@ -1,4 +1,5 @@
 "use server";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage, type KrokSession } from "@/lib/session";
@@ -99,7 +100,7 @@ export async function addFileAttachment(
 
   if (error) return { error: error.message };
 
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId,
     actor_id: session.userId,
     action: "attachment.add",
@@ -185,7 +186,7 @@ export async function removeAttachment(id: string): Promise<{ ok: true } | { err
     try { await supabase.storage.from("attachments").remove([att.storage_path as string]); } catch { /* ignore */ }
   }
 
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId,
     actor_id: session.userId,
     action: "attachment.remove",

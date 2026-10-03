@@ -1,4 +1,5 @@
 "use server";
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
@@ -29,7 +30,7 @@ export async function reviewSubmission(
   const advanced = r.advanced;
   const entry = { at: new Date().toISOString() };
 
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId,
     actor_id: session.userId,
     action: "submission." + decision,

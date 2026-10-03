@@ -1,5 +1,6 @@
 "use server";
 // API รับข้อมูลเข้า — ตั้งค่าต่อฟอร์ม (เฉพาะผู้ดูแล; RLS can_manage ตรวจซ้ำอีกชั้น)
+import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
@@ -106,7 +107,7 @@ export async function rotateIntakeKey(formId: string, days: number | null = 90):
     updated_at: new Date().toISOString(),
   }, { onConflict: "form_id" });
   if (error) return { error: migrationMsg(error.message) };
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_rotate", target_type: "form", target_id: formId, meta: { prefix: k.prefix, expires_days: days },
   });
   revalidatePath("/settings/integrations");
@@ -121,7 +122,7 @@ export async function revokeIntakeKey(formId: string): Promise<{ ok: true } | { 
     .update({ key_hash: null, key_prefix: null, key_created_at: null, key_expires_at: null, updated_by: session.userId, updated_at: new Date().toISOString() })
     .eq("form_id", formId);
   if (error) return { error: migrationMsg(error.message) };
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_revoke", target_type: "form", target_id: formId, meta: {},
   });
   revalidatePath("/settings/integrations");
@@ -140,7 +141,7 @@ export async function setIntakeKeyExpiry(formId: string, days: number | null): P
     .eq("form_id", formId).not("key_hash", "is", null).select("form_id");
   if (error) return { error: migrationMsg(error.message) };
   if (!data?.length) return { error: "ยังไม่มี key" };
-  await supabase.from("audit_log").insert({
+  await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_expiry", target_type: "form", target_id: formId, meta: { expires_days: days },
   });
   revalidatePath("/settings/integrations");

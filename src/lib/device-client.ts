@@ -30,6 +30,12 @@ function rand(): string {
   }
 }
 
+/** คีย์ประจำเครื่องที่มีอยู่แล้ว (ไม่สร้างใหม่) */
+export function peekDeviceKey(): string | null {
+  if (typeof window === "undefined") return null;
+  try { const k = localStorage.getItem(KEY_STORE); return k && k.length >= 24 ? k : null; } catch { return null; }
+}
+
 /** คีย์ประจำเครื่อง (สร้างครั้งแรกที่เรียก) */
 export function getDeviceKey(): string {
   if (typeof window === "undefined") return "";
