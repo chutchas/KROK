@@ -1,5 +1,5 @@
 import { maxPhotosOf } from "@/lib/photo-slots";
-import { FIELD_TYPE_LABELS, printPhotosOf, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { FIELD_TYPE_LABELS, imageKey, printPhotosOf, type FormField, type FormSchema, type PaperBox, type PaperImage } from "@/lib/form-schema";
 
 // ============================================================
 // ตรรกะการจัดวาง "กระดาษ A4" ที่ใช้ร่วมกันระหว่าง
@@ -34,7 +34,7 @@ export const META_KEY = "meta";     // วันที่ / เลขที่
 export const DEFAULT_HEADER_BOX: PaperBox = { x: 32, y: 26, w: 500 };
 export const DEFAULT_META_BOX: PaperBox = { x: 596, y: 26, w: CANVAS_W - 32 - 596 };
 
-export type BlockKind = "step" | "field" | "photos";
+export type BlockKind = "step" | "field" | "photos" | "image";
 export interface Block {
   key: string;
   kind: BlockKind;
@@ -42,6 +42,8 @@ export interface Block {
   sub?: string;
   field?: FormField;
   stepIndex: number;
+  /** kind "image": รูปประกอบ (โลโก้/ตรา) — ไม่ใช่ช่องกรอก */
+  image?: PaperImage;
   /** kind "photos": ฟิลด์รูปที่อยู่ในกล่อง + การจัดเรียง */
   photos?: { fields: FormField[]; cells: PhotoCell[]; cols: number; imgH: number };
 }
@@ -119,6 +121,7 @@ export function reflowTops(
 }
 
 export function blockHeight(b: Block): number {
+  if (b.kind === "image" && b.image) return b.image.h;
   if (b.kind === "photos" && b.photos) return photosBlockHeight(b.photos.cells.length, b.photos.cols, b.photos.imgH);
   return b.kind === "step" ? HEADER_H : fieldBoxHeight(b.field);
 }
@@ -131,6 +134,8 @@ export function autoLayout(blocks: Block[]): Record<string, PaperBox> {
   let y = START_Y;
   let col = 0;
   for (const b of blocks) {
+    // รูปประกอบไม่ถูกจัดอัตโนมัติ — อยู่ตำแหน่งที่วางไว้ (ดู imageBox)
+    if (b.kind === "image") continue;
     if (b.kind === "step") {
       if (col === 1) y += FIELD_H + GAP_Y;
       col = 0;
@@ -184,17 +189,20 @@ export function buildBlocks(schema: FormSchema): Block[] {
       });
     });
   });
+  for (const im of schema.images ?? []) blocks.push({ key: imageKey(im.id), kind: "image", label: "", image: im, stepIndex: -1 });
   return blocks;
 }
+
+/** ตำแหน่งเริ่มต้นของรูปประกอบที่ยังไม่มีใน layout (มุมขวาบน ใต้หัวเอกสาร) */
+export const DEFAULT_IMAGE_BOX: PaperBox = { x: CANVAS_W - PAD - 160, y: START_Y, w: 160 };
 
 // layout สุดท้าย: ใช้ค่าที่ออกแบบไว้ (schema.layout) ทับบนค่า auto
 export function resolveLayout(schema: FormSchema, blocks?: Block[]): Record<string, PaperBox> {
   const bl = blocks ?? buildBlocks(schema);
   const merged = { ...autoLayout(bl) };
-  if (schema.layout) {
-    for (const b of bl) {
-      if (schema.layout[b.key]) merged[b.key] = schema.layout[b.key];
-    }
+  for (const b of bl) {
+    if (schema.layout?.[b.key]) merged[b.key] = schema.layout[b.key];
+    else if (b.kind === "image") merged[b.key] = DEFAULT_IMAGE_BOX;
   }
   return merged;
 }

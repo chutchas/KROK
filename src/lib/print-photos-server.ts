@@ -1,9 +1,11 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { printPhotosOf, type FormSchema, type PrintPhotos } from "@/lib/form-schema";
+import { sanitizeFormTheme, type FormTheme } from "@/lib/theme";
 
-/** การแสดงรูปถ่ายตอนพิมพ์ของฟอร์ม (อ่านจาก schema ปัจจุบันของฟอร์ม) — หาไม่เจอ = thumb */
-export async function getFormPrintPhotos(supabase: SupabaseClient, formId: string | null | undefined): Promise<Required<PrintPhotos>> {
-  if (!formId) return printPhotosOf({});
+/** ตั้งค่าการพิมพ์ของฟอร์ม: การแสดงรูป + ธีม (อ่าน schema ครั้งเดียว) */
+export async function getFormPrintInfo(supabase: SupabaseClient, formId: string | null | undefined): Promise<{ pp: Required<PrintPhotos>; theme: FormTheme | undefined }> {
+  if (!formId) return { pp: printPhotosOf({}), theme: undefined };
   const { data } = await supabase.from("forms").select("schema").eq("id", formId).maybeSingle();
-  return printPhotosOf({ print_photos: (data?.schema as Partial<FormSchema> | null)?.print_photos });
+  const sc = data?.schema as Partial<FormSchema> | null;
+  return { pp: printPhotosOf({ print_photos: sc?.print_photos }), theme: sanitizeFormTheme(sc?.theme) };
 }

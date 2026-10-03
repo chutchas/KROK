@@ -3,6 +3,7 @@ import { createClient } from "@/lib/supabase/server";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import { resolveFormOptions } from "@/lib/datasets-server";
+import { getWorkspaceBranding } from "@/lib/branding";
 import PublicFillClient from "./PublicFillClient";
 import { T } from "@/i18n/T";
 
@@ -48,13 +49,14 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
   // ตัวเลือกจากข้อมูลอ้างอิง: อ่านด้วย service role จึงต้องจำกัดเฉพาะ dataset ของ tenant เจ้าของฟอร์ม
   // (resolveFormOptions กรอง tenant ให้) — ค่าในคอลัมน์ที่ใช้จะมองเห็นได้โดยทุกคนที่มีลิงก์
   const raw = readSchema(data.schema);
-  const [schema, attachments, loggedIn, orgName] = await Promise.all([
+  const [schema, attachments, loggedIn, orgName, branding] = await Promise.all([
     resolveFormOptions(raw, admin, data.tenant_id as string).catch(() => raw),
     attP,
     loggedInP,
     // ชื่อองค์กรเจ้าของฟอร์ม = ผู้ควบคุมข้อมูล (แสดงในประกาศความเป็นส่วนตัว)
     Promise.resolve(admin.from("tenants").select("name").eq("id", data.tenant_id as string).maybeSingle())
       .then((r) => (r.data?.name as string | undefined) || "", () => ""),
+    getWorkspaceBranding(admin, data.tenant_id as string),
   ]);
 
   return (
@@ -72,6 +74,7 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       attachments={attachments}
       orgName={orgName}
       privacyNotice={schema.privacy_notice}
+      branding={branding}
     />
   );
 }

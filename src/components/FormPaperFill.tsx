@@ -5,8 +5,9 @@ import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLay
 import PaperPhotoGrid, { PhotoAppendix, photoCaption } from "@/components/paper/PaperPhotoGrid";
 import { allPhotoSlotKeys, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
-import { PaperHeaderContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
+import { PaperFooterText, PaperHeaderContent, PaperImageContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
+import type { ResolvedTheme } from "@/lib/theme";
 
 // ============================================================
 // FormPaperFill — กรอกฟอร์มบน "กระดาษ A4 จริง"
@@ -22,6 +23,7 @@ export default function FormPaperFill({
   renderField,
   renderPhotoCell,
   photoUrl,
+  theme,
 }: {
   schema: FormSchema;
   icon: string;
@@ -32,6 +34,8 @@ export default function FormPaperFill({
   renderPhotoCell?: (f: FormField, slot: number) => React.ReactNode;
   /** รูปที่ถ่ายแล้วของฟิลด์ (ใช้ในหน้าภาพประกอบท้ายเอกสาร) */
   photoUrl?: (fieldId: string) => string | undefined;
+  /** ธีมสี/โลโก้/ข้อความท้าย */
+  theme?: ResolvedTheme;
 }) {
   const { t, tt, lang } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
@@ -44,6 +48,9 @@ export default function FormPaperFill({
   const [scale, setScale] = useState(0.5);
   const [fitScale, setFitScale] = useState(0.5);
   const pp = printPhotosOf(schema);
+  const footer = theme?.footer ?? "";
+  const footerH = footer ? 30 + 14 * Math.min(6, footer.split("\n").length) : 0;
+  const pageH = canvasH + footerH;
   const today = new Date().toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "short", day: "numeric" });
 
   // ปรับให้พอดีความกว้างจอครั้งแรก + เมื่อ resize (ถ้าผู้ใช้ยังไม่ได้ซูมเอง)
@@ -77,12 +84,12 @@ export default function FormPaperFill({
         style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 12, WebkitOverflowScrolling: "touch" }}
       >
         {/* กล่องขนาดจริงหลังย่อ เพื่อให้ scroll พอดี (ไม่มี scroll แนวนอนตอน fit) */}
-        <div className="krok-pl-sizer" style={{ width: CANVAS_W * scale, height: canvasH * scale, margin: "0 auto", position: "relative" }}>
+        <div className="krok-pl-sizer" style={{ width: CANVAS_W * scale, height: pageH * scale, margin: "0 auto", position: "relative" }}>
           <div
             className="krok-pl-canvas"
             style={{
               position: "absolute", top: 0, left: 0,
-              width: CANVAS_W, minHeight: canvasH,
+              width: CANVAS_W, minHeight: pageH,
               transform: `scale(${scale})`, transformOrigin: "top left",
               background: "#fff", color: "#111", boxShadow: "0 2px 16px rgba(0,0,0,.15)",
             }}
@@ -90,7 +97,7 @@ export default function FormPaperFill({
             {/* ชื่อเอกสาร (ซ่อน/ย้ายได้) */}
             {schema.show_header !== false && (
               <div style={{ ...paperHeaderBoxStyle, top: headerBox.y, left: headerBox.x, width: headerBox.w }}>
-                <PaperHeaderContent icon={icon} title={title} description={schema.description} />
+                <PaperHeaderContent icon={icon} title={title} description={schema.description} logo={theme?.logo} color={theme?.custom ? theme.header : undefined} />
               </div>
             )}
             {/* วันที่/ผู้กรอก (ซ่อน/ย้ายได้) */}
@@ -112,6 +119,13 @@ export default function FormPaperFill({
                   </div>
                 );
               }
+              if (b.kind === "image" && b.image) {
+                return (
+                  <div key={b.key} style={{ position: "absolute", left: box.x, top, width: box.w }}>
+                    <PaperImageContent url={b.image.url} h={b.image.h} />
+                  </div>
+                );
+              }
               if (b.kind === "photos" && b.photos) {
                 const ph = b.photos;
                 return (
@@ -129,6 +143,7 @@ export default function FormPaperFill({
                 </div>
               );
             })}
+            <PaperFooterText text={footer} top={canvasH - 20} />
           </div>
         </div>
       </div>

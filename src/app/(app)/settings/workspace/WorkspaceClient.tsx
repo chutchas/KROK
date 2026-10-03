@@ -3,20 +3,26 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Building2, Save, Trash2, AlertTriangle } from "lucide-react";
+import { Building2, Save, Trash2, AlertTriangle, Palette } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { renameWorkspace, deleteWorkspace } from "./actions";
+import { renameWorkspace, deleteWorkspace, saveBranding } from "./actions";
+import BrandingEditor, { BrandPreview, type BrandingValue } from "@/components/BrandingEditor";
+import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 
 export default function WorkspaceClient({
   tenantName,
   isOwner,
   memberCount,
   formCount,
+  tenantId,
+  branding,
 }: {
   tenantName: string;
   isOwner: boolean;
   memberCount: number;
   formCount: number;
+  tenantId: string;
+  branding: WorkspaceBranding | null;
 }) {
   const { t, tt } = useT();
   const router = useRouter();
@@ -26,6 +32,25 @@ export default function WorkspaceClient({
   const [confirm, setConfirm] = useState("");
   const [delBusy, setDelBusy] = useState(false);
   const [delMsg, setDelMsg] = useState<string | null>(null);
+  const initialBrand: BrandingValue = { ...(branding ?? {}), logo_url: branding?.logo_url ?? undefined };
+  const [brand, setBrand] = useState<BrandingValue>(initialBrand);
+  const [savedBrand, setSavedBrand] = useState(JSON.stringify(initialBrand));
+  const [brandBusy, setBrandBusy] = useState(false);
+  const [brandMsg, setBrandMsg] = useState<{ t: string; err?: boolean } | null>(null);
+  const brandDirty = JSON.stringify(brand) !== savedBrand;
+
+  async function saveBrand() {
+    setBrandBusy(true);
+    setBrandMsg(null);
+    const res = await saveBranding({ logo_url: brand.logo_url ?? null, primary: brand.primary, header: brand.header, footer_text: brand.footer_text });
+    setBrandBusy(false);
+    if ("error" in res) setBrandMsg({ t: res.error, err: true });
+    else {
+      setSavedBrand(JSON.stringify(brand));
+      setBrandMsg({ t: t("ws.saved") });
+      router.refresh();
+    }
+  }
 
   async function save() {
     if (name.trim() === tenantName || !name.trim()) return;
@@ -76,6 +101,23 @@ export default function WorkspaceClient({
           <span>{tt("ws.members", { n: memberCount })}</span>
           <span>{tt("ws.forms", { n: formCount })}</span>
         </div>
+      </Card>
+
+      <Card>
+        <h2 style={{ fontSize: "1.05rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <Icon icon={Palette} className="h-5 w-5" /> {t("brand.wsTitle")}
+        </h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 0" }}>{t("brand.wsSub")}</p>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 18, alignItems: "start" }}>
+          <BrandingEditor mode="workspace" value={brand} inherited={resolveTheme(null, null)} onChange={setBrand} tenantId={tenantId} />
+          <BrandPreview theme={resolveTheme({ ...brand, logo_url: brand.logo_url ?? null }, null)} title={tenantName} />
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 14, alignItems: "center", flexWrap: "wrap" }}>
+          <Button variant="primary" onClick={saveBrand} loading={brandBusy} disabled={!brandDirty}>
+            <Icon icon={Save} className="h-4 w-4" /> {t("common.save")}
+          </Button>
+        </div>
+        {brandMsg && <div style={{ marginTop: 10 }}><Notice kind={brandMsg.err ? "error" : "info"}>{brandMsg.t}</Notice></div>}
       </Card>
 
       {isOwner && (

@@ -8,10 +8,12 @@ import { useT } from "@/i18n/LanguageProvider";
 import type { FormSchema } from "@/lib/form-schema";
 import type { Attachment } from "@/lib/attachments";
 import FillWizard from "@/app/(app)/fill/[formId]/FillWizard";
+import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
+import { ThemeStyle } from "@/components/FormBrand";
 
 // หน้ากรอกฟอร์มสาธารณะ (ไม่ต้อง login) — ขอชื่อผู้กรอกก่อน แล้วเข้าสู่ wizard เดิมในโหมด public
 export default function PublicFillClient({
-  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false, attachments = [], orgName = "", privacyNotice,
+  formId, title, icon, version, requiresApproval, approvalChain, schema, tenantId, loggedIn = false, attachments = [], orgName = "", privacyNotice, branding = null,
 }: {
   formId: string; title: string; icon: string; version: number;
   requiresApproval: boolean; approvalChain: unknown[]; schema: FormSchema; tenantId: string;
@@ -21,17 +23,32 @@ export default function PublicFillClient({
   orgName?: string;
   /** ประกาศความเป็นส่วนตัวที่เจ้าของฟอร์มเขียนเอง */
   privacyNotice?: string;
+  /** แบรนด์ของ workspace เจ้าของฟอร์ม */
+  branding?: WorkspaceBranding | null;
 }) {
   const { t, tt } = useT();
   const [name, setName] = useState("");
   const [started, setStarted] = useState(false);
+  const theme = resolveTheme(branding, schema.theme);
+  const scope = `krok-pub-${formId.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`;
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--ground)", color: "var(--ink)" }}>
-      <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 16px" }}>
+    <div className={scope} style={{ minHeight: "100vh", background: "var(--ground)", color: "var(--ink)" }}>
+      <ThemeStyle scope={scope} theme={theme} />
+      <header style={{ borderBottom: theme.custom ? `3px solid ${theme.header}` : "1px solid var(--line)", background: "var(--surface)", padding: "12px 16px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
-          <LogoMark size={26} variant="compact" title="KROK" />
-          <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem", letterSpacing: ".02em" }}>KROK</b>
+          {theme.logo ? (
+            // ฟอร์มของบริษัท: แสดงโลโก้ + ชื่อองค์กรแทนแบรนด์ KROK
+            <>
+              <img src={theme.logo} alt="" style={{ height: 30, maxWidth: 140, objectFit: "contain", display: "block" }} />
+              {orgName && <b style={{ fontSize: ".95rem", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{orgName}</b>}
+            </>
+          ) : (
+            <>
+              <LogoMark size={26} variant="compact" title="KROK" />
+              <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem", letterSpacing: ".02em" }}>KROK</b>
+            </>
+          )}
           <span style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".76rem", color: "var(--pass)" }}>
             <Icon icon={Globe} className="h-3.5 w-3.5" /> {t("qr.public")}
           </span>
@@ -80,11 +97,13 @@ export default function PublicFillClient({
             userName={name.trim()}
             attachments={attachments}
             publicMode
+            branding={branding}
           />
         )}
       </main>
       <footer className="no-print" style={{ textAlign: "center", fontSize: ".76rem", color: "var(--ink-3)", padding: "0 16px 28px" }}>
         <a href="/privacy" target="_blank" rel="noopener" style={{ color: "inherit" }}>{t("legal.privacy")}</a> · <a href="/terms" target="_blank" rel="noopener" style={{ color: "inherit" }}>{t("legal.terms")}</a>
+        {theme.logo && <> · {t("pubfill.poweredBy")}</>}
       </footer>
     </div>
   );

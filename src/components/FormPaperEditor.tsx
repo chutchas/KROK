@@ -1,14 +1,17 @@
 "use client";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
-import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, snap, blockHeight } from "@/lib/paper-layout";
+import { MAX_PAPER_IMAGES, imageKey, type FormField, type FormSchema, type PaperBox } from "@/lib/form-schema";
+import { CANVAS_W, GRID, START_Y, PAD, HEADER_H, GAP_Y, HEADER_KEY, META_KEY, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, autoLayout, resolveLayout, snap, blockHeight } from "@/lib/paper-layout";
 import PaperPhotoGrid, { photoCaption } from "@/components/paper/PaperPhotoGrid";
 import { maxPhotosOf, photoSlotKey } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
-import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
+import { PaperChoices, PaperFooterText, PaperHeaderContent, PaperImageContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, Trash2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard } from "lucide-react";
+import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, Trash2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard, ImagePlus } from "lucide-react";
+import type { ResolvedTheme } from "@/lib/theme";
+import { BRAND_IMAGE_ACCEPT, uploadBrandImage } from "@/lib/brand-upload";
+import { useUploadErrorText } from "@/components/BrandingEditor";
 import { duplicateField, findField, insertField, offsetBox, orderedKeys, parseClip, serializeClip, stepIndexOfKey } from "@/lib/editor-ops";
 
 let idc = 0;
@@ -57,6 +60,8 @@ export default function FormPaperEditor({
   canUndo,
   canRedo,
   onCheckpoint,
+  theme,
+  tenantId = "",
 }: {
   schema: FormSchema;
   onChange: (s: FormSchema) => void;
@@ -74,6 +79,10 @@ export default function FormPaperEditor({
   canRedo?: () => boolean;
   /** ก่อนคำสั่งเดี่ยว — ให้ย้อนกลับได้ทีละคำสั่ง (ไม่รวมกับการลาก/พิมพ์ที่เพิ่งทำ) */
   onCheckpoint?: () => void;
+  /** ธีมของฟอร์ม (โลโก้/สีหัว/ข้อความท้าย) — แสดงให้เห็นตอนออกแบบ */
+  theme?: ResolvedTheme;
+  /** สำหรับอัปโหลดรูปประกอบ */
+  tenantId?: string;
 }) {
   const { t, tt } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
@@ -89,18 +98,12 @@ export default function FormPaperEditor({
 
   // layout ปัจจุบัน: ใช้จาก schema ถ้ามี, ไม่มีก็ auto
   const layout: Record<string, PaperBox> = useMemo(() => {
-    const auto = autoLayout(blocks);
-    const merged = { ...auto };
-    if (schema.layout) {
-      for (const b of blocks) {
-        if (schema.layout[b.key]) merged[b.key] = schema.layout[b.key];
-      }
-    }
+    const merged = resolveLayout(schema, blocks);
     // ชื่อเอกสาร + วันที่/เลขที่ เป็นบล็อกลากวางแยกกัน
     merged[HEADER_KEY] = schema.layout?.[HEADER_KEY] || DEFAULT_HEADER_BOX;
     merged[META_KEY] = schema.layout?.[META_KEY] || DEFAULT_META_BOX;
     return merged;
-  }, [blocks, schema.layout]);
+  }, [blocks, schema]);
 
   // ---- คลิกขวาบนกระดาษ: เพิ่มฟิลด์ / เพิ่มขั้นตอน ณ ตำแหน่งที่คลิก ----
   const [ctx, setCtx] = useState<{ cx: number; cy: number; x: number; y: number; target: string | null; undo: boolean; redo: boolean; clip: boolean } | null>(null);
@@ -184,6 +187,35 @@ export default function FormPaperEditor({
 
   // กติกาเดียวกับหน้ากรอก: เนื้อหาเกินกล่อง → ดันบล็อกด้านล่างลง (แสดงผลเท่านั้น ไม่แก้ตำแหน่งที่ออกแบบ)
   const { measureRef, tops, height: canvasH, overflows } = usePaperReflow(blocks, layout);
+  const footer = theme?.footer ?? "";
+  const pageH = canvasH + (footer ? 30 + 14 * Math.min(6, footer.split("\n").length) : 0);
+
+  // ---- รูปประกอบบนกระดาษ (โลโก้/ตรา/แผนผัง) ----
+  const imgInput = useRef<HTMLInputElement>(null);
+  const imgAt = useRef<{ x: number; y: number } | null>(null);
+  const uploadErr = useUploadErrorText();
+  const imageCount = schema.images?.length ?? 0;
+  function pickImageAt(x: number, y: number) {
+    if (imageCount >= MAX_PAPER_IMAGES) { flash(tt("brand.imageMax", { n: MAX_PAPER_IMAGES })); return; }
+    imgAt.current = { x, y };
+    imgInput.current?.click();
+  }
+  async function onImagePicked(file: File | undefined) {
+    const at = imgAt.current;
+    imgAt.current = null;
+    if (!file || !tenantId) return;
+    flash(t("brand.uploading"));
+    const res = await uploadBrandImage(file, tenantId, "img");
+    if ("error" in res) { flash(uploadErr(res.error)); return; }
+    const id = newFieldId().replace(/^f_/, "i");
+    const w = 160;
+    const box: PaperBox = at
+      ? { x: Math.max(0, Math.min(CANVAS_W - w, snap(at.x))), y: Math.max(0, snap(at.y)), w }
+      : { ...boxAtEnd(), w };
+    onCheckpoint?.();
+    onChange({ ...schema, images: [...(schema.images ?? []), { id, url: res.url, h: 80 }], layout: { ...layout, [imageKey(id)]: box } });
+    select(imageKey(id));
+  }
 
   const drag = useRef<{ key: string; mode: "move" | "resize"; sx: number; sy: number; ox: number; oy: number; ow: number } | null>(null);
 
@@ -209,6 +241,14 @@ export default function FormPaperEditor({
     if (fromHandle && e.pointerType !== "mouse") select(null);
     else select(key);
     scrollRef.current?.focus({ preventScroll: true });
+  }
+
+  /** จัดเรียงอัตโนมัติ — รูปประกอบ/หัวเอกสารอยู่ที่เดิม */
+  function arranged(): Record<string, PaperBox> {
+    const keep: Record<string, PaperBox> = {};
+    for (const b of blocks) if (b.kind === "image" && layout[b.key]) keep[b.key] = layout[b.key];
+    for (const k of [HEADER_KEY, META_KEY]) if (schema.layout?.[k]) keep[k] = schema.layout[k];
+    return { ...autoLayout(blocks), ...keep };
   }
 
   // ---- คำสั่งแก้ไข (ใช้ทั้งคีย์บอร์ดและเมนูคลิกขวา) ----
@@ -400,6 +440,11 @@ export default function FormPaperEditor({
         { icon: Trash2, label: t("kb.deleteField"), hint: "Del", danger: true, run: () => onDeleteKey?.(key) },
       ];
     }
+    if (key?.startsWith("img:")) {
+      return [
+        { icon: Trash2, label: t("brand.removeImage"), hint: "Del", danger: true, run: () => onDeleteKey?.(key) },
+      ];
+    }
     const si = stepIndexOfKey(schema, key);
     if (key && si >= 0) {
       return [
@@ -418,10 +463,11 @@ export default function FormPaperEditor({
       { icon: Plus, label: t("paper.ctx.addField"), run: () => addFieldAt(c.x, c.y) },
       { icon: ListPlus, label: t("paper.ctx.addStep"), run: () => addStepAt(c.y) },
       { icon: ClipboardPaste, label: t("kb.pasteHere"), hint: "Ctrl+V", disabled: !hasClip, run: () => clip.current && pasteField(clip.current, { x: c.x, y: c.y }) },
+      ...(tenantId ? [{ icon: ImagePlus, label: t("brand.addImageHere"), run: () => pickImageAt(c.x, c.y) }] : []),
       sep,
       { icon: Undo2, label: t("kb.undo"), hint: "Ctrl+Z", disabled: !c.undo, run: () => onUndo?.() },
       { icon: Redo2, label: t("kb.redo"), hint: "Ctrl+Y", disabled: !c.redo, run: () => onRedo?.() },
-      { icon: LayoutGrid, label: t("paper.autoArrange"), run: () => { onCheckpoint?.(); commit(autoLayout(blocks)); } },
+      { icon: LayoutGrid, label: t("paper.autoArrange"), run: () => { onCheckpoint?.(); commit(arranged()); } },
     ];
   }
   /* eslint-enable react-hooks/refs */
@@ -445,6 +491,13 @@ export default function FormPaperEditor({
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
           </button>
         )}
+        {tenantId && (
+          <button data-krok-keep="" onClick={() => { imgAt.current = null; if (imageCount >= MAX_PAPER_IMAGES) flash(tt("brand.imageMax", { n: MAX_PAPER_IMAGES })); else imgInput.current?.click(); }} className="inline-flex items-center gap-1.5"
+            title={t("brand.addImageHint")}
+            style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+            <Icon icon={ImagePlus} className="h-4 w-4" /> {t("brand.addImage")}
+          </button>
+        )}
         <div style={{ flex: 1 }} />
         {notice && <span role="status" style={{ fontSize: ".8rem", color: "var(--pass)", fontWeight: 600 }}>{notice}</span>}
         <button type="button" data-krok-keep="" onClick={() => setShowKeys((v) => !v)} aria-expanded={showKeys} title={t("kb.helpTitle")}
@@ -458,7 +511,7 @@ export default function FormPaperEditor({
             <Icon icon={Printer} className="h-4 w-4" /> {t("paper.print")}
           </button>
         )}
-        <button onClick={() => { onCheckpoint?.(); commit(autoLayout(blocks)); }} className="inline-flex items-center gap-1.5"
+        <button onClick={() => { onCheckpoint?.(); commit(arranged()); }} className="inline-flex items-center gap-1.5"
           style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
           <Icon icon={LayoutGrid} className="h-4 w-4" /> {t("paper.autoArrange")}
         </button>
@@ -480,7 +533,7 @@ export default function FormPaperEditor({
           style={{
             position: "relative",
             width: CANVAS_W,
-            minHeight: canvasH,
+            minHeight: pageH,
             margin: "0 auto",
             background: "#fff",
             color: "#111",
@@ -495,7 +548,7 @@ export default function FormPaperEditor({
           {/* ชื่อเอกสาร + วันที่/เลขที่ — บล็อกลากวาง/ปรับขนาด/ซ่อนแยกกัน */}
           {([
             { key: HEADER_KEY, hidden: schema.show_header === false, hiddenLabel: t("editor.headerHidden"), content: (
-              <PaperHeaderContent icon={schema.icon} title={schema.title} description={schema.description} />
+              <PaperHeaderContent icon={schema.icon} title={schema.title} description={schema.description} logo={theme?.logo} color={theme?.custom ? theme.header : undefined} />
             ) },
             { key: META_KEY, hidden: schema.show_meta === false, hiddenLabel: t("editor.metaHidden"), content: (
               <PaperMetaContent />
@@ -532,6 +585,27 @@ export default function FormPaperEditor({
             if (!box) return null;
             const on = active === b.key;
             const isStep = b.kind === "step";
+            if (b.kind === "image" && b.image) {
+              return (
+                <div key={b.key} data-krok-keep="" data-block-key={b.key}
+                  onClick={() => select(b.key)}
+                  onPointerDown={(e) => onPointerDown(e, b.key, "move")}
+                  style={{
+                    position: "absolute", left: box.x, top: tops[b.key] ?? box.y, width: box.w,
+                    cursor: "grab", userSelect: "none",
+                    outline: on ? "2px solid var(--accent)" : "1px dashed #d0d0d0",
+                    boxShadow: on ? "0 2px 10px rgba(0,0,0,.15)" : "none",
+                  }}
+                >
+                  <Grip on={on} title={t("paper.drag")} onPointerDown={(e) => onPointerDown(e, b.key, "move", true)} />
+                  <PaperImageContent url={b.image.url} h={b.image.h} />
+                  <div onPointerDown={(e) => onPointerDown(e, b.key, "resize", true)} title={t("paper.resize")}
+                    style={{ position: "absolute", right: -3, top: 0, bottom: 0, width: 16, cursor: "ew-resize", touchAction: "none" }}>
+                    <div style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 4, height: 24, borderRadius: 2, background: on ? "var(--accent)" : "#ccc" }} />
+                  </div>
+                </div>
+              );
+            }
             return (
               <div
                 key={b.key}
@@ -588,8 +662,14 @@ export default function FormPaperEditor({
               </div>
             );
           })}
+          {/* ข้อความท้ายเอกสาร (ธีม) — แก้ที่ หัวเอกสาร › รูปลักษณ์ */}
+          <div onClick={() => select(HEADER_KEY)} style={{ cursor: "pointer" }}>
+            <PaperFooterText text={footer} top={canvasH - 20} />
+          </div>
         </div>
       </div>
+      <input ref={imgInput} type="file" accept={BRAND_IMAGE_ACCEPT} hidden
+        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void onImagePicked(f); }} />
 
       {ctx && <ContextMenu x={ctx.cx} y={ctx.cy} items={menuItems(ctx)} onClose={() => setCtx(null)} />}
 

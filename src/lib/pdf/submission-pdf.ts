@@ -1,4 +1,5 @@
 import "server-only";
+import { mix } from "@/lib/theme";
 import fs from "fs";
 import path from "path";
 import PDFDocument from "pdfkit";
@@ -70,6 +71,8 @@ export interface SubmissionPdfData {
   review?: { approved: boolean; reviewer: string; at: string; note?: string } | null;
   /** การแสดงรูปถ่าย (ตั้งในฟอร์ม) — ไม่ระบุ = thumb (รูปในแถวของฟิลด์ เหมือนเดิม) */
   photoLayout?: { mode: "thumb" | "grid" | "appendix" | "hidden"; cols: number; heightMm: number };
+  /** ธีมของฟอร์ม/workspace: สีแถบหัว · สีหลัก (หัวตาราง) · โลโก้ (PNG/JPEG) · ข้อความท้าย */
+  brand?: { header?: string; primary?: string; logo?: Buffer | null; footer?: string };
 }
 
 const MM = 2.8346; // pt ต่อ มม.
@@ -117,17 +120,32 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     doc.on("end", () => resolve(Buffer.concat(chunks)));
     doc.on("error", reject);
 
+    // หัวตาราง: สีหลักของธีมแบบอ่อน
+    const brandSoft = data.brand?.primary ? mix(data.brand.primary, "#ffffff", 0.88) : C.brandSoft;
     let y = M;
     const newPage = () => { doc.addPage(); y = M; };
     const ensure = (need: number) => { if (y + need > BOTTOM && y > M) newPage(); };
 
     // ---------- Header ----------
-    doc.roundedRect(M, y, 14, 14, 3).fill(C.brand);
-    doc.font("th-bold").fontSize(11).fillColor(C.ink).text("KROK", M + 20, y + 0.5, { lineBreak: false });
+    const brandColor = data.brand?.header || C.brand;
     const tenant = clean(data.tenantName);
-    if (tenant) {
-      const kw = doc.font("th-bold").fontSize(11).widthOfString("KROK");
-      doc.font("th").fontSize(9).fillColor(C.muted).text(`·  ${tenant}`, M + 26 + kw, y + 2.5, { width: CONTENT_W / 2, lineBreak: false, ellipsis: true });
+    let logoDrawn = false;
+    if (data.brand?.logo) {
+      // โลโก้บริษัทแทนเครื่องหมาย KROK (สูง 26pt กว้างไม่เกิน 120pt)
+      try {
+        doc.image(data.brand.logo, M, y - 6, { fit: [120, 26], valign: "center" });
+        logoDrawn = true;
+      } catch { /* ไฟล์เสีย/ชนิดที่ pdfkit ไม่รองรับ → ใช้หัวแบบเดิม */ }
+    }
+    if (logoDrawn) {
+      if (tenant) doc.font("th-bold").fontSize(10).fillColor(C.ink2).text(tenant, M + 128, y + 1.5, { width: CONTENT_W / 2 - 128, lineBreak: false, ellipsis: true });
+    } else {
+      doc.roundedRect(M, y, 14, 14, 3).fill(brandColor);
+      doc.font("th-bold").fontSize(11).fillColor(C.ink).text("KROK", M + 20, y + 0.5, { lineBreak: false });
+      if (tenant) {
+        const kw = doc.font("th-bold").fontSize(11).widthOfString("KROK");
+        doc.font("th").fontSize(9).fillColor(C.muted).text(`·  ${tenant}`, M + 26 + kw, y + 2.5, { width: CONTENT_W / 2, lineBreak: false, ellipsis: true });
+      }
     }
     // เลขที่เอกสาร (ขวาบน)
     doc.font("th").fontSize(8.5).fillColor(C.muted).text("เลขที่เอกสาร", M, y - 1, { width: CONTENT_W, align: "right", lineBreak: false });
@@ -146,7 +164,10 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     const sc = statusColors(data.statusColor);
     doc.roundedRect(PAGE.w - M - bw, y + 4, bw, 20, 10).fill(sc.bg);
     doc.font("th-bold").fontSize(9.5).fillColor(sc.fg).text(badge, PAGE.w - M - bw, y + 8.5, { width: bw, align: "center", lineBreak: false });
-    y += Math.max(titleH, 28) + 10;
+    y += Math.max(titleH, 28) + 4;
+    // เส้นใต้ชื่อเอกสาร = สีแถบหัวของธีม
+    if (data.brand?.header) doc.rect(M, y, CONTENT_W, 2).fill(data.brand.header);
+    y += 8;
 
     // ---------- กล่องข้อมูลเอกสาร (4 ช่อง) ----------
     const meta: [string, string][] = [
@@ -224,7 +245,7 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
         continue;
       }
       if (a.type === "table" && a.columns && a.columns.length) {
-        y = drawTable(doc, a, y + 8, newPage) + 4;
+        y = drawTable(doc, a, y + 8, newPage, brandSoft) + 4;
         if (a.rowPhotos?.length) y = drawPhotoGrid(doc, a.rowPhotos, y, newPage);
         continue;
       }
@@ -317,6 +338,9 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       doc.font("th").fontSize(7.5).fillColor(C.faint);
       doc.text(`${clean(data.formTitle)} · เลขที่ ${data.docNo} · สร้างโดย KROK`, M, fy, { width: CONTENT_W - 70, lineBreak: false, ellipsis: true });
       doc.text(`หน้า ${i - range.start + 1}/${range.count}`, PAGE.w - M - 70, fy, { width: 70, align: "right", lineBreak: false });
+      // ข้อความท้ายเอกสารของธีม (ที่อยู่/รหัสเอกสาร) — บรรทัดเดียว
+      const ft = clean((data.brand?.footer || "").replace(/\s*\n\s*/g, " · "));
+      if (ft) doc.font("th").fontSize(7.5).fillColor(C.muted).text(ft, M, fy + 11, { width: CONTENT_W, align: "center", lineBreak: false, ellipsis: true });
       doc.page.margins.bottom = saved;
     }
 
@@ -358,7 +382,7 @@ function fmtDuration(s: number): string {
 }
 
 // ตาราง — ความสูงแถวตามข้อความ (สูงสุด 3 บรรทัด) · ข้ามหน้าแล้ววาดหัวตารางซ้ำ
-function drawTable(doc: PDFKit.PDFDocument, a: PdfAnswer, startY: number, newPage: () => void): number {
+function drawTable(doc: PDFKit.PDFDocument, a: PdfAnswer, startY: number, newPage: () => void, headFill: string = C.brandSoft): number {
   const cols = a.columns!;
   const rows = a.rows || [];
   const colW = CONTENT_W / cols.length;
@@ -374,7 +398,7 @@ function drawTable(doc: PDFKit.PDFDocument, a: PdfAnswer, startY: number, newPag
   };
   const drawRow = (vals: string[], header: boolean) => {
     const h = Math.max(...vals.map((v) => cellH(v, header))) + PADY * 2;
-    if (header) doc.rect(M, y, CONTENT_W, h).fill(C.brandSoft);
+    if (header) doc.rect(M, y, CONTENT_W, h).fill(headFill);
     vals.forEach((v, i) => {
       doc.font(header ? "th-bold" : "th").fontSize(header ? 8.5 : 9).fillColor(C.ink)
         .text(v, M + i * colW + PADX, y + PADY, { width: colW - PADX * 2, height: LINE * 3, ellipsis: true });

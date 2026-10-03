@@ -8,6 +8,7 @@ import { resolveFormOptions } from "@/lib/datasets-server";
 import type { DraftData } from "@/lib/drafts";
 import { canManage } from "@/lib/session";
 import { isWorkflowSchema, rowToCase, stepTeam, stepUser, type CaseData } from "@/lib/case-flow";
+import { getWorkspaceBranding } from "@/lib/branding";
 import FillWizard from "./FillWizard";
 
 export const dynamic = "force-dynamic";
@@ -49,6 +50,7 @@ export default async function FillPage({
         .eq("user_id", session.userId)
         .maybeSingle()).then((r) => r.data as Record<string, unknown> | null, () => null)
     : Promise.resolve(null);
+  const brandingP = getWorkspaceBranding(supabase, session.tenantId);
   const { data } = await formP;
 
   // ไม่พบในองค์กรที่ล็อกอินอยู่ — อาจเป็นฟอร์ม "สาธารณะ" ของ tenant อื่น
@@ -143,7 +145,7 @@ export default async function FillPage({
       updatedAt: d.updated_at as string,
     };
 
-  const attachments = await attachmentsP;
+  const [attachments, branding] = await Promise.all([attachmentsP, brandingP]);
 
   return (
     <FillWizard
@@ -163,6 +165,7 @@ export default async function FillPage({
       userName={session.displayName}
       attachments={attachments}
       requireDevice={!!data.require_approved_device}
+      branding={branding}
     />
   );
 }

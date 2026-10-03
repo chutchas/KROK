@@ -33,6 +33,8 @@ import { confirmDialog } from "@/components/dialogs";
 import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
 import dynamic from "next/dynamic";
 import { printWhenReady } from "@/lib/print";
+import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
+import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
 import { Answer, DocRec, MediaPhotos, asRows, dataUrlToBlob, shrinkImage } from "./fill-types";
 import { firstBadRow, rowHasValue } from "./FillTable";
 import { FieldControl, toCode } from "./FieldControl";
@@ -53,6 +55,8 @@ type Props = {
   userId: string;
   userName: string;
   publicMode?: boolean;
+  /** แบรนด์ของ workspace (โลโก้/ธีมสี) — ฟอร์มตั้งทับได้ใน schema.theme */
+  branding?: WorkspaceBranding | null;
   /** เอกสารที่เกี่ยวข้อง (ระดับฟอร์ม + ระดับฟิลด์) */
   attachments?: Attachment[];
   /** ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว */
@@ -1157,6 +1161,11 @@ export default function FillWizard(props: Props) {
   // ความสูงช่องรูปในกล่องภาพประกอบ (print_photos = grid)
   const photoCellH = mmToPx(printPhotosOf(schema).height_mm);
 
+  // ธีมสี/โลโก้/ข้อความท้าย: workspace ← ฟอร์ม
+  const theme = resolveTheme(props.branding, schema.theme);
+  const themeScope = `krok-th-${props.formId.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`;
+  const branded = hasBrand(theme);
+
   // คำอธิบายฟอร์ม (ตั้งในหน้าสร้างฟอร์ม) — แสดงใต้ชื่อทั้งมุมมองมือถือและกระดาษ
   const formDesc = schema.description?.trim() ? (
     <p style={{ margin: "3px 0 0", fontSize: ".86rem", color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>{schema.description.trim()}</p>
@@ -1165,7 +1174,8 @@ export default function FillWizard(props: Props) {
   // ---------- โหมดกระดาษ: กรอกบนกระดาษ A4 จริง ตามตำแหน่งที่ออกแบบไว้ ----------
   if (mode === "paper") {
     return (
-      <div>
+      <div className={themeScope}>
+        <ThemeStyle scope={themeScope} theme={theme} />
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <div style={{ minWidth: 0, flex: "1 1 220px" }}>
@@ -1191,6 +1201,7 @@ export default function FillWizard(props: Props) {
         ))}
 
         <FormPaperFill
+          theme={theme}
           schema={schema}
           icon={props.icon}
           title={props.title}
@@ -1215,12 +1226,16 @@ export default function FillWizard(props: Props) {
 
   // ---------- โหมดมือถือ: ทีละขั้นตอน ----------
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-          <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
-          {formDesc}
-        </div>
+    <div className={themeScope} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
+      <ThemeStyle scope={themeScope} theme={theme} />
+      {branded && <FormBrandHeader theme={theme} icon={props.icon} title={props.title} description={schema.description} />}
+      <div style={{ display: "flex", justifyContent: branded ? "flex-end" : "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+        {!branded && (
+          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+            <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+            {formDesc}
+          </div>
+        )}
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {viewToggle}
           {draftBtn}
@@ -1270,6 +1285,7 @@ export default function FillWizard(props: Props) {
       <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>
         <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("fill.locked")}
       </div>
+      <FormFooterText text={theme.footer} />
     </div>
   );
 }

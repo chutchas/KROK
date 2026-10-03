@@ -8,7 +8,9 @@ import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
-import { getFormPrintPhotos } from "@/lib/print-photos-server";
+import { getFormPrintInfo } from "@/lib/print-photos-server";
+import { getWorkspaceBranding } from "@/lib/branding";
+import { resolveTheme } from "@/lib/theme";
 import { answerPhotoKeys } from "@/lib/photo-slots";
 import { mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
@@ -41,8 +43,8 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   // งาน (ผู้กรอกแต่ละขั้น) + รูป + หลักฐาน AI อ่านเอกสาร — ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
   // งาน: อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
   const caseDb = getAdminClient() ?? supabase;
-  const [pp, caseRes, { data: photoRows }, { data: extractRows }] = await Promise.all([
-    getFormPrintPhotos(supabase, sub.form_id as string | null),
+  const [{ pp, theme: formTheme }, caseRes, { data: photoRows }, { data: extractRows }, wsBrand] = await Promise.all([
+    getFormPrintInfo(supabase, sub.form_id as string | null),
     sub.case_id
       ? caseDb.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle()
       : Promise.resolve({ data: null }),
@@ -53,7 +55,10 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
       .select("id, source_id, storage_path, accepted, created_at")
       .eq("submission_id", id)
       .order("created_at", { ascending: true }),
+    getWorkspaceBranding(supabase, sub.tenant_id as string),
   ]);
+  // ธีมของฟอร์ม (ปัจจุบัน) + workspace: โลโก้/เส้นใต้หัว/ข้อความท้าย
+  const theme = resolveTheme(wsBrand, formTheme);
 
   let caseSteps: { title: string; name: string; at: string }[] = [];
   const c = caseRes.data as { schema?: unknown; step_meta?: unknown } | null;
@@ -107,12 +112,18 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
         {/* header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--ink)", paddingBottom: 14, marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: `2px solid ${theme.custom ? theme.header : "var(--ink)"}`, paddingBottom: 14, marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
-              <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
-            </div>
+            {theme.logo ? (
+              <span style={{ display: "inline-flex", background: "#fff", borderRadius: 6, padding: 3 }}>
+                <img src={theme.logo} alt="" style={{ height: 34, maxWidth: 160, objectFit: "contain", display: "block" }} />
+              </span>
+            ) : (
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
+                <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
+              </div>
+            )}
             <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={24} />{sub.form_title}</h1>
             <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · <T k="sub.docNo" vars={{ id: String(sub.id).slice(0, 8).toUpperCase() }} /></div>
           </div>
@@ -298,6 +309,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           <span><T k="sub.footer" /></span>
           <span style={{ wordBreak: "break-all" }}>{String(sub.id)}</span>
         </div>
+        {theme.footer && <div style={{ marginTop: 8, fontSize: ".74rem", color: "var(--ink-3)", textAlign: "center", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{theme.footer}</div>}
       </div>
       {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
       {pp.mode === "appendix" && (

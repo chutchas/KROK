@@ -1,3 +1,4 @@
+import { cleanImageUrl, sanitizeFormTheme, type FormTheme } from "@/lib/theme";
 // ============================================================
 // KROK · form schema types + sanitizer
 // schema เดียวที่ AI สร้าง / editor แก้ / mobile render / dashboard อ่าน
@@ -214,7 +215,21 @@ export interface FormSchema {
   print_photos?: PrintPhotos;
   // ประกาศความเป็นส่วนตัวของเจ้าของฟอร์ม (PDPA) — แสดงก่อนเริ่มกรอกฟอร์มสาธารณะ · ไม่มี = ข้อความมาตรฐาน
   privacy_notice?: string;
+  // ธีมสี / โลโก้ / ข้อความท้ายเอกสาร ของฟอร์มนี้ (ไม่ระบุ = ใช้ของ workspace) — ดู @/lib/theme
+  theme?: FormTheme;
+  // รูปประกอบบนกระดาษ (โลโก้ / ตราประทับ / รูปอธิบาย) — วางตำแหน่งใน layout ด้วย key "img:<id>"
+  images?: PaperImage[];
 }
+
+/** รูปประกอบบนมุมมองกระดาษ (ไม่ใช่ช่องให้กรอก) */
+export interface PaperImage {
+  id: string;
+  url: string;
+  /** ความสูงบนกระดาษ (px ที่ 96dpi) */
+  h: number;
+}
+export const MAX_PAPER_IMAGES = 10;
+export const imageKey = (id: string) => `img:${id}`;
 
 /**
  * การแสดงรูปถ่ายบนเอกสารกระดาษ
@@ -551,6 +566,17 @@ export function sanitizeSchema(raw: unknown): FormSchema {
 
   // เก็บ layout กระดาษ (ลากวาง) เฉพาะ key ที่ตรงกับ field id / "s:<stepId>" ที่มีจริง
   const validKeys = new Set<string>(["header", "meta", "photos"]);
+  const images: PaperImage[] = [];
+  if (Array.isArray(r.images)) {
+    for (const im of r.images.slice(0, MAX_PAPER_IMAGES)) {
+      const o = (im && typeof im === "object" ? im : {}) as Record<string, unknown>;
+      const id = typeof o.id === "string" && /^[a-z0-9_-]{1,40}$/i.test(o.id) ? o.id : null;
+      const url = cleanImageUrl(o.url);
+      if (!id || !url || images.some((x) => x.id === id)) continue;
+      images.push({ id, url, h: Math.max(16, Math.min(600, Math.round(num(o.h) ?? 80))) });
+      validKeys.add(imageKey(id));
+    }
+  }
   for (const s of steps) {
     validKeys.add(`s:${s.id}`);
     for (const f of s.fields) validKeys.add(f.id);
@@ -587,6 +613,9 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (layout) schema.layout = layout;
   const pn = str(r.privacy_notice, 2000).trim();
   if (pn) schema.privacy_notice = pn;
+  const th = sanitizeFormTheme(r.theme);
+  if (th) schema.theme = th;
+  if (images.length) schema.images = images;
   const pp = r.print_photos as Record<string, unknown> | undefined;
   if (pp && typeof pp === "object" && PRINT_PHOTO_MODES.includes(pp.mode as PrintPhotoMode) && pp.mode !== "thumb") {
     schema.print_photos = printPhotosOf({ print_photos: { mode: pp.mode as PrintPhotoMode, cols: num(pp.cols), height_mm: num(pp.height_mm) } });

@@ -81,16 +81,38 @@ export const paperInputStyle: React.CSSProperties = {
   fontSize: FONT,
 };
 
-export function PaperHeaderContent({ icon, title, description }: { icon: string; title: string; description?: string }) {
+export function PaperHeaderContent({ icon, title, description, logo, color }: {
+  icon: string; title: string; description?: string;
+  /** โลโก้ (ธีม) — แสดงซ้ายของชื่อ */
+  logo?: string | null;
+  /** สีแถบหัวของธีม → สีเส้นใต้ชื่อ */
+  color?: string;
+}) {
   return (
-    <div style={{ borderBottom: `2px solid ${INK}`, paddingBottom: 4 }}>
-      <div style={{ fontSize: "1.2rem", fontWeight: 700, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-        <InlineFormIcon value={icon} size={18} />{title}
+    <div style={{ borderBottom: `2px solid ${color || INK}`, paddingBottom: 4, display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+      {logo && <img src={logo} alt="" style={{ height: 36, maxWidth: 140, objectFit: "contain", flex: "0 0 auto", display: "block" }} />}
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: "1.2rem", fontWeight: 700, lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+          <InlineFormIcon value={icon} size={18} />{title}
+        </div>
+        {description && (
+          <div style={{ fontSize: ".72rem", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{description}</div>
+        )}
       </div>
-      {description && (
-        <div style={{ fontSize: ".72rem", color: "#555", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{description}</div>
-      )}
     </div>
+  );
+}
+
+/** รูปประกอบบนกระดาษ (โลโก้/ตรา/แผนผัง) — กว้างเต็มกล่อง สูงตามที่ตั้ง */
+export function PaperImageContent({ url, h }: { url: string; h: number }) {
+  return <img src={url} alt="" draggable={false} style={{ width: "100%", height: h, objectFit: "contain", display: "block" }} />;
+}
+
+/** ข้อความท้ายเอกสาร (ธีม) — ชิดล่างของกระดาษ */
+export function PaperFooterText({ text, top }: { text: string; top: number }) {
+  if (!text) return null;
+  return (
+    <div style={{ position: "absolute", left: 32, right: 32, top, borderTop: `1px solid ${LINE}`, paddingTop: 6, fontSize: ".68rem", color: MUTED, textAlign: "center", whiteSpace: "pre-wrap", overflowWrap: "anywhere", lineHeight: 1.45 }}>{text}</div>
   );
 }
 

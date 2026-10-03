@@ -1,5 +1,7 @@
 "use client";
 import { useRef, useState } from "react";
+import type { ResolvedTheme } from "@/lib/theme";
+import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
 import { Camera, Check, GripVertical, Lightbulb, Lock, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import FormIcon from "@/components/FormIcon";
@@ -176,6 +178,7 @@ export default function FormPreview({
   onAddField,
   onAddStep,
   onMoveField,
+  theme,
 }: {
   schema: FormSchema;
   selectedKey?: string | null;
@@ -184,6 +187,8 @@ export default function FormPreview({
   onAddStep?: () => void;
   /** ลากเรียงฟิลด์: ย้าย fieldId ไปขั้นตอน toStep ก่อนตำแหน่ง toIndex (นับในรายการเดิมของขั้นตอนนั้น) */
   onMoveField?: (fieldId: string, toStep: number, toIndex: number) => void;
+  /** ธีมของฟอร์ม — แสดงแถบหัว/โลโก้/สีปุ่มเหมือนหน้ากรอกจริง */
+  theme?: ResolvedTheme;
 }) {
   const { t, tt } = useT();
   // ---- ลากเรียงลำดับฟิลด์ (เมาส์/นิ้ว ผ่านที่จับด้านซ้ายของการ์ด) ----
@@ -238,10 +243,13 @@ export default function FormPreview({
     background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit",
     fontSize: ".84rem", fontWeight: 600,
   };
+  const branded = !!theme && hasBrand(theme);
   return (
-    <div>
+    <div className="krok-th-preview">
+      {theme && <ThemeStyle scope="krok-th-preview" theme={theme} />}
+      {branded && <FormBrandHeader theme={theme} icon={schema.icon} title={schema.title} description={schema.description} flushX={0} flushTop={0} />}
       {/* หัวฟอร์ม: ชื่อ + คำอธิบาย (เหมือนมุมมองกระดาษ) — แก้ได้ที่การ์ดด้านบน */}
-      {(schema.title || schema.description) && (
+      {!branded && (schema.title || schema.description) && (
         <div style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: "4px 2px 12px", borderBottom: "1px solid var(--line)" }}>
           <FormIcon value={schema.icon} size={34} />
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -299,6 +307,7 @@ export default function FormPreview({
           <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("fw.prev.lockHint")}
         </div>
       )}
+      {theme && <FormFooterText text={theme.footer} />}
     </div>
   );
 }

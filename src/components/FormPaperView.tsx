@@ -1,5 +1,6 @@
 "use client";
 import { InlineFormIcon } from "@/components/FormIcon";
+import type { ResolvedTheme } from "@/lib/theme";
 import { printPhotosOf, type FormField, type FormSchema } from "@/lib/form-schema";
 import { mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid, { photoCaption } from "@/components/paper/PaperPhotoGrid";
@@ -65,7 +66,7 @@ function Blank({ f }: { f: FormField }) {
 
 // พิมพ์เป็นเอกสารแบบไหลต่อเนื่อง (paginate ได้ดี ไม่ทิ้งหน้าแรกว่าง)
 // จงใจไม่ใช้ absolute-canvas ตอนพิมพ์ เพราะ browser แบ่งหน้า absolute ได้ไม่ดี
-export default function FormPaperView({ schema }: { schema: FormSchema }) {
+export default function FormPaperView({ schema, theme }: { schema: FormSchema; theme?: ResolvedTheme }) {
   const { t } = useT();
   const pp = printPhotosOf(schema);
   // grid = รวมรูปไว้กล่องเดียวท้ายเอกสาร · hidden = ไม่พิมพ์ช่องรูป
@@ -90,11 +91,14 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
         }}
       >
         {(schema.show_header !== false || schema.show_meta !== false) && (
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: schema.show_header !== false ? "2px solid #111" : "none", paddingBottom: 10, marginBottom: 16, gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: schema.show_header !== false ? `2px solid ${theme?.custom ? theme.header : "#111"}` : "none", paddingBottom: 10, marginBottom: 16, gap: 12 }}>
           {schema.show_header !== false ? (
-            <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 12, minWidth: 0 }}>
+              {theme?.logo && <img src={theme.logo} alt="" style={{ height: 40, maxWidth: 150, objectFit: "contain", flex: "0 0 auto" }} />}
+              <div style={{ minWidth: 0 }}>
               <div style={{ fontSize: "1.25rem", fontWeight: 700 }}><InlineFormIcon value={schema.icon} size={20} />{schema.title}</div>
               {schema.description && <div style={{ color: "#555", fontSize: ".82rem" }}>{schema.description}</div>}
+              </div>
             </div>
           ) : <div />}
           {schema.show_meta !== false && (
@@ -148,6 +152,9 @@ export default function FormPaperView({ schema }: { schema: FormSchema }) {
           <div>{t("fw.paper.inspector")} ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>{t("fw.paper.signDate")}</span></div>
           <div>{t("fw.paper.approver")} ______________________<br /><span style={{ fontSize: ".72rem", color: "#888" }}>{t("fw.paper.signDate")}</span></div>
         </div>
+        {theme?.footer && (
+          <div style={{ marginTop: 22, paddingTop: 8, borderTop: "1px solid #ccc", fontSize: ".72rem", color: "#666", textAlign: "center", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{theme.footer}</div>
+        )}
       </div>
     </div>
   );

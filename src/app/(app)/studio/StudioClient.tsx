@@ -12,6 +12,7 @@ import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
 import FormPaperView from "@/components/FormPaperView";
 import FieldSettingsPanel from "@/components/FieldSettingsPanel";
+import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 import FormDevicePicker from "@/components/FormDevicePicker";
 import type { ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
@@ -38,7 +39,7 @@ interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper";
 
-export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt" }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template" }) {
+export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -644,19 +645,19 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
               <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()}
-                onDeleteKey={deleteKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} />
+                onDeleteKey={deleteKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} theme={resolveTheme(branding, draft.theme)} tenantId={tenantId} />
             ) : (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
                   <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} />
+                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} theme={resolveTheme(branding, draft.theme)} />
                 </div>
               </div>
             )}
           </div>
 
           {/* เอกสารสำหรับพิมพ์ (ซ่อนบนจอ แสดงเฉพาะตอนพิมพ์) */}
-          <div className="krok-print-root"><FormPaperView schema={draft} /></div>
+          <div className="krok-print-root"><FormPaperView schema={draft} theme={resolveTheme(branding, draft.theme)} /></div>
 
           <AttachmentsPanel formId={editingId} tenantId={tenantId} />
 
@@ -826,7 +827,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         {selKey && <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />}
         <aside data-tour="studio-aside" className={selKey ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={t("editor.fieldSettings")}>
           {selKey ? (
-            <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
+            <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} branding={branding} />
           ) : (
             <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: "22px 18px", textAlign: "center", color: "var(--ink-3)", background: "var(--surface)" }}>
               <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={MousePointerClick} className="h-7 w-7" /></span>

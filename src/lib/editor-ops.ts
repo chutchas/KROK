@@ -23,6 +23,7 @@ export const stepIndexOfKey = (schema: FormSchema, key: string | null | undefine
 export function blockLabel(schema: FormSchema, key: string): string {
   const loc = findField(schema, key);
   if (loc) return loc.field.label || "";
+  if (key.startsWith("img:")) return "🖼";
   const si = stepIndexOfKey(schema, key);
   return si >= 0 ? schema.steps[si].title || `${si + 1}` : "";
 }
@@ -34,6 +35,15 @@ export function blockLabel(schema: FormSchema, key: string): string {
 export function removeBlock(schema: FormSchema, key: string): FormSchema | null {
   if (key === HEADER_KEY) return { ...schema, show_header: false };
   if (key === META_KEY) return { ...schema, show_meta: false };
+  if (key.startsWith("img:")) {
+    const id = key.slice(4);
+    if (!schema.images?.some((x) => x.id === id)) return null;
+    const images = schema.images.filter((x) => x.id !== id);
+    const out: FormSchema = { ...schema };
+    if (images.length) out.images = images; else delete out.images;
+    if (schema.layout) { out.layout = { ...schema.layout }; delete out.layout[key]; }
+    return out;
+  }
   const layout = schema.layout ? { ...schema.layout } : undefined;
   const loc = findField(schema, key);
   if (loc) {
@@ -116,6 +126,7 @@ export function orderedKeys(schema: FormSchema): string[] {
     out.push(`s:${s.id}`);
     for (const f of s.fields) out.push(f.id);
   }
+  for (const im of schema.images ?? []) out.push(`img:${im.id}`);
   return out;
 }
 

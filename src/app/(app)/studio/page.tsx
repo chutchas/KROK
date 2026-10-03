@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import QuotaHint from "@/components/QuotaHint";
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { getWorkspaceBranding } from "@/lib/branding";
 import StudioClient from "./StudioClient";
 import type { FormSchema } from "@/lib/form-schema";
 import { readSummary, summaryOf, type FormSummary } from "@/lib/form-summary";
@@ -45,7 +46,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
   // สรุปย่อ (0050) แทน schema เต็มทุกฟอร์ม — schema โหลดตอนกดแก้ไข
-  const [first, { data: memberRows }, { data: teamRows }] = await Promise.all([
+  const [first, { data: memberRows }, { data: teamRows }, branding] = await Promise.all([
     formsQuery("summary"),
     supabase
       .from("memberships")
@@ -57,6 +58,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       .select("id, name")
       .eq("tenant_id", session.tenantId)
       .order("created_at", { ascending: true }),
+    getWorkspaceBranding(supabase, session.tenantId),
   ]);
   // ยังไม่รัน 0050 (ไม่มีคอลัมน์ summary) → ดึง schema เต็มแบบเดิม
   const res = first.error ? await formsQuery("schema") : first;
@@ -95,7 +97,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     <>
       {/* โควตาใกล้เต็ม/เต็ม — แจ้งก่อนลงมือสร้าง (ไม่บล็อกการโหลดหน้า) */}
       <Suspense fallback={null}><QuotaHint session={session} metrics={["forms", "ai_form_gen", "ai_form_from_image"]} /></Suspense>
-      <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template}
+      <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template} branding={branding}
         initialMode={mode === "template" || mode === "file" ? mode : "prompt"} />
     </>
   );

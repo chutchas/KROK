@@ -18,6 +18,10 @@ import {
   type TableColType,
 } from "@/lib/form-schema";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
+import BrandingEditor, { BrandImagePicker, BrandPreview, type BrandingValue } from "@/components/BrandingEditor";
+import { resolveTheme, type FormTheme, type WorkspaceBranding } from "@/lib/theme";
+import { imageKey } from "@/lib/form-schema";
+import { CANVAS_W, DEFAULT_IMAGE_BOX } from "@/lib/paper-layout";
 
 let idc = 0;
 const newId = (p: string) => `${p}_${Date.now().toString(36)}${(idc++).toString(36)}`;
@@ -40,6 +44,7 @@ export default function FieldSettingsPanel({
   tenantId = "",
   teams = [],
   members = [],
+  branding = null,
 }: {
   schema: FormSchema;
   selectedKey: string | null;
@@ -52,8 +57,12 @@ export default function FieldSettingsPanel({
   teams?: { id: string; name: string }[];
   /** สมาชิกใน workspace — ตั้งผู้รับผิดชอบเป็นรายบุคคล */
   members?: { user_id: string; name: string }[];
+  /** แบรนด์ของ workspace (ค่าเริ่มต้นของธีมฟอร์ม) */
+  branding?: WorkspaceBranding | null;
 }) {
   const { t, tt } = useT();
+  // แผงหัวเอกสาร: ทั่วไป | รูปลักษณ์ (ธีม — ไม่ใช่ทุกคนจะเปลี่ยน จึงแยกแท็บ)
+  const [hdrTab, setHdrTab] = useState<"general" | "look">("general");
 
   const sel: React.CSSProperties = {
     padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
@@ -155,8 +164,43 @@ export default function FieldSettingsPanel({
         {label}
       </label>
     );
+    const tabBtn = (k: "general" | "look", label: string) => (
+      <button key={k} role="tab" aria-selected={hdrTab === k} onClick={() => setHdrTab(k)}
+        style={{ flex: 1, padding: "7px 10px", border: "none", borderBottom: `2px solid ${hdrTab === k ? "var(--accent)" : "transparent"}`, background: "none", color: hdrTab === k ? "var(--accent-text)" : "var(--ink-2)", fontWeight: hdrTab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".86rem", cursor: "pointer", marginBottom: -1 }}>
+        {label}
+      </button>
+    );
+    const tabs = (
+      <div role="tablist" aria-label={t("editor.docHeader")} style={{ display: "flex", borderBottom: "1px solid var(--line)", margin: "0 0 10px" }}>
+        {tabBtn("general", t("brand.tabGeneral"))}
+        {tabBtn("look", t("brand.tabLook"))}
+      </div>
+    );
+    if (hdrTab === "look") {
+      const wsTheme = resolveTheme(branding, null);
+      const value: BrandingValue = { ...(schema.theme ?? {}) };
+      return (
+        <Shell title={t("editor.docHeader")} onClose={() => onSelect(null)}>
+          {tabs}
+          <p style={{ fontSize: ".8rem", color: "var(--ink-3)", margin: "0 0 4px", lineHeight: 1.5 }}>
+            {t("brand.formHint")}{" "}
+            <Link href="/settings/workspace" target="_blank" style={{ color: "var(--accent-text)", whiteSpace: "nowrap" }}>{t("brand.wsLink")} ↗</Link>
+          </p>
+          <BrandingEditor mode="form" value={value} inherited={wsTheme} tenantId={tenantId}
+            onChange={(v) => {
+              const n = { ...schema };
+              const th: FormTheme = { ...v, logo_url: v.logo_url ?? undefined };
+              if (!th.logo_url) delete th.logo_url;
+              if (Object.keys(th).length) n.theme = th; else delete n.theme;
+              onChange(n);
+            }} />
+          <BrandPreview theme={resolveTheme(branding, schema.theme)} title={schema.title} />
+        </Shell>
+      );
+    }
     return (
       <Shell title={t("editor.docHeader")} onClose={() => onSelect(null)}>
+        {tabs}
         <p style={{ fontSize: ".85rem", color: "var(--ink-2)", marginTop: 0 }}>{t("editor.docHeaderHint")}</p>
         {cbRow(schema.show_header !== false, t("editor.showHeader"), (v) => toggle("show_header", v))}
         {cbRow(schema.show_meta !== false, t("editor.showMeta"), (v) => toggle("show_meta", v))}
@@ -167,6 +211,40 @@ export default function FieldSettingsPanel({
           placeholder={t("editor.privacyNoticePh")}
           onChange={(e) => { const n = { ...schema }; if (e.target.value) n.privacy_notice = e.target.value; else delete n.privacy_notice; onChange(n); }}
           style={{ width: "100%", boxSizing: "border-box", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px", fontFamily: "inherit", fontSize: ".86rem", background: "var(--surface)", color: "var(--ink)", resize: "vertical" }} />
+      </Shell>
+    );
+  }
+
+  // ----- รูปประกอบบนกระดาษ -----
+  if (selectedKey?.startsWith("img:")) {
+    const id = selectedKey.slice(4);
+    const imgs = schema.images ?? [];
+    const img = imgs.find((x) => x.id === id);
+    if (!img) return <Empty onAddStep={addStep} />;
+    const patch = (p: Partial<typeof img>) => onChange({ ...schema, images: imgs.map((x) => (x.id === id ? { ...x, ...p } : x)) });
+    const box = schema.layout?.[imageKey(id)] ?? DEFAULT_IMAGE_BOX;
+    return (
+      <Shell title={t("brand.image")} onClose={() => onSelect(null)}>
+        <div style={{ border: "1px solid var(--line)", borderRadius: 8, background: "#fff", padding: 6, display: "flex", justifyContent: "center" }}>
+          <img src={img.url} alt="" style={{ maxWidth: "100%", maxHeight: 120, objectFit: "contain" }} />
+        </div>
+        <label style={lbl}>{tt("brand.imageH", { n: img.h })}</label>
+        <input type="range" min={16} max={600} step={4} value={img.h} onChange={(e) => patch({ h: +e.target.value })} style={{ width: "100%", accentColor: "var(--accent)" }} aria-label={t("brand.imageHLabel")} />
+        <label style={lbl}>{tt("brand.imageW", { n: box.w })}</label>
+        <input type="range" min={40} max={CANVAS_W - box.x} step={8} value={Math.min(box.w, CANVAS_W - box.x)} aria-label={t("brand.imageWLabel")}
+          onChange={(e) => onChange({ ...schema, layout: { ...schema.layout, [imageKey(id)]: { ...box, w: +e.target.value } } })} style={{ width: "100%", accentColor: "var(--accent)" }} />
+        <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("brand.imageHint")}</p>
+        <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap", alignItems: "flex-start" }}>
+          <BrandImagePicker tenantId={tenantId} prefix="img" onUploaded={(url) => patch({ url })}>{t("brand.replace")}</BrandImagePicker>
+          <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} onClick={() => {
+            const images = imgs.filter((x) => x.id !== id);
+            const n: FormSchema = { ...schema };
+            if (schema.layout) { n.layout = { ...schema.layout }; delete n.layout[imageKey(id)]; }
+            if (images.length) n.images = images; else delete n.images;
+            onChange(n);
+            onSelect(null);
+          }}><Icon icon={Trash2} className="h-4 w-4" /> {t("brand.removeImage")}</button>
+        </div>
       </Shell>
     );
   }

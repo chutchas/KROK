@@ -3,7 +3,9 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { buildSubmissionPdf, type PdfAnswer, type SubmissionPdfData } from "@/lib/pdf/submission-pdf";
 import { SRC_LABEL, type AnswerItem } from "@/lib/answer-item";
-import { getFormPrintPhotos } from "@/lib/print-photos-server";
+import { getFormPrintInfo } from "@/lib/print-photos-server";
+import { getWorkspaceBranding } from "@/lib/branding";
+import { BRANDING_PATH, resolveTheme } from "@/lib/theme";
 import { answerPhotoKeys } from "@/lib/photo-slots";
 
 export const dynamic = "force-dynamic";
@@ -43,10 +45,23 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!sub) return NextResponse.json({ error: "not found" }, { status: 404 });
 
   // ตั้งค่าการพิมพ์รูป + รายการรูป — โหลดพร้อมกัน
-  const [pp, { data: photoRows }] = await Promise.all([
-    getFormPrintPhotos(supabase, sub.form_id as string | null),
+  const [{ pp, theme: formTheme }, { data: photoRows }, wsBrand] = await Promise.all([
+    getFormPrintInfo(supabase, sub.form_id as string | null),
     supabase.from("submission_photos").select("field_id, storage_path").eq("submission_id", id),
+    getWorkspaceBranding(supabase, session.tenantId),
   ]);
+  const theme = resolveTheme(wsBrand, formTheme);
+  // โลโก้: ไฟล์ใน bucket branding — pdfkit รองรับ PNG/JPEG เท่านั้น (WebP ข้าม)
+  let logo: Buffer | null = null;
+  if (theme.logo) {
+    try {
+      const path = decodeURIComponent(new URL(theme.logo).pathname.slice(BRANDING_PATH.length));
+      if (path.startsWith(`${session.tenantId}/`) && !path.endsWith(".webp")) {
+        const { data: blob } = await supabase.storage.from("branding").download(path);
+        if (blob && blob.size <= 2 * 1024 * 1024) logo = Buffer.from(await blob.arrayBuffer());
+      }
+    } catch { /* ไม่มีโลโก้ใน PDF */ }
+  }
 
   // ดาวน์โหลดตรงจาก storage (ไม่ต้องขอ signed URL ทีละรูป) ทีละ 4 รูปพร้อมกัน
   const photoBuf: Record<string, Buffer> = {};
@@ -126,6 +141,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     answers,
     history,
     photoLayout: { mode: pp.mode, cols: pp.cols, heightMm: pp.height_mm },
+    brand: { header: theme.custom ? theme.header : undefined, primary: theme.custom ? theme.primary : undefined, logo, footer: theme.footer },
   };
 
   let pdf: Buffer;
