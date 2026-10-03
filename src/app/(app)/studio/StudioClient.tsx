@@ -39,7 +39,7 @@ interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper";
 
-export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null }) {
+export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null, initialEditId = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null; initialEditId?: string | null }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -386,6 +386,15 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setTab("edit");
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }
+
+  // ?edit=<id> (ลิงก์จากคลังรูป ฯลฯ) → เปิดฟอร์มนั้นในหน้าแก้ไขครั้งเดียว
+  const openedFromUrl = useRef(false);
+  useEffect(() => {
+    if (openedFromUrl.current || !initialEditId) return;
+    openedFromUrl.current = true;
+    const f = initialForms.find((x) => x.id === initialEditId);
+    if (f) void Promise.resolve().then(() => editExisting(f));
+  });
 
   async function onDelete(id: string, title: string) {
     if (!(await confirmDialog({ message: tt("studio.deleteConfirm", { title }), danger: true }))) return;

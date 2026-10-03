@@ -8,6 +8,8 @@ import { useT } from "@/i18n/LanguageProvider";
 import { renameWorkspace, deleteWorkspace, saveBranding } from "./actions";
 import BrandingEditor, { BrandPreview, type BrandingValue } from "@/components/BrandingEditor";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
+import BrandLibrary from "@/components/BrandLibrary";
+import type { BrandAsset } from "@/lib/branding-library";
 
 export default function WorkspaceClient({
   tenantName,
@@ -16,6 +18,7 @@ export default function WorkspaceClient({
   formCount,
   tenantId,
   branding,
+  library,
 }: {
   tenantName: string;
   isOwner: boolean;
@@ -23,6 +26,7 @@ export default function WorkspaceClient({
   formCount: number;
   tenantId: string;
   branding: WorkspaceBranding | null;
+  library: { assets: BrandAsset[]; error: string | null };
 }) {
   const { t, tt } = useT();
   const router = useRouter();
@@ -119,6 +123,8 @@ export default function WorkspaceClient({
         </div>
         {brandMsg && <div style={{ marginTop: 10 }}><Notice kind={brandMsg.err ? "error" : "info"}>{brandMsg.t}</Notice></div>}
       </Card>
+
+      <BrandLibrary assets={library.assets} error={library.error ? t("brand.lib.loadFail") : null} canDelete />
 
       {isOwner && (
         <Card style={{ borderColor: "var(--fail)" }}>

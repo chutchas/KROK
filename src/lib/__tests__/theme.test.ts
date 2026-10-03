@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeAll } from "vitest";
+import { describe, it, expect, beforeAll, vi } from "vitest";
+vi.mock("server-only", () => ({}));
 import { cleanHex, cleanImageUrl, contrast, readableOn, resolveTheme, sanitizeFormTheme, themeCss, DEFAULT_PRIMARY, DEFAULT_HEADER } from "@/lib/theme";
 import { sanitizeSchema } from "@/lib/form-schema";
 import { removeBlock, orderedKeys } from "@/lib/editor-ops";
@@ -89,5 +90,48 @@ describe("paper images", () => {
     expect(r.images).toBeUndefined();
     expect(r.layout?.["img:logo"]).toBeUndefined();
     expect(removeBlock(s, "img:missing")).toBeNull();
+  });
+});
+
+describe("brand library usage", async () => {
+  const { pathFromUrl, brandAssetUses } = await import("@/lib/branding-library");
+  const T = "11111111-1111-1111-1111-111111111111";
+  const url = (n: string) => `${SB}/storage/v1/object/public/branding/${T}/${n}`;
+
+  // query builder จำลอง: .select().eq()... แล้ว await / maybeSingle()
+  function fakeDb(tables: Record<string, unknown>) {
+    return {
+      from(name: string) {
+        const res = { data: tables[name] ?? null, error: null };
+        const q: Record<string, unknown> = {};
+        for (const m of ["select", "eq"]) q[m] = () => q;
+        q.maybeSingle = async () => res;
+        q.then = (ok: (v: unknown) => unknown) => Promise.resolve(res).then(ok);
+        return q;
+      },
+    } as never;
+  }
+
+  it("maps URLs to this workspace's paths only", () => {
+    expect(pathFromUrl(url("logo-a.png"), T)).toBe(`${T}/logo-a.png`);
+    expect(pathFromUrl(`${SB}/storage/v1/object/public/branding/other/logo.png`, T)).toBeNull();
+    expect(pathFromUrl("nope", T)).toBeNull();
+  });
+
+  it("counts workspace logo, forms (incl. trash & hidden logo) and open jobs", async () => {
+    const uses = await brandAssetUses(fakeDb({
+      tenant_branding: { logo_url: url("logo-ws.png") },
+      forms: [
+        { id: "f1", title: "A", deleted_at: null, theme: { logo: "custom", logo_url: url("logo-f1.png") }, images: [{ url: url("img-1.png") }] },
+        { id: "f2", title: "B", deleted_at: "2026-01-01", theme: { logo: "none", logo_url: url("logo-old.png") }, images: null },
+      ],
+      form_cases: [{ id: "c1", form_id: "f1", title: "A", theme: null, images: [{ url: url("img-gone.png") }, { url: url("img-gone.png") }] }],
+    }), T);
+    expect(uses.get(`${T}/logo-ws.png`)).toEqual([{ kind: "workspace" }]);
+    expect(uses.get(`${T}/logo-f1.png`)?.[0]).toMatchObject({ kind: "form", formId: "f1", as: "logo" });
+    expect(uses.get(`${T}/img-1.png`)?.[0]).toMatchObject({ as: "image" });
+    expect(uses.get(`${T}/logo-old.png`)?.[0]).toMatchObject({ deleted: true });
+    expect(uses.get(`${T}/img-gone.png`)).toHaveLength(1);
+    expect(uses.get(`${T}/unused.png`)).toBeUndefined();
   });
 });

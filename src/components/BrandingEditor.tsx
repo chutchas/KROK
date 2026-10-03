@@ -1,12 +1,13 @@
 "use client";
 // ตั้งธีมสี / โลโก้ / ข้อความท้าย — ใช้ทั้งค่าเริ่มต้นของ workspace และ "รูปลักษณ์" ของฟอร์ม
 // ค่าที่ไม่ตั้ง = ใช้ค่าของระดับก่อนหน้า (แอป ← workspace ← ฟอร์ม)
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
+import BrandImageChooser from "@/components/BrandImageChooser";
 import Icon from "@/components/Icon";
 import { ImagePlus, RotateCcw, Trash2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { cleanHex, inkOn, type ResolvedTheme } from "@/lib/theme";
-import { BRAND_IMAGE_ACCEPT, uploadBrandImage, type BrandUploadError } from "@/lib/brand-upload";
+import type { BrandUploadError } from "@/lib/brand-upload";
 
 export interface BrandingValue {
   primary?: string;
@@ -25,32 +26,22 @@ export function useUploadErrorText() {
   return (e: BrandUploadError) => t(e === "type" ? "brand.errType" : e === "size" ? "brand.errSize" : "brand.errUpload");
 }
 
-/** ปุ่มเลือกรูป → อัปโหลด → คืน URL */
+/** ปุ่มเลือกรูป → อัปโหลดใหม่ หรือเลือกจากคลังของ workspace → คืน URL */
 export function BrandImagePicker({ tenantId, prefix, onUploaded, children, style }: {
   tenantId: string; prefix: "logo" | "img"; onUploaded: (url: string) => void; children: React.ReactNode; style?: React.CSSProperties;
 }) {
-  const ref = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
+  const [open, setOpen] = useState(false);
   const errText = useUploadErrorText();
-  const { t } = useT();
   return (
-    <span style={{ display: "inline-flex", flexDirection: "column", gap: 4 }}>
-      <button type="button" style={{ ...smallBtn, ...style }} disabled={busy} onClick={() => ref.current?.click()}>
-        <Icon icon={ImagePlus} className="h-3.5 w-3.5" /> {busy ? t("brand.uploading") : children}
+    <>
+      <button type="button" style={{ ...smallBtn, ...style }} onClick={() => setOpen(true)}>
+        <Icon icon={ImagePlus} className="h-3.5 w-3.5" /> {children}
       </button>
-      <input ref={ref} type="file" accept={BRAND_IMAGE_ACCEPT} hidden onChange={async (e) => {
-        const file = e.target.files?.[0];
-        e.target.value = "";
-        if (!file) return;
-        setBusy(true); setErr(null);
-        const res = await uploadBrandImage(file, tenantId, prefix);
-        setBusy(false);
-        if ("error" in res) setErr(errText(res.error));
-        else onUploaded(res.url);
-      }} />
-      {err && <span role="alert" style={{ fontSize: ".74rem", color: "var(--fail)" }}>{err}</span>}
-    </span>
+      {open && (
+        <BrandImageChooser tenantId={tenantId} prefix={prefix} uploadError={errText}
+          onClose={() => setOpen(false)} onPick={(url) => { setOpen(false); onUploaded(url); }} />
+      )}
+    </>
   );
 }
 

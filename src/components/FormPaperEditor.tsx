@@ -10,8 +10,8 @@ import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, Trash2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard, ImagePlus } from "lucide-react";
 import type { ResolvedTheme } from "@/lib/theme";
-import { BRAND_IMAGE_ACCEPT, uploadBrandImage } from "@/lib/brand-upload";
 import { useUploadErrorText } from "@/components/BrandingEditor";
+import BrandImageChooser from "@/components/BrandImageChooser";
 import { duplicateField, findField, insertField, offsetBox, orderedKeys, parseClip, serializeClip, stepIndexOfKey } from "@/lib/editor-ops";
 
 let idc = 0;
@@ -191,29 +191,23 @@ export default function FormPaperEditor({
   const pageH = canvasH + (footer ? 30 + 14 * Math.min(6, footer.split("\n").length) : 0);
 
   // ---- รูปประกอบบนกระดาษ (โลโก้/ตรา/แผนผัง) ----
-  const imgInput = useRef<HTMLInputElement>(null);
-  const imgAt = useRef<{ x: number; y: number } | null>(null);
+  // chooser: null = ปิด · { at } = เปิด (at = จุดที่คลิกขวา, ไม่มี = ต่อท้ายกระดาษ)
+  const [chooser, setChooser] = useState<{ at: { x: number; y: number } | null } | null>(null);
   const uploadErr = useUploadErrorText();
   const imageCount = schema.images?.length ?? 0;
-  function pickImageAt(x: number, y: number) {
+  function pickImageAt(at: { x: number; y: number } | null) {
     if (imageCount >= MAX_PAPER_IMAGES) { flash(tt("brand.imageMax", { n: MAX_PAPER_IMAGES })); return; }
-    imgAt.current = { x, y };
-    imgInput.current?.click();
+    setChooser({ at });
   }
-  async function onImagePicked(file: File | undefined) {
-    const at = imgAt.current;
-    imgAt.current = null;
-    if (!file || !tenantId) return;
-    flash(t("brand.uploading"));
-    const res = await uploadBrandImage(file, tenantId, "img");
-    if ("error" in res) { flash(uploadErr(res.error)); return; }
+  function onImagePicked(url: string, at: { x: number; y: number } | null) {
+    setChooser(null);
     const id = newFieldId().replace(/^f_/, "i");
     const w = 160;
     const box: PaperBox = at
       ? { x: Math.max(0, Math.min(CANVAS_W - w, snap(at.x))), y: Math.max(0, snap(at.y)), w }
       : { ...boxAtEnd(), w };
     onCheckpoint?.();
-    onChange({ ...schema, images: [...(schema.images ?? []), { id, url: res.url, h: 80 }], layout: { ...layout, [imageKey(id)]: box } });
+    onChange({ ...schema, images: [...(schema.images ?? []), { id, url, h: 80 }], layout: { ...layout, [imageKey(id)]: box } });
     select(imageKey(id));
   }
 
@@ -463,7 +457,7 @@ export default function FormPaperEditor({
       { icon: Plus, label: t("paper.ctx.addField"), run: () => addFieldAt(c.x, c.y) },
       { icon: ListPlus, label: t("paper.ctx.addStep"), run: () => addStepAt(c.y) },
       { icon: ClipboardPaste, label: t("kb.pasteHere"), hint: "Ctrl+V", disabled: !hasClip, run: () => clip.current && pasteField(clip.current, { x: c.x, y: c.y }) },
-      ...(tenantId ? [{ icon: ImagePlus, label: t("brand.addImageHere"), run: () => pickImageAt(c.x, c.y) }] : []),
+      ...(tenantId ? [{ icon: ImagePlus, label: t("brand.addImageHere"), run: () => pickImageAt({ x: c.x, y: c.y }) }] : []),
       sep,
       { icon: Undo2, label: t("kb.undo"), hint: "Ctrl+Z", disabled: !c.undo, run: () => onUndo?.() },
       { icon: Redo2, label: t("kb.redo"), hint: "Ctrl+Y", disabled: !c.redo, run: () => onRedo?.() },
@@ -492,7 +486,7 @@ export default function FormPaperEditor({
           </button>
         )}
         {tenantId && (
-          <button data-krok-keep="" onClick={() => { imgAt.current = null; if (imageCount >= MAX_PAPER_IMAGES) flash(tt("brand.imageMax", { n: MAX_PAPER_IMAGES })); else imgInput.current?.click(); }} className="inline-flex items-center gap-1.5"
+          <button data-krok-keep="" onClick={() => pickImageAt(null)} className="inline-flex items-center gap-1.5"
             title={t("brand.addImageHint")}
             style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
             <Icon icon={ImagePlus} className="h-4 w-4" /> {t("brand.addImage")}
@@ -668,8 +662,10 @@ export default function FormPaperEditor({
           </div>
         </div>
       </div>
-      <input ref={imgInput} type="file" accept={BRAND_IMAGE_ACCEPT} hidden
-        onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; void onImagePicked(f); }} />
+      {chooser && (
+        <BrandImageChooser tenantId={tenantId} prefix="img" uploadError={uploadErr}
+          onClose={() => setChooser(null)} onPick={(url) => onImagePicked(url, chooser.at)} />
+      )}
 
       {ctx && <ContextMenu x={ctx.cx} y={ctx.cy} items={menuItems(ctx)} onClose={() => setCtx(null)} />}
 
