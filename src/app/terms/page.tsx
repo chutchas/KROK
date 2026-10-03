@@ -111,12 +111,75 @@ export default function TermsPage() {
     },
   ];
 
+  const contactEn = LEGAL.email ? <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a> : <span>[contact email]</span>;
+  const sectionsEn: LegalSection[] = [
+    { id: "service", title: "The service", body: <p>KROK ({LEGAL.name} — the “Provider”) provides a system for building digital forms, collecting data, documents, approvals and integrations through its website and app. By signing up or using the service, you (the “User”, and the organisation you represent — the “Customer”) accept these terms.</p> },
+    { id: "account", title: "Accounts and security", body: (
+      <ul>
+        <li>Users must provide accurate information, keep passwords confidential and are responsible for activity under their account.</li>
+        <li>The person who creates a workspace is its account owner (billing owner) and can manage its members, permissions, plan and data.</li>
+        <li>Tell us immediately if you notice unauthorised access to your account.</li>
+      </ul>
+    ) },
+    { id: "use", title: "Acceptable use", body: (
+      <ul>
+        <li>Do not use the service for anything unlawful or deceptive (e.g. forms that phish for passwords or card details), to infringe others&apos; rights, or to distribute malware.</li>
+        <li>Do not try to access other organisations&apos; data, run unauthorised penetration tests, or use the service in a way that degrades it for others.</li>
+        <li>We may suspend usage that breaches these rules to protect the system and other users, with notice where practicable.</li>
+      </ul>
+    ) },
+    { id: "content", title: "Customer data", body: (
+      <ul>
+        <li>Data the Customer creates or collects through the service (forms, answers, files) belongs to the Customer. We use it only to provide the service under these terms.</li>
+        <li>The Customer can export data at any time via reports, Excel/PDF files or the API, depending on the plan.</li>
+        <li>The Customer warrants it has the right and a lawful basis to collect the data it asks others to enter, and will give respondents a privacy notice — public forms include a field for the Customer&apos;s own notice.</li>
+        <li>Avoid collecting sensitive personal data (e.g. health, religion, biometrics, criminal records) unless permitted under Section 26 and with explicit consent where the law requires.</li>
+      </ul>
+    ) },
+    { id: "dpa", title: "Personal data processing terms", body: (
+      <>
+        <p>For personal data within Customer data, the Customer is the data controller and the Provider is the data processor under Section 40. The Provider will:</p>
+        <ul>
+          <li>Process data only on the Customer&apos;s instructions (the Customer&apos;s configuration and use of the system are its instructions) and for no other purpose.</li>
+          <li>Ensure personnel with access are bound by confidentiality and access data only as needed to provide the service or resolve issues the Customer raises.</li>
+          <li>Maintain appropriate security measures as described in the <Link href="/privacy#security">Privacy Policy</Link>.</li>
+          <li>Use the sub-processors listed in the <Link href="/privacy#share">Privacy Policy</Link>, give advance notice of material additions or changes, and bind sub-processors to obligations no less protective than these terms.</li>
+          <li>Help the Customer respond to data subject requests, as far as the system and available data allow.</li>
+          <li>Notify the Customer without undue delay after becoming aware of a personal data breach involving Customer data, with available details, so the Customer can notify the PDPC within 72 hours.</li>
+          <li>Keep records of processing activities under Section 40, paragraph three.</li>
+          <li>Delete Customer data within 90 days after the service ends (the Customer may export it first), unless the law requires retention.</li>
+        </ul>
+      </>
+    ) },
+    { id: "ai", title: "AI features", body: <p>AI output (generated forms, photo checks, values read from documents) is a suggestion and may be wrong; users must review it before use. AI usage consumes credits according to the plan and sends the relevant data to the model provider as described in the Privacy Policy.</p> },
+    { id: "fees", title: "Plans and fees", body: (
+      <ul>
+        <li>Quotas and features follow the selected plan. Existing data over a quota remains usable, but new items cannot be added until the plan is upgraded or usage is reduced.</li>
+        <li>Fees are paid in advance per billing cycle. After expiry and the grace period, the account returns to the free plan without deleting data.</li>
+        <li>We may change prices with at least 30 days&apos; notice, effective from the next cycle.</li>
+      </ul>
+    ) },
+    { id: "availability", title: "Availability", body: <p>We aim to keep the service running continuously but it may be interrupted for maintenance or force majeure. The service is provided “as is”; Customers should export important data as their own needs require.</p> },
+    { id: "liability", title: "Limitation of liability", body: <p>To the extent permitted by law, the Provider is not liable for indirect losses or loss of profit, and total liability is capped at the fees the Customer paid in the 12 months before the event. This does not limit liability that cannot be limited by law.</p> },
+    { id: "termination", title: "Termination", body: <p>The Customer may cancel at any time by contacting us or not renewing. The Provider may terminate if the Customer materially breaches these terms and does not remedy the breach within the notified period. Data is then handled as set out in the data processing terms.</p> },
+    { id: "law", title: "Governing law", body: <p>These terms are governed by Thai law, and disputes fall under the jurisdiction of the Thai courts.</p> },
+    { id: "contact", title: "Contact", body: <p>{LEGAL.name}<br />{LEGAL.address}<br />Email: {contactEn}</p> },
+  ];
+
   return (
-    <LegalDoc
-      title="ข้อกำหนดการใช้งาน"
-      intro={<p>โปรดอ่านข้อกำหนดนี้ก่อนใช้บริการ KROK ข้อกำหนดนี้รวมถึงข้อตกลงการประมวลผลข้อมูลส่วนบุคคลระหว่างลูกค้าและผู้ให้บริการ</p>}
-      sections={sections}
-      other={{ href: "/privacy", label: "นโยบายความเป็นส่วนตัว" }}
-    />
+    <LegalDoc docs={{
+      th: {
+        title: "ข้อกำหนดการใช้งาน",
+        intro: <p>โปรดอ่านข้อกำหนดนี้ก่อนใช้บริการ KROK ข้อกำหนดนี้รวมถึงข้อตกลงการประมวลผลข้อมูลส่วนบุคคลระหว่างลูกค้าและผู้ให้บริการ</p>,
+        sections,
+        other: { href: "/privacy", label: "นโยบายความเป็นส่วนตัว" },
+      },
+      en: {
+        title: "Terms of Service",
+        intro: <p>Please read these terms before using KROK. They include the personal data processing terms between the Customer and the Provider.</p>,
+        sections: sectionsEn,
+        other: { href: "/privacy", label: "Privacy Policy" },
+      },
+    }} />
   );
 }

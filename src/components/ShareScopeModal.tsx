@@ -20,7 +20,10 @@ export default function ShareScopeModal({
   members,
   onClose,
   onSaved,
+  privacyNotice,
 }: {
+  /** ประกาศความเป็นส่วนตัวเดิมของฟอร์ม (แก้ได้เมื่อเลือกสาธารณะ) */
+  privacyNotice?: string;
   formId: string;
   title: string;
   initial: ShareValue;
@@ -33,6 +36,7 @@ export default function ShareScopeModal({
   const [mode, setMode] = useState<VisMode>(initial.mode);
   const [teamIds, setTeamIds] = useState<string[]>(initial.teamIds);
   const [userIds, setUserIds] = useState<string[]>(initial.userIds);
+  const [notice, setNotice] = useState(privacyNotice ?? "");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -49,7 +53,8 @@ export default function ShareScopeModal({
     setBusy(true);
     setErr(null);
     const value: ShareValue = { mode, teamIds: mode === "teams" ? teamIds : [], userIds: mode === "users" ? userIds : [] };
-    const res = await setFormVisibility(formId, value);
+    const noticeChanged = mode === "public" && notice.trim() !== (privacyNotice ?? "").trim();
+    const res = await setFormVisibility(formId, value, noticeChanged ? notice : undefined);
     setBusy(false);
     if ("error" in res) { setErr(res.error); return; }
     onSaved(value);
@@ -113,6 +118,15 @@ export default function ShareScopeModal({
                   </label>
                 );
               })}
+            </div>
+          )}
+
+          {mode === "public" && (
+            <div style={{ marginTop: 14 }}>
+              <label style={{ display: "block", fontSize: ".84rem", fontWeight: 600, color: "var(--ink)" }}>{t("editor.privacyNotice")}</label>
+              <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "2px 0 6px" }}>{t("editor.privacyNoticeHint")}</p>
+              <textarea value={notice} onChange={(e) => setNotice(e.target.value)} maxLength={2000} rows={4} placeholder={t("editor.privacyNoticePh")}
+                style={{ width: "100%", boxSizing: "border-box", border: "1px solid var(--line)", borderRadius: 8, padding: "8px 10px", fontFamily: "inherit", fontSize: ".86rem", background: "var(--surface)", color: "var(--ink)", resize: "vertical" }} />
             </div>
           )}
 

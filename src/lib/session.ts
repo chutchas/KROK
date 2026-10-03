@@ -26,6 +26,8 @@ export interface KrokSession {
   avatarUrl: string;
   platformRole: "platform_admin" | "developer" | "user";
   isPlatformAdmin: boolean;
+  /** ฉบับข้อกำหนด/นโยบายที่ผู้ใช้กดยอมรับล่าสุด (user_metadata.terms_version) — ว่าง = ยังไม่เคย */
+  termsVersion: string;
 }
 
 export interface WorkspaceItem {
@@ -212,6 +214,7 @@ export const getSession = cache(async (): Promise<KrokSession | null> => {
     avatarUrl: (bundle.profile?.avatar_url as string) || (user.user_metadata?.avatar_url as string) || "",
     platformRole,
     isPlatformAdmin: platformRole === "platform_admin",
+    termsVersion: typeof user.user_metadata?.terms_version === "string" ? (user.user_metadata.terms_version as string) : "",
   };
 });
 

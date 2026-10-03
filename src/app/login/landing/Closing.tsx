@@ -1,8 +1,8 @@
 "use client";
 import { ArrowRight, Check } from "lucide-react";
 import Icon from "@/components/Icon";
-import { useT } from "@/i18n/LanguageProvider";
-import type { MessageKey } from "@/i18n/dictionaries";
+import { useLp as useT } from "@/i18n/landing";
+import type { AnyKey as MessageKey } from "@/i18n/landing";
 import Reveal from "./Reveal";
 
 const QA: { q: MessageKey; a: MessageKey }[] = [

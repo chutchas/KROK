@@ -17,7 +17,7 @@ import type { ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY, buildPrompt } from "@/lib/prompt-library";
 import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
-import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus } from "./actions";
+import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus, loadFormSchema } from "./actions";
 import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
@@ -75,7 +75,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }, []);
 
   const fillUrl = (f: FormRow) => `${origin}${f.visibility === "public" ? "/f/" : "/fill/"}${f.id}`;
-  const studioCats = Array.from(new Set(initialForms.map((f) => f.schema.category).filter((c): c is string => !!c)));
+  const studioCats = Array.from(new Set(initialForms.map((f) => f.summary.category).filter((c): c is string => !!c)));
 
   async function saveAsDraft() {
     if (!draft) return;
@@ -310,8 +310,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setTab(wasEditing ? "all" : "new");
   }
 
-  function editExisting(f: FormRow) {
-    setDraft(f.schema);
+  async function editExisting(f: FormRow) {
+    let schema = f.schema;
+    if (!schema) {
+      const res = await loadFormSchema(f.id);
+      if ("error" in res) { await alertDialog(res.error); return; }
+      schema = res.schema;
+    }
+    setDraft(schema);
     setEditingId(f.id);
     setView("mobile");
     setSelKey(null);
@@ -818,7 +824,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {initialForms.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("studio.emptyForms")}</span>}
           {initialForms
             .filter((f) => listFilter === "all" || f.status === listFilter)
-            .filter((f) => catFilter === "all" || (f.schema.category || "") === catFilter)
+            .filter((f) => catFilter === "all" || (f.summary.category || "") === catFilter)
             .filter((f) => !search.trim() || f.title.toLowerCase().includes(search.trim().toLowerCase()))
             .map((f) => (
             <div key={f.id} style={{ display: "flex", alignItems: "center", gap: 14, border: "1px solid var(--line)", borderRadius: 12, padding: "14px 16px", background: "var(--surface)", flexWrap: "wrap" }}>
@@ -827,13 +833,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>{" "}
                 {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="fail">{t("studio.stArchived")}</Pill>}
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
-                  {f.schema.category && <span style={{ display: "inline-block", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "0 6px", marginRight: 6, color: "var(--ink-2)" }}>{categoryLabel(f.schema.category, lang)}</span>}
-                  {tt("forms.stepsFields", { steps: f.schema.steps.length, fields: countFields(f.schema) })}
+                  {f.summary.category && <span style={{ display: "inline-block", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "0 6px", marginRight: 6, color: "var(--ink-2)" }}>{categoryLabel(f.summary.category, lang)}</span>}
+                  {tt("forms.stepsFields", { steps: f.summary.steps, fields: f.summary.fields })}
                 </small>
               </div>
               <div className="krok-row-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {/* เรียงตามการใช้งาน: แก้ไข → แชร์ → QR → เผยแพร่/ยกเลิก → ลบ */}
-                <Button onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></Button>
+                <AsyncButton onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></AsyncButton>
                 <Button onClick={() => setShareForm(f)} title={t("share.title")}>
                   <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
                   <span className="krok-btn-label"> {t("share.short")}</span>
@@ -873,6 +879,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           teams={teams}
           members={members.map((m) => ({ user_id: m.user_id, name: m.name }))}
           onClose={() => setShareForm(null)}
+          privacyNotice={shareForm.summary.privacy_notice}
           onSaved={() => { setShareForm(null); router.refresh(); }}
         />
       )}

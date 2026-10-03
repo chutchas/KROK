@@ -1,3 +1,5 @@
+import { Suspense } from "react";
+import QuotaHint from "@/components/QuotaHint";
 import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import TeamClient, { type Member, type Invite, type Team } from "./TeamClient";
@@ -51,6 +53,8 @@ export default async function TeamPage() {
   }));
 
   return (
+    <>
+    <Suspense fallback={null}><QuotaHint session={session} metrics={["members"]} /></Suspense>
     <TeamClient
       me={session.userId}
       myRole={session.role}
@@ -60,5 +64,6 @@ export default async function TeamPage() {
       teams={teamRows}
       roleOptions={roleOptions}
     />
+    </>
   );
 }

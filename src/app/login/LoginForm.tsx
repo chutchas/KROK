@@ -23,6 +23,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(() => {
     if (sp.get("confirmed")) return { t: t("login.confirmedOk") };
+    if (sp.get("deleted")) return { t: t("login.accountDeleted") };
     const e = sp.get("auth_error");
     if (e === "reset") return { t: t("login.resetLinkFail"), err: true };
     if (e) return { t: e === "1" ? t("login.confirmFail") : `${t("login.confirmFail")} (${e})`, err: true };

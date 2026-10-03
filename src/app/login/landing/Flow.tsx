@@ -3,8 +3,8 @@ import { useEffect, useState } from "react";
 import { BarChart3, ClipboardCheck, Clock, QrCode, Smartphone, Sparkles } from "lucide-react";
 import Icon from "@/components/Icon";
 import type { IconType } from "@/components/Icon";
-import { useT } from "@/i18n/LanguageProvider";
-import type { MessageKey } from "@/i18n/dictionaries";
+import { useLp as useT } from "@/i18n/landing";
+import type { AnyKey as MessageKey } from "@/i18n/landing";
 import Reveal, { useInView } from "./Reveal";
 
 const STEPS: { icon: IconType; t: MessageKey; d: MessageKey }[] = [

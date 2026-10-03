@@ -145,12 +145,101 @@ export default function PrivacyPage() {
     },
   ];
 
+  const contactEn = LEGAL.email ? <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a> : <span>[privacy contact email]</span>;
+  const sectionsEn: LegalSection[] = [
+    { id: "roles", title: "Our role regarding your data", body: (
+      <>
+        <p>KROK is a digital forms system that organisations use to build forms, collect data and approve documents. Data in the system falls into two groups:</p>
+        <ul>
+          <li><b>Account and service-usage data</b> (e.g. name, email, activity history, payments) — {LEGAL.name} is the <b>data controller</b>.</li>
+          <li><b>Data entered into a customer organisation&apos;s forms</b> (e.g. answers, photos, signatures) — the organisation that owns the form is the <b>data controller</b> and KROK is a <b>data processor</b> acting only on that organisation&apos;s instructions, under the <Link href="/terms#dpa">data processing terms</Link>.</li>
+        </ul>
+        <p>If you filled in an organisation&apos;s form and want to exercise your rights over that data, please contact that organisation. We will help them handle your request.</p>
+      </>
+    ) },
+    { id: "collect", title: "Data we collect", body: (
+      <ul>
+        <li><b>Account data:</b> display name, email, password (one-way hashed; we never see it), profile photo, organisation/workspace name, role and teams.</li>
+        <li><b>Usage data:</b> an activity log (creating/editing forms, submitting, approving) with timestamps, a device ID when the organisation enables device lock, and IP addresses used temporarily to prevent abuse.</li>
+        <li><b>Payment data:</b> plan, invoices and payment status. Card or bank details are entered into and stored by the payment provider; we do not store card numbers.</li>
+        <li><b>Form data:</b> whatever the organisation&apos;s form asks for, which may include names, text, numbers, photos, signatures, scanned documents and the respondent&apos;s name (public forms).</li>
+        <li><b>Communications:</b> messages you send us.</li>
+      </ul>
+    ) },
+    { id: "purpose", title: "Purposes and legal bases", body: (
+      <ul>
+        <li>Providing the service under contract: accounts, sign-in, workspaces, members, forms, documents, approvals and notifications (contract — Section 24(3)).</li>
+        <li>Security: detecting and preventing abuse, rate limiting, keeping audit logs (legitimate interests — Section 24(5)).</li>
+        <li>Billing and accounting records (contract and legal obligation — Sections 24(3), 24(6)).</li>
+        <li>Improving the service using aggregated usage statistics (legitimate interests).</li>
+        <li>Complying with the law or orders of competent authorities (Section 24(6)).</li>
+      </ul>
+    ) },
+    { id: "ai", title: "AI features", body: (
+      <p>When a user chooses an AI feature (generate a form from text/images, check a photo, read data from a document), the relevant text or images are sent to the large language model (LLM) provider we use, only to process them and return the result. We choose services whose terms do not use API data to train models. AI output can be wrong and should be checked before confirming. Organisations that do not want data sent to AI can simply not use these features.</p>
+    ) },
+    { id: "share", title: "Sharing with others", body: (
+      <>
+        <p>We do not sell personal data. We share data only as needed with providers that help run the service (sub-processors), who are bound to confidentiality and security:</p>
+        <ul>
+          <li>Database, authentication and file storage infrastructure (Supabase)</li>
+          <li>Web hosting and delivery network (Vercel)</li>
+          <li>AI model providers (only when AI features are used)</li>
+          <li>Payment providers (e.g. Stripe, Omise, 2C2P, PromptPay, as enabled)</li>
+          <li>Email delivery for sign-in confirmations and notifications</li>
+        </ul>
+        <p>A customer organisation may also configure data to be sent to its own systems (e.g. LINE, email, webhooks, API). Such disclosures follow that organisation&apos;s instructions.</p>
+      </>
+    ) },
+    { id: "transfer", title: "International transfers", body: (
+      <p>Some infrastructure providers may store or process data on servers outside Thailand. We choose providers with adequate data protection standards and contractual safeguards (e.g. Standard Contractual Clauses) in line with Sections 28–29 of the Personal Data Protection Act and related notifications.</p>
+    ) },
+    { id: "retention", title: "Retention", body: (
+      <ul>
+        <li>Account data: for as long as the account exists, then deleted or anonymised within 90 days of closure unless the law requires longer.</li>
+        <li>Form data and documents: as set by the organisation that owns the form; deleted when the organisation deletes it or within 90 days after the service ends.</li>
+        <li>Form drafts: deleted automatically after 30 days without edits.</li>
+        <li>Accounting and tax records: for the period required by law (generally 5–10 years).</li>
+        <li>Backups: overwritten on the provider&apos;s rotation cycle.</li>
+      </ul>
+    ) },
+    { id: "rights", title: "Your rights", body: (
+      <>
+        <p>Under the Personal Data Protection Act B.E. 2562 (2019) you have the right to access and obtain a copy, data portability, to object, to erasure or anonymisation, to restriction, to rectification, and to withdraw consent where consent is the basis.</p>
+        <p>Send requests to {contactEn}. We respond within 30 days and may ask you to verify your identity first. You can edit some profile data yourself on the <Link href="/settings/profile">Profile</Link> page.</p>
+        <p>If you believe the law has been breached, you may complain to the Office of the Personal Data Protection Committee (PDPC).</p>
+      </>
+    ) },
+    { id: "security", title: "Security", body: (
+      <ul>
+        <li>Encryption in transit (HTTPS/TLS) and the infrastructure providers&apos; encryption at rest.</li>
+        <li>Each organisation&apos;s data is separated by database-level access control (Row Level Security) and role-based permissions.</li>
+        <li>Audit logs for key actions, rate limiting and periodic security reviews.</li>
+        <li>If a personal data breach poses a risk, we notify the PDPC within 72 hours of becoming aware and notify affected people or customer organisations without undue delay, as the law requires.</li>
+      </ul>
+    ) },
+    { id: "cookies", title: "Cookies and on-device storage", body: (
+      <p>We use only cookies and browser storage that are strictly necessary: sign-in cookies, the selected workspace, language and theme, and an offline queue that keeps unsent documents on the device until it is back online. We do not use advertising or third-party tracking cookies.</p>
+    ) },
+    { id: "minors", title: "Minors", body: <p>The service is designed for organisations and adult users. We do not intend to collect minors&apos; data directly. If a customer organisation uses a form to collect minors&apos; data, that organisation must obtain consent from the holder of parental responsibility as the law requires.</p> },
+    { id: "contact", title: "Contact us", body: <p>{LEGAL.name}<br />{LEGAL.address}<br />Email: {contactEn}</p> },
+    { id: "changes", title: "Changes to this policy", body: <p>We may update this policy from time to time. For material changes we will notify you in the app or by email before they take effect. The effective date and version are shown at the top of this page.</p> },
+  ];
+
   return (
-    <LegalDoc
-      title="นโยบายความเป็นส่วนตัว"
-      intro={<p>นโยบายนี้อธิบายว่าเราเก็บ ใช้ เปิดเผย และคุ้มครองข้อมูลส่วนบุคคลอย่างไรเมื่อคุณใช้ KROK รวมถึงสิทธิของคุณตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>}
-      sections={sections}
-      other={{ href: "/terms", label: "ข้อกำหนดการใช้งาน" }}
-    />
+    <LegalDoc docs={{
+      th: {
+        title: "นโยบายความเป็นส่วนตัว",
+        intro: <p>นโยบายนี้อธิบายว่าเราเก็บ ใช้ เปิดเผย และคุ้มครองข้อมูลส่วนบุคคลอย่างไรเมื่อคุณใช้ KROK รวมถึงสิทธิของคุณตามพระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562</p>,
+        sections,
+        other: { href: "/terms", label: "ข้อกำหนดการใช้งาน" },
+      },
+      en: {
+        title: "Privacy Policy",
+        intro: <p>This policy explains how we collect, use, disclose and protect personal data when you use KROK, and your rights under Thailand&apos;s Personal Data Protection Act B.E. 2562 (2019).</p>,
+        sections: sectionsEn,
+        other: { href: "/terms", label: "Terms of Service" },
+      },
+    }} />
   );
 }

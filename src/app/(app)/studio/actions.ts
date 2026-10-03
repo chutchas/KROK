@@ -104,9 +104,22 @@ function deviceScopeOf(requireDevice: boolean, vis: Visibility, scope: "any" | "
 }
 
 // เปลี่ยนสิทธิ์การแชร์ของฟอร์มจากหน้า "ฟอร์มทั้งหมด" (ไม่ต้องเปิด editor)
+/** schema เต็มของฟอร์ม — Studio โหลดตอนกดแก้ไข (รายการใช้แค่สรุปย่อ) */
+export async function loadFormSchema(id: string): Promise<{ schema: FormSchema } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  const supabase = await createClient();
+  const { data, error } = await supabase.from("forms").select("schema").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+  if (error || !data) return { error: error?.message || "ไม่พบฟอร์ม" };
+  return { schema: data.schema as FormSchema };
+}
+
 export async function setFormVisibility(
   formId: string,
-  rawVisibility: unknown
+  rawVisibility: unknown,
+  /** ประกาศความเป็นส่วนตัว (ฟอร์มสาธารณะ) — undefined = ไม่แก้ · "" = ใช้ข้อความมาตรฐาน */
+  privacyNotice?: string
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -114,9 +127,22 @@ export async function setFormVisibility(
 
   const vis = sanitizeVisibility(rawVisibility);
   const supabase = await createClient();
+  const patch: Record<string, unknown> = { visibility: vis.mode, visible_teams: vis.teamIds, visible_users: vis.userIds };
+  if (typeof privacyNotice === "string") {
+    const { data: cur } = await supabase.from("forms").select("schema").eq("id", formId).eq("tenant_id", session.tenantId).maybeSingle();
+    if (!cur) return { error: "ไม่พบฟอร์ม" };
+    try {
+      const sc = sanitizeSchema(cur.schema);
+      const pn = privacyNotice.trim().slice(0, 2000);
+      if (pn) sc.privacy_notice = pn; else delete sc.privacy_notice;
+      patch.schema = sc;
+    } catch {
+      return { error: "schema ไม่ถูกต้อง" };
+    }
+  }
   const { error } = await supabase
     .from("forms")
-    .update({ visibility: vis.mode, visible_teams: vis.teamIds, visible_users: vis.userIds })
+    .update(patch)
     .eq("id", formId)
     .eq("tenant_id", session.tenantId);
   if (error) return { error: error.message };

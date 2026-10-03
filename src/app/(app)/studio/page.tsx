@@ -1,7 +1,10 @@
+import { Suspense } from "react";
+import QuotaHint from "@/components/QuotaHint";
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import StudioClient from "./StudioClient";
 import type { FormSchema } from "@/lib/form-schema";
+import { readSummary, summaryOf, type FormSummary } from "@/lib/form-summary";
 import { getTemplate } from "@/lib/form-templates";
 
 export const dynamic = "force-dynamic";
@@ -10,7 +13,9 @@ export interface FormRow {
   id: string;
   title: string;
   icon: string;
-  schema: FormSchema;
+  /** โหลดตอนกดแก้ไข (ไม่มี = ยังไม่โหลด) — มีเฉพาะตอนยังไม่รัน migration 0050 */
+  schema?: FormSchema;
+  summary: FormSummary;
   created_by_name: string;
   requires_approval: boolean;
   approval_chain: { user_id: string; name: string; label: string }[];
@@ -32,13 +37,16 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
     );
 
   const supabase = await createClient();
-  const [{ data }, { data: memberRows }, { data: teamRows }] = await Promise.all([
-    supabase
-      .from("forms")
-      .select("id, title, icon, schema, requires_approval, approval_chain, visibility, visible_teams, visible_users, status, require_approved_device, device_scope")
-      .eq("tenant_id", session.tenantId)
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
+  const cols = "id, title, icon, requires_approval, approval_chain, visibility, visible_teams, visible_users, status, require_approved_device, device_scope";
+  const formsQuery = (extra: string) => supabase
+    .from("forms")
+    .select(`${cols}, ${extra}`)
+    .eq("tenant_id", session.tenantId)
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  // สรุปย่อ (0050) แทน schema เต็มทุกฟอร์ม — schema โหลดตอนกดแก้ไข
+  const [first, { data: memberRows }, { data: teamRows }] = await Promise.all([
+    formsQuery("summary"),
     supabase
       .from("memberships")
       .select("user_id, name, email, role")
@@ -50,12 +58,16 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       .eq("tenant_id", session.tenantId)
       .order("created_at", { ascending: true }),
   ]);
+  // ยังไม่รัน 0050 (ไม่มีคอลัมน์ summary) → ดึง schema เต็มแบบเดิม
+  const res = first.error ? await formsQuery("schema") : first;
+  const data = (res.data || []) as unknown as Record<string, unknown>[];
 
-  const forms: FormRow[] = (data || []).map((f) => ({
+  const forms: FormRow[] = data.map((f) => ({
     id: f.id as string,
     title: f.title as string,
     icon: f.icon as string,
-    schema: f.schema as FormSchema,
+    ...(f.schema ? { schema: f.schema as FormSchema } : {}),
+    summary: f.schema ? summaryOf(f.schema as FormSchema) : readSummary(f.summary),
     created_by_name: "",
     requires_approval: (f.requires_approval as boolean) ?? false,
     approval_chain: (f.approval_chain as FormRow["approval_chain"]) ?? [],
@@ -79,6 +91,12 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const { tpl, mode } = await searchParams;
   const template = tpl ? getTemplate(tpl)?.schema ?? null : null;
 
-  return <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template}
-    initialMode={mode === "template" || mode === "file" ? mode : "prompt"} />;
+  return (
+    <>
+      {/* โควตาใกล้เต็ม/เต็ม — แจ้งก่อนลงมือสร้าง (ไม่บล็อกการโหลดหน้า) */}
+      <Suspense fallback={null}><QuotaHint session={session} metrics={["forms", "ai_form_gen", "ai_form_from_image"]} /></Suspense>
+      <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template}
+        initialMode={mode === "template" || mode === "file" ? mode : "prompt"} />
+    </>
+  );
 }

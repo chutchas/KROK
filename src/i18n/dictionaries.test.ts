@@ -19,3 +19,17 @@ describe("dictionaries TH/EN parity", () => {
     for (const [k, v] of Object.entries(DICT.en)) expect(v, `en.${k} ว่าง`).toBeTruthy();
   });
 });
+
+describe("landing dictionaries TH/EN parity", async () => {
+  const { lpTh } = await import("./landing.th");
+  const { lpEn } = await import("./landing.en");
+  it("key หน้าแรกตรงกันและไม่ว่าง", () => {
+    expect(Object.keys(lpEn).sort()).toEqual(Object.keys(lpTh).sort());
+    for (const [k, v] of Object.entries(lpTh)) expect(v, `lp th ${k}`).toBeTruthy();
+    for (const [k, v] of Object.entries(lpEn)) expect(v, `lp en ${k}`).toBeTruthy();
+  });
+  it("ไม่มี key lp.* ค้างในพจนานุกรมหลัก", async () => {
+    const { th } = await import("./th");
+    expect(Object.keys(th).filter((k) => k.startsWith("lp."))).toEqual([]);
+  });
+});

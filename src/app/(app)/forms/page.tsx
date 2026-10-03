@@ -1,10 +1,13 @@
+import { Suspense } from "react";
+import QuotaHint from "@/components/QuotaHint";
 import { runLater } from "@/lib/background";
 import { enforceMenu, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
-import { countFields, type FormSchema } from "@/lib/form-schema";
+import { type FormSchema } from "@/lib/form-schema";
+import { readSummary, summaryOf } from "@/lib/form-summary";
 import FormsListClient, { type DraftListItem, type FormListItem } from "./FormsListClient";
 import type { CaseListItem } from "./CasesList";
-import { isWorkflowSchema, lastReturn, type CaseHistoryItem } from "@/lib/case-flow";
+import { lastReturn, type CaseHistoryItem } from "@/lib/case-flow";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +15,8 @@ interface FormRow {
   id: string;
   title: string;
   icon: string;
-  schema: FormSchema;
+  schema?: FormSchema;
+  summary?: unknown;
   visibility: "all" | "teams" | "users" | null;
   visible_teams: string[] | null;
   visible_users: string[] | null;
@@ -25,21 +29,21 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
   const supabase = await createClient();
   // แบบร่างไม่ต้องรอข้อมูลทีม — เริ่มโหลดพร้อมกันเลย
   const draftsP = loadDrafts(supabase, session.tenantId, session.userId);
-  const [{ data }, { data: teamIdRows }] = await Promise.all([
-    supabase
-      .from("forms")
-      .select("id, title, icon, schema, visibility, visible_teams, visible_users")
-      .eq("tenant_id", session.tenantId)
-      .eq("status", "published")
-      .is("deleted_at", null)
-      .order("created_at", { ascending: false }),
-    supabase.rpc("my_team_ids"),
-  ]);
+  const formsQuery = (extra: string) => supabase
+    .from("forms")
+    .select(`id, title, icon, visibility, visible_teams, visible_users, ${extra}`)
+    .eq("tenant_id", session.tenantId)
+    .eq("status", "published")
+    .is("deleted_at", null)
+    .order("created_at", { ascending: false });
+  // สรุปย่อ (0050) แทน schema เต็ม · ยังไม่รัน = ดึง schema แบบเดิม
+  const [first, { data: teamIdRows }] = await Promise.all([formsQuery("summary"), supabase.rpc("my_team_ids")]);
+  const { data } = first.error ? await formsQuery("schema") : first;
 
   const myTeams = new Set(((teamIdRows as string[] | null) || []).map(String));
   const manager = canManage(session.role);
 
-  const visible = ((data || []) as FormRow[]).filter((f) => {
+  const visible = ((data || []) as unknown as FormRow[]).filter((f) => {
     if (manager) return true; // ผู้ดูแลเห็นทุกฟอร์มเพื่อทดสอบ/แก้ไข
     const mode = f.visibility ?? "all";
     if (mode === "all") return true;
@@ -48,15 +52,10 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
     return true;
   });
 
-  const forms: FormListItem[] = visible.map((f) => ({
-    id: f.id,
-    title: f.title,
-    icon: f.icon,
-    steps: f.schema.steps.length,
-    fields: countFields(f.schema),
-    category: f.schema.category,
-    workflow: isWorkflowSchema(f.schema),
-  }));
+  const forms: FormListItem[] = visible.map((f) => {
+    const sm = f.schema ? summaryOf(f.schema) : readSummary(f.summary);
+    return { id: f.id, title: f.title, icon: f.icon, steps: sm.steps, fields: sm.fields, category: sm.category, workflow: sm.workflow };
+  });
 
   const [drafts, cases] = await Promise.all([
     draftsP,
@@ -64,6 +63,9 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
   ]);
 
   return (
+    <>
+    {/* ส่งฟอร์มครบโควตาเดือน/พื้นที่เต็ม = กดส่งแล้วจะไม่ผ่าน → บอกก่อนเริ่มกรอก */}
+    <Suspense fallback={null}><QuotaHint session={session} metrics={["submissions", "storage"]} onlyFull={!manager} /></Suspense>
     <FormsListClient
       forms={forms}
       drafts={drafts}
@@ -72,6 +74,7 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
       highlightId={highlightId}
       canCreate={manager}
     />
+    </>
   );
 }
 
@@ -100,18 +103,22 @@ async function loadDrafts(supabase: ServerClient, tenantId: string, userId: stri
       }
     });
 
-    const { data, error } = await supabase
+    const draftsQuery = (formCols: string) => supabase
       .from("submission_drafts")
-      .select("id, form_id, title, step_idx, filled, total, updated_at, expires_at, forms(title, icon, schema, status, deleted_at)")
+      .select(`id, form_id, title, step_idx, filled, total, updated_at, expires_at, forms(title, icon, status, deleted_at, ${formCols})`)
       .eq("user_id", userId)
       .eq("tenant_id", tenantId)
       .gte("expires_at", nowIso)
       .order("updated_at", { ascending: false })
       .limit(200);
+    const firstD = await draftsQuery("summary");
+    const { data, error } = firstD.error ? await draftsQuery("schema") : firstD; // ยังไม่รัน 0050
     if (error || !data) return [];
-    return (data as Record<string, unknown>[]).map((d) => {
-      const fr = d.forms as { title?: string; icon?: string; schema?: FormSchema; status?: string; deleted_at?: string | null } | { title?: string }[] | null;
-      const f = (Array.isArray(fr) ? fr[0] : fr) as { title?: string; icon?: string; schema?: FormSchema; status?: string; deleted_at?: string | null } | null;
+    return (data as unknown as Record<string, unknown>[]).map((d) => {
+      type DF = { title?: string; icon?: string; schema?: FormSchema; summary?: unknown; status?: string; deleted_at?: string | null };
+      const fr = d.forms as DF | DF[] | null;
+      const f = (Array.isArray(fr) ? fr[0] : fr) ?? null;
+      const sm = f?.schema ? summaryOf(f.schema) : f ? readSummary(f.summary) : null;
       return {
         id: d.id as string,
         formId: d.form_id as string,
@@ -120,12 +127,12 @@ async function loadDrafts(supabase: ServerClient, tenantId: string, userId: stri
         available: !!f && f.status === "published" && !f.deleted_at,
         title: (d.title as string) || "",
         stepIdx: (d.step_idx as number) ?? 0,
-        steps: f?.schema?.steps?.length ?? 1,
+        steps: sm?.steps || 1,
         filled: (d.filled as number) ?? 0,
         total: (d.total as number) ?? 0,
         updatedAt: d.updated_at as string,
         expiresAt: d.expires_at as string,
-        category: f?.schema?.category,
+        category: sm?.category,
       };
     });
   } catch {

@@ -1,8 +1,8 @@
 "use client";
 import { ArrowRight, CameraIcon, Check, CircleCheckBig, LineChart, LogIn, PlayCircle, QrCode } from "lucide-react";
 import Icon from "@/components/Icon";
-import { useT } from "@/i18n/LanguageProvider";
-import type { MessageKey } from "@/i18n/dictionaries";
+import { useLp as useT } from "@/i18n/landing";
+import type { AnyKey as MessageKey } from "@/i18n/landing";
 import Reveal from "./Reveal";
 
 const TRUST: MessageKey[] = ["lp.trust1", "lp.trust2", "lp.trust3", "lp.trust4"];

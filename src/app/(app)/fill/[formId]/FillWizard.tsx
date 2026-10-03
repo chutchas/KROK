@@ -526,14 +526,10 @@ export default function FillWizard(props: Props) {
     if (f.type === "text" && str && f.text_format === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(str)) return t("fw.err.email");
     if (f.type === "text" && str && f.text_format === "phone" && !/^\+?[0-9][0-9\s-]{7,14}$/.test(str)) return t("fw.err.phone");
     if (f.type === "table") {
-      const rows = asRows(a.value).filter((r) => r && typeof r === "object" && Object.values(r).some((v) => String(v ?? "").trim() !== ""));
-      if (f.required && rows.length === 0) return t("fw.err.tableRow");
-      const reqCols = (f.columns || []).filter((c) => c.required && c.type !== "formula");
-      for (let ri = 0; ri < rows.length; ri++)
-        for (const c of reqCols) {
-          const v = c.type === "photo" ? cellPhotoKey(rows[ri], c.id) : String(rows[ri][c.id] ?? "").trim();
-          if (!v) return tt("fw.err.tableCell", { row: ri + 1, col: c.label });
-        }
+      const all = asRows(a.value);
+      if (f.required && !all.some(rowHasValue)) return t("fw.err.tableRow");
+      const bad = firstBadRow(f.columns || [], all);
+      if (bad) return tt("fw.err.tableCell", { row: bad.row + 1, col: bad.col.label });
       return undefined;
     }
     if (f.type === "pass_fail" && a.value === "fail" && f.on_fail_require_note && !a.note?.trim()) return t("fw.failNoteRequired");
@@ -1389,9 +1385,29 @@ function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Disp
 }
 
 // ตารางกรอกข้อมูล — desktop = ตาราง, มือถือ = การ์ดต่อแถว
+/** แถวมีค่าอย่างน้อย 1 ช่อง (แถวว่างล้วนไม่ตรวจ) */
+function rowHasValue(r: TableRow | null | undefined): boolean {
+  return !!r && typeof r === "object" && Object.values(r).some((v) => String(v ?? "").trim() !== "");
+}
+
+/** แถวแรกที่ยังขาดคอลัมน์บังคับ (index ตามแถวจริง รวมแถวว่าง) — ไม่มี = null */
+function firstBadRow(columns: TableColumn[], rows: TableRow[]): { row: number; col: TableColumn } | null {
+  const reqCols = columns.filter((c) => c.required && c.type !== "formula");
+  for (let ri = 0; ri < rows.length; ri++) {
+    if (!rowHasValue(rows[ri])) continue;
+    for (const c of reqCols) {
+      const v = c.type === "photo" ? cellPhotoKey(rows[ri], c.id) : String(rows[ri][c.id] ?? "").trim();
+      if (!v) return { row: ri, col: c };
+    }
+  }
+  return null;
+}
+
 function TableInput({
-  columns, minRows, maxRows, initial, onChange, variant, fieldId, media,
+  columns, minRows, maxRows, initial, onChange, variant, fieldId, media, error,
 }: {
+  /** ข้อความผิดพลาดของฟิลด์ — มีขึ้นมาใหม่ = กางแถวที่ผิดแล้วเลื่อนไปให้เห็น */
+  error?: string;
   fieldId: string;
   /** จำนวนแถวสูงสุด (ไม่ระบุ = ไม่จำกัด) */
   maxRows?: number;
@@ -1425,6 +1441,22 @@ function TableInput({
     return firstEmpty >= 0 ? firstEmpty : rows.length - 1;
   });
   const addRow = () => { if (!canAdd) return; addRowRaw(); setOpenRow(rows.length); };
+  // กดส่ง/ถัดไปแล้วมีแถวผิด → กางแถวนั้น + เลื่อนไปหา + กรอบแดง
+  const bad = error ? firstBadRow(cols, rows) : null;
+  const badRow = error ? (bad ? bad.row : 0) : -1;
+  const rowEls = useRef<(HTMLElement | null)[]>([]);
+  const [prevErr, setPrevErr] = useState(error);
+  const [focusTick, setFocusTick] = useState(0);
+  if (error !== prevErr) {
+    setPrevErr(error);
+    if (error) { setOpenRow(badRow); setFocusTick((n) => n + 1); }
+  }
+  useEffect(() => {
+    if (!focusTick || badRow < 0) return;
+    const id = window.setTimeout(() => rowEls.current[badRow]?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+    return () => window.clearTimeout(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focusTick]);
   const colLabel = (c: TableColumn) => <>{c.type === "formula" ? "ƒ " : ""}{c.label}{c.required && <span style={{ color: "var(--fail)" }}> *</span>}</>;
   const rowSummary = (r: TableRow) => cols
     .filter((c) => c.type !== "photo")
@@ -1462,14 +1494,14 @@ function TableInput({
         <div style={{ display: "grid", gap: 8 }}>
           {rows.map((r, ri) => ri !== openRow && variant !== "compact" ? (
             // แถวที่พับ: แตะเพื่อแก้
-            <button key={ri} type="button" onClick={() => setOpenRow(ri)}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", border: `1px solid ${ink.cardBorder}`, borderRadius: 10, padding: "10px 12px", background: ink.card, color: ink.text, fontFamily: "inherit", cursor: "pointer" }}>
+            <button key={ri} type="button" onClick={() => setOpenRow(ri)} ref={(el) => { rowEls.current[ri] = el; }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", border: `1px solid ${ri === badRow ? "var(--fail)" : ink.cardBorder}`, borderRadius: 10, padding: "10px 12px", background: ink.card, color: ink.text, fontFamily: "inherit", cursor: "pointer" }}>
               <b style={{ fontSize: ".78rem", color: ink.muted, whiteSpace: "nowrap" }}>{tt("fw.rowN", { n: ri + 1 })}</b>
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: ".86rem", color: rowSummary(r) ? ink.text : ink.muted }}>{rowSummary(r) || t("fw.rowEmpty")}</span>
               <span style={{ fontSize: ".78rem", color: "var(--accent)", whiteSpace: "nowrap" }}>{t("fw.rowEdit")}</span>
             </button>
           ) : (
-            <div key={ri} style={{ border: `1px solid ${variant !== "compact" ? "var(--accent)" : ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
+            <div key={ri} ref={(el) => { rowEls.current[ri] = el; }} style={{ border: `${ri === badRow ? 2 : 1}px solid ${ri === badRow ? "var(--fail)" : variant !== "compact" ? "var(--accent)" : ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                 <b style={{ fontSize: ".78rem", color: ink.muted }}>{tt("fw.rowN", { n: ri + 1 })}</b>
                 <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
@@ -1507,7 +1539,7 @@ function TableInput({
           </thead>
           <tbody>
             {rows.map((_, ri) => (
-              <tr key={ri}>
+              <tr key={ri} ref={(el) => { rowEls.current[ri] = el; }} style={ri === badRow ? { outline: "2px solid var(--fail)", outlineOffset: -2 } : undefined}>
                 {cols.map((c) => <td key={c.id} style={{ padding: "3px 5px", verticalAlign: "top" }}>{cellInput(ri, c)}</td>)}
                 <td style={{ padding: "3px 2px", textAlign: "center", verticalAlign: "middle" }}>
                   <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
@@ -2044,6 +2076,7 @@ function FieldControl({
             initial={Array.isArray(initial.value) && typeof initial.value[0] === "object" ? (initial.value as TableRow[]) : []}
             onChange={(rows) => onPatch({ value: rows }, false)}
             variant={compact ? "compact" : paper ? "paper" : "normal"}
+            error={error}
           />
         )}
       </div>
