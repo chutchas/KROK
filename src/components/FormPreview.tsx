@@ -103,6 +103,12 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
       data-krok-keep=""
       data-drop-fid={dropFid}
       onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : undefined}
+      // เลือกด้วยคีย์บอร์ดได้: Tab มาที่การ์ด แล้ว Enter/Space (ลบ/ย้อนกลับ/Alt+↑↓ จัดการที่หน้า Studio)
+      tabIndex={onSelect ? 0 : undefined}
+      role={onSelect ? "button" : undefined}
+      aria-pressed={onSelect ? !!selected : undefined}
+      aria-label={onSelect ? f.label || t("fw.noName") : undefined}
+      onKeyDown={onSelect ? (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect(); } } : undefined}
       style={{
         position: "relative",
         opacity: dragging ? 0.4 : 1,
@@ -255,6 +261,10 @@ export default function FormPreview({
               data-krok-keep=""
               data-drop-step={`${i}:start`}
               onClick={editable ? (e) => { e.stopPropagation(); onSelect!(stepKey); } : undefined}
+              tabIndex={editable ? 0 : undefined}
+              role={editable ? "button" : undefined}
+              aria-pressed={editable ? stepSel : undefined}
+              onKeyDown={editable ? (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect!(stepKey); } } : undefined}
               style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
             >
               <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>

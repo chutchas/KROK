@@ -1,7 +1,7 @@
 "use client";
 import IconPicker from "@/components/IconPicker";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
@@ -22,6 +22,8 @@ import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 import dynamic from "next/dynamic";
+import { useUndo } from "@/lib/use-undo";
+import { blockLabel, moveInOrder, removeBlock } from "@/lib/editor-ops";
 import { printWhenReady } from "@/lib/print";
 
 // ส่วนที่เปิดเฉพาะเมื่อใช้งาน — แยก bundle ออกจากหน้า Studio (โหลดหน้าแรกเร็วขึ้น)
@@ -290,6 +292,54 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setSelKey(`s:${id}`);
   }
 
+  // ---- ย้อนกลับ/ทำซ้ำ + คีย์ลัดที่ใช้ได้ทั้งมุมมองมือถือและกระดาษ ----
+  const history = useUndo(draft, setDraft);
+  const [toast, setToast] = useState<{ msg: string; undo?: boolean } | null>(null);
+  const toastTimer = useRef<number | null>(null);
+  const showToast = useCallback((msg: string, undo = false) => {
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    setToast({ msg, undo });
+    toastTimer.current = window.setTimeout(() => setToast(null), 5000);
+  }, []);
+  const doUndo = useCallback(() => { if (history.undo()) { setSelKey(null); setToast(null); } }, [history]);
+  const doRedo = useCallback(() => { if (history.redo()) setSelKey(null); }, [history]);
+  /** ลบบล็อก (ฟิลด์ / ขั้นตอน / ซ่อนหัวเอกสาร) แล้วให้เลิกทำได้จากแถบแจ้งเตือน */
+  const deleteKey = useCallback((key: string) => {
+    if (!draft) return;
+    const next = removeBlock(draft, key);
+    if (!next) { showToast(t("kb.lastStep")); return; }
+    const name = blockLabel(draft, key);
+    history.checkpoint();
+    setDraft(next);
+    setSelKey(null);
+    showToast(name ? tt("kb.deletedNamed", { name }) : t("kb.deleted"), true);
+  }, [draft, showToast, t, tt, history]);
+  const moveKey = useCallback((key: string, dir: -1 | 1) => {
+    if (!draft) return;
+    const next = moveInOrder(draft, key, dir);
+    if (next) { history.checkpoint(); setDraft(next); }
+  }, [draft, history]);
+
+  useEffect(() => {
+    if (tab !== "edit" || !draft) return;
+    function onKey(e: KeyboardEvent) {
+      const el = e.target as HTMLElement | null;
+      // กำลังพิมพ์ในช่อง / มีหน้าต่างซ้อนเปิดอยู่ → ไม่ยุ่ง
+      if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
+      if (document.querySelector("[role=dialog], [role=alertdialog]")) return;
+      const mod = e.ctrlKey || e.metaKey;
+      const k = e.key.toLowerCase();
+      if (mod && !e.altKey && k === "z") { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
+      if (mod && !e.altKey && k === "y") { e.preventDefault(); doRedo(); return; }
+      if (!selKey || mod) return;
+      if (k === "delete" || k === "backspace") { e.preventDefault(); deleteKey(selKey); return; }
+      if (k === "escape") { setSelKey(null); return; }
+      if (e.altKey && (k === "arrowup" || k === "arrowdown")) { e.preventDefault(); moveKey(selKey, k === "arrowup" ? -1 : 1); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [tab, draft, selKey, doUndo, doRedo, deleteKey, moveKey]);
+
   // ปิดแผงตั้งค่าฟิลด์อัตโนมัติเมื่อคลิกที่ว่างนอกแผง (เดสก์ท็อป)
   useEffect(() => {
     if (!selKey) return;
@@ -319,6 +369,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       schema = res.schema;
     }
     setDraft(schema);
+    history.reset(schema); // ไม่ให้ Ctrl+Z ย้อนไปเป็นฟอร์มที่เปิดก่อนหน้า
     setEditingId(f.id);
     setView("mobile");
     setSelKey(null);
@@ -344,6 +395,16 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
+      {toast && (
+        <div role="status" data-krok-keep="" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 95, display: "flex", alignItems: "center", gap: 12, background: "var(--ink)", color: "var(--surface)", borderRadius: 10, padding: "10px 14px", boxShadow: "0 8px 24px rgba(0,0,0,.25)", fontSize: ".88rem", maxWidth: "calc(100vw - 32px)" }}>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toast.msg}</span>
+          {toast.undo && (
+            <button type="button" onClick={doUndo} style={{ border: "none", background: "transparent", color: "var(--brand-stop-2)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", whiteSpace: "nowrap" }}>
+              {t("kb.undo")} (Ctrl+Z)
+            </button>
+          )}
+        </div>
+      )}
       {/* แท็บหลัก 3 แท็บ */}
       <div data-tour="studio-tabs" style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
         {([
@@ -582,7 +643,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
-              <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()} />
+              <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()}
+                onDeleteKey={deleteKey} onMoveKey={moveKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} />
             ) : (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
