@@ -8,7 +8,7 @@ import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperHeaderContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, ArrowUp, ArrowDown, Trash2, Settings2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard } from "lucide-react";
+import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, Trash2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard } from "lucide-react";
 import { duplicateField, findField, insertField, offsetBox, orderedKeys, parseClip, serializeClip, stepIndexOfKey } from "@/lib/editor-ops";
 
 let idc = 0;
@@ -52,7 +52,6 @@ export default function FormPaperEditor({
   onAddField,
   onAddStep,
   onDeleteKey,
-  onMoveKey,
   onUndo,
   onRedo,
   canUndo,
@@ -68,8 +67,6 @@ export default function FormPaperEditor({
   onAddStep?: () => void;
   /** ลบบล็อก (ผู้เรียกจัดการแถบ "เลิกทำ") */
   onDeleteKey?: (key: string) => void;
-  /** เลื่อนลำดับกรอก (Alt+↑↓ จัดการที่ผู้เรียก) */
-  onMoveKey?: (key: string, dir: -1 | 1) => void;
   onUndo?: () => void;
   onRedo?: () => void;
   /** อ่านตอนเปิดเมนูคลิกขวา (event handler) */
@@ -136,7 +133,7 @@ export default function FormPaperEditor({
     const target = (e.target as HTMLElement).closest<HTMLElement>("[data-block-key]")?.dataset.blockKey ?? null;
     if (target) select(target);
     // เมนูไม่ล้นขอบจอ (ความสูงประมาณตามจำนวนรายการ)
-    const estH = target ? (findField(schema, target) ? 430 : 260) : 300;
+    const estH = target ? (findField(schema, target) ? 300 : 160) : 300;
     const cx = Math.min(e.clientX, window.innerWidth - 250);
     const cy = Math.max(8, Math.min(e.clientY, window.innerHeight - estH));
     setCtx({ cx, cy, x, y, target, undo: !!canUndo?.(), redo: !!canRedo?.(), clip: !!clip.current });
@@ -388,21 +385,14 @@ export default function FormPaperEditor({
     const hasClip = c.clip;
     const sep: MenuItem = { sep: true };
     if (key && findField(schema, key)) {
-      const loc = findField(schema, key)!;
       const bx = layout[key];
       const full = !!bx && bx.w >= CANVAS_W - PAD * 2 - GRID;
-      const steps = schema.steps;
-      const last = loc.si === steps.length - 1 && loc.fi === steps[loc.si].fields.length - 1;
       return [
-        { icon: Settings2, label: t("kb.settings"), hint: "Enter", run: focusSettings },
-        sep,
         { icon: Copy, label: t("kb.copy"), hint: "Ctrl+C", run: () => copyKey(key) },
         { icon: Scissors, label: t("kb.cut"), hint: "Ctrl+X", run: () => { if (copyKey(key)) onDeleteKey?.(key); } },
         { icon: ClipboardPaste, label: t("kb.pasteAfter"), hint: "Ctrl+V", disabled: !hasClip, run: () => clip.current && pasteField(clip.current) },
         { icon: CopyPlus, label: t("kb.duplicate"), hint: "Ctrl+D", run: () => duplicate(key) },
         sep,
-        { icon: ArrowUp, label: t("kb.moveUp"), hint: "Alt+↑", disabled: loc.si === 0 && loc.fi === 0, run: () => onMoveKey?.(key, -1) },
-        { icon: ArrowDown, label: t("kb.moveDown"), hint: "Alt+↓", disabled: last, run: () => onMoveKey?.(key, 1) },
         full
           ? { icon: Columns2, label: t("kb.halfWidth"), run: () => setWidth(key, false) }
           : { icon: StretchHorizontal, label: t("kb.fullWidth"), run: () => setWidth(key, true) },
@@ -414,18 +404,13 @@ export default function FormPaperEditor({
     if (key && si >= 0) {
       return [
         { icon: Plus, label: t("kb.addFieldInStep"), run: () => addFieldAt(c.x, c.y + HEADER_H) },
-        { icon: Settings2, label: t("kb.stepSettings"), hint: "Enter", run: focusSettings },
         { icon: ClipboardPaste, label: t("kb.pasteInStep"), hint: "Ctrl+V", disabled: !hasClip, run: () => clip.current && pasteField(clip.current) },
-        sep,
-        { icon: ArrowUp, label: t("kb.stepUp"), hint: "Alt+↑", disabled: si === 0, run: () => onMoveKey?.(key, -1) },
-        { icon: ArrowDown, label: t("kb.stepDown"), hint: "Alt+↓", disabled: si === schema.steps.length - 1, run: () => onMoveKey?.(key, 1) },
         sep,
         { icon: Trash2, label: t("kb.deleteStep"), hint: "Del", danger: true, disabled: schema.steps.length <= 1, run: () => onDeleteKey?.(key) },
       ];
     }
     if (key === HEADER_KEY || key === META_KEY) {
       return [
-        { icon: Settings2, label: t("kb.headerSettings"), hint: "Enter", run: focusSettings },
         { icon: EyeOff, label: t("kb.hide"), hint: "Del", run: () => onDeleteKey?.(key) },
       ];
     }

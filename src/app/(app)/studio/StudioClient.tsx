@@ -644,7 +644,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
               <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()}
-                onDeleteKey={deleteKey} onMoveKey={moveKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} />
+                onDeleteKey={deleteKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} />
             ) : (
               <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
