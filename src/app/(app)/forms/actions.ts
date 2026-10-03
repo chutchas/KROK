@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
@@ -20,7 +21,7 @@ export async function deleteDraftAction(id: string): Promise<{ ok: true } | { er
   const paths = Object.values((data.media as Record<string, string>) || {});
   if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
   const { error } = await supabase.from("submission_drafts").delete().eq("id", id).eq("user_id", session.userId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/forms");
   return { ok: true };
 }

@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { rateLimited } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
 import { createHash } from "crypto";
@@ -177,7 +178,7 @@ export async function setDeviceStatus(
     .update(patch)
     .eq("id", id)
     .eq("tenant_id", g.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   await audit(`device.${status}`, id);
   revalidatePath("/settings/devices");
@@ -230,7 +231,7 @@ export async function setFormDeviceScope(
     .eq("id", formId)
     .eq("tenant_id", g.session.tenantId)
     .eq("require_approved_device", true);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   await audit("form.device_scope", formId, { scope });
   revalidatePath("/settings/devices");
@@ -254,7 +255,7 @@ export async function toggleFormDevice(
         { tenant_id: g.session.tenantId, form_id: formId, device_id: deviceId, created_by: g.session.userId },
         { onConflict: "form_id,device_id" }
       );
-    if (error) return { error: error.message };
+    if (error) return { error: dbError(error) };
   } else {
     const { error } = await g.supabase
       .from("form_devices")
@@ -262,7 +263,7 @@ export async function toggleFormDevice(
       .eq("form_id", formId)
       .eq("device_id", deviceId)
       .eq("tenant_id", g.session.tenantId);
-    if (error) return { error: error.message };
+    if (error) return { error: dbError(error) };
   }
 
   await audit(linked ? "form.device_link" : "form.device_unlink", deviceId, { form_id: formId });
@@ -279,7 +280,7 @@ export async function renameDevice(id: string, name: string): Promise<{ ok: true
     .update({ name: String(name || "").slice(0, 80).trim() || "อุปกรณ์" })
     .eq("id", id)
     .eq("tenant_id", g.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/devices");
   return { ok: true };
 }
@@ -288,7 +289,7 @@ export async function deleteDevice(id: string): Promise<{ ok: true } | { error: 
   const g = await manageGuard();
   if (!g.ok) return { error: g.error };
   const { error } = await g.supabase.from("devices").delete().eq("id", id).eq("tenant_id", g.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await audit("device.delete", id);
   revalidatePath("/settings/devices");
   return { ok: true };

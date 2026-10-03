@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -159,7 +160,7 @@ export async function updateDataset(id: string, patch: DatasetPatch): Promise<R>
 
   const supabase = await createClient();
   const { error } = await supabase.from("datasets").update(upd).eq("id", id).eq("tenant_id", g.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath(`/datasets/${id}`);
   revalidatePath("/datasets");
   return { ok: true };
@@ -175,7 +176,7 @@ export async function deleteDataset(id: string): Promise<R> {
   if (used.length)
     return { error: `ลบไม่ได้ — ยังมี ${used.length} ฟอร์มใช้อยู่ (${used.slice(0, 3).map((f) => f.title).join(", ")}) ให้เปลี่ยนฟิลด์ในฟอร์มก่อน` };
   const { error } = await supabase.from("datasets").delete().eq("id", id).eq("tenant_id", g.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await audit(g.session, "dataset.delete", id, { name: ds.name, rows: ds.rowCount });
   revalidatePath("/datasets");
   return { ok: true };
@@ -302,7 +303,7 @@ export async function savePullConfig(id: string, config: unknown, columns: Datas
   const { error } = await admin
     .from("dataset_secrets")
     .upsert({ dataset_id: id, tenant_id: g.session.tenantId, pull_config: cfg, updated_at: new Date().toISOString() }, { onConflict: "dataset_id" });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   const supabase = await createClient();
   await supabase.from("datasets").update({ pull_host: new URL(cfg.url).host }).eq("id", id);
   await audit(g.session, "dataset.pull_config", id, { host: new URL(cfg.url).host });
@@ -340,7 +341,7 @@ export async function rotatePushKey(id: string): Promise<R<{ key: string }>> {
   const { error } = await admin
     .from("dataset_secrets")
     .upsert({ dataset_id: id, tenant_id: g.session.tenantId, push_key_hash: k.hash, updated_at: new Date().toISOString() }, { onConflict: "dataset_id" });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await admin.from("datasets").update({ push_key_prefix: k.prefix }).eq("id", id);
   await audit(g.session, "dataset.push_key_rotate", id);
   revalidatePath(`/datasets/${id}`);

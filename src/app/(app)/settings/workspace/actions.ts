@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
@@ -17,7 +18,7 @@ export async function renameWorkspace(name: string): Promise<{ ok: true } | { er
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("rename_workspace", { p_tenant: session.tenantId, p_name: clean });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   await writeAudit({
     tenant_id: session.tenantId,
@@ -42,7 +43,7 @@ export async function deleteWorkspace(confirmName: string): Promise<{ ok: true }
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_workspace", { p_tenant: session.tenantId });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   // ไฟล์โลโก้/รูปของ workspace ใน storage ไม่ถูกลบตามตาราง — ลบทั้งโฟลเดอร์ (ลบ workspace สำเร็จแล้วเท่านั้น)
   const admin = getAdminClient();
@@ -126,7 +127,7 @@ export async function deleteBrandAssets(paths: string[]): Promise<{ deleted: num
   const del = wanted.filter((p) => !skipped.includes(p));
   if (del.length) {
     const { error } = await supabase.storage.from("branding").remove(del);
-    if (error) return { error: error.message };
+    if (error) return { error: dbError(error) };
     await writeAudit({
       tenant_id: session.tenantId,
       actor_id: session.userId,

@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
@@ -56,7 +57,7 @@ export async function previewReport(
   if (f.result === "pass" || f.result === "fail") q = q.eq("result", f.result);
   if (f.approval && f.approval !== "all") q = q.eq("approval_status", f.approval);
   const { data, error } = await q;
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   const rows: PreviewRow[] = ((data || []) as Record<string, unknown>[]).map((s) => {
     return {

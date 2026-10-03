@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, hasMenu } from "@/lib/session";
 import {
@@ -55,7 +56,7 @@ export async function saveDashboardLayout(widgets: unknown): Promise<{ ok: true 
     },
     { onConflict: "user_id,tenant_id" }
   );
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   return { ok: true };
 }
 
@@ -170,7 +171,7 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
     if (scoped) q = q.eq("form_id", scoped);
     if (startIso) q = q.gte("submitted_at", startIso);
     const { data, error } = await q;
-    if (error) return { error: error.message };
+    if (error) return { error: dbError(error) };
     const batch = (data || []) as unknown as SRow[];
     rows.push(...batch);
     if (batch.length < PAGE) break;

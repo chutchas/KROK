@@ -92,11 +92,6 @@ export async function POST(req: Request) {
     }
   } catch { /* นับไม่ได้ → ไม่บล็อก */ }
 
-  // CAPTCHA (Cloudflare Turnstile) — เปิดเมื่อตั้งค่า TURNSTILE_SECRET_KEY
-  if (!(await turnstileOk(String(form.get("cf_token") || ""), ip))) {
-    return NextResponse.json({ error: "ยืนยันว่าไม่ใช่บอทไม่สำเร็จ — โปรดลองกดส่งอีกครั้ง", captcha: true }, { status: 403 });
-  }
-
   const userName = String(form.get("user_name") || "").trim().slice(0, 120) || "ผู้ไม่ระบุชื่อ";
   let duration = parseInt(String(form.get("duration") || "0"), 10) || 0;
   if (duration < 0) duration = 0;
@@ -205,18 +200,3 @@ export async function POST(req: Request) {
   return NextResponse.json({ ok: true, id: subId });
 }
 
-/** ตรวจ token ของ Cloudflare Turnstile — ไม่ได้ตั้ง secret = ปิด CAPTCHA (ผ่านเสมอ) */
-async function turnstileOk(token: string, ip: string): Promise<boolean> {
-  const secret = process.env.TURNSTILE_SECRET_KEY?.trim();
-  if (!secret) return true;
-  if (!token || token.length > 4096) return false;
-  try {
-    const body = new URLSearchParams({ secret, response: token });
-    if (ip && ip !== "unknown") body.set("remoteip", ip);
-    const r = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", body, signal: AbortSignal.timeout(8000) });
-    const j = (await r.json().catch(() => ({}))) as { success?: boolean };
-    return j.success === true;
-  } catch {
-    return false;
-  }
-}

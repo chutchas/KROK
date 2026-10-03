@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -145,7 +146,7 @@ export async function setFormVisibility(
     .update(patch)
     .eq("id", formId)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   await audit(session.tenantId, session.userId, "form.visibility", formId, { mode: vis.mode });
   revalidatePath("/studio");
@@ -203,7 +204,7 @@ export async function saveForm(
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await audit(session.tenantId, session.userId, "form.publish", data.id, {
     title: schema.title,
     fields: countFields(schema),
@@ -271,7 +272,7 @@ export async function updateForm(
     .select("id")
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   // ซิงก์ชื่อ/ไอคอนไปยัง submissions เดิม เพื่อให้ทุกหน้า (dashboard/ประวัติ/อนุมัติ) แสดงชื่อใหม่ตรงกัน
   // เฉพาะตอนที่ชื่อหรือไอคอนเปลี่ยนจริง — เดิมเขียนทับทุก submission ทุกครั้งที่กดบันทึก (ช้า + realtime ถล่ม dashboard)
@@ -338,7 +339,7 @@ export async function saveDraft(
     })
     .select("id")
     .single();
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await audit(session.tenantId, session.userId, "form.draft", data.id, { title: schema.title });
   revalidatePath("/studio");
   return { id: data.id as string };
@@ -359,7 +360,7 @@ export async function setFormStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await audit(session.tenantId, session.userId, "form.status", id, { status });
 
   // เผยแพร่ (จากร่าง/กู้คืน) → แจ้งเตือนสมาชิกที่มีสิทธิ์เห็นฟอร์ม
@@ -395,7 +396,7 @@ export async function deleteForm(id: string): Promise<{ ok: true } | { error: st
     .update({ deleted_at: new Date().toISOString(), status: "archived" })
     .eq("id", id)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await audit(session.tenantId, session.userId, "form.delete", id);
   revalidatePath("/forms");
   revalidatePath("/studio");

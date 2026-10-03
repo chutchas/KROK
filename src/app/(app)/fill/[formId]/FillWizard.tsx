@@ -34,7 +34,6 @@ import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
 import dynamic from "next/dynamic";
 import { printWhenReady } from "@/lib/print";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
-import type { CaptchaHandle } from "@/components/Turnstile";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
 import { Answer, DocRec, MediaPhotos, asRows, dataUrlToBlob, shrinkImage } from "./fill-types";
 import { firstBadRow, rowHasValue } from "./FillTable";
@@ -58,8 +57,6 @@ type Props = {
   publicMode?: boolean;
   /** แบรนด์ของ workspace (โลโก้/ธีมสี) — ฟอร์มตั้งทับได้ใน schema.theme */
   branding?: WorkspaceBranding | null;
-  /** ฟอร์มสาธารณะ: CAPTCHA (Turnstile) */
-  captcha?: React.MutableRefObject<CaptchaHandle | null>;
   /** เอกสารที่เกี่ยวข้อง (ระดับฟอร์ม + ระดับฟิลด์) */
   attachments?: Attachment[];
   /** ฟอร์มนี้กรอกได้เฉพาะเครื่องที่ผู้ดูแลอนุมัติแล้ว */
@@ -661,11 +658,8 @@ export default function FillWizard(props: Props) {
           fd.append("fails", JSON.stringify(fails));
           fd.append("answers", JSON.stringify(list));
           fd.append("duration", String(dur));
-          const cf = props.captcha?.current?.token();
-          if (cf) fd.append("cf_token", cf);
           for (const p of photoUploads) fd.append(`photo_${p.fieldId}`, dataUrlToBlob(p.dataUrl), `${p.fieldId}.jpg`);
           const res = await fetch("/api/public/submit", { method: "POST", body: fd });
-          props.captcha?.current?.reset(); // token ใช้ได้ครั้งเดียว
           if (!res.ok) {
             const j = await res.json().catch(() => ({}));
             throw new Error(j.error || t("fw.submitFailed"));

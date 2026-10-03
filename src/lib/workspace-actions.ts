@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -39,7 +40,7 @@ export async function createWorkspace(name: string): Promise<{ ok: true; id: str
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_workspace", { p_name: clean });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   const id = data as string;
   const store = await cookies();
@@ -64,7 +65,7 @@ export async function acceptInvite(id: string): Promise<{ ok: true } | { error: 
   if (!session) return { error: "unauthorized" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("accept_invite", { p_id: id });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   const store = await cookies();
   store.set(WS_COOKIE, data as string, COOKIE_OPTS);
   revalidatePath("/", "layout");
@@ -76,7 +77,7 @@ export async function declineInvite(id: string): Promise<{ ok: true } | { error:
   if (!session) return { error: "unauthorized" };
   const supabase = await createClient();
   const { error } = await supabase.rpc("decline_invite", { p_id: id });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/", "layout");
   return { ok: true };
 }

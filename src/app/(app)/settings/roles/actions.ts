@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
@@ -34,7 +35,7 @@ export async function createRole(name: string, canManage: boolean, menus: unknow
     is_system: false,
     sort: 100,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/roles");
   return { ok: true };
 }
@@ -58,7 +59,7 @@ export async function updateRole(
     .update(upd)
     .eq("tenant_id", a.session.tenantId)
     .eq("key", key);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   // สิทธิ์จริงที่ RLS ใช้ = memberships.role (enum) — ต้องซิงก์ตาม can_manage ทุกครั้ง
   // ไม่งั้นถอดสิทธิ์จัดการแล้วสมาชิกยังเขียนข้อมูลผ่าน REST ได้ (หรือให้สิทธิ์แล้วยังใช้ไม่ได้)
   if (typeof patch.canManage === "boolean") {
@@ -68,7 +69,7 @@ export async function updateRole(
       .eq("tenant_id", a.session.tenantId)
       .eq("role_key", key)
       .neq("role", "owner");
-    if (syncErr) return { error: syncErr.message };
+    if (syncErr) return { error: dbError(syncErr) };
   }
   revalidatePath("/settings/roles");
   revalidatePath("/settings/team");
@@ -89,7 +90,7 @@ export async function deleteRole(key: string): Promise<{ ok: true } | { error: s
   // ย้ายสมาชิกที่ใช้ role นี้กลับเป็น User
   await supabase.from("memberships").update({ role: "operator", role_key: "user" }).eq("tenant_id", a.session.tenantId).eq("role_key", key);
   const { error } = await supabase.from("tenant_roles").delete().eq("tenant_id", a.session.tenantId).eq("key", key);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/roles");
   revalidatePath("/settings/team");
   return { ok: true };

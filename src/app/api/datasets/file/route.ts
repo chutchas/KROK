@@ -1,3 +1,4 @@
+import { dbError } from "@/lib/db-error";
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
 import { getSession, canManage } from "@/lib/session";
@@ -168,7 +169,7 @@ export async function POST(req: Request) {
       .update({ columns, key_column: keyColumn, sync_mode: mode })
       .eq("id", ds.id)
       .eq("tenant_id", session.tenantId);
-    if (error) return NextResponse.json({ error: error.message }, { status: 400 });
+    if (error) return NextResponse.json({ error: dbError(error) }, { status: 400 });
   }
 
   try {

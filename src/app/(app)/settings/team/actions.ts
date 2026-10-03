@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -114,7 +115,7 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
       { tenant_id: session.tenantId, email: clean, role, role_key: roleKey, team_ids: teams, invited_by: session.userId, accepted_at: null },
       { onConflict: "tenant_id,email" }
     );
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   const { link, sent } = await sendInviteMail(supabase, session, { email: clean, role_key: roleKey, team_ids: teams });
   await writeAudit({
@@ -148,7 +149,7 @@ export async function cancelInvite(id: string): Promise<{ ok: true } | { error: 
   if (!a.ok) return { error: a.error };
   const supabase = await createClient();
   const { error } = await supabase.from("invites").delete().eq("id", id).eq("tenant_id", a.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -189,7 +190,7 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
   const { error } = await supabase
     .from("memberships").update({ role: enumRole, role_key: roleKey })
     .eq("tenant_id", session.tenantId).eq("user_id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.role_change", target_type: "user", target_id: userId, meta: { role_key: roleKey },
@@ -220,7 +221,7 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
 
   const { error } = await supabase
     .from("memberships").update({ role }).eq("tenant_id", session.tenantId).eq("user_id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.role_change", target_type: "user", target_id: userId, meta: { role },
@@ -247,7 +248,7 @@ export async function removeMember(userId: string, confirmPlan = false): Promise
 
   const { error } = await supabase
     .from("memberships").delete().eq("tenant_id", session.tenantId).eq("user_id", userId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.remove", target_type: "user", target_id: userId,
@@ -272,7 +273,7 @@ export async function createTeam(name: string): Promise<{ ok: true } | { error: 
   const { error } = await supabase
     .from("teams")
     .insert({ tenant_id: session.tenantId, name: clean, created_by: session.userId });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -286,7 +287,7 @@ export async function renameTeam(teamId: string, name: string): Promise<{ ok: tr
   const supabase = await createClient();
   const { error } = await supabase
     .from("teams").update({ name: clean }).eq("id", teamId).eq("tenant_id", a.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -297,7 +298,7 @@ export async function deleteTeam(teamId: string): Promise<{ ok: true } | { error
   const supabase = await createClient();
   const { error } = await supabase
     .from("teams").delete().eq("id", teamId).eq("tenant_id", a.session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -320,11 +321,11 @@ export async function setTeamMembers(teamId: string, userIds: string[]): Promise
   const clean = Array.from(new Set(userIds.filter((u) => valid.has(u))));
 
   const { error: delErr } = await supabase.from("team_members").delete().eq("team_id", teamId);
-  if (delErr) return { error: delErr.message };
+  if (delErr) return { error: dbError(delErr) };
   if (clean.length > 0) {
     const rows = clean.map((user_id) => ({ team_id: teamId, user_id, tenant_id: session.tenantId }));
     const { error: insErr } = await supabase.from("team_members").insert(rows);
-    if (insErr) return { error: insErr.message };
+    if (insErr) return { error: dbError(insErr) };
   }
   revalidatePath("/settings/team");
   return { ok: true };

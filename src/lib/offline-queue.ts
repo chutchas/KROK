@@ -86,6 +86,20 @@ function dataUrlToBlob(dataUrl: string): Blob {
   return new Blob([arr], { type: mime });
 }
 
+/** พื้นที่ไฟล์ของกลุ่ม workspace เต็มตามแพ็กเกจแล้วไหม (ถามไม่ได้ = ไม่แน่ใจ → false) */
+async function storageFull(supabase: SupabaseClient, tenantId: string): Promise<boolean> {
+  try {
+    const [lim, used] = await Promise.all([
+      supabase.rpc("plan_limit", { p_tenant: tenantId, p_name: "storageMb" }),
+      supabase.rpc("pool_storage_bytes", { p_tenant: tenantId }),
+    ]);
+    const mb = Number(lim.data);
+    return !lim.error && !used.error && Number.isFinite(mb) && mb > 0 && mb < 999999 && Number(used.data) >= mb * 1048576;
+  } catch {
+    return false;
+  }
+}
+
 /** ไฟล์นี้มีอยู่แล้ว (อัปโหลดรอบก่อน / ใบส่งไปแล้ว) — ไม่ใช่ปัญหา ให้ server ตัดสิน */
 function alreadyThere(e: { message?: string; statusCode?: string | number }): boolean {
   return String(e.statusCode ?? "") === "409" || /exists|duplicate/i.test(e.message || "");
@@ -109,7 +123,12 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
     if (!error || alreadyThere(error)) return;
     // ใบที่ส่งสำเร็จไปแล้ว storage ไม่รับไฟล์เพิ่ม (RLS) → ถ้าใบนั้นมีอยู่แล้ว ปล่อยให้ server ตอบว่าเคยส่ง
     if (sent === null) sent = !!(await supabase.from("submissions").select("id").eq("id", p.subId).maybeSingle()).data;
-    if (!sent) throw new Error(error.message || "upload failed"); // เช่น พื้นที่ไฟล์เต็ม / เน็ตหลุด → ลองใหม่ ไม่ส่งใบที่รูปหาย
+    if (sent) return;
+    // RLS ไม่รับไฟล์ ส่วนใหญ่ = พื้นที่ไฟล์ของแพ็กเกจเต็ม → แจ้งเป็นข้อความโควตา (หน้ากรอก/คิวแสดงตรง ๆ ไม่วนส่งซ้ำ)
+    if (/row-level security|policy|403|unauthorized/i.test(error.message || "") && (await storageFull(supabase, p.tenantId))) {
+      throw new Error("พื้นที่ไฟล์ของแพ็กเกจเต็ม ส่งรูปไม่ได้ — ให้เจ้าของบัญชีอัปเกรดแพ็กเกจหรือลบไฟล์ที่ไม่ใช้ (ข้อมูลยังเก็บในเครื่องนี้) [quota:storage]");
+    }
+    throw new Error(error.message || "upload failed"); // เน็ตหลุด ฯลฯ → ลองใหม่ ไม่ส่งใบที่รูปหาย
   };
   for (let i = 0; i < p.photos.length; i += 3) {
     await Promise.all(p.photos.slice(i, i + 3).map((ph) => up(`${p.tenantId}/${p.subId}/${ph.fieldId}.jpg`, ph.dataUrl)));

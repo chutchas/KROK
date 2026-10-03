@@ -1,3 +1,4 @@
+import { dbError } from "@/lib/db-error";
 import "server-only";
 // ============================================================
 // KROK · API รับข้อมูลเข้า — ส่วนที่ต้องใช้ service role (สร้างเอกสาร / เปิดงาน)
@@ -65,7 +66,7 @@ export async function createIntakeSubmission(
     ext_ref: opts.ref,
     source: "api",
   });
-  if (error) return error.code === "23505" ? { error: "duplicate", duplicate: true } : { error: error.message };
+  if (error) return error.code === "23505" ? { error: "duplicate", duplicate: true } : { error: dbError(error) };
 
   await admin.from("audit_log").insert({
     tenant_id: f.tenant_id,

@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, canManage } from "@/lib/session";
@@ -74,7 +75,7 @@ export async function createWebhook(
     fields: fieldIds,
     created_by: session.userId,
   });
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
@@ -86,7 +87,7 @@ export async function toggleWebhook(id: string, active: boolean): Promise<{ ok: 
   if (!admin) return { error: NO_ADMIN };
   const { data, error } = await admin.from("webhooks").update({ active }).eq("id", id).eq("tenant_id", session.tenantId).select("id");
   if (!error && !data?.length) return { error: "ไม่พบ webhook" };
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
@@ -97,7 +98,7 @@ export async function deleteWebhook(id: string): Promise<{ ok: true } | { error:
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
   const { error } = await admin.from("webhooks").delete().eq("id", id).eq("tenant_id", session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
@@ -125,7 +126,7 @@ export async function updateWebhook(
   if (input.secret.trim()) patch.secret = input.secret.trim().slice(0, 200);
   else if (input.clearSecret) patch.secret = null;
   const { data, error } = await admin.from("webhooks").update(patch).eq("id", id).eq("tenant_id", session.tenantId).select("id");
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   if (!data?.length) return { error: "ไม่พบ webhook" };
   revalidatePath("/settings/integrations");
   return { ok: true };
@@ -146,7 +147,7 @@ export async function listDeliveries(webhookId: string): Promise<{ rows: Deliver
     .eq("tenant_id", session.tenantId)
     .order("created_at", { ascending: false })
     .limit(20);
-  if (error) return /webhook_deliveries/.test(error.message) ? { rows: [] } : { error: error.message };
+  if (error) return /webhook_deliveries/.test(error.message) ? { rows: [] } : { error: dbError(error) };
   return { rows: (data || []) as DeliveryRow[] };
 }
 
@@ -262,7 +263,7 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
       ({ error } = await admin.from("tenant_notify").upsert(row, { onConflict: "tenant_id" }));
     }
   }
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }

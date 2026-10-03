@@ -1,3 +1,4 @@
+import { dbError } from "@/lib/db-error";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import {
@@ -111,7 +112,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     const wantKey = typeof body.key_column === "string" ? body.key_column : "";
     keyColumn = columns.find((c) => c.key === wantKey || c.label === wantKey)?.key ?? null;
     const { error } = await admin.from("datasets").update({ columns, key_column: keyColumn }).eq("id", id);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return NextResponse.json({ error: dbError(error) }, { status: 500 });
   }
 
   if ((mode === "upsert" || deleteKeys.length) && !keyColumn)

@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -34,7 +35,7 @@ export async function setPlan(plan: PlanKey, opts: { autoRenew?: boolean } = {})
   if (target.priceThb <= 0) {
     const supabase = await createClient();
     const { error } = await supabase.rpc("set_plan", { p_tenant: session.tenantId, p_plan: plan });
-    if (error) return { error: error.message };
+    if (error) return { error: dbError(error) };
     await writeAudit({
       tenant_id: session.tenantId, actor_id: session.userId, action: "plan.change",
       target_type: "tenant", target_id: session.tenantId, meta: { plan },
@@ -139,7 +140,7 @@ export async function setAutoRenew(on: boolean): Promise<{ ok: true } | { error:
   const patch: Record<string, unknown> = { auto_renew: on };
   if (on) Object.assign(patch, { renew_attempts: 0, next_attempt_at: null, last_renew_error: null, renew_price: acct.renew_price ?? plans[acct.plan as string]?.priceThb ?? null });
   const { error } = await admin.from("account_plans").update(patch).eq("user_id", session.userId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   await admin.from("audit_log").insert({
     tenant_id: session.tenantId, actor_id: session.userId, action: on ? "plan.autorenew_on" : "plan.autorenew_off",
     target_type: "tenant", target_id: session.tenantId, meta: { plan: acct.plan },

@@ -1,4 +1,5 @@
 "use server";
+import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -98,7 +99,7 @@ export async function addFileAttachment(
     .select(SELECT)
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   await writeAudit({
     tenant_id: session.tenantId,
@@ -144,7 +145,7 @@ export async function addLinkAttachment(
     .select(SELECT)
     .single();
 
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/studio");
   return { attachment: rowToAttachment(data as Record<string, unknown>) };
 }
@@ -159,7 +160,7 @@ export async function renameAttachment(id: string, name: string): Promise<{ ok: 
     .update({ name: String(name || "").slice(0, 160).trim() || "เอกสาร" })
     .eq("id", id)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
   revalidatePath("/studio");
   return { ok: true };
 }
@@ -179,7 +180,7 @@ export async function removeAttachment(id: string): Promise<{ ok: true } | { err
   if (!att) return { error: "ไม่พบเอกสาร" };
 
   const { error } = await supabase.from("form_attachments").delete().eq("id", id).eq("tenant_id", session.tenantId);
-  if (error) return { error: error.message };
+  if (error) return { error: dbError(error) };
 
   // ลบไฟล์จริงตามหลัง (ถ้าลบไม่ได้ก็ไม่ล้มทั้ง action — แถวหายแล้ว)
   if (att.kind === "file" && att.storage_path) {

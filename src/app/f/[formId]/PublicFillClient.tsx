@@ -1,6 +1,5 @@
 "use client";
-import { useRef, useState } from "react";
-import Turnstile, { type CaptchaHandle } from "@/components/Turnstile";
+import { useState } from "react";
 import { Button, Field } from "@/components/ui";
 import { LogoMark } from "@/components/Logo";
 import Icon from "@/components/Icon";
@@ -30,7 +29,6 @@ export default function PublicFillClient({
   const { t, tt } = useT();
   const [name, setName] = useState("");
   const [started, setStarted] = useState(false);
-  const captcha = useRef<CaptchaHandle | null>(null);
   const theme = resolveTheme(branding, schema.theme);
   const scope = `krok-pub-${formId.replace(/[^a-z0-9]/gi, "").slice(0, 12)}`;
 
@@ -100,11 +98,8 @@ export default function PublicFillClient({
             attachments={attachments}
             publicMode
             branding={branding}
-            captcha={captcha}
           />
         )}
-        {/* CAPTCHA อยู่ตลอดระหว่างกรอก (token ต่ออายุเอง) */}
-        <div className="no-print"><Turnstile handle={captcha} /></div>
       </main>
       <footer className="no-print" style={{ textAlign: "center", fontSize: ".76rem", color: "var(--ink-3)", padding: "0 16px 28px" }}>
         <a href="/privacy" target="_blank" rel="noopener" style={{ color: "inherit" }}>{t("legal.privacy")}</a> · <a href="/terms" target="_blank" rel="noopener" style={{ color: "inherit" }}>{t("legal.terms")}</a>
