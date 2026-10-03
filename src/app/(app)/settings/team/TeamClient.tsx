@@ -146,7 +146,7 @@ export default function TeamClient({
             {msg.t}
             {msg.link && (
               <button type="button" onClick={() => copyLink(msg.link!)}
-                style={{ marginLeft: 8, border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", padding: 0, display: "inline-flex", alignItems: "center", gap: 3 }}>
+                style={{ marginLeft: 8, border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: "inherit", padding: 0, display: "inline-flex", alignItems: "center", gap: 3 }}>
                 <Icon icon={copied === msg.link ? Check : Link2} className="h-3.5 w-3.5" /> {copied === msg.link ? t("team.linkCopied") : t("team.copyLink")}
               </button>
             )}
@@ -188,7 +188,7 @@ export default function TeamClient({
             const options = canOwner ? roleOptions : roleOptions.filter((r) => r.key !== "owner");
             return (
               <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
-                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}><Icon icon={HardHat} className="h-[18px] w-[18px]" /></div>
+                <div style={{ width: 38, height: 38, borderRadius: "50%", background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-text)" }}><Icon icon={HardHat} className="h-[18px] w-[18px]" /></div>
                 <div style={{ flex: 1, minWidth: 140 }}>
                   <b style={{ fontSize: ".92rem" }}>{m.name || m.email || t("team.memberFallback")} {isMe && <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>{t("team.you")}</span>}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{m.email}</small>
@@ -197,7 +197,13 @@ export default function TeamClient({
                   <select
                     defaultValue={curKey}
                     onChange={async (e) => {
-                      const res = await changeRoleKey(m.user_id, e.target.value);
+                      const v = e.target.value;
+                      let res = await changeRoleKey(m.user_id, v);
+                      if ("needConfirm" in res) {
+                        const s = res.needConfirm;
+                        if (await confirmDialog({ message: tt("team.planShift", { from: s.from, to: s.to, owner: s.nextOwner }), confirmLabel: t("common.confirm"), danger: true }))
+                          res = await changeRoleKey(m.user_id, v, true);
+                      }
                       if ("error" in res) await alertDialog(res.error);
                       router.refresh();
                     }}
@@ -213,7 +219,12 @@ export default function TeamClient({
                 {!isMe && canEditThis && (
                   <AsyncButton variant="danger" onClick={async () => {
                     if (!(await confirmDialog({ message: tt("team.removeConfirm", { name: m.name || m.email || "" }), confirmLabel: t("team.remove"), danger: true }))) return;
-                    const res = await removeMember(m.user_id);
+                    let res = await removeMember(m.user_id);
+                    if ("needConfirm" in res) {
+                      const s = res.needConfirm;
+                      if (!(await confirmDialog({ message: tt("team.planShift", { from: s.from, to: s.to, owner: s.nextOwner }), confirmLabel: t("common.confirm"), danger: true }))) return;
+                      res = await removeMember(m.user_id, true);
+                    }
                     if ("error" in res) await alertDialog(res.error);
                     else router.refresh();
                   }}>{t("team.remove")}</AsyncButton>
@@ -291,7 +302,7 @@ function TeamsSection({
         {teams.map((team) => (
           <div key={team.id} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent)" }}><Icon icon={Tag} className="h-4 w-4" /></div>
+              <div style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--accent-text)" }}><Icon icon={Tag} className="h-4 w-4" /></div>
               <div style={{ flex: 1, minWidth: 120 }}>
                 <b style={{ fontSize: ".95rem" }}>{team.name}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{tt2(t("team.memberCount"), team.memberIds.length)}</small>

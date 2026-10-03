@@ -45,7 +45,7 @@ export default function TableCell({
           <>
             <button type="button" data-print-keep="" onClick={() => fileRef.current?.click()} title={t("ctype.photoRetake")} aria-label={t("ctype.photoRetake")}
               style={{ border: "none", padding: 0, background: "none", cursor: "pointer", height: "100%", display: "flex" }}>
-              <img src={photoUrl} alt={col.label} style={{ height: "100%", maxWidth: paper ? 60 : 90, objectFit: "cover", borderRadius: paper ? 2 : 6, border: paper ? "1px solid #ccc" : "1px solid var(--line)" }} />
+              <img loading="lazy" src={photoUrl} alt={col.label} style={{ height: "100%", maxWidth: paper ? 60 : 90, objectFit: "cover", borderRadius: paper ? 2 : 6, border: paper ? "1px solid #ccc" : "1px solid var(--line)" }} />
             </button>
             <button type="button" className="no-print" onClick={() => onPhoto?.(null)} aria-label={t("ctype.photoRemove")} title={t("ctype.photoRemove")}
               style={{ border: "none", background: "none", color: FAIL_C, cursor: "pointer", display: "inline-flex", padding: 2 }}>

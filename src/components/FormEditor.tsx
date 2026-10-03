@@ -261,7 +261,7 @@ export default function FormEditor({
                 })
               }
               className="inline-flex items-center gap-1.5"
-              style={{ ...iconBtn, width: "auto", padding: "8px 14px", color: "var(--accent)", borderColor: "var(--accent)", fontSize: ".85rem", fontWeight: 600 }}
+              style={{ ...iconBtn, width: "auto", padding: "8px 14px", color: "var(--accent-text)", borderColor: "var(--accent)", fontSize: ".85rem", fontWeight: 600 }}
             >
               <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
             </button>
@@ -274,7 +274,7 @@ export default function FormEditor({
       <button
         onClick={() => setSteps([...value.steps, { id: newId("s"), title: "", fields: [{ id: newId("f"), type: "text", label: "", required: true }] }])}
         className="inline-flex items-center gap-1.5"
-        style={{ padding: "10px 16px", borderRadius: 9, border: "1px dashed var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: ".9rem" }}
+        style={{ padding: "10px 16px", borderRadius: 9, border: "1px dashed var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600, fontSize: ".9rem" }}
       >
         <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
       </button>
@@ -311,7 +311,7 @@ function OptionsEditor({
         <button
           onClick={() => onChange([...options, ""])}
           className="inline-flex items-center gap-1.5"
-          style={{ justifySelf: "start", padding: "6px 12px", borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}
+          style={{ justifySelf: "start", padding: "6px 12px", borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}
         >
           <Icon icon={Plus} className="h-3.5 w-3.5" /> {addLabel}
         </button>

@@ -35,7 +35,7 @@ export default function Pricing({ onLogin, plans = DEFAULT_PLANS }: { onLogin: (
             return (
               <Reveal key={p.key} delay={i * 60} className={`lp-price${p.highlight ? " is-hi" : ""}`}>
                 {p.highlight && <span className="lp-price-tag">{t("lp.pr.popular")}</span>}
-                <h4>{en ? p.nameEn : p.name}</h4>
+                <h3>{en ? p.nameEn : p.name}</h3>
                 <div className="lp-price-sub">{en ? p.descEn : p.desc}</div>
                 <div className="lp-price-amt tabnum">{p.priceThb > 0 ? `${p.priceThb.toLocaleString("en-US")} ฿` : t("lp.pr.1a")}</div>
                 <div className="lp-price-per">{p.priceThb > 0 ? t("lp.pr.2p") : t("lp.pr.1p")}</div>
@@ -58,7 +58,7 @@ export default function Pricing({ onLogin, plans = DEFAULT_PLANS }: { onLogin: (
         <Reveal delay={120} className="lp-price" >
           <div style={{ display: "flex", gap: 20, alignItems: "center", flexWrap: "wrap" }}>
             <div style={{ flex: "1 1 240px", minWidth: 0 }}>
-              <h4>{t(CONTACT.name)}</h4>
+              <h3>{t(CONTACT.name)}</h3>
               <div className="lp-price-sub" style={{ minHeight: 0, marginBottom: 6 }}>{t(CONTACT.sub)}</div>
               <div style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.25rem" }}>{t(CONTACT.amount)} <span className="lp-price-per" style={{ fontWeight: 400 }}>· {t(CONTACT.per)}</span></div>
             </div>

@@ -106,7 +106,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)" }}>
             <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".95rem" }}>{t("bell.title")}</b>
             {unread > 0 && (
-              <button onClick={markAllRead} style={{ background: "none", border: "none", color: "var(--accent)", cursor: "pointer", fontSize: ".8rem", fontFamily: "inherit" }}>
+              <button onClick={markAllRead} style={{ background: "none", border: "none", color: "var(--accent-text)", cursor: "pointer", fontSize: ".8rem", fontFamily: "inherit" }}>
                 {t("bell.markAllRead")}
               </button>
             )}

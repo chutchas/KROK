@@ -121,7 +121,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
           )}
 
           <details style={{ marginTop: 12 }}>
-            <summary style={{ cursor: "pointer", color: "var(--accent)", fontSize: ".88rem" }}>{t("appr.viewAll")}</summary>
+            <summary style={{ cursor: "pointer", color: "var(--accent-text)", fontSize: ".88rem" }}>{t("appr.viewAll")}</summary>
             <div style={{ marginTop: 8 }}>
               {s.answers.map((a, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: ".88rem" }}>

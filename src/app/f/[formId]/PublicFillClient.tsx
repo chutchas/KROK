@@ -27,7 +27,7 @@ export default function PublicFillClient({
   const [started, setStarted] = useState(false);
 
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg, #f8fafc)", color: "var(--ink)" }}>
+    <div style={{ minHeight: "100vh", background: "var(--ground)", color: "var(--ink)" }}>
       <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 16px" }}>
         <div style={{ maxWidth: 640, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
           <LogoMark size={26} variant="compact" title="KROK" />
@@ -54,7 +54,7 @@ export default function PublicFillClient({
             <Field value={name} onChange={(e) => setName(e.target.value)} placeholder={t("pubfill.namePlaceholder")} style={{ width: "100%" }} maxLength={120} />
             {/* ประกาศความเป็นส่วนตัว (PDPA ม.23) — แจ้งก่อนเก็บข้อมูล */}
             <div style={{ display: "flex", gap: 8, alignItems: "flex-start", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", marginTop: 14, fontSize: ".8rem", color: "var(--ink-2)", lineHeight: 1.6 }}>
-              <span style={{ flexShrink: 0, marginTop: 2, color: "var(--accent)" }}><Icon icon={ShieldCheck} className="h-4 w-4" /></span>
+              <span style={{ flexShrink: 0, marginTop: 2, color: "var(--accent-text)" }}><Icon icon={ShieldCheck} className="h-4 w-4" /></span>
               <div style={{ minWidth: 0 }}>
                 <b style={{ color: "var(--ink)" }}>{t("pubfill.privacyTitle")}</b>
                 {privacyNotice && <div style={{ whiteSpace: "pre-wrap", overflowWrap: "anywhere", marginTop: 2 }}>{privacyNotice}</div>}

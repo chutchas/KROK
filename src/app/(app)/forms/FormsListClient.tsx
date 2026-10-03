@@ -209,10 +209,10 @@ export default function FormsListClient({
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
                   {f.category && <span style={{ display: "inline-block", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "0 6px", marginRight: 6, color: "var(--ink-2)" }}>{categoryLabel(f.category, lang)}</span>}
                   {tt("forms.stepsFields", { steps: f.steps, fields: f.fields })}
-                  {f.workflow && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 6, color: "var(--accent)" }}><Icon icon={Users} className="h-3 w-3" /> {t("wf.multiBadge")}</span>}
+                  {f.workflow && <span style={{ display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 6, color: "var(--accent-text)" }}><Icon icon={Users} className="h-3 w-3" /> {t("wf.multiBadge")}</span>}
                 </small>
               </div>
-              <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}>{t("forms.start")} <Icon icon={ArrowRight} className="h-4 w-4" /></span>
+              <span style={{ color: "var(--accent-text)", fontWeight: 600, fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}>{t("forms.start")} <Icon icon={ArrowRight} className="h-4 w-4" /></span>
             </Link>
           );
         })}

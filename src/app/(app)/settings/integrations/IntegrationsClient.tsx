@@ -183,7 +183,7 @@ function Usage({ text, full }: { text: string; full: boolean }) {
   return (
     <div style={{ fontSize: ".84rem", color: full ? "var(--fail)" : "var(--ink-3)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
       <span>{text}</span>
-      {full && <Link href="/settings/billing" style={{ color: "var(--accent)", fontWeight: 600 }}>{t("intg.upgrade")}</Link>}
+      {full && <Link href="/settings/billing" style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("intg.upgrade")}</Link>}
     </div>
   );
 }

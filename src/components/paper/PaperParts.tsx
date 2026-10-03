@@ -203,7 +203,7 @@ export function PaperPhoto({ photo, onPick, disabled = false, extra }: { photo?:
   const { t } = useT();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, minHeight: CONTROL_H }}>
-      {photo && <img src={photo} alt={t("fw.photoAlt")} style={{ height: CONTROL_H, width: CONTROL_H * 1.33, objectFit: "cover", borderRadius: 3, border: `1px solid ${LINE}` }} />}
+      {photo && <img loading="lazy" src={photo} alt={t("fw.photoAlt")} style={{ height: CONTROL_H, width: CONTROL_H * 1.33, objectFit: "cover", borderRadius: 3, border: `1px solid ${LINE}` }} />}
       <button
         type="button"
         disabled={disabled}
@@ -229,7 +229,7 @@ export function PaperSignature({ url, onOpen, disabled = false }: { url?: string
       style={{ width: "100%", height: CONTROL_H, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: url ? "flex-start" : "center", gap: 5, border: "none", borderBottom: `1px solid ${INK}`, background: "#fff", color: MUTED, fontFamily: "inherit", fontSize: FONT, cursor: disabled ? "default" : "pointer", padding: 0 }}
     >
       {url ? (
-        <img src={url} alt={t("fw.paper.sigAlt")} style={{ height: CONTROL_H - 2, maxWidth: "100%", objectFit: "contain" }} />
+        <img loading="lazy" src={url} alt={t("fw.paper.sigAlt")} style={{ height: CONTROL_H - 2, maxWidth: "100%", objectFit: "contain" }} />
       ) : (
         <span className="no-print" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}><Icon icon={PenLine} className="h-3.5 w-3.5" /> {t("fw.paper.tapToSign")}</span>
       )}

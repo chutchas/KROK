@@ -2,6 +2,7 @@
 // Error boundary ระดับ (app) — จับ error ที่หลุดจาก page/loader ในโซนล็อกอิน
 // self-contained (ไม่พึ่ง context) เผื่อ provider เองก็ error — useT ไม่มี provider ก็ไม่ throw (ได้ภาษาไทย)
 import { useEffect } from "react";
+import { reportClientError } from "@/lib/report-error";
 import { useT } from "@/i18n/LanguageProvider";
 
 export default function AppError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
@@ -9,6 +10,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
   useEffect(() => {
     // ส่งเข้า console ให้ตามรอยได้ (Vercel logs)
     console.error("[krok] app error boundary:", error);
+    reportClientError(error, "boundary");
   }, [error]);
 
   return (

@@ -13,13 +13,13 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
   const admin = getAdminClient();
 
   const notAvailable = (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "var(--bg, #f8fafc)", textAlign: "center" }}>
+    <main style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, background: "var(--ground)", textAlign: "center" }}>
       <div style={{ maxWidth: 360 }}>
         <div style={{ fontSize: "2rem", marginBottom: 8 }}>🔒</div>
         <h1 style={{ fontSize: "1.15rem", margin: "0 0 6px" }}><T k="fw.pubNotAvailable" /></h1>
-        <p style={{ color: "#64748b", fontSize: ".9rem" }}><T k="fw.pubNotAvailableSub" /></p>
+        <p style={{ color: "var(--ink-3)", fontSize: ".9rem" }}><T k="fw.pubNotAvailableSub" /></p>
       </div>
-    </div>
+    </main>
   );
 
   if (!admin) return notAvailable;

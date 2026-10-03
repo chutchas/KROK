@@ -84,7 +84,7 @@ export default function FormulaInput({ value, ctx, onChange }: { value: string |
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
           {items.map((it) => (
             <button key={it.token} type="button" onClick={() => insert(it.token)} title={it.token}
-              style={{ ...chip, color: "var(--accent)", borderColor: "color-mix(in srgb, var(--accent) 40%, var(--line))", background: "var(--accent-soft)" }}>
+              style={{ ...chip, color: "var(--accent-text)", borderColor: "color-mix(in srgb, var(--accent) 40%, var(--line))", background: "var(--accent-soft)" }}>
               {it.group === "column" && !ctx.rowColumns ? `Σ ${it.label}` : it.label}
             </button>
           ))}

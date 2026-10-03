@@ -11,7 +11,7 @@ const SIGNED_TTL = 60 * 30; // 30 นาที — พอสำหรับเ�
  * ออก signed URL ให้เอกสารแนบ แล้ว redirect ไป
  * ใช้ได้ทั้งใน <img src> และ <iframe src> ตรง ๆ
  *
- * สิทธิ์: สมาชิก tenant เดียวกับฟอร์ม  หรือ  ฟอร์มนั้นเป็น public + published
+ * สิทธิ์: สมาชิก tenant เดียวกับฟอร์มที่เห็นฟอร์มนั้น  หรือ  ฟอร์มนั้นเป็น public + published
  */
 export async function GET(
   req: Request,
@@ -34,7 +34,11 @@ export async function GET(
   // ---- ตรวจสิทธิ์ (ก่อนทั้งลิงก์และไฟล์) ----
   let allowed = false;
   const session = await getSession();
-  if (session && session.tenantId === att.tenant_id) allowed = true;
+  if (session && session.tenantId === att.tenant_id) {
+    // สมาชิก workspace เดียวกัน: ต้องเห็นฟอร์มนั้นด้วย (ฟอร์มแชร์เฉพาะทีม/เฉพาะคน — RLS 0054 ตัดสิน)
+    const { data: visible } = await (await createClient()).from("forms").select("id").eq("id", att.form_id).maybeSingle();
+    allowed = !!visible;
+  }
 
   if (!allowed && admin) {
     const { data: f } = await admin

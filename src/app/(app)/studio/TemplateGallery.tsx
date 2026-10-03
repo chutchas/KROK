@@ -64,7 +64,7 @@ export default function TemplateGallery({ onUse }: { onUse: (id: string) => void
         {tt("templates.count", { n: list.length, total: FORM_TEMPLATES.length })}
         {filtered && (
           <button type="button" onClick={() => { setQ(""); setCatFilter("all"); setIndFilter("all"); }}
-            style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", padding: 0 }}>
+            style={{ border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", padding: 0 }}>
             {t("templates.clearFilters")}
           </button>
         )}

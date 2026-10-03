@@ -274,13 +274,13 @@ export default function FormPaperEditor({
         </span>
         {onAddField && (
           <button data-krok-keep="" onClick={onAddField} className="inline-flex items-center gap-1.5"
-            style={{ padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
+            style={{ padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
           </button>
         )}
         {onAddStep && (
           <button data-krok-keep="" onClick={onAddStep} className="inline-flex items-center gap-1.5"
-            style={{ padding: "7px 12px", border: "1px solid var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
+            style={{ padding: "7px 12px", border: "1px solid var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
           </button>
         )}

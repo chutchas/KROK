@@ -108,7 +108,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
           return (
             <Card key={r.key}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 10 }}>
-                <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 32, height: 32, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Icon icon={owner ? Lock : ShieldCheck} className="h-4 w-4" />
                 </div>
                 <div style={{ flex: 1, minWidth: 140 }}>

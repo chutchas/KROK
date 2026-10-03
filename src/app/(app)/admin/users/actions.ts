@@ -88,3 +88,21 @@ export async function setUserPlan(userId: string, plan: string): Promise<{ ok: t
   revalidatePath("/", "layout");
   return { ok: true };
 }
+
+/** รีเซ็ต 2FA ของผู้ใช้ (ทำมือถือหาย) — ลบ factor ทั้งหมด ผู้ใช้กลับไปใช้รหัสผ่านอย่างเดียวจนกว่าจะเปิดใหม่ */
+export async function resetUserMfa(userId: string): Promise<{ ok: true; removed: number } | { error: string }> {
+  const a = await requirePlatform();
+  if (!a.ok) return { error: a.error };
+  const { data, error } = await a.admin.auth.admin.mfa.listFactors({ userId });
+  if (error) return { error: error.message };
+  let removed = 0;
+  for (const f of data?.factors ?? []) {
+    const { error: delErr } = await a.admin.auth.admin.mfa.deleteFactor({ id: f.id, userId });
+    if (delErr) return { error: delErr.message };
+    removed++;
+  }
+  await a.admin.from("audit_log").insert({
+    tenant_id: null, actor_id: a.session.userId, action: "user.mfa_reset", target_type: "user", target_id: userId, meta: { removed },
+  });
+  return { ok: true, removed };
+}

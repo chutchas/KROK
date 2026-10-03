@@ -1,6 +1,7 @@
 "use client";
 // Global error boundary — จับ error ที่หลุดจาก root layout เอง (ต้อง render html/body ของตัวเอง)
 import { useEffect } from "react";
+import { reportClientError } from "@/lib/report-error";
 // อยู่นอก root layout → ไม่มี LanguageProvider: useT คืนค่า default (ภาษาไทย) ไม่ throw
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -8,6 +9,7 @@ export default function GlobalError({ error, reset }: { error: Error & { digest?
   const { t, lang } = useT();
   useEffect(() => {
     console.error("[krok] global error boundary:", error);
+    reportClientError(error, "global");
   }, [error]);
 
   return (

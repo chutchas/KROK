@@ -5,8 +5,8 @@ import Icon from "@/components/Icon";
 import { DownloadCloud, Plus, X, PlayCircle, RefreshCw, Save, Clock } from "lucide-react";
 import { SCHEDULE_CHOICES, slugKey, type DatasetColType, type DatasetMeta } from "@/lib/datasets";
 import { getPullConfig, savePullConfig, syncNow, testPull, updateDataset, type PullTestResult } from "../actions";
-import type { MessageKey } from "@/i18n/dictionaries";
-import { useT } from "@/i18n/LanguageProvider";
+import type { DsAnyKey as MessageKey } from "@/i18n/ns/ds";
+import { useDsT as useT } from "@/i18n/ns/ds";
 import { fmtTime, label, selectStyle, smallBtn, tableWrap, td, th } from "../ui";
 
 const SCHEDULE_KEY: Record<number, MessageKey> = {

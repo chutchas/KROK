@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
@@ -14,7 +14,10 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const sp = useSearchParams();
   // ลิงก์จากอีเมลเชิญ: /login?invite=<email> → เปิดหน้าสมัครพร้อมอีเมล ไม่ต้องตั้งชื่อองค์กร (เข้า workspace ที่เชิญ)
   const invited = (sp.get("invite") || "").trim().toLowerCase();
-  const [mode, setMode] = useState<"signin" | "signup" | "reset">(invited ? "signup" : "signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset" | "mfa">(invited ? "signup" : "signin");
+  // ยืนยันตัวตน 2 ขั้น: factor TOTP ที่ต้องกรอกรหัส
+  const [factorId, setFactorId] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const [email, setEmail] = useState(invited);
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
@@ -31,8 +34,30 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   });
   const isInvite = mode === "signup" && !!invited && email.trim().toLowerCase() === invited;
 
+  // /login?mfa=1 — ล็อกอินด้วยรหัสผ่านแล้วแต่ยังไม่ได้กรอกรหัส 2FA (เช่น เปิดแท็บใหม่ / session หมดระดับ aal2)
+  const mfaParam = sp.has("mfa");
+  useEffect(() => {
+    if (!mfaParam) return;
+    let alive = true;
+    createClient().auth.mfa.listFactors().then(({ data }) => {
+      const f = data?.totp?.find((x) => x.status === "verified");
+      if (alive && f) { setFactorId(f.id); setMode("mfa"); }
+    }, () => {});
+    return () => { alive = false; };
+  }, [mfaParam]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (mode === "mfa") {
+      if (!factorId || !/^\d{6}$/.test(code.trim())) { setMsg({ t: t("mfa.codeInvalid"), err: true }); return; }
+      setBusy(true);
+      setMsg(null);
+      const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId, code: code.trim() });
+      if (error) { setBusy(false); setMsg({ t: t("mfa.codeWrong"), err: true }); return; }
+      router.push("/dashboard");
+      router.refresh();
+      return;
+    }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
       setMsg({ t: t("login.emailInvalid"), err: true });
       return;
@@ -79,8 +104,16 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
         setMsg({ t: tt("login.checkEmail", { email }) });
         setMode("signin");
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
+        const { data: signed, error } = await supabase.auth.signInWithPassword({ email: email.trim(), password });
         if (error) throw error;
+        // เปิด 2FA ไว้ → ขอรหัสจากแอปยืนยันตัวตนก่อนเข้าแอป
+        const totp = signed.user?.factors?.find((f) => f.status === "verified" && f.factor_type === "totp");
+        if (totp) {
+          setFactorId(totp.id);
+          setPassword("");
+          setMode("mfa");
+          return;
+        }
         // ล็อกอินสำเร็จ → เข้าแดชบอร์ดเสมอ
         router.push("/dashboard");
         router.refresh();
@@ -109,10 +142,10 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
       <Card>
         <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>
-          {mode === "signin" ? t("login.signin") : mode === "reset" ? t("login.resetTitle") : isInvite ? t("login.inviteTitle") : t("login.signupTitle")}
+          {mode === "mfa" ? t("mfa.loginTitle") : mode === "signin" ? t("login.signin") : mode === "reset" ? t("login.resetTitle") : isInvite ? t("login.inviteTitle") : t("login.signupTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>
-          {mode === "signin" ? t("login.signinHint") : mode === "reset" ? t("login.resetHint") : isInvite ? t("login.inviteHint") : t("login.signupHint")}
+          {mode === "mfa" ? t("mfa.loginHint") : mode === "signin" ? t("login.signinHint") : mode === "reset" ? t("login.resetHint") : isInvite ? t("login.inviteHint") : t("login.signupHint")}
         </p>
 
         <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
@@ -123,6 +156,11 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
               <Field placeholder={t("login.name")} value={name} onChange={(e) => setName(e.target.value)} required />
             </>
           )}
+          {mode === "mfa" && (
+            <Field type="text" inputMode="numeric" autoComplete="one-time-code" maxLength={6} placeholder="123456" autoFocus
+              value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} style={{ letterSpacing: ".3em", fontSize: "1.2rem", textAlign: "center" }} />
+          )}
+          {mode !== "mfa" && <>
           {/* Android: type="email" / inputMode="email" ทำให้คีย์บอร์ดเข้าโหมดอีเมล แล้วกดค้างปุ่มเปลี่ยนภาษาแล้วคีย์บอร์ดปิด
               → ใช้ช่องข้อความธรรมดา (คีย์บอร์ดปกติ เปลี่ยนภาษาได้) แล้วตรวจรูปแบบอีเมลเองตอนกดส่ง */}
           <Field
@@ -148,9 +186,10 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
               autoComplete={mode === "signin" ? "current-password" : "new-password"}
             />
           )}
+          </>}
           {mode === "signin" && (
             <button type="button" onClick={() => { setMode("reset"); setMsg(null); }}
-              style={{ justifySelf: "end", marginTop: -4, background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem" }}>
+              style={{ justifySelf: "end", marginTop: -4, background: "none", border: "none", padding: 0, color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem" }}>
               {t("login.forgot")}
             </button>
           )}
@@ -164,14 +203,23 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
             </label>
           )}
           <Button variant="primary" type="submit" disabled={busy} style={{ padding: 13 }}>
-            {busy ? t("login.working") : mode === "signin" ? t("login.doSignin") : mode === "reset" ? t("login.doReset") : isInvite ? t("login.doJoin") : t("login.doSignup")}
+            {busy ? t("login.working") : mode === "mfa" ? t("mfa.verify") : mode === "signin" ? t("login.doSignin") : mode === "reset" ? t("login.doReset") : isInvite ? t("login.doJoin") : t("login.doSignup")}
           </Button>
         </form>
 
         {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
 
         <button
-          onClick={() => {
+          onClick={async () => {
+            if (mode === "mfa") {
+              // ใช้บัญชีอื่น: ออกจาก session ที่ค้างขั้น 2FA
+              await createClient().auth.signOut({ scope: "local" }).catch(() => {});
+              setFactorId(null);
+              setCode("");
+              setMode("signin");
+              setMsg(null);
+              return;
+            }
             setMode(mode === "signin" ? "signup" : "signin");
             setMsg(null);
           }}
@@ -179,13 +227,13 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
             marginTop: 14,
             background: "none",
             border: "none",
-            color: "var(--accent)",
+            color: "var(--accent-text)",
             cursor: "pointer",
             fontFamily: "inherit",
             fontSize: ".88rem",
           }}
         >
-          {mode === "signin" ? t("login.toSignup") : mode === "reset" ? t("login.backToSignin") : t("login.toSignin")}
+          {mode === "mfa" ? t("mfa.otherAccount") : mode === "signin" ? t("login.toSignup") : mode === "reset" ? t("login.backToSignin") : t("login.toSignin")}
         </button>
       </Card>
       {!embedded && (
@@ -197,4 +245,4 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   );
 }
 
-const legalLink: React.CSSProperties = { color: "var(--accent)", textDecoration: "underline" };
+const legalLink: React.CSSProperties = { color: "var(--accent-text)", textDecoration: "underline" };

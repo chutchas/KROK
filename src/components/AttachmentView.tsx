@@ -127,7 +127,7 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
 
         <div style={{ flex: 1, minHeight: 0, background: "var(--code-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {isImage(item.mime) ? (
-            <img src={href} alt={item.name} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
+            <img loading="lazy" src={href} alt={item.name} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain" }} />
           ) : isPdf(item.mime) ? (
             <iframe src={href} title={item.name} style={{ width: "100%", height: "100%", border: "none", background: "#fff" }} />
           ) : isVideo(item.mime) ? (
@@ -135,7 +135,7 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
           ) : (
             <div style={{ textAlign: "center", color: "var(--ink-2)", padding: 24 }}>
               <p style={{ marginBottom: 12 }}>{t("att.noPreview")}</p>
-              <a href={`${href}?download=1`} style={{ ...btn, borderColor: "var(--accent)", color: "var(--accent)" }}>
+              <a href={`${href}?download=1`} style={{ ...btn, borderColor: "var(--accent)", color: "var(--accent-text)" }}>
                 <Icon icon={Download} className="h-4 w-4" /> {t("att.downloadToOpen")}
               </a>
             </div>

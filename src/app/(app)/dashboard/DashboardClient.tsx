@@ -50,6 +50,8 @@ export interface SubRow {
   duration_s: number | null; submitted_at: string;
   approval_status?: "none" | "pending" | "approved" | "rejected";
 }
+// realtime ส่งเฉพาะคอลัมน์ที่รายการใช้ (ไม่ส่งคำตอบทั้งฟอร์มทุกครั้งที่มีคนส่ง) — คำตอบโหลดตอนเปิดดูรายละเอียด
+const LIVE_COLS = ["id", "form_title", "form_icon", "user_name", "result", "fails", "duration_s", "submitted_at", "approval_status"];
 export interface FormOpt { id: string; title: string; icon: string }
 export interface Summary {
   forms: { used: number; max: number };
@@ -126,9 +128,9 @@ export default function DashboardClient({
     const supabase = createClient();
     const ch = supabase
       .channel("krok-subs")
-      .on("postgres_changes", { event: "INSERT", schema: "public", table: "submissions", filter: `tenant_id=eq.${tenantId}` },
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "submissions", filter: `tenant_id=eq.${tenantId}`, select: LIVE_COLS },
         (payload) => { const row = payload.new as SubRow; setSubs((prev) => (prev.some((s) => s.id === row.id) ? prev : [row, ...prev].slice(0, 100))); })
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "submissions", filter: `tenant_id=eq.${tenantId}` },
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "submissions", filter: `tenant_id=eq.${tenantId}`, select: LIVE_COLS },
         (payload) => { const row = payload.new as SubRow; setSubs((prev) => prev.map((s) => (s.id === row.id ? { ...s, ...row } : s))); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -140,7 +142,7 @@ export default function DashboardClient({
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
         <button data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
           className="inline-flex items-center gap-1.5"
-          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600 }}>
+          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600 }}>
           <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
         </button>
       </div>
@@ -431,7 +433,7 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
 function Section({ n, label }: { n: number; label: string }) {
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8, margin: "16px 0 8px" }}>
-      <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent)", fontSize: ".76rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{n}</span>
+      <span style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent-text)", fontSize: ".76rem", fontWeight: 700, display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{n}</span>
       <b style={{ fontSize: ".9rem" }}>{label}</b>
     </div>
   );
@@ -517,7 +519,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
                         <tr key={ri} style={{ borderBottom: "1px solid var(--line)" }}>
                           {a.columns!.map((c) => {
                             const pk = r[`${c.id}#photo`];
-                            return <td key={c.id} style={{ padding: "4px 8px", verticalAlign: "top" }}>{pk && photos[pk] ? <img src={photos[pk]} alt={`${c.label} ${ri + 1}`} style={{ height: 48, maxWidth: 80, objectFit: "cover", borderRadius: 5 }} /> : (r[c.id] || "—")}</td>;
+                            return <td key={c.id} style={{ padding: "4px 8px", verticalAlign: "top" }}>{pk && photos[pk] ? <img loading="lazy" src={photos[pk]} alt={`${c.label} ${ri + 1}`} style={{ height: 48, maxWidth: 80, objectFit: "cover", borderRadius: 5 }} /> : (r[c.id] || "—")}</td>;
                           })}
                         </tr>
                       ))}
@@ -536,7 +538,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
                 {a.photoField ? (
                   photos[a.photoField] ? (
                     <span style={{ display: "inline-flex", gap: 6, flexWrap: "wrap", justifyContent: "flex-end" }}>
-                      {answerPhotoKeys(a).map((k) => photos[k] && <img key={k} src={photos[k]} alt={t("dash.photoAlt")} style={{ maxHeight: answerPhotoKeys(a).length > 1 ? 72 : 110, borderRadius: 6 }} />)}
+                      {answerPhotoKeys(a).map((k) => photos[k] && <img loading="lazy" key={k} src={photos[k]} alt={t("dash.photoAlt")} style={{ maxHeight: answerPhotoKeys(a).length > 1 ? 72 : 110, borderRadius: 6 }} />)}
                     </span>
                   ) : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
                 ) : (

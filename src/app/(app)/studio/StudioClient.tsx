@@ -22,6 +22,7 @@ import type { FormRow } from "./page";
 import type { ApprovalStep } from "@/lib/approval";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 import dynamic from "next/dynamic";
+import { printWhenReady } from "@/lib/print";
 
 // ส่วนที่เปิดเฉพาะเมื่อใช้งาน — แยก bundle ออกจากหน้า Studio (โหลดหน้าแรกเร็วขึ้น)
 const TemplateGallery = dynamic(() => import("./TemplateGallery"), { ssr: false });
@@ -236,7 +237,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }
 
   function doPrint() {
-    if (typeof window !== "undefined") window.print();
+    if (typeof window !== "undefined") void printWhenReady();
   }
 
   // สร้าง id ใหม่แบบไม่ชน
@@ -413,7 +414,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               // เลือกไฟล์แล้ว — โชว์ชื่อไฟล์ + ยืนยันก่อนแปลง
               <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface-2)", padding: 16 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <span style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ width: 40, height: 40, borderRadius: 10, background: "var(--accent-soft)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <Icon icon={FileText} className="h-5 w-5" />
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
@@ -437,7 +438,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 disabled={!!busy}
                 style={{ width: "100%", border: "2px dashed var(--line)", borderRadius: 12, background: "var(--surface-2)", padding: "28px 16px", cursor: "pointer", fontFamily: "inherit", display: "flex", flexDirection: "column", alignItems: "center", gap: 8, color: "var(--ink-2)" }}
               >
-                <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <span style={{ width: 44, height: 44, borderRadius: 12, background: "var(--accent-soft)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Icon icon={FileUp} className="h-6 w-6" />
                 </span>
                 <b style={{ fontFamily: "var(--font-anuphan)", color: "var(--ink)" }}>{t("studio.fileDrop")}</b>
@@ -766,7 +767,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} />
           ) : (
             <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: "22px 18px", textAlign: "center", color: "var(--ink-3)", background: "var(--surface)" }}>
-              <span style={{ display: "inline-flex", color: "var(--accent)" }}><Icon icon={MousePointerClick} className="h-7 w-7" /></span>
+              <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={MousePointerClick} className="h-7 w-7" /></span>
               <b style={{ display: "block", color: "var(--ink)", margin: "8px 0 4px", fontSize: ".95rem" }}>{t("editor.fieldSettings")}</b>
               <p style={{ fontSize: ".85rem", margin: 0, lineHeight: 1.55 }}>{t("editor.asideHint")}</p>
             </div>

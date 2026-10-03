@@ -6,7 +6,7 @@ import { Upload, FileSpreadsheet, CheckCircle2 } from "lucide-react";
 import { MAX_DATASET_ROWS, cellText, type DatasetColumn, type DatasetMeta, type DatasetRecord, type DatasetSyncMode } from "@/lib/datasets";
 import { label, selectStyle, tableWrap, td, th } from "../ui";
 import { confirmDialog } from "@/components/dialogs";
-import { useT } from "@/i18n/LanguageProvider";
+import { useDsT as useT } from "@/i18n/ns/ds";
 
 interface Preview {
   sheets: string[];

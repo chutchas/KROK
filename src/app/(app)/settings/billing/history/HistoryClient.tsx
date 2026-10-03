@@ -51,7 +51,7 @@ export default function HistoryClient({ events, invoices, plans }: { events: Pla
               const p = getPlan(iv.plan, plans);
               return (
                 <Link key={iv.id} href={`/settings/billing/invoice/${iv.id}`} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 4px", borderBottom: "1px solid var(--line)", textDecoration: "none", color: "var(--ink)" }}>
-                  <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <div style={{ width: 34, height: 34, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Icon icon={FileText} className="h-[18px] w-[18px]" />
                   </div>
                   <div style={{ flex: 1, minWidth: 0 }}>

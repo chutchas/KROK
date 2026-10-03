@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { MessageSquare, Mail, Send } from "lucide-react";
-import { useT } from "@/i18n/LanguageProvider";
+import { useNotifyT as useT } from "@/i18n/ns/notify";
 import { saveNotify, testNotify, type NotifyInput } from "./actions";
 import type { NotifySettings } from "./IntegrationsClient";
 

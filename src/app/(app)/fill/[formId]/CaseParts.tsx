@@ -89,11 +89,11 @@ export function ReadonlyField({ field: f, answer, photo, morePhotos = [], sig, p
     const all = [photo, ...morePhotos].filter((u): u is string => !!u);
     body = all.length ? (
       <span style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-        {all.map((u, i) => <img key={i} src={u} alt={f.label} style={{ maxHeight: compact ? 44 : all.length > 1 ? 90 : 140, maxWidth: "100%", borderRadius: 6, display: "block" }} />)}
+        {all.map((u, i) => <img loading="lazy" key={i} src={u} alt={f.label} style={{ maxHeight: compact ? 44 : all.length > 1 ? 90 : 140, maxWidth: "100%", borderRadius: 6, display: "block" }} />)}
       </span>
     ) : dash;
   }
-  else if (f.type === "signature") body = sig ? <img src={sig} alt={f.label} style={{ maxHeight: compact ? 40 : 80, maxWidth: "100%", background: "#fff", display: "block" }} /> : dash;
+  else if (f.type === "signature") body = sig ? <img loading="lazy" src={sig} alt={f.label} style={{ maxHeight: compact ? 40 : 80, maxWidth: "100%", background: "#fff", display: "block" }} /> : dash;
   else if (f.type === "table") body = <MiniTable f={f} rows={rows} paper={paper} />;
   else {
     const txt = textOf(f, answer, t, lang);
@@ -226,7 +226,7 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
       )}
       {kase?.status === "done" && kase.submissionId && (
         <div style={{ marginTop: 8, fontSize: ".85rem" }}>
-          <Link href={`/submission/${kase.submissionId}`} style={{ color: "var(--accent)" }}>{t("wf.viewSubmission")} →</Link>
+          <Link href={`/submission/${kase.submissionId}`} style={{ color: "var(--accent-text)" }}>{t("wf.viewSubmission")} →</Link>
         </div>
       )}
 

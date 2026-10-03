@@ -43,3 +43,7 @@ supabase/.temp/
 
 # ไฟล์ที่ Claude ส่งเข้ามาในโฟลเดอร์โปรเจกต์ ไม่ใช่ source
 Claude outputs/
+
+# Playwright
+/test-results/
+/playwright-report/

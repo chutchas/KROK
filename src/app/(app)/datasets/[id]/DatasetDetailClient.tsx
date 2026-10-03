@@ -15,8 +15,8 @@ import {
   type DatasetSyncMode,
 } from "@/lib/datasets";
 import { clearRows, deleteDataset, updateDataset } from "../actions";
-import type { MessageKey } from "@/i18n/dictionaries";
-import { useT } from "@/i18n/LanguageProvider";
+import type { DsAnyKey as MessageKey } from "@/i18n/ns/ds";
+import { useDsT as useT } from "@/i18n/ns/ds";
 import { SOURCE_ICON, SOURCE_KEY, SyncBadge, fmtTime, label, selectStyle, smallBtn, tableWrap, td, th } from "../ui";
 import FileImportPanel from "./FileImportPanel";
 import PullPanel from "./PullPanel";
@@ -172,7 +172,7 @@ export default function DatasetDetailClient({
                         ) : (
                           <code style={{ fontSize: ".8rem" }}>{c.key}</code>
                         )}
-                        {usedCols.has(c.key) && <span style={{ fontSize: ".7rem", color: "var(--accent)", marginLeft: 6 }}>{t("ds.usedByForm")}</span>}
+                        {usedCols.has(c.key) && <span style={{ fontSize: ".7rem", color: "var(--accent-text)", marginLeft: 6 }}>{t("ds.usedByForm")}</span>}
                       </td>
                       <td style={td}>
                         <input type="radio" name="keycol" checked={keyCol === c.key} disabled={!canEdit} onChange={() => setKeyCol(c.key)} style={{ accentColor: "var(--accent)" }} />
@@ -198,7 +198,7 @@ export default function DatasetDetailClient({
         )}
         {canEdit && (
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
-            <button onClick={addColumn} disabled={cols.length >= 40} style={{ ...smallBtn, color: "var(--accent)", borderColor: "var(--accent)" }}>
+            <button onClick={addColumn} disabled={cols.length >= 40} style={{ ...smallBtn, color: "var(--accent-text)", borderColor: "var(--accent)" }}>
               <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("ds.addCol")}
             </button>
             {keyCol && <button onClick={() => setKeyCol(null)} style={smallBtn}>{t("ds.noKey")}</button>}

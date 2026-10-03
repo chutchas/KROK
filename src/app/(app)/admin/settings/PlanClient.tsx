@@ -135,7 +135,7 @@ export default function PlanClient({ plans, configured, tenantCounts = {} }: {
                 <span style={{ display: "inline-flex", transform: isOpen ? "rotate(180deg)" : "none", transition: "transform .15s" }}><Icon icon={ChevronDown} className="h-4 w-4" /></span>
                 <b style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.08rem" }}>{p.name}</b>
                 <code style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>{p.key}</code>
-                <span style={{ color: "var(--accent)", fontWeight: 600, fontSize: ".88rem" }}>{p.priceThb > 0 ? `฿${p.priceThb.toLocaleString()}` : "ฟรี"}</span>
+                <span style={{ color: "var(--accent-text)", fontWeight: 600, fontSize: ".88rem" }}>{p.priceThb > 0 ? `฿${p.priceThb.toLocaleString()}` : "ฟรี"}</span>
                 {p.highlight && <Badge c="var(--accent)">แนะนำ</Badge>}
                 {p.visible ? <Badge c="var(--pass)">แสดงให้ลูกค้า</Badge> : <Badge c="var(--ink-3)">ซ่อน</Badge>}
                 <span style={{ fontSize: ".74rem", color: "var(--ink-3)" }}>{users} บัญชี</span>

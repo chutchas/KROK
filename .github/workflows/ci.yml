@@ -29,3 +29,50 @@ jobs:
 
       - name: Test
         run: npm test
+
+  e2e:
+    runs-on: ubuntu-latest
+    needs: verify
+    env:
+      # หน้าสาธารณะไม่ต้องใช้ฐานข้อมูลจริง — ค่าหลอกพอให้ build/รันได้
+      NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder-anon-key
+      # ทดสอบเส้นทางล็อกอินกับ preview/production จริง (ตั้งใน Settings → Secrets ถ้าต้องการ — ไม่ตั้ง = ข้าม)
+      E2E_APP_URL: ${{ secrets.E2E_BASE_URL }}
+      E2E_EMAIL: ${{ secrets.E2E_EMAIL }}
+      E2E_PASSWORD: ${{ secrets.E2E_PASSWORD }}
+      E2E_FORM_ID: ${{ secrets.E2E_FORM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Build
+        run: npm run build
+
+      - name: E2E (public pages, local server)
+        run: npx playwright test e2e/public.spec.ts
+
+      - name: E2E (signed-in flows, deployed app)
+        if: ${{ env.E2E_APP_URL != '' }}
+        run: E2E_BASE_URL="$E2E_APP_URL" npx playwright test e2e/app.spec.ts
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7

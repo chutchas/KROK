@@ -120,7 +120,7 @@ export default function FieldSettingsPanel({
         <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "5px 0 0", lineHeight: 1.45 }}>
           {si === 0 ? t("wf.hintFirst") : t("wf.hintNext")}
           {" "}
-          <Link href="/settings/team" target="_blank" style={{ color: "var(--accent)", whiteSpace: "nowrap" }}>
+          <Link href="/settings/team" target="_blank" style={{ color: "var(--accent-text)", whiteSpace: "nowrap" }}>
             {teams.length === 0 ? t("wf.createTeam") : t("wf.manageTeams")} ↗
           </Link>
         </p>
@@ -317,7 +317,7 @@ export default function FieldSettingsPanel({
             ))}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               {(field.options || []).length < 200 && (
-                <button onClick={() => patchField({ options: [...(field.options || []), ""] })} style={{ ...iconBtn, color: "var(--accent)", borderColor: "var(--accent)" }}>
+                <button onClick={() => patchField({ options: [...(field.options || []), ""] })} style={{ ...iconBtn, color: "var(--accent-text)", borderColor: "var(--accent)" }}>
                   <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("editor.addOption")}
                 </button>
               )}
@@ -359,7 +359,7 @@ export default function FieldSettingsPanel({
               const key = i === 0 ? field.id : `${field.id}.ph.slot${String(i).padStart(2, "0")}`;
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ flexShrink: 0, minWidth: 24, height: 24, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", fontWeight: 700, fontSize: ".78rem", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
+                  <span style={{ flexShrink: 0, minWidth: 24, height: 24, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)", fontWeight: 700, fontSize: ".78rem", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>{i + 1}</span>
                   <Field id={`pcap-${key}`} value={field.photo_labels?.[i] ?? ""} placeholder={(field.max_photos ?? 1) > 1 ? tt("print.photos.slotN", { n: i + 1 }) : t("editor.photoLabels")} style={{ flex: 1 }}
                     onChange={(e) => {
                       const n = Array.from({ length: field.max_photos ?? 1 }, (_, j) => field.photo_labels?.[j] ?? "");
@@ -373,7 +373,7 @@ export default function FieldSettingsPanel({
           <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("editor.photoLabelsHint")}</p>
           {/* การพิมพ์รูปเป็นค่าของทั้งฟอร์ม → ตั้งที่หัวเอกสารที่เดียว */}
           <button type="button" data-krok-keep="" onClick={() => onSelect("header")}
-            style={{ marginTop: 12, background: "none", border: "none", padding: 0, color: "var(--accent)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer", textAlign: "left" }}>
+            style={{ marginTop: 12, background: "none", border: "none", padding: 0, color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer", textAlign: "left" }}>
             {t("editor.photoPrintLink")} ›
           </button>
         </>
@@ -410,7 +410,7 @@ export default function FieldSettingsPanel({
                 <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   {/* ลำดับคอลัมน์ (ซ้าย → ขวา ในตาราง) */}
                   <span aria-label={tt("editor.tableColNo", { n: i + 1 })} title={tt("editor.tableColNo", { n: i + 1 })}
-                    style={{ flexShrink: 0, minWidth: 26, height: 26, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent)", fontWeight: 700, fontSize: ".82rem", display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
+                    style={{ flexShrink: 0, minWidth: 26, height: 26, borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)", fontWeight: 700, fontSize: ".82rem", display: "inline-flex", alignItems: "center", justifyContent: "center", fontVariantNumeric: "tabular-nums" }}>
                     {i + 1}
                   </span>
                   <Field value={c.label} onChange={(e) => patchCol(i, { label: e.target.value })} placeholder={t("editor.tableColName")} style={{ flex: 1 }} />
@@ -465,7 +465,7 @@ export default function FieldSettingsPanel({
               </div>
             ))}
             {cols.length < 12 && (
-              <button onClick={addCol} style={{ ...iconBtn, justifySelf: "start", color: "var(--accent)", borderColor: "var(--accent)" }}>
+              <button onClick={addCol} style={{ ...iconBtn, justifySelf: "start", color: "var(--accent-text)", borderColor: "var(--accent)" }}>
                 <Icon icon={Plus} className="h-3.5 w-3.5" /> {t("editor.tableAddCol")}
               </button>
             )}
@@ -499,7 +499,7 @@ export default function FieldSettingsPanel({
       </div>
 
       <button onClick={() => { const fid = newId("f"); patchStepFields([...step.fields, { id: fid, type: "text", label: "", required: true }]); onSelect(fid); }}
-        style={{ ...iconBtn, width: "100%", marginTop: 8, color: "var(--accent)", borderColor: "var(--accent)", justifyContent: "center" }}>
+        style={{ ...iconBtn, width: "100%", marginTop: 8, color: "var(--accent-text)", borderColor: "var(--accent)", justifyContent: "center" }}>
         <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
       </button>
       <FooterAdd onAddStep={addStep} label={t("editor.addStep")} />
@@ -527,7 +527,7 @@ function Empty({ onAddStep }: { onAddStep: () => void }) {
   return (
     <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: 20, textAlign: "center", color: "var(--ink-3)" }}>
       <p style={{ fontSize: ".88rem", margin: "0 0 10px" }}>{t("editor.selectHint")}</p>
-      <button onClick={onAddStep} className="inline-flex items-center gap-1.5" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600 }}>
+      <button onClick={onAddStep} className="inline-flex items-center gap-1.5" style={{ padding: "8px 14px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600 }}>
         <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
       </button>
     </div>
@@ -536,7 +536,7 @@ function Empty({ onAddStep }: { onAddStep: () => void }) {
 
 function FooterAdd({ onAddStep, label }: { onAddStep: () => void; label: string }) {
   return (
-    <button onClick={onAddStep} className="inline-flex items-center gap-1.5" style={{ width: "100%", justifyContent: "center", marginTop: 8, padding: "9px 14px", borderRadius: 8, border: "1px dashed var(--accent)", background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600 }}>
+    <button onClick={onAddStep} className="inline-flex items-center gap-1.5" style={{ width: "100%", justifyContent: "center", marginTop: 8, padding: "9px 14px", borderRadius: 8, border: "1px dashed var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: 600 }}>
       <Icon icon={Plus} className="h-4 w-4" /> {label}
     </button>
   );

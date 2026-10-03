@@ -175,7 +175,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                                 <td key={c.id} style={{ padding: "5px 9px", verticalAlign: "top" }}>
                                   {pk && photoMap[pk] ? (
                                     <a href={photoMap[pk]} target="_blank" rel="noreferrer">
-                                      <img src={photoMap[pk]} alt={`${c.label} ${ri + 1}`} style={{ height: 64, maxWidth: 110, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }} />
+                                      <img loading="lazy" src={photoMap[pk]} alt={`${c.label} ${ri + 1}`} style={{ height: 64, maxWidth: 110, objectFit: "cover", borderRadius: 6, border: "1px solid var(--line)" }} />
                                     </a>
                                   ) : (r[c.id] || "—")}
                                 </td>
@@ -213,7 +213,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                     <span style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                       {answerPhotoKeys(a).map((k, j, keys) => ({ k, cap: a.photoLabels?.[j]?.trim(), n: keys.length })).filter((x) => photoMap[x.k]).map(({ k, cap, n }) => (
                         <figure key={k} style={{ margin: 0, maxWidth: n > 1 ? "calc(50% - 4px)" : "100%" }}>
-                          <img src={photoMap[k]} alt={cap || a.label} className={pp.mode === "appendix" && a.type === "photo" ? "krok-sub-thumb" : undefined} style={{ maxWidth: "100%", maxHeight: n > 1 ? 180 : 260, borderRadius: 8, border: "1px solid var(--line)", display: "block" }} />
+                          <img loading="lazy" src={photoMap[k]} alt={cap || a.label} className={pp.mode === "appendix" && a.type === "photo" ? "krok-sub-thumb" : undefined} style={{ maxWidth: "100%", maxHeight: n > 1 ? 180 : 260, borderRadius: 8, border: "1px solid var(--line)", display: "block" }} />
                           {cap && <figcaption style={{ fontSize: ".76rem", fontWeight: 400, color: "var(--ink-3)", marginTop: 2 }}>{cap}</figcaption>}
                         </figure>
                       ))}
@@ -243,7 +243,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
               {extracts.map((ex) => (
                 <div key={ex.id} style={{ border: "1px solid var(--line)", borderRadius: 9, padding: 8, background: "var(--surface)" }}>
                   {ex.url ? (
-                    <img src={ex.url} alt="เอกสารต้นฉบับ" style={{ width: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 6, background: "var(--code-bg)" }} />
+                    <img loading="lazy" src={ex.url} alt="เอกสารต้นฉบับ" style={{ width: "100%", maxHeight: 200, objectFit: "contain", borderRadius: 6, background: "var(--code-bg)" }} />
                   ) : (
                     <div style={{ color: "var(--ink-3)", fontSize: ".82rem", padding: "18px 0", textAlign: "center" }}><T k="sub.noOriginal" /></div>
                   )}

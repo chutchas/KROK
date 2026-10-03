@@ -8,7 +8,7 @@ import { CreditCard, RefreshCw } from "lucide-react";
 import Icon from "@/components/Icon";
 import { Button, Card, Notice } from "@/components/ui";
 import { confirmDialog } from "@/components/dialogs";
-import { useT } from "@/i18n/LanguageProvider";
+import { usePayT as useT } from "@/i18n/ns/pay";
 import type { Plan } from "@/lib/plans";
 import { setAutoRenew, startCardUpdate } from "./actions";
 

@@ -227,7 +227,10 @@ export async function consumeAiCredit(tenantId: string, purpose: AiPurpose): Pro
   const used = (cur.data as number | null) ?? 0;
   if (used >= max) return { ok: false, used, max, purpose, label };
 
-  await supabase.rpc("ai_usage_incr_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });
+  // นับเครดิตด้วย service role (0052 ปิดไม่ให้ผู้ใช้เรียกตรง) · ยังไม่รัน 0052 / ไม่มี admin = ใช้สิทธิ์ผู้ใช้แบบเดิม
+  const admin = getAdminClient();
+  const inc = admin ? await admin.rpc("ai_usage_incr_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose }) : null;
+  if (!inc || inc.error) await supabase.rpc("ai_usage_incr_by", { p_tenant: tenantId, p_period: period, p_purpose: purpose });
   return { ok: true, used: used + 1, max, purpose, label };
 }
 

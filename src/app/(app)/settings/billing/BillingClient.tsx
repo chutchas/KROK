@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { Card, Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Check, Lock, CreditCard, Minus } from "lucide-react";
-import { useT } from "@/i18n/LanguageProvider";
+import { usePayT as useT } from "@/i18n/ns/pay";
 import { DEFAULT_PLANS, UNLIMITED, planFeatures, type PlanKey, type Plan } from "@/lib/plans";
 import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
 import { setPlan, invoiceStatus } from "./actions";
@@ -115,7 +115,7 @@ export default function BillingClient({
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("plan.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-          {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent)" }}>{en ? plan.nameEn : plan.name}</b>
+          {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent-text)" }}>{en ? plan.nameEn : plan.name}</b>
         </p>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "2px 0 0" }}>
           {isOwner ? tt("plan.accountOwn", { n: workspaces }) : tt("plan.accountOther", { name: ownerName || t("plan.ownerFallback"), n: workspaces })}
@@ -131,7 +131,7 @@ export default function BillingClient({
         <Notice>
           <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             {tt("pay.pending", { plan: plans.find((p) => p.key === pendingInvoice.plan)?.name ?? pendingInvoice.plan, amount: pendingInvoice.amount.toLocaleString() })}
-            <a href={pendingInvoice.url} style={{ color: "var(--accent)", fontWeight: 600 }}>{t("pay.continue")}</a>
+            <a href={pendingInvoice.url} style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("pay.continue")}</a>
           </span>
         </Notice>
       )}
@@ -208,7 +208,7 @@ export default function BillingClient({
               <div>
                 <div style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.25rem", fontWeight: 700 }}>{en ? p.nameEn : p.name}</div>
                 {desc && <div style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>{desc}</div>}
-                <div style={{ color: "var(--accent)", fontWeight: 600, fontSize: "1rem", marginTop: 2 }}>{en ? p.priceLabelEn : p.priceLabel}</div>
+                <div style={{ color: "var(--accent-text)", fontWeight: 600, fontSize: "1rem", marginTop: 2 }}>{en ? p.priceLabelEn : p.priceLabel}</div>
               </div>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 7, fontSize: ".85rem", color: "var(--ink-2)" }}>
                 {planFeatures(p, en).map((f, i) => (

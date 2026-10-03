@@ -112,7 +112,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
               // eslint-disable-next-line @next/next/no-img-element
               <img src={avatar} alt="" style={{ width: 72, height: 72, borderRadius: "50%", objectFit: "cover", border: "2px solid var(--line)" }} />
             ) : (
-              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--line)" }}>
+              <div style={{ width: 72, height: 72, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center", border: "2px solid var(--line)" }}>
                 <Icon icon={HardHat} className="h-8 w-8" />
               </div>
             )}

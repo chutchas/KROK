@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { Card, Field, Notice, Pill, Button, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Crown, Code2, UserRound, Package } from "lucide-react";
-import { useT } from "@/i18n/LanguageProvider";
-import { setPlatformRole, removeFromWorkspace, setUserPlan } from "./actions";
+import { useAdminT as useT } from "@/i18n/ns/admin";
+import { setPlatformRole, removeFromWorkspace, setUserPlan, resetUserMfa } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
 
 type PlatformRole = "platform_admin" | "developer" | "user";
@@ -96,7 +96,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
           {filtered.map((u) => (
             <div key={u.userId} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 14 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
-                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <div style={{ width: 36, height: 36, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                   <Icon icon={PR_ICON[u.platformRole]} className="h-[18px] w-[18px]" />
                 </div>
                 <div style={{ flex: 1, minWidth: 160 }}>
@@ -116,6 +116,19 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                     </select>
                   </div>
                 )}
+                <Button
+                  onClick={async () => {
+                    if (!(await confirmDialog({ message: t("mfa.adminResetConfirm"), danger: true }))) return;
+                    setBusy(u.userId);
+                    const res = await resetUserMfa(u.userId);
+                    setBusy(null);
+                    setMsg("error" in res ? { t: res.error, err: true } : { t: t("mfa.adminResetDone") });
+                  }}
+                  disabled={busy === u.userId}
+                  style={{ padding: "5px 10px", fontSize: ".78rem" }}
+                >
+                  {t("mfa.adminReset")}
+                </Button>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{t("admin.platformRole")}</span>
                   <select value={u.platformRole} disabled={busy === u.userId} onChange={(e) => changeRole(u, e.target.value as PlatformRole)} style={sel}>
@@ -133,7 +146,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                     <div key={w.tenantId} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".85rem", flexWrap: "wrap" }}>
                       <span style={{ flex: 1, minWidth: 120 }}>{w.tenantName}</span>
                       {w.billing ? (
-                        <span style={{ fontSize: ".72rem", color: "var(--accent)" }}>{t("admin.billingWs")}</span>
+                        <span style={{ fontSize: ".72rem", color: "var(--accent-text)" }}>{t("admin.billingWs")}</span>
                       ) : (
                         <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{t("admin.otherOwnerWs")}</span>
                       )}

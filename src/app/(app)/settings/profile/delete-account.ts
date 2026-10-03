@@ -11,12 +11,18 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
 
 type Admin = NonNullable<ReturnType<typeof getAdminClient>>;
-type Plan = { blockers: { tenantId: string; name: string; members: number }[]; deleteTenants: { tenantId: string; name: string }[]; leaveTenants: { tenantId: string; name: string }[] };
+type Plan = {
+  blockers: { tenantId: string; name: string; members: number }[];
+  deleteTenants: { tenantId: string; name: string }[];
+  leaveTenants: { tenantId: string; name: string }[];
+  /** workspace ที่ใช้แพ็กเกจที่ผู้ใช้จ่ายอยู่ — ลบบัญชีแล้วจะเปลี่ยนเป็นแพ็กเกจของ owner คนถัดไป */
+  planDrops: { tenantId: string; name: string }[];
+};
 
 async function planDeletion(admin: Admin, userId: string): Promise<Plan> {
   const { data: mine } = await admin.from("memberships").select("tenant_id, role").eq("user_id", userId);
   const ids = ((mine || []) as { tenant_id: string; role: string }[]).map((m) => m.tenant_id);
-  const plan: Plan = { blockers: [], deleteTenants: [], leaveTenants: [] };
+  const plan: Plan = { blockers: [], deleteTenants: [], leaveTenants: [], planDrops: [] };
   if (!ids.length) return plan;
   const [{ data: all }, { data: tenants }] = await Promise.all([
     admin.from("memberships").select("tenant_id, user_id, role").in("tenant_id", ids),
@@ -29,6 +35,14 @@ async function planDeletion(admin: Admin, userId: string): Promise<Plan> {
     if (others.length === 0) plan.deleteTenants.push({ tenantId: m.tenant_id, name });
     else if (m.role === "owner" && !others.some((o) => o.role === "owner")) plan.blockers.push({ tenantId: m.tenant_id, name, members: others.length });
     else plan.leaveTenants.push({ tenantId: m.tenant_id, name });
+  }
+  const { data: ap } = await admin.from("account_plans").select("plan").eq("user_id", userId).maybeSingle();
+  if (ap?.plan && ap.plan !== "free") {
+    const owned = await Promise.all(plan.leaveTenants.map(async (t) => {
+      const { data: b } = await admin.rpc("tenant_billing_owner", { p_tenant: t.tenantId });
+      return b === userId ? t : null;
+    }));
+    plan.planDrops = owned.filter((t): t is { tenantId: string; name: string } => !!t);
   }
   return plan;
 }

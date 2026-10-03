@@ -1,5 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
+import { buildCsp, newNonce } from "@/lib/csp";
 
 // เส้นทางที่เข้าได้โดยไม่ต้องล็อกอิน:
 // - /login, /auth: หน้าเข้าสู่ระบบ
@@ -10,15 +11,28 @@ import { NextResponse, type NextRequest } from "next/server";
 // - /api/cron: งานตั้งเวลา (ตรวจ CRON_SECRET ในตัว)
 // - /api/billing/callback: ผลการชำระจาก Payment Gateway (ตรวจลายเซ็นในตัว)
 // - /sw.js, /offline, /manifest: ไฟล์ PWA/ออฟไลน์
-const PUBLIC_PATHS = ["/login", "/auth", "/privacy", "/terms", "/api/health", "/f/", "/api/public", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
+const PUBLIC_PATHS = ["/login", "/auth", "/privacy", "/terms", "/api/health", "/f/", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
 // เส้นทางที่ไม่ใช้ session ผู้ใช้เลย (ตรวจ API key / secret เอง หรือเป็นไฟล์) — ข้ามการเช็ก login ทั้งหมด
-const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
+const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
 export async function updateSession(request: NextRequest) {
-  if (NO_SESSION_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) return NextResponse.next({ request });
+  // CSP + nonce ใหม่ทุกคำขอ — Next แปะ nonce ให้สคริปต์ของตัวเองอัตโนมัติจาก header นี้ (หน้าต้อง render แบบ dynamic)
+  const nonce = newNonce();
+  const csp = buildCsp(nonce);
+  // สร้าง response ที่ส่ง header ของคำขอ (รวม cookie ที่เพิ่งต่ออายุ) + nonce ต่อให้หน้า
+  const next = () => {
+    const h = new Headers(request.headers);
+    h.set("x-nonce", nonce);
+    h.set("content-security-policy", csp);
+    const r = NextResponse.next({ request: { headers: h } });
+    r.headers.set("Content-Security-Policy", csp);
+    return r;
+  };
 
-  let response = NextResponse.next({ request });
+  if (NO_SESSION_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) return next();
+
+  let response = next();
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,7 +44,7 @@ export async function updateSession(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = NextResponse.next({ request });
+          response = next();
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           );
@@ -52,7 +66,8 @@ export async function updateSession(request: NextRequest) {
     url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
-  if (user && path === "/login") {
+  // ค้างขั้นกรอกรหัส 2FA (/login?mfa=1) → อยู่หน้า login ได้ ไม่เด้งเข้าแดชบอร์ด (กันวนรอบ)
+  if (user && path === "/login" && !request.nextUrl.searchParams.has("mfa")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";

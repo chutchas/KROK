@@ -33,3 +33,16 @@ describe("landing dictionaries TH/EN parity", async () => {
     expect(Object.keys(th).filter((k) => k.startsWith("lp."))).toEqual([]);
   });
 });
+
+describe("per-page dictionaries TH/EN parity", async () => {
+  const mods = await Promise.all([import("./ns/ds"), import("./ns/notify"), import("./ns/admin"), import("./ns/pay")]);
+  const { th: mainTh } = await import("./th");
+  it("ทุกชุดมี key ตรงกัน ไม่ว่าง และไม่ซ้ำกับพจนานุกรมหลัก", () => {
+    for (const m of mods) {
+      const d = Object.values(m).find((v) => v && typeof v === "object" && "th" in (v as object)) as { th: Record<string, string>; en: Record<string, string> };
+      expect(Object.keys(d.en).sort()).toEqual(Object.keys(d.th).sort());
+      for (const [k, v] of Object.entries(d.th)) { expect(v, k).toBeTruthy(); expect(k in mainTh, `${k} ซ้ำในพจนานุกรมหลัก`).toBe(false); }
+      for (const v of Object.values(d.en)) expect(v).toBeTruthy();
+    }
+  });
+});

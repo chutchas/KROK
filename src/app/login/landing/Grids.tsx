@@ -75,7 +75,7 @@ export function UseCases() {
             <Reveal key={c.t} delay={(i % 3) * 70} className="lp-uc">
               <div className="lp-uc-top">
                 <span className="lp-tile"><Icon icon={c.icon} className="h-5 w-5" /></span>
-                <h4>{t(c.t)}</h4>
+                <h3>{t(c.t)}</h3>
               </div>
               <p>{t(c.d)}</p>
               <div className="lp-uc-tags">

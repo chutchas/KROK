@@ -108,7 +108,7 @@ export default function OptionPicker({
       {selected.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 6 }}>
           {selected.map((s) => (
-            <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid var(--accent)", borderRadius: 999, padding: compact ? "1px 8px" : "4px 10px", fontSize: compact ? ".78rem" : ".9rem", fontWeight: 600 }}>
+            <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 4, background: "var(--accent-soft)", color: "var(--accent-text)", border: "1px solid var(--accent)", borderRadius: 999, padding: compact ? "1px 8px" : "4px 10px", fontSize: compact ? ".78rem" : ".9rem", fontWeight: 600 }}>
               {text(s)}
               <button type="button" aria-label={tt("fw.opt.remove", { name: labels?.get(s) ?? s })} onClick={() => onChange(multiple ? selected.filter((x) => x !== s) : "")} style={{ border: "none", background: "none", color: "inherit", cursor: "pointer", padding: 0, display: "flex" }}>
                 <Icon icon={X} className="h-3.5 w-3.5" />
@@ -148,7 +148,7 @@ export default function OptionPicker({
                 onClick={() => pick(o)}
                 style={{ display: "flex", width: "100%", alignItems: "center", gap: 8, textAlign: "left", padding: compact ? "6px 10px" : "10px 12px", border: "none", borderBottom: `1px solid ${paper ? "#eee" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "transparent", color: ink, cursor: "pointer", fontFamily: "inherit", fontSize: fs }}
               >
-                <span style={{ width: 16, display: "flex", color: "var(--accent)" }}>{on && <Icon icon={Check} className="h-4 w-4" />}</span>
+                <span style={{ width: 16, display: "flex", color: "var(--accent-text)" }}>{on && <Icon icon={Check} className="h-4 w-4" />}</span>
                 <span>{text(o)}</span>
               </button>
             );

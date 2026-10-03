@@ -33,6 +33,7 @@ export default function PrivacyPage() {
         <ul>
           <li><b>ข้อมูลบัญชี:</b> ชื่อที่แสดง อีเมล รหัสผ่าน (เก็บแบบเข้ารหัสทางเดียว เราไม่เห็นรหัสผ่านจริง) รูปโปรไฟล์ ชื่อองค์กร/workspace บทบาทและทีม</li>
           <li><b>ข้อมูลการใช้งาน:</b> ประวัติการทำรายการ (audit log) เช่น สร้าง/แก้ไขฟอร์ม ส่งเอกสาร อนุมัติ พร้อมเวลา รหัสอุปกรณ์ (กรณีองค์กรเปิดใช้การล็อกอุปกรณ์) และหมายเลข IP ที่ใช้ชั่วคราวเพื่อกันการใช้งานผิดปกติ</li>
+          <li><b>บันทึกข้อผิดพลาดของระบบ:</b> เมื่อหน้าเว็บหรือระบบเกิด error เราบันทึกหน้าที่เปิด ข้อความ error ชนิดเบราว์เซอร์ และรหัสผู้ใช้ (ถ้าล็อกอิน) ไว้ในระบบของเราเองเพื่อแก้ปัญหา เก็บ 30 วัน ไม่รวมข้อมูลที่กรอกในฟอร์ม</li>
           <li><b>ข้อมูลการชำระเงิน:</b> แพ็กเกจ ใบแจ้งหนี้ สถานะการชำระ — ข้อมูลบัตรหรือบัญชีธนาคารถูกกรอกและเก็บโดยผู้ให้บริการรับชำระเงินโดยตรง เราไม่เก็บเลขบัตร</li>
           <li><b>ข้อมูลที่กรอกในฟอร์ม:</b> ตามที่องค์กรออกแบบฟอร์ม อาจมีชื่อ ข้อความ ตัวเลข รูปถ่าย ลายเซ็น เอกสารที่สแกน และชื่อผู้กรอก (กรณีฟอร์มสาธารณะ)</li>
           <li><b>การสื่อสาร:</b> ข้อความที่คุณติดต่อเรา</li>
@@ -161,6 +162,7 @@ export default function PrivacyPage() {
       <ul>
         <li><b>Account data:</b> display name, email, password (one-way hashed; we never see it), profile photo, organisation/workspace name, role and teams.</li>
         <li><b>Usage data:</b> an activity log (creating/editing forms, submitting, approving) with timestamps, a device ID when the organisation enables device lock, and IP addresses used temporarily to prevent abuse.</li>
+        <li><b>Error logs:</b> when a page or the system fails, we record the page, the error message, browser type and user ID (if signed in) in our own system to fix problems, kept for 30 days. Form answers are not included.</li>
         <li><b>Payment data:</b> plan, invoices and payment status. Card or bank details are entered into and stored by the payment provider; we do not store card numbers.</li>
         <li><b>Form data:</b> whatever the organisation&apos;s form asks for, which may include names, text, numbers, photos, signatures, scanned documents and the respondent&apos;s name (public forms).</li>
         <li><b>Communications:</b> messages you send us.</li>

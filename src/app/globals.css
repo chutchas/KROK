@@ -40,6 +40,8 @@
   --accent: var(--brand-primary);
   --accent-ink: #ffffff;
   --accent-soft: var(--brand-tint);
+  /* สีแบรนด์ในรูปตัวอักษร/ไอคอนบนพื้นอ่อน — เข้มกว่าปุ่มให้ contrast ≥ 4.5:1 (WCAG AA) */
+  --accent-text: #2559c4;
   --amber: var(--brand-primary); /* info highlight = แบรนด์ */
 
   /* ---- semantic ---- */
@@ -78,6 +80,7 @@
     --accent: var(--brand-primary);
     --accent-ink: #ffffff;
     --accent-soft: rgba(139, 164, 255, 0.14);
+    --accent-text: #8ba4ff;
     --amber: #8ba4ff;
     --pass: #4ade80;
     --pass-soft: #16261d;
@@ -105,6 +108,7 @@
   --accent: var(--brand-primary);
   --accent-ink: #ffffff;
   --accent-soft: rgba(139, 164, 255, 0.14);
+  --accent-text: #8ba4ff;
   --amber: #8ba4ff;
   --pass: #4ade80;
   --pass-soft: #16261d;

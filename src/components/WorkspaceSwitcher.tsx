@@ -18,7 +18,7 @@ export function WsAvatar({ name, size = 26 }: { name: string; size?: number }) {
   const ch = (Array.from(name.trim())[0] || "W").toUpperCase();
   return (
     <span aria-hidden style={{ width: size, height: size, flex: "0 0 auto", borderRadius: Math.round(size * 0.28), display: "inline-flex", alignItems: "center", justifyContent: "center",
-      background: "var(--accent-soft)", color: "var(--accent)", border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
+      background: "var(--accent-soft)", color: "var(--accent-text)", border: "1px solid color-mix(in srgb, var(--accent) 25%, transparent)",
       fontWeight: 700, fontSize: Math.round(size * 0.5), lineHeight: 1, fontFamily: "var(--font-anuphan)" }}>{ch}</span>
   );
 }
@@ -159,7 +159,7 @@ export default function WorkspaceSwitcher({
               >
                 <WsAvatar name={w.tenantName} size={22} />
                 <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{w.tenantName}</span>
-                {on && <span style={{ color: "var(--accent)", display: "inline-flex" }}><Icon icon={Check} className="h-4 w-4" /></span>}
+                {on && <span style={{ color: "var(--accent-text)", display: "inline-flex" }}><Icon icon={Check} className="h-4 w-4" /></span>}
               </button>
             );
           })}
@@ -195,7 +195,7 @@ export default function WorkspaceSwitcher({
           ) : (
             <button
               onClick={() => setCreating(true)}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", color: "var(--accent)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500 }}
+              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "9px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: "transparent", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 500 }}
             >
               <Icon icon={Plus} className="h-4 w-4" /> {t("ws.create")}
             </button>

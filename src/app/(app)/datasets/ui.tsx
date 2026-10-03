@@ -3,8 +3,8 @@
 import Icon from "@/components/Icon";
 import { FileSpreadsheet, DownloadCloud, UploadCloud, CheckCircle2, AlertTriangle, Loader2 } from "lucide-react";
 import type { DatasetMeta, DatasetSourceKind } from "@/lib/datasets";
-import type { MessageKey } from "@/i18n/dictionaries";
-import { useT } from "@/i18n/LanguageProvider";
+import type { DsAnyKey as MessageKey } from "@/i18n/ns/ds";
+import { useDsT as useT } from "@/i18n/ns/ds";
 
 export const SOURCE_ICON: Record<DatasetSourceKind, typeof FileSpreadsheet> = {
   file: FileSpreadsheet,
@@ -29,7 +29,7 @@ export function SyncBadge({ ds }: { ds: Pick<DatasetMeta, "lastSyncStatus" | "la
   const { t, lang } = useT();
   const base: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".76rem", borderRadius: 999, padding: "2px 9px", border: "1px solid" };
   if (ds.lastSyncStatus === "running")
-    return <span style={{ ...base, color: "var(--accent)", borderColor: "var(--accent)" }}><Icon icon={Loader2} className="h-3.5 w-3.5" /> {t("ds.syncing")}</span>;
+    return <span style={{ ...base, color: "var(--accent-text)", borderColor: "var(--accent)" }}><Icon icon={Loader2} className="h-3.5 w-3.5" /> {t("ds.syncing")}</span>;
   if (ds.lastSyncStatus === "error")
     return <span title={ds.lastSyncError} style={{ ...base, color: "var(--fail)", borderColor: "var(--fail)" }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> {t("ds.lastFailed")}</span>;
   if (ds.lastSyncedAt)

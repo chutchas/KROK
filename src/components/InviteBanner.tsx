@@ -34,7 +34,7 @@ export default function InviteBanner({ invites }: { invites: PendingInvite[] }) 
     <div role="region" aria-label={t("invite.region")} style={{ display: "grid", gap: 8, marginBottom: 14 }}>
       {list.map((inv) => (
         <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, border: "1px solid var(--accent)", background: "var(--accent-soft)" }}>
-          <span style={{ display: "inline-flex", color: "var(--accent)" }}><Icon icon={MailOpen} className="h-5 w-5" /></span>
+          <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={MailOpen} className="h-5 w-5" /></span>
           <div style={{ flex: "1 1 220px", minWidth: 0, fontSize: ".9rem" }}>
             <b>{tt("invite.title", { name: inv.tenant_name })}</b>
             <div style={{ color: "var(--ink-2)", fontSize: ".8rem" }}>

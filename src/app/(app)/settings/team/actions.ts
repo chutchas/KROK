@@ -2,13 +2,37 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, type KrokSession } from "@/lib/session";
-import { canAddMember } from "@/lib/quota";
+import { canAddMember, getUserPlanKey } from "@/lib/quota";
+import { getAdminClient } from "@/lib/supabase/admin";
+import { getPlan } from "@/lib/plans";
+import { getEffectivePlans } from "@/lib/plans-server";
 import { fmtLimit } from "@/lib/plans";
 import { sendEmail, inviteEmail } from "@/lib/email";
 import { siteOrigin } from "@/lib/site-origin";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 const ROLES: Role[] = ["owner", "admin", "designer", "operator"];
+
+/** การเปลี่ยนที่ทำให้ workspace เปลี่ยนแพ็กเกจ (เจ้าของบัญชีที่จ่ายเงินหลุดจาก owner) — ต้องให้ผู้ใช้ยืนยันก่อน */
+export type PlanShift = { from: string; to: string; nextOwner: string };
+type RoleResult = { ok: true } | { error: string } | { needConfirm: PlanShift };
+
+/**
+ * ถ้า userId เป็น billing owner ของ workspace แล้วจะไม่ใช่ owner อีก → แพ็กเกจของ workspace (และกลุ่ม workspace ที่ใช้โควตาร่วม)
+ * จะเปลี่ยนเป็นของ owner คนถัดไป · คืน null = แพ็กเกจไม่เปลี่ยน
+ */
+async function planShift(tenantId: string, userId: string): Promise<PlanShift | null> {
+  const admin = getAdminClient();
+  if (!admin) return null;
+  const { data: billing } = await admin.rpc("tenant_billing_owner", { p_tenant: tenantId });
+  if (billing !== userId) return null;
+  const { data: next } = await admin.from("memberships").select("user_id, name, email")
+    .eq("tenant_id", tenantId).eq("role", "owner").neq("user_id", userId).order("created_at", { ascending: true }).limit(1).maybeSingle();
+  if (!next) return null;
+  const [fromKey, toKey, plans] = await Promise.all([getUserPlanKey(userId), getUserPlanKey(next.user_id as string), getEffectivePlans()]);
+  if ((fromKey || "free") === (toKey || "free")) return null;
+  return { from: getPlan(fromKey, plans).name, to: getPlan(toKey, plans).name, nextOwner: (next.name as string) || (next.email as string) || "owner" };
+}
 
 type AdminGate = { ok: true; session: KrokSession } | { ok: false; error: string };
 
@@ -129,7 +153,7 @@ export async function cancelInvite(id: string): Promise<{ ok: true } | { error: 
 }
 
 // กำหนด role ให้สมาชิกด้วย role_key (รองรับ role ที่สร้างเอง)
-export async function changeRoleKey(userId: string, roleKey: string): Promise<{ ok: true } | { error: string }> {
+export async function changeRoleKey(userId: string, roleKey: string, confirmPlan = false): Promise<RoleResult> {
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const { session } = a;
@@ -152,6 +176,11 @@ export async function changeRoleKey(userId: string, roleKey: string): Promise<{ 
         .eq("tenant_id", session.tenantId).eq("role", "owner");
       if ((count ?? 0) <= 1) return { error: "ต้องมี owner อย่างน้อย 1 คน" };
     }
+  }
+
+  if (!isOwnerRole && !confirmPlan) {
+    const shift = await planShift(session.tenantId, userId);
+    if (shift) return { needConfirm: shift };
   }
 
   // sync enum role (ชั้นความปลอดภัย) ตาม can_manage
@@ -199,7 +228,7 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
   return { ok: true };
 }
 
-export async function removeMember(userId: string): Promise<{ ok: true } | { error: string }> {
+export async function removeMember(userId: string, confirmPlan = false): Promise<RoleResult> {
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const { session } = a;
@@ -210,6 +239,10 @@ export async function removeMember(userId: string): Promise<{ ok: true } | { err
     .from("memberships").select("role").eq("tenant_id", session.tenantId).eq("user_id", userId).maybeSingle();
   if (target?.role === "owner" && session.role !== "owner")
     return { error: "เฉพาะ owner ลบ owner ได้" };
+  if (target?.role === "owner" && !confirmPlan) {
+    const shift = await planShift(session.tenantId, userId);
+    if (shift) return { needConfirm: shift };
+  }
 
   const { error } = await supabase
     .from("memberships").delete().eq("tenant_id", session.tenantId).eq("user_id", userId);

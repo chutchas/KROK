@@ -1,7 +1,10 @@
 import type { Metadata, Viewport } from "next";
+import { headers } from "next/headers";
 import { DialogHost } from "@/components/dialogs";
 import "./globals.css";
 import { LanguageProvider } from "@/i18n/LanguageProvider";
+import ErrorReporter from "@/components/ErrorReporter";
+import PrintReady from "@/components/PrintReady";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
@@ -17,17 +20,18 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
 };
 
 // ตั้ง data-theme ก่อน paint เพื่อไม่ให้จอกระพริบตอนโหลด
 const THEME_INIT = `(function(){try{var t=localStorage.getItem('krok_theme');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t);}catch(e){}})();`;
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // nonce จาก proxy (CSP) — อ่าน header ทำให้ทุกหน้า render แบบ dynamic ซึ่งจำเป็นต่อ nonce
+  const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
     <html lang="th">
       <head>
-        <script dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
+        <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <link
@@ -38,6 +42,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ServiceWorkerRegister />
         <LanguageProvider initial="th">{children}<DialogHost /></LanguageProvider>
+        <ErrorReporter />
+        <PrintReady />
       </body>
     </html>
   );

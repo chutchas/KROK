@@ -189,7 +189,7 @@ export default function AttachmentsPanel({
 
       <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
         <input ref={fileRef} type="file" accept={ATTACH_ACCEPT} onChange={onPick} style={{ display: "none" }} />
-        <button onClick={() => fileRef.current?.click()} disabled={busy} style={{ ...iconBtn, color: "var(--accent)", borderColor: "var(--accent)" }}>
+        <button onClick={() => fileRef.current?.click()} disabled={busy} style={{ ...iconBtn, color: "var(--accent-text)", borderColor: "var(--accent)" }}>
           <Icon icon={Upload} className="h-3.5 w-3.5" /> {busy ? t("att.uploading") : t("att.attachFile")}
         </button>
         <button onClick={() => setLinkOpen((v) => !v)} disabled={busy} style={iconBtn}>

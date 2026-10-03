@@ -7,7 +7,7 @@ import { UploadCloud, KeyRound, Copy, Ban } from "lucide-react";
 import { MAX_DATASET_ROWS, type DatasetMeta } from "@/lib/datasets";
 import { revokePushKey, rotatePushKey } from "../actions";
 import { label } from "../ui";
-import { useT } from "@/i18n/LanguageProvider";
+import { useDsT as useT } from "@/i18n/ns/ds";
 import { confirmDialog } from "@/components/dialogs";
 
 const codeBox: React.CSSProperties = {

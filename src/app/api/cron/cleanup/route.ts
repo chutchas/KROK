@@ -41,6 +41,8 @@ async function handle(req: Request) {
     drafts += data.length;
     if (data.length < 200) break;
   }
+  // บันทึก error เก่ากว่า 30 วัน (0053) — ยังไม่รัน = error เงียบ ๆ ข้ามไป
+  await admin.from("error_events").delete().lt("created_at", new Date(Date.now() - 30 * 86400_000).toISOString());
   // ยังไม่รัน 0046 = ข้าม
   const { data: expired } = await admin.rpc("expire_account_plans");
   return NextResponse.json({ ok: true, drafts, files, expiredPlans: typeof expired === "number" ? expired : 0 });

@@ -4,6 +4,7 @@ import { Printer, FileDown, Images } from "lucide-react";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
+import { printWhenReady } from "@/lib/print";
 
 // submissionId ไม่ระบุ = โหมดพิมพ์อย่างเดียว (เช่น หน้าใบแจ้งหนี้) — ไม่มีปุ่มดาวน์โหลด PDF
 export default function PrintButton({ submissionId, hasPhotos = false }: { submissionId?: string; hasPhotos?: boolean }) {
@@ -30,7 +31,7 @@ export default function PrintButton({ submissionId, hasPhotos = false }: { submi
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch {
       // fallback: พิมพ์ผ่านเบราว์เซอร์
-      window.print();
+      void printWhenReady();
     } finally {
       setBusy(false);
     }
@@ -63,7 +64,7 @@ export default function PrintButton({ submissionId, hasPhotos = false }: { submi
   // หน้าที่ไม่ใช่ submission → พิมพ์ผ่านเบราว์เซอร์อย่างเดียว
   if (!submissionId) {
     return (
-      <Button variant="primary" onClick={() => window.print()}>
+      <Button variant="primary" onClick={() => void printWhenReady()}>
         <Icon icon={Printer} className="h-4 w-4" /> {t("sub.printSavePdf")}
       </Button>
     );
@@ -77,7 +78,7 @@ export default function PrintButton({ submissionId, hasPhotos = false }: { submi
           <Icon icon={Images} className="h-4 w-4" /> {zipBusy ? t("print.photos.downloading") : t("print.photos.download")}
         </Button>
       )}
-      <Button variant="ghost" onClick={() => window.print()}>
+      <Button variant="ghost" onClick={() => void printWhenReady()}>
         <Icon icon={Printer} className="h-4 w-4" /> {t("sub.print")}
       </Button>
       <Button variant="primary" onClick={downloadPdf} disabled={busy}>

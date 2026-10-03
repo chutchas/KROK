@@ -32,7 +32,7 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
   const { t } = useT();
   const sp = useSearchParams();
   // มาจากลิงก์เชิญ / ลิงก์ยืนยันอีเมล → เปิดหน้าต่างเข้าสู่ระบบทันที
-  const [open, setOpen] = useState(() => sp.has("invite") || sp.has("confirmed") || sp.has("auth_error"));
+  const [open, setOpen] = useState(() => sp.has("invite") || sp.has("confirmed") || sp.has("auth_error") || sp.has("mfa") || sp.has("deleted"));
   const [stuck, setStuck] = useState(false);
   const openLogin = useCallback(() => setOpen(true), []);
 
@@ -110,6 +110,7 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
           {...backdropClose(() => setOpen(false))}
           role="dialog"
           aria-modal="true"
+          aria-label={t("login.signin")}
           style={{
             position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)",
             display: "flex", justifyContent: "center", padding: 16, overflowY: "auto", overscrollBehavior: "contain",

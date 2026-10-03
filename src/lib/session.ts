@@ -7,6 +7,8 @@ interface User {
   id: string;
   email?: string;
   user_metadata?: Record<string, unknown>;
+  /** ระดับการยืนยันตัวตนของ token: aal1 = รหัสผ่าน · aal2 = ผ่าน 2FA แล้ว */
+  aal?: string;
 }
 import { createClient } from "@/lib/supabase/server";
 import type { MenuKey } from "@/lib/menus";
@@ -28,6 +30,8 @@ export interface KrokSession {
   isPlatformAdmin: boolean;
   /** ฉบับข้อกำหนด/นโยบายที่ผู้ใช้กดยอมรับล่าสุด (user_metadata.terms_version) — ว่าง = ยังไม่เคย */
   termsVersion: string;
+  /** เปิด 2FA ไว้ */
+  mfaEnabled: boolean;
 }
 
 export interface WorkspaceItem {
@@ -45,6 +49,8 @@ interface BundleMembership {
   created_at: string;
 }
 interface Bundle {
+  /** เปิด 2FA ไว้ (0055) — ไม่มี key = ยังไม่รัน migration */
+  mfa?: boolean;
   memberships: BundleMembership[];
   profile: { platform_role: string | null; avatar_url: string | null } | null;
   active: {
@@ -168,6 +174,7 @@ const getBundle = cache(async (): Promise<{ user: User; bundle: Bundle } | null>
     id: claims.sub,
     email: typeof claims.email === "string" ? claims.email : undefined,
     user_metadata: (claims.user_metadata as Record<string, unknown> | undefined) ?? {},
+    aal: typeof claims.aal === "string" ? claims.aal : undefined,
   };
 
   // RPC สำเร็จ → ใช้ผลจาก RPC (round-trip เดียว = fast path)
@@ -196,6 +203,8 @@ export const getSession = cache(async (): Promise<KrokSession | null> => {
   const { user, bundle } = res;
   const a = bundle.active;
   if (!a) return null;
+  // เปิด 2FA แต่ยังไม่ได้กรอกรหัส = ยังไม่ถือว่าล็อกอิน (ทุกหน้า/action/route ที่เช็ค session ปลอดภัยโดยปริยาย)
+  if (bundle.mfa === true && user.aal !== "aal2") return null;
 
   const platformRole = ((bundle.profile?.platform_role as string) ?? "user") as KrokSession["platformRole"];
 
@@ -215,7 +224,14 @@ export const getSession = cache(async (): Promise<KrokSession | null> => {
     platformRole,
     isPlatformAdmin: platformRole === "platform_admin",
     termsVersion: typeof user.user_metadata?.terms_version === "string" ? (user.user_metadata.terms_version as string) : "",
+    mfaEnabled: bundle.mfa === true,
   };
+});
+
+/** ล็อกอินด้วยรหัสผ่านแล้ว แต่ยังไม่ได้กรอกรหัส 2FA (ใช้ตัดสินว่าจะพาไป /login?mfa=1) */
+export const isMfaPending = cache(async (): Promise<boolean> => {
+  const res = await getBundle();
+  return !!res && res.bundle.mfa === true && res.user.aal !== "aal2";
 });
 
 /** สิทธิ์เมนูของ role ปัจจุบันใน workspace (owner = ทุกเมนู) */

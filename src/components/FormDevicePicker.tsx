@@ -62,7 +62,7 @@ export default function FormDevicePicker({ formId }: { formId: string | null }) 
       {!loading && rows.length === 0 && (
         <p style={{ fontSize: ".82rem", color: "var(--ink-3)", margin: 0 }}>
           {t("fw.devPick.none")}{" "}
-          <Link href="/settings/devices" style={{ color: "var(--accent)" }}>{t("fw.devPick.settingsLink")}</Link>
+          <Link href="/settings/devices" style={{ color: "var(--accent-text)" }}>{t("fw.devPick.settingsLink")}</Link>
         </p>
       )}
 

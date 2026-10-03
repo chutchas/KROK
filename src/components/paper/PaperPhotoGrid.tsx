@@ -30,7 +30,7 @@ export type PhotoGridItem = {
 export function PhotoFrame({ url, height, alt, children }: { url?: string; height: number; alt: string; children?: React.ReactNode }) {
   return (
     <div style={{ height, border: url ? "1px solid #d4d4d4" : "1px dashed #b9bec4", borderRadius: 3, background: url ? "#fafafa" : "#fff", display: "flex", alignItems: "center", justifyContent: "center", overflow: "hidden", position: "relative" }}>
-      {url ? <img src={url} alt={alt} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} /> : children}
+      {url ? <img loading="lazy" src={url} alt={alt} style={{ maxWidth: "100%", maxHeight: "100%", objectFit: "contain", display: "block" }} /> : children}
     </div>
   );
 }

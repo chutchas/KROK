@@ -31,12 +31,12 @@ export default function TermsGate({ version, firstTime }: { version: string; fir
     router.refresh();
   }
 
-  const link: React.CSSProperties = { color: "var(--accent)", textDecoration: "underline" };
+  const link: React.CSSProperties = { color: "var(--accent-text)", textDecoration: "underline" };
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="krok-terms-title" style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div style={{ width: "100%", maxWidth: 440, background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 16, padding: 20, boxShadow: "var(--shadow)" }}>
         <div style={{ display: "flex", gap: 10, alignItems: "center", marginBottom: 8 }}>
-          <span style={{ color: "var(--accent)" }}><Icon icon={ShieldCheck} className="h-6 w-6" /></span>
+          <span style={{ color: "var(--accent-text)" }}><Icon icon={ShieldCheck} className="h-6 w-6" /></span>
           <b id="krok-terms-title" style={{ fontSize: "1.05rem", fontFamily: "var(--font-anuphan)" }}>{firstTime ? t("legal.gateTitleNew") : t("legal.gateTitleUpd")}</b>
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", lineHeight: 1.6, margin: "0 0 10px" }}>{t("legal.gateBody")}</p>

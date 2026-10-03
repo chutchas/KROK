@@ -229,7 +229,7 @@ export default function FormPreview({
   const addBtn: React.CSSProperties = {
     display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
     padding: "9px 12px", margin: "6px 0 2px", borderRadius: 9, border: "1px dashed var(--accent)",
-    background: "var(--accent-soft)", color: "var(--accent)", cursor: "pointer", fontFamily: "inherit",
+    background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit",
     fontSize: ".84rem", fontWeight: 600,
   };
   return (

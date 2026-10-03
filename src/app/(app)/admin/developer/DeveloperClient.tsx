@@ -68,7 +68,7 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
               { k: t("dev.webhooks"), v: stats.webhooks },
             ].map((s) => (
               <div key={s.k} style={{ border: "1px solid var(--line)", borderRadius: 10, padding: "12px 14px", background: "var(--surface)" }}>
-                <div className="tabnum" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--accent)" }}>{s.v.toLocaleString()}</div>
+                <div className="tabnum" style={{ fontSize: "1.5rem", fontWeight: 700, color: "var(--accent-text)" }}>{s.v.toLocaleString()}</div>
                 <div style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{s.k}</div>
               </div>
             ))}

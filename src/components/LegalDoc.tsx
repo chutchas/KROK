@@ -25,7 +25,7 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
   const d = docs[lang] ?? docs.th;
   const ui = UI[lang] ?? UI.th;
   return (
-    <div style={{ minHeight: "100vh", background: "var(--bg)", color: "var(--ink)" }}>
+    <div style={{ minHeight: "100vh", background: "var(--ground)", color: "var(--ink)" }}>
       <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 16px" }} className="no-print">
         <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}>

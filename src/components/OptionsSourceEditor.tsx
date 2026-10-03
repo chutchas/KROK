@@ -70,8 +70,8 @@ function DatasetColumnPicker({
   if (picks.length === 0)
     return (
       <p style={hint}>
-        {t("opt.noDatasets")} <Link href="/datasets" target="_blank" style={{ color: "var(--accent)" }}>{t("opt.createInMenu")}</Link>{" "}
-        <button type="button" onClick={onRefresh} style={{ border: "none", background: "none", color: "var(--accent)", cursor: "pointer", padding: 0, fontSize: "inherit" }}>
+        {t("opt.noDatasets")} <Link href="/datasets" target="_blank" style={{ color: "var(--accent-text)" }}>{t("opt.createInMenu")}</Link>{" "}
+        <button type="button" onClick={onRefresh} style={{ border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", padding: 0, fontSize: "inherit" }}>
           <Icon icon={RefreshCw} className="h-3 w-3" /> {t("opt.reload")}
         </button>
       </p>

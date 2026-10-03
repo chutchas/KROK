@@ -26,7 +26,7 @@ const sel: React.CSSProperties = {
 };
 const smallBtn: React.CSSProperties = {
   padding: "6px 12px", borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)",
-  color: "var(--accent)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600,
+  color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600,
   display: "inline-flex", alignItems: "center", gap: 5,
 };
 

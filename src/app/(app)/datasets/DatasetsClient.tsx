@@ -6,8 +6,8 @@ import { Card, Button, Field, EmptyState, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Database, Plus, ChevronRight } from "lucide-react";
 import { SOURCE_LABEL, type DatasetMeta, type DatasetSourceKind } from "@/lib/datasets";
-import type { MessageKey } from "@/i18n/dictionaries";
-import { useT } from "@/i18n/LanguageProvider";
+import type { DsAnyKey as MessageKey } from "@/i18n/ns/ds";
+import { useDsT as useT } from "@/i18n/ns/ds";
 import { createDataset } from "./actions";
 import { SOURCE_ICON, SOURCE_KEY, SyncBadge, label } from "./ui";
 

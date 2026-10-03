@@ -120,7 +120,7 @@ export default function FormIcon({ value, size = 40, bare = false, title }: { va
   if (bare) return svg;
   return (
     <span style={{ width: size, height: size, flex: "0 0 auto", borderRadius: Math.round(size * 0.26), display: "inline-flex", alignItems: "center", justifyContent: "center",
-      background: "var(--accent-soft)", color: "var(--accent)" }} title={title}>
+      background: "var(--accent-soft)", color: "var(--accent-text)" }} title={title}>
       {svg}
     </span>
   );

@@ -7,6 +7,7 @@ import { Card } from "@/components/ui";
 import { T } from "@/i18n/T";
 import { privacyRequestHref } from "@/lib/legal";
 import DeleteAccountCard from "./DeleteAccountCard";
+import TwoFactorCard from "./TwoFactorCard";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,7 @@ export default async function ProfilePage() {
   return (
     <>
       <ProfileClient initial={profile} />
+      <div style={{ marginTop: 16, minWidth: 0 }}><TwoFactorCard /></div>
       <div style={{ marginTop: 16, minWidth: 0 }}>
         <Card>
           <h3 style={{ fontSize: "1rem", margin: "0 0 4px" }}><T k="legal.myData" /></h3>
