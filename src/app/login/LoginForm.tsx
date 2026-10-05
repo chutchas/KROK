@@ -40,6 +40,36 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   // ถึงหน้าล็อกอิน = ไม่มี session แล้ว (ออกจากระบบ / หมดอายุ) → ไม่เก็บฟอร์มของผู้ใช้คนก่อนไว้ในเครื่อง
   // (คิวที่รอส่งและร่างในเครื่องยังอยู่ — ส่ง/เปิดต่อได้เมื่อคนเดิมล็อกอินกลับมา)
   useEffect(() => { void clearBundles(); }, []);
+
+  // ปุ่ม Google แสดงเมื่อเปิด provider ใน Supabase แล้วเท่านั้น (อ่านจาก /auth/v1/settings ซึ่งเป็นข้อมูลสาธารณะ)
+  const [googleOn, setGoogleOn] = useState(false);
+  useEffect(() => {
+    const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!base || !key) return;
+    let alive = true;
+    fetch(`${base}/auth/v1/settings`, { headers: { apikey: key } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => { if (alive && j?.external?.google === true) setGoogleOn(true); })
+      .catch(() => {});
+    return () => { alive = false; };
+  }, []);
+
+  async function signInWithGoogle() {
+    setBusy(true);
+    setMsg(null);
+    // กลับมาที่ /auth/confirm (แลก code เป็น session) แล้วไปหน้าที่ตั้งใจจะเข้า — 2FA / ยอมรับข้อกำหนด ตรวจต่อในแอปตามปกติ
+    const raw = sp.get("next") || "/dashboard";
+    const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
+    const { error } = await createClient().auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
+        queryParams: { prompt: "select_account" },
+      },
+    });
+    if (error) { setBusy(false); setMsg({ t: error.message, err: true }); }
+  }
   useEffect(() => {
     if (!mfaParam) return;
     let alive = true;
@@ -152,6 +182,18 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>
           {mode === "mfa" ? t("mfa.loginHint") : mode === "signin" ? t("login.signinHint") : mode === "reset" ? t("login.resetHint") : isInvite ? t("login.inviteHint") : t("login.signupHint")}
         </p>
+
+        {googleOn && (mode === "signin" || mode === "signup") && (
+          <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
+            <Button type="button" onClick={signInWithGoogle} disabled={busy} style={{ padding: 12, fontWeight: 600 }}>
+              {isInvite ? t("login.googleJoin") : t("login.google")}
+            </Button>
+            {mode === "signup" && <span style={{ fontSize: ".76rem", color: "var(--ink-3)", lineHeight: 1.5 }}>{isInvite ? tt("login.googleInviteNote", { email: invited }) : t("login.googleSignupNote")}</span>}
+            <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ink-3)", fontSize: ".8rem" }}>
+              <span style={{ flex: 1, height: 1, background: "var(--line)" }} />{t("login.orEmail")}<span style={{ flex: 1, height: 1, background: "var(--line)" }} />
+            </div>
+          </div>
+        )}
 
         <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
           {isInvite && <Notice kind="info">{t("login.inviteNotice")}</Notice>}

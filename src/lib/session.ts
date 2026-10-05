@@ -228,6 +228,9 @@ export const getSession = cache(async (): Promise<KrokSession | null> => {
     canManageWs: a.can_manage,
     displayName:
       (user.user_metadata?.display_name as string) ||
+      // สมัครด้วย Google: ชื่อมากับ full_name / name
+      (user.user_metadata?.full_name as string) ||
+      (user.user_metadata?.name as string) ||
       (user.email ? user.email.split("@")[0] : "ผู้ใช้"),
     avatarUrl: (bundle.profile?.avatar_url as string) || (user.user_metadata?.avatar_url as string) || "",
     platformRole,
