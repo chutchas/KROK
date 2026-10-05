@@ -202,4 +202,6 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "เลือกวันที่ของเดือนอย่างน้อย 1 วัน": "Pick at least one day of the month",
   "โหมด “ทุกคนต้องทำ” ต้องเลือกทีมหรือคนที่รับผิดชอบ": "“Everyone submits” needs assigned teams or people",
   "ระยะเวลาให้ทำยาวกว่าช่วงห่างระหว่างรอบ — ลดเวลาให้ทำหรือเว้นรอบให้ห่างขึ้น": "Time allowed is longer than the gap between rounds — shorten it or space the rounds out",
+  "ไม่พบเวอร์ชันนี้": "Version not found",
+  "เวอร์ชันนี้เป็นเวอร์ชันปัจจุบันอยู่แล้ว": "This is already the current version",
 };

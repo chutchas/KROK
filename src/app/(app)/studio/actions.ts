@@ -228,8 +228,10 @@ export async function updateForm(
   rawChain: unknown = [],
   rawVisibility: unknown = { mode: "all", teamIds: [], userIds: [] },
   requireDevice = false,
-  deviceScope: "any" | "selected" = "any"
-): Promise<{ id: string } | { error: string }> {
+  deviceScope: "any" | "selected" = "any",
+  /** หมายเหตุของเวอร์ชันนี้ (0065) — ว่าง = ไม่ใส่ */
+  versionNote = ""
+): Promise<{ id: string; version?: number } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์แก้ไขฟอร์ม") };
@@ -245,7 +247,7 @@ export async function updateForm(
 
   const supabase = await createClient();
   // ชื่อ/ไอคอนเดิม — ใช้ตัดสินว่าต้องซิงก์ไป submissions เก่าไหม
-  const { data: before } = await supabase.from("forms").select("title, icon, approval_chain, schema").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+  const { data: before } = await supabase.from("forms").select("title, icon, approval_chain, schema, version").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
   // แพ็กเกจ: เพิ่มขั้นอนุมัติเกินลิมิต / เปิดกรอกหลายคนใหม่ ไม่ได้ (ของเดิมที่มีอยู่แล้วคงไว้ได้)
   let wasWf = false;
   try { wasWf = !!before?.schema && isWorkflowSchema(sanitizeSchema(before.schema)); } catch { /* schema เดิมเสีย */ }
@@ -270,10 +272,15 @@ export async function updateForm(
     })
     .eq("id", id)
     .eq("tenant_id", session.tenantId)
-    .select("id")
+    .select("id, version")
     .single();
 
   if (error) return { error: await sm(dbError(error)) };
+  const note = String(versionNote || "").trim().slice(0, 300);
+  if (note && data.version && data.version !== before?.version) {
+    // แก้ schema จริงเท่านั้นถึงมีเวอร์ชันใหม่ · ยังไม่รัน 0065 = ข้าม
+    await supabase.from("form_versions").update({ note }).eq("form_id", id).eq("version", data.version as number);
+  }
 
   // ซิงก์ชื่อ/ไอคอนไปยัง submissions เดิม เพื่อให้ทุกหน้า (dashboard/ประวัติ/อนุมัติ) แสดงชื่อใหม่ตรงกัน
   // เฉพาะตอนที่ชื่อหรือไอคอนเปลี่ยนจริง — เดิมเขียนทับทุก submission ทุกครั้งที่กดบันทึก (ช้า + realtime ถล่ม dashboard)
@@ -295,7 +302,7 @@ export async function updateForm(
   revalidatePath("/dashboard");
   revalidatePath("/approvals");
   revalidatePath("/", "layout");
-  return { id: data.id as string };
+  return { id: data.id as string, version: (data.version as number) ?? undefined };
 }
 
 export async function saveDraft(

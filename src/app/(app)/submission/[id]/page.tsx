@@ -3,7 +3,7 @@ import StoredText from "@/i18n/StoredText";
 import { notFound, redirect } from "next/navigation";
 import { InlineFormIcon } from "@/components/FormIcon";
 import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
-import { getSession } from "@/lib/session";
+import { getSession, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import Icon from "@/components/Icon";
@@ -147,7 +147,11 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
             <div title="ใบนี้กรอกตอนออฟไลน์ แล้วส่งเข้าระบบเมื่อมีเน็ต"><span style={{ color: "var(--ink-3)" }}><T k="sub.filledAt" /> </span><LocalDate iso={sub.filled_at} /> <span style={{ color: "var(--amber)", fontSize: ".78rem" }}><T k="sub.offlineFilled" /></span></div>
           )}
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.duration" /> </span><T k="sub.seconds" vars={{ s: sub.duration_s ?? "—" }} /></div>
-          <div><span style={{ color: "var(--ink-3)" }}><T k="sub.formVersion" /> </span>v{sub.form_version ?? 1}</div>
+          <div><span style={{ color: "var(--ink-3)" }}><T k="sub.formVersion" /> </span>v{sub.form_version ?? 1}
+            {canManage(session.role) && sub.form_id && (
+              <a className="no-print" href={`/studio/history/${sub.form_id}?v=${sub.form_version ?? 1}`} style={{ marginLeft: 8, fontSize: ".8rem" }}><T k="sub.viewVersion" /></a>
+            )}
+          </div>
         </div>
         {caseSteps.length > 0 && (
           <div style={{ fontSize: ".84rem", margin: "4px 0 8px", padding: "8px 12px", border: "1px solid var(--line)", borderRadius: 8 }}>

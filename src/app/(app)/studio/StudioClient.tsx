@@ -7,7 +7,8 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick, History } from "lucide-react";
+import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
 import FormPaperView from "@/components/FormPaperView";
@@ -68,6 +69,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [tab, setTab] = useState<"new" | "edit" | "all">(template ? "edit" : "new");
   const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
   const [qrForm, setQrForm] = useState<FormRow | null>(null);
+  const [versionNote, setVersionNote] = useState("");
   const [shareForm, setShareForm] = useState<FormRow | null>(null);
   const [origin, setOrigin] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
@@ -87,7 +89,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setBusy(t("studio.busyPublish"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
     const res = editingId
-      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope)
+      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope, versionNote)
       : await saveDraft(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
     setBusy(null);
     if ("error" in res) { setStatus({ t: res.error, err: true }); return; }
@@ -215,7 +217,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setBusy(t("studio.busyPublish"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
     const res = editingId
-      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope)
+      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope, versionNote)
       : await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
     setBusy(null);
     if ("error" in res) {
@@ -229,6 +231,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   function resetDraft() {
     setDraft(null);
+    setVersionNote("");
     setPrompt("");
     setEditingId(null);
     setView("mobile");
@@ -833,6 +836,15 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
 
           <FormSchedulePanel key={editingId || "new"} formId={editingId} teams={teams} members={members} />
+
+          {editingId && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
+              <Field value={versionNote} maxLength={300} onChange={(e) => setVersionNote(e.target.value)} placeholder={t("ver.notePh")} aria-label={t("ver.notePh")} style={{ flex: "1 1 240px", minWidth: 0 }} />
+              <Link href={`/studio/history/${editingId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".86rem", color: "var(--accent-text)", minHeight: 40, whiteSpace: "nowrap" }}>
+                <Icon icon={History} className="h-4 w-4" /> {t("ver.history")}
+              </Link>
+            </div>
+          )}
 
           <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>

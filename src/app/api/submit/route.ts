@@ -128,6 +128,15 @@ export async function POST(req: Request) {
     return fail(409, await sm("ฟอร์มนี้ปิดรับข้อมูลแล้ว"));
   }
 
+  // เวอร์ชันที่ผู้ใช้กรอกจริง (คิวออฟไลน์/แบบร่างอาจกรอกก่อนฟอร์มถูกแก้) — ต้องไม่ใหม่กว่าปัจจุบัน
+  // มีสำเนาเวอร์ชันนั้น (0065) → ตรวจคำตอบกับ schema ที่ผู้ใช้เห็นจริง ช่องที่ถูกลบไปทีหลังจะไม่หาย
+  const clientVer = Math.round(Number(body.version));
+  if (!caseId && Number.isFinite(clientVer) && clientVer >= 1 && clientVer < version) {
+    const { data: old } = await admin.from("form_versions").select("schema").eq("form_id", formId).eq("version", clientVer).maybeSingle();
+    if (old?.schema) schemaRaw = old.schema;
+    version = clientVer;
+  }
+
   let schema: FormSchema;
   try { schema = sanitizeSchema(schemaRaw); } catch { return fail(500, await sm("ฟอร์มไม่ถูกต้อง")); }
 
@@ -151,9 +160,6 @@ export async function POST(req: Request) {
   if (dur > 30 * 86400) dur = 30 * 86400;
 
   const chain = f.requires_approval ? sanitizeChain(f.approval_chain) : [];
-  // เวอร์ชันที่ผู้ใช้กรอกจริง (คิวออฟไลน์อาจกรอกก่อนฟอร์มถูกแก้) — ต้องไม่ใหม่กว่าปัจจุบัน
-  const clientVer = Math.round(Number(body.version));
-  if (!caseId && Number.isFinite(clientVer) && clientVer >= 1 && clientVer <= version) version = clientVer;
   const row: Record<string, unknown> = {
     id: subId,
     tenant_id: tenantId,
