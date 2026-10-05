@@ -23,6 +23,8 @@ const nextConfig: NextConfig = {
   // ลดขนาด bundle: import เฉพาะไอคอนที่ใช้จริงจาก lucide-react
   experimental: {
     optimizePackageImports: ["lucide-react"],
+    // จำหน้าที่เพิ่งเปิดไว้ในเบราว์เซอร์ 30 วินาที — สลับไปมาระหว่างหน้าขึ้นทันที (การบันทึก/อนุมัติของเราเองสั่งโหลดใหม่อยู่แล้ว)
+    staleTimes: { dynamic: 30 },
   },
 
   // pdfkit อ่านไฟล์ฟอนต์มาตรฐาน (.afm) จาก __dirname ตอน runtime → ห้าม bundle

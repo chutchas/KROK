@@ -423,7 +423,11 @@ export default function FillWizard(props: Props) {
   /** เปลี่ยนหน้า — ออฟไลน์/เปิดจากหน้าออฟไลน์ ใช้โหลดเต็มหน้า (service worker ส่งหน้าออฟไลน์ให้) */
   const go = useCallback((path: string) => {
     if (props.offlineShell || (typeof navigator !== "undefined" && navigator.onLine === false)) window.location.assign(path);
-    else router.push(path);
+    else {
+      // หน้ากรอกบันทึกร่าง/ส่งข้อมูลจากฝั่งเบราว์เซอร์ → ล้างหน้าที่จำไว้ (staleTimes) ให้รายการ/แบบร่างเป็นปัจจุบัน
+      router.refresh();
+      router.push(path);
+    }
   }, [props.offlineShell, router]);
 
   async function exitForm() {
