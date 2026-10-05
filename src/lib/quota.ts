@@ -87,6 +87,9 @@ async function countIn(table: string, ids: string[], extra?: (q: any) => any, co
 /** ผู้ใช้ไม่ซ้ำในทุก workspace ของกลุ่ม */
 async function distinctMembers(ids: string[]): Promise<number> {
   const c = await db();
+  // นับในฐานข้อมูล (0063) · ยังไม่รัน / ไม่มี service role → นับในแอปแบบเดิม
+  const rpc = await c.rpc("pool_member_count", { p_ids: ids });
+  if (!rpc.error && typeof rpc.data === "number") return rpc.data;
   const { data } = await c.from("memberships").select("user_id").in("tenant_id", ids).limit(50000);
   return new Set(((data || []) as { user_id: string }[]).map((r) => r.user_id)).size;
 }

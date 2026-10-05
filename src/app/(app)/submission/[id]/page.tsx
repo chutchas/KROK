@@ -1,4 +1,5 @@
 import { isLateSync } from "@/lib/filled-at";
+import StoredText from "@/i18n/StoredText";
 import { notFound, redirect } from "next/navigation";
 import { InlineFormIcon } from "@/components/FormIcon";
 import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
@@ -207,7 +208,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
               <div key={i} className={`krok-sub-row${pp.mode === "hidden" && a.type === "photo" ? " no-print" : ""}`} style={row}>
                 <div className="krok-sub-label" style={label}>
                   {a.label}
-                  {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {a.note}</div>}
+                  {a.note && <div style={{ color: "var(--fail)", fontSize: ".78rem", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}><Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> <StoredText text={a.note} /></div>}
                 </div>
                 <div style={{ flex: 1, fontWeight: 600, color: a.fail ? "var(--fail)" : "var(--ink)" }}>
                   {a.src && (
@@ -237,7 +238,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                     <span style={{ color: "var(--ink-3)", fontWeight: 400 }}><T k="sub.fileMissing" /></span>
                   ) : (
                     <>
-                      {a.display ?? "—"}
+                      {a.display ? <StoredText text={a.display} /> : "—"}
                       {a.code && <span style={{ marginLeft: 8, fontFamily: "monospace", fontSize: ".78rem", fontWeight: 400, color: "var(--ink-3)" }}>{a.code}</span>}
                     </>
                   )}

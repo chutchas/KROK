@@ -6,6 +6,7 @@ import { notifySubmission } from "@/app/(app)/fill/[formId]/actions";
 import Icon from "@/components/Icon";
 import { CloudOff, RefreshCw, CheckCircle2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import { localizeServerMsg } from "@/i18n/stored-text";
 import { isQuotaError, cleanQuotaMessage } from "@/lib/quota-msg";
 import { peekDeviceKey } from "@/lib/device-client";
 
@@ -19,7 +20,9 @@ const QUOTA_RETRY_MS = 10 * 60_000;
 
 // ตัวบ่งชี้สถานะออฟไลน์ + sync คิวฟอร์มที่ค้างเมื่อกลับมาออนไลน์
 export default function OfflineSync() {
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
+  const langRef = useRef(lang);
+  useEffect(() => { langRef.current = lang; }, [lang]);
   const [online, setOnline] = useState(true);
   const [pending, setPending] = useState(0);
   const [syncing, setSyncing] = useState(false);
@@ -77,7 +80,7 @@ export default function OfflineSync() {
         }
       }
     } finally {
-      if (quota !== "quota") { setQuotaMsg(quota); setMsgKind(kind); } // "quota" = ยังอยู่ในช่วงพัก ใช้ข้อความเดิม
+      if (quota !== "quota") { setQuotaMsg(quota ? localizeServerMsg(quota, langRef.current) : quota); setMsgKind(kind); } // "quota" = ยังอยู่ในช่วงพัก ใช้ข้อความเดิม
       busy.current = false;
       setSyncing(false);
       if (done > 0) { setJustSynced(done); setTimeout(() => setJustSynced(0), 4000); }

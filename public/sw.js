@@ -33,10 +33,13 @@ self.addEventListener("activate", (e) => {
 
 const offlineResponse = () => new Response(OFFLINE_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
 
-/** เก็บเพิ่มแล้วตัดของเก่าสุดออก (keys() เรียงตามลำดับที่เก็บ — put ซ้ำ = ย้ายไปท้าย) */
+/** เก็บเพิ่ม · ตัดของเก่าสุดออกทุก ๆ 25 ไฟล์ที่เก็บ (keys() เรียงตามลำดับที่เก็บ — put ซ้ำ = ย้ายไปท้าย) */
+let putsSinceTrim = 0;
 async function putStatic(req, res) {
   const cache = await caches.open(STATIC_CACHE);
   await cache.put(req, res);
+  if (++putsSinceTrim < 25) return;
+  putsSinceTrim = 0;
   const keys = await cache.keys();
   for (let i = 0; i < keys.length - STATIC_MAX; i++) await cache.delete(keys[i]);
 }
@@ -62,8 +65,22 @@ self.addEventListener("fetch", (e) => {
     return;
   }
 
-  // static assets → ใช้ของในเครื่องก่อน แล้วอัปเดตเบื้องหลัง
-  if (url.pathname.startsWith("/_next/static/") || /\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)) {
+  // ไฟล์ของ build (/_next/static ชื่อไฟล์มี hash — ไม่เปลี่ยนเนื้อหา) → ใช้ของในเครื่องเลย ไม่ต้องโหลดซ้ำเบื้องหลัง
+  if (url.pathname.startsWith("/_next/static/")) {
+    e.respondWith(
+      (async () => {
+        const cached = await caches.match(req, IV);
+        if (cached) return cached;
+        const res = await fetch(req);
+        if (res.ok) e.waitUntil(putStatic(req, res.clone()).catch(() => {}));
+        return res;
+      })()
+    );
+    return;
+  }
+
+  // รูป/ไฟล์อื่นใน public → ใช้ของในเครื่องก่อน แล้วอัปเดตเบื้องหลัง
+  if (/\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)) {
     e.respondWith(
       (async () => {
         const cached = await caches.match(req, IV);

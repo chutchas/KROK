@@ -7,6 +7,7 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import { localizeServerMsg } from "@/i18n/stored-text";
 import { labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import { PhotoFrame } from "@/components/paper/PaperPhotoGrid";
@@ -734,7 +735,7 @@ export default function FillWizard(props: Props) {
             throw new Error(j.error || t("fw.submitFailed"));
           }
         } catch (e) {
-          setSubmitErr(tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }));
+          setSubmitErr(tt("fw.submitFailedMsg", { msg: e instanceof Error ? localizeServerMsg(e.message, lang) : t("fw.error") }));
           setSubmitting(false);
           submitLock.current = false;
           return;
@@ -818,7 +819,7 @@ export default function FillWizard(props: Props) {
       setDone({ result: saved.result ?? result, fails: saved.fails ?? fails, dur, pending: props.requiresApproval, offline: false });
       window.scrollTo(0, 0);
     } catch (e) {
-      setSubmitErr(isQuotaExceeded(e) ? t("fw.deviceFull") : tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }));
+      setSubmitErr(isQuotaExceeded(e) ? t("fw.deviceFull") : tt("fw.submitFailedMsg", { msg: e instanceof Error ? localizeServerMsg(e.message, lang) : t("fw.error") }));
       setSubmitting(false);
       submitLock.current = false;
     }
@@ -913,7 +914,7 @@ export default function FillWizard(props: Props) {
     setCaseErr(undefined);
     const r = await claimCaseAction(kase.id).catch((e) => ({ error: netErr(e) }));
     setCaseBusy(false);
-    if ("error" in r) setCaseErr(r.error);
+    if ("error" in r) setCaseErr(localizeServerMsg(r.error, lang));
     router.refresh();
   }
 
@@ -925,7 +926,7 @@ export default function FillWizard(props: Props) {
     submitLock.current = true;
     const r = await releaseCaseAction(kase.id).catch((e) => ({ error: netErr(e) }));
     setCaseBusy(false);
-    if ("error" in r) { submitLock.current = false; setCaseErr(r.error); return; }
+    if ("error" in r) { submitLock.current = false; setCaseErr(localizeServerMsg(r.error, lang)); return; }
     router.push("/forms?tab=tasks");
   }
 
@@ -936,7 +937,7 @@ export default function FillWizard(props: Props) {
     submitLock.current = true;
     const r = await cancelCaseAction(kase.id, note || null).catch((e) => ({ error: netErr(e) }));
     setCaseBusy(false);
-    if ("error" in r) { submitLock.current = false; setCaseErr(r.error); return; }
+    if ("error" in r) { submitLock.current = false; setCaseErr(localizeServerMsg(r.error, lang)); return; }
     router.push("/forms?tab=tasks");
   }
 

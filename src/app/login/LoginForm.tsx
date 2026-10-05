@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+// supabase-js (~58KB gz) โหลดเมื่อจะใช้จริงเท่านั้น — หน้า landing/login แสดงผลได้เร็วขึ้น
+const createClient = async () => (await import("@/lib/supabase/client")).createClient();
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
@@ -66,7 +67,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     try { if (isInvite) sessionStorage.setItem("krok_invite_auto", "1"); else sessionStorage.removeItem("krok_invite_auto"); } catch { /* ignore */ }
     // กลับมาที่ /auth/confirm (แลก code เป็น session) แล้วไปหน้าที่ตั้งใจจะเข้า — 2FA / ยอมรับข้อกำหนด ตรวจต่อในแอปตามปกติ
     const next = nextPath;
-    const { error } = await createClient().auth.signInWithOAuth({
+    const { error } = await (await createClient()).auth.signInWithOAuth({
       provider: "google",
       options: {
         redirectTo: `${window.location.origin}/auth/confirm?next=${encodeURIComponent(next)}`,
@@ -78,7 +79,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   useEffect(() => {
     if (!mfaParam) return;
     let alive = true;
-    createClient().auth.mfa.listFactors().then(({ data }) => {
+    createClient().then((sb) => sb.auth.mfa.listFactors()).then(({ data }) => {
       const f = data?.totp?.find((x) => x.status === "verified");
       if (alive && f) { setFactorId(f.id); setMode("mfa"); }
     }, () => {});
@@ -91,7 +92,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
       if (!factorId || !/^\d{6}$/.test(code.trim())) { setMsg({ t: t("mfa.codeInvalid"), err: true }); return; }
       setBusy(true);
       setMsg(null);
-      const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId, code: code.trim() });
+      const { error } = await (await createClient()).auth.mfa.challengeAndVerify({ factorId, code: code.trim() });
       if (error) { setBusy(false); setMsg({ t: t("mfa.codeWrong"), err: true }); return; }
       router.push(nextPath);
       router.refresh();
@@ -103,7 +104,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     }
     setBusy(true);
     setMsg(null);
-    const supabase = createClient();
+    const supabase = await createClient();
     try {
       if (mode === "reset") {
         // ลืมรหัสผ่าน: Supabase ส่งลิงก์ → /auth/confirm แลก session → /reset-password ตั้งรหัสใหม่
@@ -267,7 +268,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           onClick={async () => {
             if (mode === "mfa") {
               // ใช้บัญชีอื่น: ออกจาก session ที่ค้างขั้น 2FA
-              await createClient().auth.signOut({ scope: "local" }).catch(() => {});
+              await (await createClient()).auth.signOut({ scope: "local" }).catch(() => {});
               setFactorId(null);
               setCode("");
               setMode("signin");

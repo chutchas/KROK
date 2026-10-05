@@ -1,4 +1,5 @@
 "use client";
+import StoredText from "@/i18n/StoredText";
 import FormIcon from "@/components/FormIcon";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -116,7 +117,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
 
           {s.fails?.length > 0 && (
             <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "8px 12px", margin: "12px 0 0", fontSize: ".85rem", color: "var(--ink-2)" }}>
-              {s.fails.map((f, i) => <div key={i}>• {f}</div>)}
+              {s.fails.map((f, i) => <div key={i}>• <StoredText text={f} /></div>)}
             </div>
           )}
 
@@ -125,8 +126,8 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
             <div style={{ marginTop: 8 }}>
               {s.answers.map((a, i) => (
                 <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "7px 0", borderBottom: "1px solid var(--line)", fontSize: ".88rem" }}>
-                  <div style={{ color: "var(--ink-2)" }}>{a.label}{a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}</div>
-                  <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Icon icon={Paperclip} className="h-3.5 w-3.5" /> {t("appr.hasAttachment")}</span> : a.display ?? "—"}</div>
+                  <div style={{ color: "var(--ink-2)" }}>{a.label}{a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}><StoredText text={a.note} /></div>}</div>
+                  <div style={{ fontWeight: 600, textAlign: "right", color: a.fail ? "var(--fail)" : "var(--ink)" }}>{a.type === "photo" || a.type === "signature" ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4, justifyContent: "flex-end" }}><Icon icon={Paperclip} className="h-3.5 w-3.5" /> {t("appr.hasAttachment")}</span> : a.display ? <StoredText text={a.display} /> : "—"}</div>
                 </div>
               ))}
             </div>

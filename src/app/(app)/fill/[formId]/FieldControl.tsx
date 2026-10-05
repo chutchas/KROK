@@ -5,6 +5,7 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import { localizeServerMsg } from "@/i18n/stored-text";
 import { labelMap, type FormField } from "@/lib/form-schema";
 import OptionPicker from "@/components/OptionPicker";
 import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
@@ -145,7 +146,7 @@ export function FieldControl({
       fd.append("label", f.label);
       const res = await fetch("/api/ai/check-photo", { method: "POST", body: fd });
       const j = await res.json();
-      const txt = res.ok ? (j.reason || (j.ok ? "ผ่าน" : "ควรตรวจสอบ")) : j.error || "ตรวจไม่ได้";
+      const txt = res.ok ? (j.reason || (j.ok ? t("fw.ai.ok") : t("fw.ai.review"))) : (j.error ? localizeServerMsg(j.error, lang) : t("fw.ai.fail"));
       setAiResult(txt);
       onPatch({ ai: txt });
     } catch {

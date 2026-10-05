@@ -1,4 +1,5 @@
 "use client";
+import StoredText from "@/i18n/StoredText";
 import { backdropClose } from "@/lib/backdrop";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
 import { useEffect, useMemo, useState } from "react";
@@ -532,7 +533,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
             <div key={i} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 14px", padding: "9px 0", borderBottom: "1px solid var(--line)", fontSize: ".9rem" }}>
               <div style={{ color: "var(--ink-2)" }}>
                 {a.label}
-                {a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}>{a.note}</div>}
+                {a.note && <div style={{ color: "var(--fail)", fontSize: ".8rem" }}><StoredText text={a.note} /></div>}
               </div>
               <div style={{ fontWeight: 600, textAlign: "right", overflowWrap: "anywhere", color: a.fail ? "var(--fail)" : a.type === "pass_fail" ? "var(--pass)" : "var(--ink)" }}>
                 {a.photoField ? (
@@ -543,7 +544,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
                   ) : <span style={{ fontSize: ".75rem", color: "var(--ink-3)" }}>{t("dash.loadingPhoto")}</span>
                 ) : (
                   <>
-                    {a.display ?? "—"}
+                    {a.display ? <StoredText text={a.display} /> : "—"}
                     {a.code && <span style={{ marginLeft: 6, fontFamily: "monospace", fontSize: ".75rem", fontWeight: 400, color: "var(--ink-3)" }}>{a.code}</span>}
                   </>
                 )}
