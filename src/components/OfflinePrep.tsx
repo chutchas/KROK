@@ -35,6 +35,9 @@ export default function OfflinePrep({ userId, tenantId }: { userId: string; tena
         else if (j.same && cur) await saveBundle({ ...cur, savedAt: new Date().toISOString() });
         last = Date.now();
         precacheShell();
+        // ส่วนที่โหลดเมื่อใช้งาน (โหมดกระดาษ / ตัวอ่าน QR สำรองบน Safari) — โหลดไว้ก่อนให้ service worker เก็บ
+        void import("@/components/FormPaperFill").catch(() => {});
+        void import("jsqr").catch(() => {});
       } catch {
         /* เครือข่ายหลุด — รอรอบหน้า */
       } finally {

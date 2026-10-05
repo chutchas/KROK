@@ -3,6 +3,9 @@
 // หน้าออฟไลน์ (/offline) = หน้ากรอกฟอร์มที่อ่านชุดฟอร์มจาก IndexedDB — แอปสั่งให้เก็บไว้ล่วงหน้า (krok-precache-shell)
 const CACHE = "krok-v2";
 const SHELL = "/offline";
+// Next ตอบ header "Vary: Accept-Encoding, rsc, ..." — Safari นำ header ของคำขอมาเทียบตอนค้นใน cache ด้วย
+// ทำให้หาไฟล์ที่เก็บไว้ไม่เจอ (Chrome ไม่เป็น) → ค้นแบบไม่สน Vary เสมอ
+const IV = { ignoreVary: true };
 const SHELL_PATHS = /^\/(forms|fill)(\/|$)/;
 const OFFLINE_HTML =
   '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ออฟไลน์</title>' +
@@ -45,8 +48,8 @@ self.addEventListener("fetch", (e) => {
           }
           return fresh;
         } catch {
-          const shell = await caches.match(SHELL);
-          const cached = await caches.match(req);
+          const shell = await caches.match(SHELL, IV);
+          const cached = await caches.match(req, IV);
           const first = SHELL_PATHS.test(url.pathname) ? shell || cached : cached || shell;
           return first || new Response(OFFLINE_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
         }
@@ -60,7 +63,7 @@ self.addEventListener("fetch", (e) => {
     e.respondWith(
       (async () => {
         const cache = await caches.open(CACHE);
-        const cached = await cache.match(req);
+        const cached = await cache.match(req, IV);
         const network = fetch(req)
           .then((res) => {
             if (res.ok) cache.put(req, res.clone());
@@ -82,7 +85,7 @@ async function precacheShell() {
   const assets = new Set();
   for (const m of html.matchAll(/\/_next\/static\/[^"'\s\\)]+/g)) assets.add(m[0]);
   for (const a of assets) {
-    if (await cache.match(a)) continue;
+    if (await cache.match(a, IV)) continue;
     try {
       const r = await fetch(a);
       if (r.ok) await cache.put(a, r);
