@@ -17,6 +17,8 @@ import {
   type MetricRow,
 } from "@/lib/dashboard-meta";
 
+import { loadCompliance, complianceByTeam, type ComplianceRow } from "@/lib/schedule-server";
+
 const RANGES: WidgetRange[] = ["today", "7d", "30d", "month", "all"];
 
 // ตรวจ/ล้าง widget config ก่อนเก็บ (กันข้อมูลเพี้ยน)
@@ -211,4 +213,26 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
     .sort((a, b) => b.v - a.v)
     .slice(0, 8);
   return { kind: "ranking", items };
+}
+
+// ---------- รอบตรวจตามตาราง: ความครบถ้วน (0064) ----------
+export interface ComplianceResult {
+  days: number;
+  forms: ComplianceRow[];
+  teams: ReturnType<typeof complianceByTeam>;
+}
+
+export async function loadScheduleCompliance(days: number): Promise<ComplianceResult | null | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (!(await hasMenu(session, "dashboard"))) return { error: await sm("ไม่มีสิทธิ์ใช้แดชบอร์ด") };
+  const d = days === 30 ? 30 : days === 90 ? 90 : 7;
+  const supabase = await createClient();
+  const [rows, teamsQ] = await Promise.all([
+    loadCompliance(supabase, session.tenantId, d),
+    supabase.from("teams").select("id, name").eq("tenant_id", session.tenantId),
+  ]);
+  if (!rows) return null;
+  const names = new Map(((teamsQ.data || []) as { id: string; name: string }[]).map((t) => [t.id, t.name]));
+  return { days: d, forms: rows, teams: complianceByTeam(rows, names) };
 }

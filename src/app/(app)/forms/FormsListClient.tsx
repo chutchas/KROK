@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate, FilePen, Trash2, Clock, ClipboardList, Users } from "lucide-react";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate, FilePen, Trash2, Clock, ClipboardList, Users, CalendarCheck2 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
 import { deleteDraftAction, deleteSubmittedDrafts } from "./actions";
 import CasesList, { type CaseListItem } from "./CasesList";
+import TodayRounds, { actionable, type TodayRoundItem } from "./TodayRounds";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 
 export interface FormListItem {
@@ -42,13 +43,14 @@ export interface DraftListItem {
   category?: string;
 }
 
-type Tab = "all" | "tasks" | "drafts";
+type Tab = "all" | "today" | "tasks" | "drafts";
 const SUBMITTED_DRAFTS_KEY = "krok_submitted_drafts";
 
 export default function FormsListClient({
   forms,
   drafts = [],
   cases = [],
+  today = null,
   initialTab = "all",
   highlightId,
   canCreate = false,
@@ -56,6 +58,8 @@ export default function FormsListClient({
   forms: FormListItem[];
   drafts?: DraftListItem[];
   cases?: CaseListItem[];
+  /** รอบตรวจวันนี้ · null = ยังไม่มีระบบตาราง (ไม่แสดงแท็บ) */
+  today?: TodayRoundItem[] | null;
   initialTab?: Tab;
   highlightId?: string;
   canCreate?: boolean;
@@ -122,6 +126,7 @@ export default function FormsListClient({
       <div role="tablist" data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none" }}>
         {([
           { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
+          ...(today && (today.length > 0 || tab === "today") ? [{ k: "today" as const, label: t("today.tab"), n: today.filter(actionable).length }] : []),
           { k: "tasks" as const, label: t("wf.tabTasks"), n: cases.filter((c) => c.kind !== "watch").length },
           { k: "drafts" as const, label: t("forms.tabDrafts"), n: shownDrafts.length },
         ]).map((x) => {
@@ -131,6 +136,7 @@ export default function FormsListClient({
               style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
+              {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}
               {x.label}
               <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent)" : "var(--ink-3)" }}>{x.n}</span>
             </button>
@@ -140,6 +146,8 @@ export default function FormsListClient({
 
       {tab === "drafts" ? (
         <DraftsList drafts={shownDrafts} busyId={busyId} onDelete={removeDraft} />
+      ) : tab === "today" ? (
+        <TodayRounds rounds={today || []} manager={canCreate} />
       ) : tab === "tasks" ? (
         <CasesList cases={cases} />
       ) : (<>

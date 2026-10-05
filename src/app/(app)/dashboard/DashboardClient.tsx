@@ -1,5 +1,6 @@
 "use client";
 import { localizeServerMsg } from "@/i18n/stored-text";
+import ComplianceCard from "./ComplianceCard";
 import StoredText from "@/i18n/StoredText";
 import { backdropClose } from "@/lib/backdrop";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
@@ -155,6 +156,9 @@ export default function DashboardClient({
         <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
         <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={summary.period} />
       </div>
+
+      {/* รอบตรวจตามตาราง — ความครบถ้วน (มีตารางเท่านั้น) */}
+      <ComplianceCard />
 
       {/* โซน widget ปรับเองได้ */}
       {widgets.length > 0 && (

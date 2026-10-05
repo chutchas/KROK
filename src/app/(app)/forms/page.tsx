@@ -8,6 +8,7 @@ import { readSummary, summaryOf } from "@/lib/form-summary";
 import FormsListClient, { type DraftListItem, type FormListItem } from "./FormsListClient";
 import type { CaseListItem } from "./CasesList";
 import { lastReturn, type CaseHistoryItem } from "@/lib/case-flow";
+import { loadTodayRounds } from "@/lib/schedule-server";
 
 export const dynamic = "force-dynamic";
 
@@ -57,9 +58,11 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
     return { id: f.id, title: f.title, icon: f.icon, steps: sm.steps, fields: sm.fields, category: sm.category, workflow: sm.workflow };
   });
 
-  const [drafts, cases] = await Promise.all([
+  const [drafts, cases, today] = await Promise.all([
     draftsP,
     loadCases(supabase, session.tenantId, session.userId, [...myTeams], manager),
+    // รอบตรวจตามตาราง (0064) · ยังไม่รัน/พลาด = ไม่แสดงแท็บ
+    loadTodayRounds(supabase, session.tenantId, session.userId, manager, new Set(visible.map((f) => f.id))).catch(() => null),
   ]);
 
   return (
@@ -70,7 +73,8 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
       forms={forms}
       drafts={drafts}
       cases={cases}
-      initialTab={tab === "drafts" ? "drafts" : tab === "tasks" ? "tasks" : "all"}
+      today={today}
+      initialTab={tab === "drafts" ? "drafts" : tab === "tasks" ? "tasks" : tab === "today" ? "today" : "all"}
       highlightId={highlightId}
       canCreate={manager}
     />

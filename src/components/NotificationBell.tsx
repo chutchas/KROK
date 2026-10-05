@@ -2,7 +2,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2, FilePlus2, Inbox, CornerUpLeft, CheckCheck } from "lucide-react";
+import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2, FilePlus2, Inbox, CornerUpLeft, CheckCheck, CalendarClock, AlarmClock } from "lucide-react";
+import { localizeStored } from "@/i18n/stored-text";
 import Icon, { type IconType } from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -23,7 +24,7 @@ function fmt(ts: string, lang: string) {
     return "";
   }
 }
-const ICON: Record<string, IconType> = { approval_request: Clock, fail_alert: AlertTriangle, approved: CheckCircle2, rejected: Undo2, new_form: FilePlus2, case_assigned: Inbox, case_returned: CornerUpLeft, case_done: CheckCheck };
+const ICON: Record<string, IconType> = { approval_request: Clock, fail_alert: AlertTriangle, approved: CheckCircle2, rejected: Undo2, new_form: FilePlus2, case_assigned: Inbox, case_returned: CornerUpLeft, case_done: CheckCheck, schedule_start: CalendarClock, schedule_overdue: AlarmClock };
 
 export default function NotificationBell({ userId }: { userId: string }) {
   const router = useRouter();
@@ -121,8 +122,8 @@ export default function NotificationBell({ userId }: { userId: string }) {
               >
                 <span aria-hidden style={{ color: "var(--ink-2)", marginTop: 1 }}><Icon icon={ICON[n.type] || Bell} className="h-[18px] w-[18px]" /></span>
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: "block", fontWeight: 600, fontSize: ".86rem", color: "var(--ink)" }}>{n.title}</span>
-                  <span style={{ display: "block", fontSize: ".8rem", color: "var(--ink-2)" }}>{n.body}</span>
+                  <span style={{ display: "block", fontWeight: 600, fontSize: ".86rem", color: "var(--ink)" }}>{localizeStored(n.title, lang)}</span>
+                  <span style={{ display: "block", fontSize: ".8rem", color: "var(--ink-2)" }}>{localizeStored(n.body, lang)}</span>
                   <span style={{ display: "block", fontSize: ".72rem", color: "var(--ink-3)", marginTop: 2 }}>{fmt(n.created_at, lang)}</span>
                 </span>
               </button>

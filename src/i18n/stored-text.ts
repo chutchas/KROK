@@ -17,6 +17,13 @@ const RULES: [RegExp, string][] = [
   [/^ไม่ผ่าน$/, "Fail"],
   [/^ควรตรวจสอบ$/, "Needs review"],
   [/^ตรวจไม่ได้$/, "Couldn't check"],
+  // แจ้งเตือนรอบตรวจตามตาราง (0064)
+  [/^ถึงรอบตรวจ: /, "Inspection round started: "],
+  [/^เลยกำหนดรอบตรวจ: /, "Inspection round overdue: "],
+  [/^ครบกำหนดเมื่อ (\S+) น\. — ยังทำได้ \(นับว่าสาย\)$/, "Was due at $1 — you can still do it (counted as late)"],
+  [/^ครบกำหนด (\S+) น\.$/, "Due at $1"],
+  [/^ยังไม่ทำ (\d+) จาก (\d+) คน$/, "$1 of $2 people haven't done it"],
+  [/^ยังไม่มีใครทำรอบนี้$/, "No one has done this round yet"],
 ];
 
 export function localizeStored(text: string | null | undefined, lang: string): string {

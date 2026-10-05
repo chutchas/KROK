@@ -194,4 +194,12 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "unauthorized": "Please sign in",
   "LINE: ใส่ userId/groupId ของผู้รับ หรือเลือก “ส่งถึงผู้ติดตามทั้งหมด”": "LINE: enter the recipient userId/groupId, or choose “Send to all followers”",
   "เฉพาะ Platform Admin / Developer เท่านั้น": "Platform admins/developers only",
+  "ต้องมีเวลาเปิดรอบอย่างน้อย 1 เวลา": "Add at least one round start time",
+  "เวลาเปิดรอบได้ไม่เกิน 12 เวลาต่อวัน": "At most 12 round start times per day",
+  "รูปแบบเวลาไม่ถูกต้อง": "Invalid time format",
+  "ระยะเวลาให้ทำต้องอยู่ระหว่าง 15 นาที ถึง 24 ชั่วโมง": "Time allowed must be between 15 minutes and 24 hours",
+  "เลือกวันในสัปดาห์อย่างน้อย 1 วัน": "Pick at least one weekday",
+  "เลือกวันที่ของเดือนอย่างน้อย 1 วัน": "Pick at least one day of the month",
+  "โหมด “ทุกคนต้องทำ” ต้องเลือกทีมหรือคนที่รับผิดชอบ": "“Everyone submits” needs assigned teams or people",
+  "ระยะเวลาให้ทำยาวกว่าช่วงห่างระหว่างรอบ — ลดเวลาให้ทำหรือเว้นรอบให้ห่างขึ้น": "Time allowed is longer than the gap between rounds — shorten it or space the rounds out",
 };

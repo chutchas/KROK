@@ -42,7 +42,8 @@ const MIGRATIONS: [string, string][] = [
   ["m0053", "0053_error_events"], ["m0054", "0054_form_visibility_rls"], ["m0055", "0055_mfa"],
   ["m0056", "0056_branding"], ["m0057", "0057_security_hardening"], ["m0058", "0058_platform_ops"],
 ];
-const CRON_JOBS: [string, string][] = [["billing", "รอบบิล / เตือนหมดอายุ"], ["cleanup", "ลบแบบร่างหมดอายุ"], ["datasets", "sync ข้อมูลอ้างอิง (API pull)"]];
+// [job, ชื่อ, ไม่ได้รันเกินกี่ชั่วโมง = เตือน] · schedule = pg_cron ทุก 5 นาที (0064)
+const CRON_JOBS: [string, string, number][] = [["billing", "รอบบิล / เตือนหมดอายุ", 26], ["cleanup", "ลบแบบร่างหมดอายุ", 26], ["datasets", "sync ข้อมูลอ้างอิง (API pull)", 26], ["schedule", "แจ้งเตือนรอบตรวจ (pg_cron)", 0.5]];
 
 async function timed<T>(fn: () => Promise<T>): Promise<{ v?: T; e?: string; ms: number }> {
   const t0 = Date.now();
@@ -172,15 +173,21 @@ export async function runHealth(admin: SupabaseClient): Promise<HealthReport> {
   // ---------- งานตั้งเวลา + error ----------
   const ops: HealthCheck[] = [];
   const { data: runs, error: runErr } = await admin.from("cron_runs").select("job, last_at, ok, note");
-  for (const [job, label] of CRON_JOBS) {
+  for (const [job, label, maxH] of CRON_JOBS) {
     if (runErr) { ops.push({ name: `งานตั้งเวลา: ${label}`, status: "warn", detail: "ยังไม่ได้รัน 0058 — ยังไม่มีบันทึกการรัน" }); continue; }
     const r = (runs || []).find((x) => x.job === job) as { last_at: string; ok: boolean; note: string | null } | undefined;
-    if (!r) { ops.push({ name: `งานตั้งเวลา: ${label}`, status: "warn", detail: env("CRON_SECRET") ? "ยังไม่เคยรัน (รอรอบแรกหลัง deploy)" : "ยังไม่เคยรัน — ตั้ง CRON_SECRET ก่อน" }); continue; }
+    if (!r) {
+      const detail = job === "schedule"
+        ? "ยังไม่เคยรัน — รัน 0064 และเปิด extension pg_cron (ไม่มีฟอร์มที่ตั้งรอบตรวจ = ข้ามได้)"
+        : env("CRON_SECRET") ? "ยังไม่เคยรัน (รอรอบแรกหลัง deploy)" : "ยังไม่เคยรัน — ตั้ง CRON_SECRET ก่อน";
+      ops.push({ name: `งานตั้งเวลา: ${label}`, status: "warn", detail });
+      continue;
+    }
     const hours = (Date.now() - new Date(r.last_at).getTime()) / 3600_000;
     ops.push({
       name: `งานตั้งเวลา: ${label}`,
-      status: !r.ok ? "fail" : hours > 26 ? "warn" : "ok",
-      detail: `${!r.ok ? "รอบล่าสุดล้มเหลว" : hours > 26 ? "ไม่ได้รันเกิน 26 ชั่วโมง" : "รันปกติ"} · ล่าสุด ${Math.round(hours)} ชม.ก่อน${!r.ok && r.note ? ` · ${r.note.slice(0, 160)}` : ""}`,
+      status: !r.ok ? "fail" : hours > maxH ? "warn" : "ok",
+      detail: `${!r.ok ? "รอบล่าสุดล้มเหลว" : hours > maxH ? (maxH < 1 ? `ไม่ได้รันเกิน ${Math.round(maxH * 60)} นาที` : `ไม่ได้รันเกิน ${maxH} ชั่วโมง`) : "รันปกติ"} · ล่าสุด ${hours < 1 ? `${Math.round(hours * 60)} นาที` : `${Math.round(hours)} ชม.`}ก่อน${!r.ok && r.note ? ` · ${r.note.slice(0, 160)}` : ""}`,
     });
   }
   const since = new Date(Date.now() - 86400_000).toISOString();

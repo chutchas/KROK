@@ -33,6 +33,7 @@ const FormPaperEditor = dynamic(() => import("@/components/FormPaperEditor"), { 
 const AttachmentsPanel = dynamic(() => import("@/components/AttachmentsPanel"), { ssr: false });
 const QrModal = dynamic(() => import("@/components/QrModal"), { ssr: false });
 const ShareScopeModal = dynamic(() => import("@/components/ShareScopeModal"), { ssr: false });
+const FormSchedulePanel = dynamic(() => import("@/components/FormSchedulePanel"), { ssr: false });
 
 interface Member { user_id: string; name: string; role: string }
 interface Team { id: string; name: string }
@@ -830,6 +831,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </div>
             )}
           </div>
+
+          <FormSchedulePanel key={editingId || "new"} formId={editingId} teams={teams} members={members} />
 
           <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
