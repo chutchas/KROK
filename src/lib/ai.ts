@@ -7,6 +7,7 @@ import { ICON_KEY_LIST } from "./form-icons";
 import { getAdminClient } from "./supabase/admin";
 import { PURPOSE_NEEDS_VISION as PURPOSE_NEEDS_VISION_MAP, type AiPurpose } from "./ai-purpose";
 import { parseExtractResult as parseExtract, type ExtractKey as EK } from "./doc-extract";
+import { tileForReading } from "./image-tiles";
 
 // ============================================================
 // Provider-agnostic LLM layer
@@ -132,22 +133,39 @@ export async function resolveConfig(purpose: AiPurpose = "form_gen"): Promise<Pr
 export interface ImageInput {
   base64: string;
   mediaType: string;
+  /** คำอธิบายรูปที่ส่งให้ AI ก่อนรูปนั้น (เช่น "หน้า 1 — ครึ่งบนแบบขยาย") */
+  label?: string;
 }
+
+interface CompleteOpts {
+  /** 0 = คัดลอกตามจริง ไม่เรียบเรียงเอง (งานอ่านเอกสาร) · ไม่ระบุ = ค่าเริ่มต้นของผู้ให้บริการ */
+  temperature?: number;
+}
+
+/** รุ่นที่ไม่รับ temperature (เช่น รุ่น reasoning บางรุ่น) ตอบ 400 → ลองใหม่โดยไม่ส่ง */
+const isTemperatureRejected = (e: unknown) => /temperature/i.test(e instanceof Error ? e.message : String(e));
 
 // ---- ตัวเรียกกลาง: ส่ง prompt (+รูป 0..n) แล้วได้ text กลับ ----
 async function complete(
   purpose: AiPurpose,
   userText: string,
   image: ImageInput | ImageInput[] | null,
-  maxTokens = 3000
+  maxTokens = 3000,
+  opts: CompleteOpts = {}
 ): Promise<string> {
   const cfg = await resolveConfig(purpose);
   if (!cfg.apiKey)
     throw new Error("ระบบยังไม่ได้ตั้งค่า AI — โปรดให้ผู้ดูแลแพลตฟอร์มตั้งค่าที่เมนู Platform → AI");
 
   const images = image == null ? [] : Array.isArray(image) ? image : [image];
-  if (cfg.provider === "anthropic") return completeAnthropic(cfg, userText, images, maxTokens);
-  return completeOpenAICompatible(cfg, userText, images, maxTokens);
+  const run = (o: CompleteOpts) =>
+    cfg.provider === "anthropic" ? completeAnthropic(cfg, userText, images, maxTokens, o) : completeOpenAICompatible(cfg, userText, images, maxTokens, o);
+  try {
+    return await run(opts);
+  } catch (e) {
+    if (opts.temperature !== undefined && isTemperatureRejected(e)) return run({ ...opts, temperature: undefined });
+    throw e;
+  }
 }
 
 // ---- Anthropic ----
@@ -155,12 +173,14 @@ async function completeAnthropic(
   cfg: ProviderConfig,
   userText: string,
   images: ImageInput[],
-  maxTokens: number
+  maxTokens: number,
+  opts: CompleteOpts
 ): Promise<string> {
   const client = new Anthropic({ apiKey: cfg.apiKey });
   const content: Anthropic.MessageParam["content"] = [];
   images.forEach((img, i) => {
-    if (images.length > 1) content.push({ type: "text", text: `หน้า ${i + 1}:` });
+    if (img.label) content.push({ type: "text", text: `รูปที่ ${i + 1}: ${img.label}` });
+    else if (images.length > 1) content.push({ type: "text", text: `หน้า ${i + 1}:` });
     content.push({
       type: "image",
       source: { type: "base64", media_type: img.mediaType as "image/jpeg", data: img.base64 },
@@ -170,6 +190,7 @@ async function completeAnthropic(
   const msg = await client.messages.create({
     model: cfg.model,
     max_tokens: maxTokens,
+    ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     messages: [{ role: "user", content }],
   });
   return msg.content
@@ -197,7 +218,8 @@ async function completeOpenAICompatible(
   cfg: ProviderConfig,
   userText: string,
   images: ImageInput[],
-  maxTokens: number
+  maxTokens: number,
+  opts: CompleteOpts
 ): Promise<string> {
   const client = openAIClient(cfg);
   // สำคัญ: ไม่มีรูป → ส่ง content เป็น string ธรรมดา
@@ -206,15 +228,16 @@ async function completeOpenAICompatible(
     images.length > 0
       ? [
           { type: "text", text: userText },
-          ...images.map((img) => ({
-            type: "image_url" as const,
-            image_url: { url: `data:${img.mediaType};base64,${img.base64}` },
-          })),
+          ...images.flatMap((img, i) => [
+            ...(img.label ? [{ type: "text" as const, text: `รูปที่ ${i + 1}: ${img.label}` }] : []),
+            { type: "image_url" as const, image_url: { url: `data:${img.mediaType};base64,${img.base64}`, detail: "high" as const } },
+          ]),
         ]
       : userText;
   const res = await client.chat.completions.create({
     model: cfg.model,
     max_tokens: maxTokens,
+    ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     messages: [{ role: "user", content }],
   });
   return res.choices[0]?.message?.content || "";
@@ -324,19 +347,37 @@ ${FORMULA_SPEC}
 สำคัญ: ผลลัพธ์ต้องใกล้เคียงฟอร์มเดิม 90%+ ทั้งจำนวนฟิลด์และโครงสร้าง เพื่อให้ผู้ใช้แก้ต่อได้ง่าย`;
 
 export async function formFromImage(
-  images: ImageInput[] | { base64: string; mediaType: string }
+  images: ImageInput[] | { base64: string; mediaType: string },
+  /** ข้อความจริงที่ดึงจาก PDF (หน้าละ 1 สตริง) — สะกดถูกต้อง ใช้แก้คำที่ AI อ่านจากรูปเพี้ยน */
+  pdfText: string[] = []
 ): Promise<FormSchema> {
-  const imgs = Array.isArray(images) ? images : [images];
-  const text = await complete(
+  const pages = Array.isArray(images) ? images : [images];
+  const imgs = await tileForReading(pages);
+  const zoomed = imgs.length > pages.length;
+  const text = pdfText.map((t) => t.trim()).filter(Boolean).length
+    ? pdfText.map((t, i) => `--- หน้า ${i + 1} ---\n${t.trim() || "(หน้านี้ไม่มีข้อความในไฟล์ — อ่านจากรูป)"}`).join("\n").slice(0, 20000)
+    : "";
+  const out = await complete(
     "form_from_image",
     "รูป/ไฟล์ที่แนบคือฟอร์มเดิมที่ใช้จริง (กระดาษ/เอกสาร/PDF) หน้าที่ของคุณคือทำ 'สำเนาดิจิทัล' ให้เหมือนของเดิมมากที่สุด " +
-      (imgs.length > 1 ? `เอกสารมี ${imgs.length} หน้า (แนบมาตามลำดับ) ` : "") +
+      (pages.length > 1 ? `เอกสารมี ${pages.length} หน้า (แนบมาตามลำดับ) ` : "") +
       "อ่านทุกหัวข้อและช่องกรอกทั้งหมดในทุกหน้า แล้วสร้าง schema ที่มีฟิลด์ครบและโครงสร้างใกล้เคียงของเดิม\n\n" +
+      (zoomed
+        ? "รูปที่แนบมีทั้ง \"ทั้งหน้า\" และ \"ครึ่งบน/ครึ่งล่างแบบขยาย\" ของหน้าเดียวกัน (ซ้อนกันเล็กน้อยตรงรอยต่อ): " +
+          "ใช้รูปทั้งหน้าดูโครงสร้างและลำดับ · อ่านตัวสะกดของ label/ตัวเลือก/หัวคอลัมน์จากรูปขยาย · ช่องที่อยู่ตรงรอยต่อจะเห็นในทั้งสองรูป ให้นับเป็นช่องเดียว ห้ามสร้างซ้ำ\n\n"
+        : "") +
+      (text
+        ? "ข้อความต้นฉบับที่ดึงจากไฟล์ PDF โดยตรง (ตัวสะกดถูกต้อง 100% แต่ลำดับ/การขึ้นบรรทัดอาจไม่ตรงกับหน้าเอกสาร):\n" +
+          "<<<\n" + text + "\n>>>\n" +
+          "กฎการใช้ข้อความนี้: label, ตัวเลือก, หัวคอลัมน์, ชื่อฟอร์ม และชื่อหัวข้อ ให้คัดลอกการสะกดจากข้อความนี้เมื่อตรงกับสิ่งที่เห็นในรูป " +
+          "(ห้ามสะกดใหม่ ห้ามแต่งคำ) · ใช้รูปเพื่อดูโครงสร้าง ตำแหน่ง และชนิดช่องกรอก · ข้อความที่เป็นคำอธิบาย/หมายเหตุท้ายเอกสารไม่ต้องสร้างเป็นช่องกรอก\n\n"
+        : "ถ้าอ่านคำไหนไม่ชัด ให้เลือกคำที่สมเหตุสมผลในบริบทของฟอร์มนั้น ห้ามใส่ตัวอักษรที่ไม่มีความหมาย\n\n") +
       REPLICATE_SPEC,
     imgs,
-    8000
+    8000,
+    { temperature: 0 }
   );
-  return repairFormulas(sanitizeSchema(extractJson(text)));
+  return repairFormulas(sanitizeSchema(extractJson(out)));
 }
 
 export interface PhotoCheck {
@@ -406,7 +447,8 @@ export async function extractDoc(
       `ตอบเป็น JSON object เดียวเท่านั้น:\n` +
       `{"values":[{"key":"ชื่อค่า","value":"ค่าที่อ่านได้","confidence":0.95}],"not_found":["ชื่อค่าที่ไม่เจอ"]}`,
     image,
-    2000
+    2000,
+    { temperature: 0 }
   );
 
   return parseExtract(extractJson(text), keys);

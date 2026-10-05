@@ -171,11 +171,15 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     try {
       const fd = new FormData();
       if (isPdf) {
-        const { pdfToImageFiles } = await import("@/lib/pdf-to-image");
-        const pages = await pdfToImageFiles(file);
-        for (const p of pages) fd.append("file", p);
+        // รูปแต่ละหน้า + ข้อความจริงในไฟล์ (AI ใช้สะกดชื่อช่องตามต้นฉบับ)
+        const { pdfToPages } = await import("@/lib/pdf-to-image");
+        const pages = await pdfToPages(file);
+        for (const p of pages.files) fd.append("file", p);
+        if (pages.text.some(Boolean)) fd.append("pdf_text", JSON.stringify(pages.text));
       } else {
-        fd.append("file", file);
+        // รูปถ่ายจากมือถือมักใหญ่หลาย MB → ย่อให้ส่งผ่าน (ยังคมพอให้อ่านตัวหนังสือ)
+        const { fitUploadBudget } = await import("@/lib/pdf-to-image");
+        for (const f of await fitUploadBudget([file])) fd.append("file", f);
       }
       const res = await fetch("/api/ai/from-image", { method: "POST", body: fd });
       const json = await res.json();

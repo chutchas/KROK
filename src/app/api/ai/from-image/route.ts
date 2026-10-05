@@ -43,12 +43,18 @@ export async function POST(req: Request) {
     const images = await Promise.all(
       files.map(async (f) => ({ base64: Buffer.from(await f.arrayBuffer()).toString("base64"), mediaType: f.type }))
     );
-    const schema = await formFromImage(images);
+    // ข้อความจริงจาก PDF (หน้าละ 1 สตริง) — ไม่มี/อ่านไม่ได้ = อ่านจากรูปอย่างเดียว
+    let pdfText: string[] = [];
+    try {
+      const raw = JSON.parse(String(form.get("pdf_text") || "[]"));
+      if (Array.isArray(raw)) pdfText = raw.slice(0, 6).map((t) => (typeof t === "string" ? t.slice(0, 8000) : ""));
+    } catch { /* ignore */ }
+    const schema = await formFromImage(images, pdfText);
     return NextResponse.json({ schema });
   } catch (e) {
     console.error("ai/from-image", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "อ่านฟอร์มไม่สำเร็จ" },
+      { error: e instanceof Error && /[\u0E00-\u0E7F]/.test(e.message) ? e.message : "อ่านฟอร์มไม่สำเร็จ โปรดลองใหม่" },
       { status: 500 }
     );
   }
