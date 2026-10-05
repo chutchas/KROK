@@ -137,7 +137,6 @@ export default function LiveScanner({ onResult, onClose, continuous = false }: {
             <div style={{ color: "#fff", textAlign: "center", padding: 24, fontSize: ".9rem" }}>{err}</div>
           ) : (
             <>
-              {/* eslint-disable-next-line jsx-a11y/media-has-caption */}
               <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", pointerEvents: "none" }}>
                 <div style={{ width: "62%", aspectRatio: "1", border: "3px solid rgba(255,255,255,.9)", borderRadius: 16, boxShadow: "0 0 0 9999px rgba(0,0,0,.25)" }} />

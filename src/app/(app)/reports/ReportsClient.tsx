@@ -59,7 +59,13 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
     if (f.to) p.set("to", f.to);
     if (f.result !== "all") p.set("result", f.result);
     if (f.approval !== "all") p.set("approval", f.approval);
-    window.location.href = `/api/report?${p.toString()}`;
+    // ดาวน์โหลดไฟล์ (ไม่ใช่การเปลี่ยนหน้า) — คลิกลิงก์ชั่วคราว หน้าปัจจุบันยังอยู่
+    const a = document.createElement("a");
+    a.href = `/api/report?${p.toString()}`;
+    a.download = "";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
   }
 
   const approvalLabel = (a: string) =>

@@ -1,5 +1,5 @@
 "use client";
-import { ArrowRight, CameraIcon, Check, CircleCheckBig, LineChart, LogIn, PlayCircle, QrCode } from "lucide-react";
+import { ArrowRight, CameraIcon, Check, CircleCheckBig, LineChart, PlayCircle, QrCode } from "lucide-react";
 import Icon from "@/components/Icon";
 import { useLp as useT } from "@/i18n/landing";
 import type { AnyKey as MessageKey } from "@/i18n/landing";

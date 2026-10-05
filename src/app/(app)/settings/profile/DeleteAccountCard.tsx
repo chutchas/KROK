@@ -37,7 +37,8 @@ export default function DeleteAccountCard({ email }: { email: string }) {
     }
     // ล้าง session ในเครื่องด้วย (กันคุกกี้ค้างของบัญชีที่ถูกลบ)
     await createClient().auth.signOut({ scope: "local" }).catch(() => {});
-    window.location.href = "/login?deleted=1";
+    // โหลดใหม่ทั้งหน้า (ล้าง state ของบัญชีที่ถูกลบ) และกดย้อนกลับมาหน้านี้ไม่ได้
+    window.location.replace("/login?deleted=1");
   }
 
   if (!plan) {

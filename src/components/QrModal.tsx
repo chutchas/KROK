@@ -66,7 +66,6 @@ export default function QrModal({
           </div>
           <div style={{ background: "#fff", borderRadius: 12, padding: 14, display: "inline-block", border: "1px solid var(--line)" }}>
             {dataUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
               <img src={dataUrl} alt="QR" style={{ width: 220, height: 220, display: "block" }} />
             ) : (
               <div style={{ width: 220, height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#999" }}>…</div>

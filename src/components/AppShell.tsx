@@ -475,7 +475,6 @@ export default function AppShell({
 
 function Avatar({ url, size }: { url: string; size: number }) {
   if (url)
-    // eslint-disable-next-line @next/next/no-img-element
     return <img src={url} alt="" style={{ width: size, height: size, borderRadius: "50%", objectFit: "cover", flex: "0 0 auto" }} />;
   return (
     <span style={{ width: size, height: size, borderRadius: "50%", background: "var(--accent-soft)", color: "var(--accent-text)", display: "inline-flex", alignItems: "center", justifyContent: "center", flex: "0 0 auto" }}>
