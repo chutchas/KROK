@@ -140,6 +140,32 @@ export interface ImageInput {
 interface CompleteOpts {
   /** 0 = คัดลอกตามจริง ไม่เรียบเรียงเอง (งานอ่านเอกสาร) · ไม่ระบุ = ค่าเริ่มต้นของผู้ให้บริการ */
   temperature?: number;
+  /** workspace ที่ใช้ (บันทึก token เพื่อคิดต้นทุน) */
+  tenantId?: string | null;
+}
+
+/** บริบทของการเรียก AI จาก route (ใช้บันทึกต้นทุนต่อ workspace) */
+export interface AiCtx {
+  tenantId?: string | null;
+}
+
+interface Completion {
+  text: string;
+  inputTokens: number;
+  outputTokens: number;
+}
+
+/** บันทึก token จริงของการเรียกครั้งนี้ (0058) — ล้มเหลว/ยังไม่รัน migration = ข้าม ไม่กระทบงาน */
+async function recordUsage(cfg: ProviderConfig, purpose: AiPurpose, tenantId: string | null | undefined, c: Completion) {
+  if (!c.inputTokens && !c.outputTokens) return;
+  const admin = getAdminClient();
+  if (!admin) return;
+  try {
+    await admin.from("ai_token_usage").insert({
+      tenant_id: tenantId ?? null, purpose, provider: cfg.provider, model: cfg.model,
+      input_tokens: Math.max(0, Math.round(c.inputTokens)), output_tokens: Math.max(0, Math.round(c.outputTokens)),
+    });
+  } catch { /* best-effort */ }
 }
 
 /** รุ่นที่ไม่รับ temperature (เช่น รุ่น reasoning บางรุ่น) ตอบ 400 → ลองใหม่โดยไม่ส่ง */
@@ -160,12 +186,15 @@ async function complete(
   const images = image == null ? [] : Array.isArray(image) ? image : [image];
   const run = (o: CompleteOpts) =>
     cfg.provider === "anthropic" ? completeAnthropic(cfg, userText, images, maxTokens, o) : completeOpenAICompatible(cfg, userText, images, maxTokens, o);
+  let c: Completion;
   try {
-    return await run(opts);
+    c = await run(opts);
   } catch (e) {
-    if (opts.temperature !== undefined && isTemperatureRejected(e)) return run({ ...opts, temperature: undefined });
-    throw e;
+    if (opts.temperature !== undefined && isTemperatureRejected(e)) c = await run({ ...opts, temperature: undefined });
+    else throw e;
   }
+  await recordUsage(cfg, purpose, opts.tenantId, c);
+  return c.text;
 }
 
 // ---- Anthropic ----
@@ -175,7 +204,7 @@ async function completeAnthropic(
   images: ImageInput[],
   maxTokens: number,
   opts: CompleteOpts
-): Promise<string> {
+): Promise<Completion> {
   const client = new Anthropic({ apiKey: cfg.apiKey });
   const content: Anthropic.MessageParam["content"] = [];
   images.forEach((img, i) => {
@@ -193,10 +222,12 @@ async function completeAnthropic(
     ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     messages: [{ role: "user", content }],
   });
-  return msg.content
-    .filter((b): b is Anthropic.TextBlock => b.type === "text")
-    .map((b) => b.text)
-    .join("\n");
+  const u = msg.usage as { input_tokens?: number; output_tokens?: number; cache_creation_input_tokens?: number | null; cache_read_input_tokens?: number | null } | undefined;
+  return {
+    text: msg.content.filter((b): b is Anthropic.TextBlock => b.type === "text").map((b) => b.text).join("\n"),
+    inputTokens: (u?.input_tokens ?? 0) + (u?.cache_creation_input_tokens ?? 0) + (u?.cache_read_input_tokens ?? 0),
+    outputTokens: u?.output_tokens ?? 0,
+  };
 }
 
 // ---- OpenAI-compatible (OpenAI / Azure / Qwen) ----
@@ -220,7 +251,7 @@ async function completeOpenAICompatible(
   images: ImageInput[],
   maxTokens: number,
   opts: CompleteOpts
-): Promise<string> {
+): Promise<Completion> {
   const client = openAIClient(cfg);
   // สำคัญ: ไม่มีรูป → ส่ง content เป็น string ธรรมดา
   // ถ้าส่งเป็น array แบบ multimodal โมเดล text (qwen-plus/qwen-max) จะตอบ 403 Model access denied
@@ -240,7 +271,11 @@ async function completeOpenAICompatible(
     ...(opts.temperature !== undefined ? { temperature: opts.temperature } : {}),
     messages: [{ role: "user", content }],
   });
-  return res.choices[0]?.message?.content || "";
+  return {
+    text: res.choices[0]?.message?.content || "",
+    inputTokens: res.usage?.prompt_tokens ?? 0,
+    outputTokens: res.usage?.completion_tokens ?? 0,
+  };
 }
 
 // ============================================================
@@ -290,19 +325,21 @@ export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เด
 ${FORMULA_SPEC}
 สำคัญ: เขียนทุกข้อความในฟอร์ม (title, label, tooltip, example, options) ด้วยภาษาเดียวกับคำขอของผู้ใช้ (ไทยหรืออังกฤษ) ห้ามปนภาษาอื่นเช่นจีนเด็ดขาด`;
 
-export async function generateForm(prompt: string): Promise<FormSchema> {
+export async function generateForm(prompt: string, ctx: AiCtx = {}): Promise<FormSchema> {
   const text = await complete(
     "form_gen",
     "คุณคือผู้เชี่ยวชาญออกแบบฟอร์มตรวจสอบสำหรับคลังสินค้าและโรงงานผลิต จงออกแบบฟอร์มดิจิทัลจากคำขอนี้:\n\n" +
       prompt +
       "\n\n" +
       SCHEMA_SPEC,
-    null
+    null,
+    3000,
+    { tenantId: ctx.tenantId }
   );
   return repairFormulas(sanitizeSchema(extractJson(text)));
 }
 
-export async function refineForm(schema: FormSchema, instruction: string): Promise<FormSchema> {
+export async function refineForm(schema: FormSchema, instruction: string, ctx: AiCtx = {}): Promise<FormSchema> {
   const text = await complete(
     "form_gen",
     "นี่คือ schema ฟอร์มปัจจุบัน:\n" +
@@ -311,7 +348,9 @@ export async function refineForm(schema: FormSchema, instruction: string): Promi
       instruction +
       "\n\nคงส่วนที่ไม่เกี่ยวข้องไว้เหมือนเดิม แล้วตอบกลับ schema ฉบับเต็มหลังแก้\n\n" +
       SCHEMA_SPEC,
-    null
+    null,
+    3000,
+    { tenantId: ctx.tenantId }
   );
   return repairFormulas(sanitizeSchema(extractJson(text)));
 }
@@ -349,7 +388,8 @@ ${FORMULA_SPEC}
 export async function formFromImage(
   images: ImageInput[] | { base64: string; mediaType: string },
   /** ข้อความจริงที่ดึงจาก PDF (หน้าละ 1 สตริง) — สะกดถูกต้อง ใช้แก้คำที่ AI อ่านจากรูปเพี้ยน */
-  pdfText: string[] = []
+  pdfText: string[] = [],
+  ctx: AiCtx = {}
 ): Promise<FormSchema> {
   const pages = Array.isArray(images) ? images : [images];
   const imgs = await tileForReading(pages);
@@ -375,7 +415,7 @@ export async function formFromImage(
       REPLICATE_SPEC,
     imgs,
     8000,
-    { temperature: 0 }
+    { temperature: 0, tenantId: ctx.tenantId }
   );
   return repairFormulas(sanitizeSchema(extractJson(out)));
 }
@@ -388,7 +428,8 @@ export async function checkPhoto(
   base64: string,
   mediaType: string,
   hint: string,
-  label: string
+  label: string,
+  ctx: AiCtx = {}
 ): Promise<PhotoCheck> {
   const text = await complete(
     "photo_check",
@@ -396,7 +437,8 @@ export async function checkPhoto(
       hint || "เห็นสิ่งที่ตรวจชัดเจน"
     }"\nจงตัดสินว่ารูปนี้ใช้ได้หรือไม่ ตอบเป็น JSON เดียว: {"ok":true/false,"reason":"เหตุผลสั้นๆ ภาษาไทย"}`,
     { base64, mediaType },
-    500
+    500,
+    { tenantId: ctx.tenantId }
   );
   const r = extractJson(text) as Record<string, unknown>;
   return { ok: !!r.ok, reason: String(r.reason || "") };
@@ -420,7 +462,8 @@ export {
 export async function extractDoc(
   keys: EK[],
   docHint: string,
-  image: ImageInput
+  image: ImageInput,
+  ctx: AiCtx = {}
 ): Promise<import("./doc-extract").DocExtractResult> {
   if (keys.length === 0) return { values: [], not_found: [] };
 
@@ -448,7 +491,7 @@ export async function extractDoc(
       `{"values":[{"key":"ชื่อค่า","value":"ค่าที่อ่านได้","confidence":0.95}],"not_found":["ชื่อค่าที่ไม่เจอ"]}`,
     image,
     2000,
-    { temperature: 0 }
+    { temperature: 0, tenantId: ctx.tenantId }
   );
 
   return parseExtract(extractJson(text), keys);

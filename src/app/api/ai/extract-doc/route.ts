@@ -62,7 +62,7 @@ export async function POST(req: Request) {
       );
 
     const base64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const result = await extractDoc(keys, docHint, { base64, mediaType: file.type });
+    const result = await extractDoc(keys, docHint, { base64, mediaType: file.type }, { tenantId: session.tenantId });
     return NextResponse.json(result);
   } catch (e) {
     console.error("ai/extract-doc", e);

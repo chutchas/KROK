@@ -34,7 +34,7 @@ export async function POST(req: Request) {
       );
 
     const b64 = Buffer.from(await file.arrayBuffer()).toString("base64");
-    const result = await checkPhoto(b64, file.type, hint, label);
+    const result = await checkPhoto(b64, file.type, hint, label, { tenantId: session.tenantId });
     return NextResponse.json(result);
   } catch (e) {
     console.error("ai/check-photo", e);

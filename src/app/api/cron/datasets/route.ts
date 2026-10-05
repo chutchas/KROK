@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withCronLog } from "@/lib/cron-log";
 import { timingSafeEqual } from "crypto";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { runPull } from "@/lib/datasets-server";
@@ -66,5 +67,6 @@ async function handle(req: Request) {
   return NextResponse.json({ ok: true, ran: results.length, results });
 }
 
-export const GET = handle;
-export const POST = handle;
+const logged = withCronLog("datasets", handle);
+export const GET = logged;
+export const POST = logged;

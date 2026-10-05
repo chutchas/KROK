@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withCronLog } from "@/lib/cron-log";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { cronAuthorized } from "@/lib/cron-auth";
 import { gatewayConfig } from "@/lib/billing-gateway";
@@ -38,5 +39,6 @@ async function handle(req: Request) {
   return NextResponse.json({ ok: true, renew, reminded, quotaAlerts, expiredPlans: typeof expired === "number" ? expired : 0 });
 }
 
-export const GET = handle;
-export const POST = handle;
+const logged = withCronLog("billing", handle);
+export const GET = logged;
+export const POST = logged;

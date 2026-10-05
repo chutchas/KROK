@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withCronLog } from "@/lib/cron-log";
 import { cronAuthorized } from "@/lib/cron-auth";
 import { getAdminClient } from "@/lib/supabase/admin";
 
@@ -48,5 +49,6 @@ async function handle(req: Request) {
   return NextResponse.json({ ok: true, drafts, files, expiredPlans: typeof expired === "number" ? expired : 0 });
 }
 
-export const GET = handle;
-export const POST = handle;
+const logged = withCronLog("cleanup", handle);
+export const GET = logged;
+export const POST = logged;

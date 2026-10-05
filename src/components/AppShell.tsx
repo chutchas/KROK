@@ -19,7 +19,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, CircleHelp, Bug } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, CircleHelp, Bug, HeartPulse, Wallet } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -38,6 +38,8 @@ const PLATFORM: NavEntry[] = [
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
   { href: "/admin/settings", key: "nav.adminSystem", icon: Settings, gate: "dev" },
   { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
+  { href: "/admin/health", key: "nav.adminHealth", icon: HeartPulse, gate: "platform" },
+  { href: "/admin/finance", key: "nav.adminFinance", icon: Wallet, gate: "platform" },
   { href: "/admin/errors", key: "nav.adminErrors", icon: Bug, gate: "platform" },
   { href: "/admin/developer", key: "nav.developer", icon: Terminal, gate: "dev" },
 ];

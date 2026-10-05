@@ -520,6 +520,8 @@ export const en: Record<MessageKey, string> = {
   "team.planShift": "This person is the paying account owner. Once they're no longer an owner, this workspace (and workspaces sharing its quota) will switch from the {from} plan to {owner}'s {to} plan — quotas may drop immediately. Continue?",
   "acct.planDrops": "Your paid plan ends — these workspaces will switch to the next owner's plan (quotas may drop): {list}",
   "nav.adminErrors": "Error log",
+  "nav.adminHealth": "System health",
+  "nav.adminFinance": "Revenue & costs",
   "mfa.codeInvalid": "Enter the 6-digit code from your authenticator app",
   "mfa.codeWrong": "Wrong or expired code — try the latest code in your app",
   "mfa.loginTitle": "Two-step verification",

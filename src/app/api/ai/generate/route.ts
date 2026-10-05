@@ -32,9 +32,9 @@ export async function POST(req: Request) {
   try {
     let schema: FormSchema;
     if (body.instruction && body.schema) {
-      schema = await refineForm(sanitizeSchema(body.schema), body.instruction.slice(0, 500));
+      schema = await refineForm(sanitizeSchema(body.schema), body.instruction.slice(0, 500), { tenantId: session.tenantId });
     } else if (body.prompt) {
-      schema = await generateForm(body.prompt.slice(0, 2000));
+      schema = await generateForm(body.prompt.slice(0, 2000), { tenantId: session.tenantId });
     } else {
       return NextResponse.json({ error: "ต้องมี prompt หรือ instruction" }, { status: 400 });
     }

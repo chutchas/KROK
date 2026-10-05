@@ -49,7 +49,7 @@ export async function POST(req: Request) {
       const raw = JSON.parse(String(form.get("pdf_text") || "[]"));
       if (Array.isArray(raw)) pdfText = raw.slice(0, 6).map((t) => (typeof t === "string" ? t.slice(0, 8000) : ""));
     } catch { /* ignore */ }
-    const schema = await formFromImage(images, pdfText);
+    const schema = await formFromImage(images, pdfText, { tenantId: session.tenantId });
     return NextResponse.json({ schema });
   } catch (e) {
     console.error("ai/from-image", e);
