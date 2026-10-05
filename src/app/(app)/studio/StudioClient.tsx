@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick, History } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick, History, MapPin } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -834,6 +834,35 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </div>
             )}
           </div>
+
+          {draft && (
+            <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10 }}>
+              <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={MapPin} className="h-4 w-4" /> {t("geo.title")}</b>
+              <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("geo.sub")}</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="radiogroup" aria-label={t("geo.title")}>
+                {([["off", t("geo.mode.off")], ["optional", t("geo.mode.optional")], ["required", t("geo.mode.required")]] as const).map(([m, label]) => {
+                  const on = (draft.geo ?? "off") === m;
+                  return (
+                    <button key={m} type="button" role="radio" aria-checked={on}
+                      onClick={() => setDraft((d) => { if (!d) return d; const n = { ...d }; if (m === "off") delete n.geo; else n.geo = m; return n; })}
+                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {draft.geo === "required" && <small style={{ display: "block", color: "var(--amber)", fontSize: ".78rem", marginTop: 6 }}>{t("geo.requiredHint")}</small>}
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginTop: 12 }}>
+                <input type="checkbox" checked={!!draft.watermark}
+                  onChange={(e) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (e.target.checked) n.watermark = true; else delete n.watermark; return n; })}
+                  style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
+                <span>
+                  <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".92rem" }}>{t("geo.watermark")}</b>
+                  <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".82rem" }}>{draft.geo ? t("geo.watermarkSubGeo") : t("geo.watermarkSub")}</span>
+                </span>
+              </label>
+            </div>
+          )}
 
           <FormSchedulePanel key={editingId || "new"} formId={editingId} teams={teams} members={members} />
 

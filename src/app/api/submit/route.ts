@@ -1,4 +1,5 @@
 import { sm } from "@/lib/server-msg";
+import { sanitizeGeo } from "@/lib/geo";
 import { NextResponse } from "next/server";
 import { clampFilledAt } from "@/lib/filled-at";
 import { runLater } from "@/lib/background";
@@ -40,6 +41,7 @@ interface Body {
   docExtracts?: unknown;
   offline?: unknown;
   filledAt?: unknown;
+  geo?: unknown;
 }
 
 const fail = (status: number, error: string, extra: Record<string, unknown> = {}) => NextResponse.json({ error, ...extra }, { status });
@@ -181,11 +183,19 @@ export async function POST(req: Request) {
     // เวลาที่กรอกจริงจากเครื่อง: รับเฉพาะใบที่เข้าคิวตอนออฟไลน์ (ใบออนไลน์ = เวลาของ server)
     filled_at: body.offline === true ? clampFilledAt(body.filledAt, Date.now()) : null,
   };
+  // พิกัด (เฉพาะฟอร์มที่เปิด GPS ในเวอร์ชันที่กรอก) · บังคับแต่ไม่มี = ไม่รับ
+  if (schema.geo) {
+    const g = sanitizeGeo(body.geo);
+    if (!g && schema.geo === "required") return fail(400, await sm("ฟอร์มนี้ต้องระบุตำแหน่ง (GPS) ก่อนส่ง"));
+    if (g) row.geo = g;
+  }
   let { error: insErr } = await admin.from("submissions").insert(row);
-  // ยังไม่ได้รัน migration 0059 (ไม่มีคอลัมน์ filled_at) → บันทึกแบบเดิม
-  if (insErr && (insErr.code === "PGRST204" || insErr.code === "42703") && /filled_at/.test(insErr.message)) {
-    delete row.filled_at;
-    ({ error: insErr } = await admin.from("submissions").insert(row));
+  // ยังไม่ได้รัน migration 0059/0066 (ไม่มีคอลัมน์ filled_at/geo) → บันทึกแบบเดิม
+  for (const col of ["filled_at", "geo"]) {
+    if (insErr && (insErr.code === "PGRST204" || insErr.code === "42703") && new RegExp(col).test(insErr.message)) {
+      delete row[col];
+      ({ error: insErr } = await admin.from("submissions").insert(row));
+    }
   }
   if (insErr) {
     if (insErr.code === "23505") return NextResponse.json({ ok: true, duplicate: true, result, fails });

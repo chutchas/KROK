@@ -1,4 +1,5 @@
 import { sm } from "@/lib/server-msg";
+import { sanitizeGeo } from "@/lib/geo";
 import { NextResponse } from "next/server";
 import { isRowPhotoKey } from "@/lib/table-rows";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -124,8 +125,15 @@ export async function POST(req: Request) {
   try { rawAnswers = JSON.parse(String(form.get("answers") || "[]")); } catch { /* keep [] */ }
   const { answers, fails, result } = sanitizePublicAnswers(schema, rawAnswers, new Set(photos.map((p) => p.fieldId)));
 
+  // พิกัด (ฟอร์มที่เปิด GPS) · บังคับแต่ไม่มี = ไม่รับ
+  let geo: ReturnType<typeof sanitizeGeo> = null;
+  if (schema.geo) {
+    try { geo = sanitizeGeo(JSON.parse(String(form.get("geo") || "null"))); } catch { geo = null; }
+    if (!geo && schema.geo === "required") return NextResponse.json({ error: await sm("ฟอร์มนี้ต้องระบุตำแหน่ง (GPS) ก่อนส่ง") }, { status: 400 });
+  }
+
   const subId = crypto.randomUUID();
-  const { error: subErr } = await admin.from("submissions").insert({
+  const subRow: Record<string, unknown> = {
     id: subId,
     tenant_id: f.tenant_id,
     form_id: f.id,
@@ -142,7 +150,14 @@ export async function POST(req: Request) {
     approval_chain: f.requires_approval ? f.approval_chain : [],
     approval_step: 0,
     approval_history: [],
-  });
+  };
+  if (geo) subRow.geo = geo;
+  let { error: subErr } = await admin.from("submissions").insert(subRow);
+  // ยังไม่ได้รัน 0066 → บันทึกโดยไม่มีพิกัด
+  if (subErr && geo && (subErr.code === "PGRST204" || subErr.code === "42703") && /geo/.test(subErr.message)) {
+    delete subRow.geo;
+    ({ error: subErr } = await admin.from("submissions").insert(subRow));
+  }
   if (subErr) {
     // ไม่ส่งข้อความ error ดิบของฐานข้อมูลให้คนนอก (ยกเว้นข้อความโควตาที่ตั้งใจให้เห็น)
     if (/\[quota:[a-z_]+\]/.test(subErr.message)) return NextResponse.json({ error: subErr.message.replace(/\s*\[quota:[a-z_]+\]/, "") }, { status: 429 });

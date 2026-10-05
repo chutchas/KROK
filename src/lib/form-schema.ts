@@ -215,6 +215,10 @@ export interface FormSchema {
   print_photos?: PrintPhotos;
   // ประกาศความเป็นส่วนตัวของเจ้าของฟอร์ม (PDPA) — แสดงก่อนเริ่มกรอกฟอร์มสาธารณะ · ไม่มี = ข้อความมาตรฐาน
   privacy_notice?: string;
+  /** เก็บพิกัด GPS ตอนส่ง/ถ่ายรูป — ไม่ระบุ = ปิด · required = ไม่ให้พิกัดส่งไม่ได้ */
+  geo?: "optional" | "required";
+  /** ประทับวันเวลา (+พิกัดถ้าเปิด GPS) + ชื่อฟอร์ม ลงรูปถ่ายตอนถ่าย */
+  watermark?: boolean;
   // ธีมสี / โลโก้ / ข้อความท้ายเอกสาร ของฟอร์มนี้ (ไม่ระบุ = ใช้ของ workspace) — ดู @/lib/theme
   theme?: FormTheme;
   // รูปประกอบบนกระดาษ (โลโก้ / ตราประทับ / รูปอธิบาย) — วางตำแหน่งใน layout ด้วย key "img:<id>"
@@ -613,6 +617,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (layout) schema.layout = layout;
   const pn = str(r.privacy_notice, 2000).trim();
   if (pn) schema.privacy_notice = pn;
+  if (r.geo === "optional" || r.geo === "required") schema.geo = r.geo;
+  if (r.watermark === true) schema.watermark = true;
   const th = sanitizeFormTheme(r.theme);
   if (th) schema.theme = th;
   if (images.length) schema.images = images;

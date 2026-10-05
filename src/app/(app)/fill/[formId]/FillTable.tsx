@@ -9,7 +9,8 @@ import LiveScanner from "@/components/LiveScanner";
 import TableCell from "@/components/TableCell";
 import { computeRow } from "@/lib/formula";
 import { cellPhotoKey, newRowPhotoKey } from "@/lib/table-rows";
-import { MediaPhotos, TableRow, shrinkImage } from "./fill-types";
+import { MediaPhotos, TableRow } from "./fill-types";
+import { useShrink } from "./photo-stamp";
 
 // ============ single field control ============
 export function useIsNarrow() {
@@ -31,6 +32,7 @@ export function useIsNarrow() {
  */
 export function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: React.Dispatch<React.SetStateAction<TableRow[]>>, onChange: (rows: TableRow[]) => void, fieldId = "", media?: MediaPhotos) {
   const [scanOpen, setScanOpen] = useState(false);
+  const shrinkImage = useShrink(); // ย่อรูป + ลายน้ำ (ถ้าฟอร์มเปิด)
   const scanCol = cols.find((c) => c.type === "scan");
   // แถวล่าสุด (สแกนต่อเนื่องเรียกถี่กว่ารอบ render) — แถวเปลี่ยนผ่าน commit เท่านั้น จึงตรงกับ state เสมอ
   const live = useRef(rows);

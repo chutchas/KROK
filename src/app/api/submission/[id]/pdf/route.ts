@@ -1,4 +1,5 @@
 import { sm } from "@/lib/server-msg";
+import { fmtCoords, mapUrl, readGeo } from "@/lib/geo";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -139,6 +140,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     submittedAt: fmtDate(sub.submitted_at as string | null),
     durationS: (sub.duration_s as number | null) ?? null,
     formVersion: (sub.form_version as number) ?? 1,
+    geo: (() => { const g = readGeo(sub.geo); return g ? { text: `${fmtCoords(g)}${g.acc ? ` (±${g.acc} ม.)` : ""}`, url: mapUrl(g) } : null; })(),
     answers,
     history,
     photoLayout: { mode: pp.mode, cols: pp.cols, heightMm: pp.height_mm },

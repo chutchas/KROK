@@ -31,6 +31,8 @@ export interface PendingSubmission {
   deviceId?: string | null;
   /** คีย์ประจำเครื่อง (พิสูจน์ว่าเป็นเครื่องที่อนุมัติ — server ตรวจ hash) */
   deviceKey?: string | null;
+  /** พิกัดตอนส่ง (ฟอร์มที่เปิด GPS) */
+  geo?: { lat: number; lng: number; acc: number; at: number } | null;
   queuedAt: number;
 }
 
@@ -199,6 +201,7 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
         photos: p.photos.map((ph) => ({ fieldId: ph.fieldId, ai: ph.ai })),
         docExtracts: (p.docExtracts ?? []).map((ex) => ({ source_id: ex.source_id, raw: ex.raw, accepted: ex.accepted })),
         offline: p.queuedAt > 0,
+        geo: p.geo ?? null,
         // เวลาที่กดส่งบนเครื่อง — เฉพาะใบที่เข้าคิวตอนออฟไลน์ (ส่งออนไลน์ใช้เวลาของ server อย่างเดียว)
         filledAt: p.queuedAt > 0 ? p.queuedAt : null,
       }),

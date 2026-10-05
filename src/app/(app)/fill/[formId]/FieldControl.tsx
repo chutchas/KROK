@@ -18,7 +18,8 @@ import LiveScanner from "@/components/LiveScanner";
 import { formatNumber, outOfRange } from "@/lib/formula";
 import AttachmentChips from "@/components/AttachmentView";
 import { type Attachment } from "@/lib/attachments";
-import { Answer, MediaPhotos, TableRow, dataUrlToBlob, shrinkImage } from "./fill-types";
+import { Answer, MediaPhotos, TableRow, dataUrlToBlob } from "./fill-types";
+import { useShrink } from "./photo-stamp";
 import { PaperTableField, TableInput } from "./FillTable";
 import { SignatureModal, SignaturePad } from "./FillSignature";
 import { MultiPhotoStrip, PhotoSlots } from "./FillPhotos";
@@ -107,6 +108,7 @@ export function FieldControl({
 
   // ฟิลด์หลายรูป: ช่องที่จะใส่รูปถัดไป (null = ช่องว่างช่องแรก · เลือกหลายไฟล์ = ไล่ใส่ช่องว่างถัดไป)
   const targetSlot = useRef<number | null>(null);
+  const shrinkImage = useShrink(); // ย่อรูป + ลายน้ำ (ถ้าฟอร์มเปิด)
   const pickSlot = (slot: number | null) => { targetSlot.current = slot; (slot === null ? photoRef : cameraRef).current?.click(); };
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);

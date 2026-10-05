@@ -204,4 +204,5 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ระยะเวลาให้ทำยาวกว่าช่วงห่างระหว่างรอบ — ลดเวลาให้ทำหรือเว้นรอบให้ห่างขึ้น": "Time allowed is longer than the gap between rounds — shorten it or space the rounds out",
   "ไม่พบเวอร์ชันนี้": "Version not found",
   "เวอร์ชันนี้เป็นเวอร์ชันปัจจุบันอยู่แล้ว": "This is already the current version",
+  "ฟอร์มนี้ต้องระบุตำแหน่ง (GPS) ก่อนส่ง": "This form requires your location (GPS) before submitting",
 };

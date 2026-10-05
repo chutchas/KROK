@@ -66,6 +66,8 @@ export interface SubmissionPdfData {
   submittedAt: string;
   durationS: number | null;
   formVersion: number;
+  /** พิกัดตอนส่ง (ฟอร์มที่เปิด GPS) — ข้อความ + ลิงก์แผนที่ */
+  geo?: { text: string; url: string } | null;
   answers: PdfAnswer[];
   history?: { label: string; reviewer: string; approved: boolean; note?: string; at: string }[];
   review?: { approved: boolean; reviewer: string; at: string; note?: string } | null;
@@ -187,6 +189,11 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       doc.font("th-bold").fontSize(10).fillColor(C.ink).text(v, x, y + 22, { width: cellW - 20, lineBreak: false, ellipsis: true });
     });
     y += boxH + 12;
+    if (data.geo) {
+      doc.font("th").fontSize(8.5).fillColor(C.muted).text("ตำแหน่งตอนส่ง: ", M, y, { continued: true, lineBreak: false })
+        .fillColor(C.ink).text(data.geo.text, { link: data.geo.url, underline: true, lineBreak: false });
+      y += 16;
+    }
 
     // ---------- แถบสรุปผล ----------
     const rc = data.resultFail ? { fg: C.fail, bg: C.failSoft } : { fg: C.pass, bg: C.passSoft };

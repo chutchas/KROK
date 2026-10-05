@@ -1,4 +1,5 @@
 import { isLateSync } from "@/lib/filled-at";
+import { fmtCoords, mapUrl, readGeo } from "@/lib/geo";
 import StoredText from "@/i18n/StoredText";
 import { notFound, redirect } from "next/navigation";
 import { InlineFormIcon } from "@/components/FormIcon";
@@ -101,6 +102,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   const answers = allAnswers;
   const hasPhotos = Object.keys(photoMap).length > 0 && allAnswers.some((a) => (a.type === "photo" && a.photoField) || (a.type === "table" && a.rows?.some((r) => Object.keys(r).some((k) => k.endsWith("#photo") && r[k]))));
   const status = STATUS_LABEL[sub.approval_status as string] || STATUS_LABEL.none;
+  const subGeo = readGeo(sub.geo);
 
   const label: React.CSSProperties = { color: "var(--ink-2)", fontSize: ".85rem", width: 200, flexShrink: 0 };
   const row: React.CSSProperties = { display: "flex", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)", alignItems: "flex-start" };
@@ -145,6 +147,12 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.submittedAt" /> </span><LocalDate iso={sub.submitted_at} /></div>
           {isLateSync(sub.filled_at, sub.submitted_at) && (
             <div title="ใบนี้กรอกตอนออฟไลน์ แล้วส่งเข้าระบบเมื่อมีเน็ต"><span style={{ color: "var(--ink-3)" }}><T k="sub.filledAt" /> </span><LocalDate iso={sub.filled_at} /> <span style={{ color: "var(--amber)", fontSize: ".78rem" }}><T k="sub.offlineFilled" /></span></div>
+          )}
+          {subGeo && (
+            <div><span style={{ color: "var(--ink-3)" }}><T k="sub.location" /> </span>
+              <a href={mapUrl(subGeo)} target="_blank" rel="noopener noreferrer">{fmtCoords(subGeo)}</a>
+              {subGeo.acc > 0 && <span style={{ color: subGeo.acc > 100 ? "var(--amber)" : "var(--ink-3)", fontSize: ".78rem" }}> ±{subGeo.acc}m</span>}
+            </div>
           )}
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.duration" /> </span><T k="sub.seconds" vars={{ s: sub.duration_s ?? "—" }} /></div>
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.formVersion" /> </span>v{sub.form_version ?? 1}

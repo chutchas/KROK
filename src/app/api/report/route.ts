@@ -1,4 +1,5 @@
 import { isLateSync } from "@/lib/filled-at";
+import { fmtCoords, mapUrl, readGeo } from "@/lib/geo";
 import { rateLimited } from "@/lib/rate-limit";
 import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -50,10 +51,10 @@ export async function GET(req: Request) {
   type Row = {
     form_title: string; user_name: string | null; result: "pass" | "fail";
     approval_status: string; fails: string[] | null; duration_s: number | null;
-    submitted_at: string; filled_at?: string | null; id: string; answers?: AnswerItem[] | null;
+    submitted_at: string; filled_at?: string | null; geo?: unknown; id: string; answers?: AnswerItem[] | null;
   };
   const rows: Row[] = [];
-  let selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, filled_at, id${withAnswers ? ", answers" : ""}`;
+  let selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, filled_at, geo, id${withAnswers ? ", answers" : ""}`;
   // keyset pagination (submitted_at, id) — offset ลึก ๆ ช้าลงเรื่อย ๆ เพราะ DB ต้องข้ามแถวก่อนหน้าทุกครั้ง
   let cursor: { at: string; id: string } | null = null;
   while (rows.length < MAX_ROWS) {
@@ -74,6 +75,8 @@ export async function GET(req: Request) {
     const { data, error } = await q;
     // ยังไม่รัน 0059 (ไม่มี filled_at) → ดึงแบบเดิม
     if (error && /filled_at/.test(error.message) && selectCols.includes("filled_at")) { selectCols = selectCols.replace(", filled_at", ""); continue; }
+    // ยังไม่รัน 0066 (ไม่มี geo) → ดึงแบบเดิม
+    if (error && /geo/.test(error.message) && selectCols.includes(", geo")) { selectCols = selectCols.replace(", geo", ""); continue; }
     if (error) return new Response(error.message, { status: 500 });
     const batch = (data || []) as unknown as Row[];
     rows.push(...batch);
@@ -98,6 +101,8 @@ export async function GET(req: Request) {
     { header: "จำนวนปัญหา", key: "failCount", width: 12 },
     { header: "รายการปัญหา", key: "fails", width: 40 },
     { header: "ใช้เวลา(วินาที)", key: "duration", width: 14 },
+    // พิกัดตอนส่ง — มีคอลัมน์เมื่อมีใบที่เก็บพิกัด
+    ...(rows.some((r) => readGeo(r.geo)) ? [{ header: "พิกัด (lat, lng)", key: "geo", width: 24 }, { header: "แผนที่", key: "geoUrl", width: 30 }] : []),
     { header: "ลิงก์เอกสาร", key: "link", width: 42 },
   ];
   ws.columns = baseCols;
@@ -154,6 +159,7 @@ export async function GET(req: Request) {
       failCount: fails.length,
       fails: fails.join(" | "),
       duration: s.duration_s ?? "",
+      ...(() => { const g = readGeo(s.geo); return g ? { geo: fmtCoords(g), geoUrl: mapUrl(g) } : {}; })(),
       link: `${origin}/submission/${s.id}`,
     });
     // เน้นสีผลลัพธ์

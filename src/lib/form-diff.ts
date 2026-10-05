@@ -20,7 +20,7 @@ export interface FormDiff {
   steps: { added: string[]; removed: string[]; renamed: { from: string; to: string }[] };
   fields: FieldChange[];
   /** เปลี่ยนส่วนอื่น (หน้ากระดาษ/ธีม/รูป/คำอธิบาย/ผู้รับผิดชอบขั้น/แหล่งเติมข้อมูล) */
-  other: ("layout" | "theme" | "images" | "description" | "assignee" | "fill_sources" | "print" | "privacy" | "category" | "header")[];
+  other: ("layout" | "theme" | "images" | "description" | "assignee" | "fill_sources" | "print" | "privacy" | "category" | "header" | "geo")[];
   /** ไม่มีอะไรต่างเลย */
   same: boolean;
 }
@@ -78,6 +78,7 @@ export function diffForms(prev: FormSchema | null | undefined, next: FormSchema)
   if (j(prev.print_photos) !== j(next.print_photos)) out.other.push("print");
   if ((prev.privacy_notice || "") !== (next.privacy_notice || "")) out.other.push("privacy");
   if ((prev.category || "") !== (next.category || "")) out.other.push("category");
+  if ((prev.geo || "") !== (next.geo || "") || !!prev.watermark !== !!next.watermark) out.other.push("geo");
   if (j([prev.show_header, prev.show_meta, prev.icon]) !== j([next.show_header, next.show_meta, next.icon])) out.other.push("header");
   // ตั้งค่าของขั้นที่มีทั้งสองเวอร์ชัน (ขั้นที่เพิ่ม/ลบ แสดงแยกอยู่แล้ว)
   const stepChanged = (key: "assignee" | "fill_sources") =>

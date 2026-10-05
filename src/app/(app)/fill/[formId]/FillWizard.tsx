@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users } from "lucide-react";
+import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
 import { labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
@@ -40,6 +40,9 @@ import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/compone
 import { Answer, DocRec, MediaPhotos, asRows, dataUrlToBlob, shrinkImage } from "./fill-types";
 import { firstBadRow, rowHasValue } from "./FillTable";
 import { FieldControl, toCode } from "./FieldControl";
+import { PhotoStampProvider } from "./photo-stamp";
+import { useGeo } from "./useGeo";
+import { watermarkLines } from "@/lib/geo";
 
 
 // โหมดกระดาษใช้เฉพาะบางคน — แยก bundle (หน้ากรอกบนมือถือโหลดเร็วขึ้น)
@@ -118,6 +121,13 @@ export default function FillWizard(props: Props) {
   const [submitting, setSubmitting] = useState(false);
   // ส่งไม่สำเร็จ: แสดงแถบข้อความใกล้ปุ่มส่ง (เดิมไปติดที่ช่องแรกของขั้น — ผู้กรอกอยู่ท้ายหน้าเลยไม่เห็น)
   const [submitErr, setSubmitErr] = useState<string | null>(null);
+  // ---- พิกัด GPS + ลายน้ำรูป (ตั้งต่อฟอร์ม) ----
+  const geoMode = schema.geo;
+  const geo = useGeo(!!geoMode && !viewOnly);
+  const stampOf = useCallback(
+    () => watermarkLines({ atMs: Date.now(), title: props.title, geo: geo.lastRef.current, geoOn: !!geoMode }),
+    [props.title, geo.lastRef, geoMode],
+  );
   const submitErrRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (submitErr) submitErrRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [submitErr]);
   const [mode, setMode] = useState<"mobile" | "paper">(seed?.mode ?? "mobile");
@@ -647,6 +657,14 @@ export default function FillWizard(props: Props) {
     setSubmitting(true);
     setSubmitErr(null);
     try {
+      // พิกัด: ฟอร์มบังคับ → ไม่มีพิกัด = ยังไม่ส่ง (บอกวิธีเปิดสิทธิ์) · ไม่บังคับ = ส่งได้แม้หาไม่เจอ
+      const geoFix = geoMode ? await geo.getFix() : null;
+      if (geoMode === "required" && !geoFix) {
+        setSubmitErr(geo.status === "denied" ? t("geo.deniedRequired") : t("geo.unavailableRequired"));
+        setSubmitting(false);
+        submitLock.current = false;
+        return;
+      }
       const subId = crypto.randomUUID();
       const list: Record<string, unknown>[] = [];
       const fails: string[] = [];
@@ -732,6 +750,7 @@ export default function FillWizard(props: Props) {
           fd.append("fails", JSON.stringify(fails));
           fd.append("answers", JSON.stringify(list));
           fd.append("duration", String(dur));
+          if (geoFix) fd.append("geo", JSON.stringify(geoFix));
           for (const p of photoUploads) fd.append(`photo_${p.fieldId}`, dataUrlToBlob(p.dataUrl), `${p.fieldId}.jpg`);
           const res = await fetch("/api/public/submit", { method: "POST", body: fd });
           if (!res.ok) {
@@ -768,6 +787,7 @@ export default function FillWizard(props: Props) {
         docExtracts: docExtracts.current,
         deviceId: device.id,
         deviceKey: deviceLocked ? getDeviceKey() : null,
+        geo: geoFix,
         queuedAt: 0,
       };
 
@@ -1252,6 +1272,24 @@ export default function FillWizard(props: Props) {
   const branded = hasBrand(theme);
 
   // คำอธิบายฟอร์ม (ตั้งในหน้าสร้างฟอร์ม) — แสดงใต้ชื่อทั้งมุมมองมือถือและกระดาษ
+  const geoChip = geoMode && !viewOnly ? (
+    <div role="status" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "10px 0 0", padding: "7px 10px", borderRadius: 8, fontSize: ".82rem",
+      border: `1px solid ${geo.status === "denied" && geoMode === "required" ? "var(--fail)" : "var(--line)"}`,
+      background: geo.status === "denied" && geoMode === "required" ? "var(--fail-soft)" : "var(--surface-2)",
+      color: geo.status === "ok" ? "var(--ink-2)" : geo.status === "denied" ? (geoMode === "required" ? "var(--fail)" : "var(--ink-3)") : "var(--ink-3)" }}>
+      <Icon icon={MapPin} className="h-4 w-4" />
+      <span style={{ flex: "1 1 180px" }}>
+        {geo.status === "ok" && geo.fix ? tt("geo.ok", { acc: Math.round(geo.fix.acc) })
+          : geo.status === "pending" ? t("geo.pending")
+          : geo.status === "denied" ? (geoMode === "required" ? t("geo.deniedRequired") : t("geo.deniedOptional"))
+          : t(geoMode === "required" ? "geo.unavailableRequired" : "geo.unavailableOptional")}
+      </span>
+      {(geo.status === "denied" || geo.status === "unavailable") && (
+        <button type="button" onClick={geo.retry} style={{ border: "1px solid var(--line)", background: "var(--surface)", borderRadius: 8, padding: "4px 10px", minHeight: 32, cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", color: "var(--ink)" }}>{t("geo.retry")}</button>
+      )}
+    </div>
+  ) : null;
+
   const formDesc = schema.description?.trim() ? (
     <p style={{ margin: "3px 0 0", fontSize: ".86rem", color: "var(--ink-2)", lineHeight: 1.5, overflowWrap: "anywhere" }}>{schema.description.trim()}</p>
   ) : null;
@@ -1259,6 +1297,7 @@ export default function FillWizard(props: Props) {
   // ---------- โหมดกระดาษ: กรอกบนกระดาษ A4 จริง ตามตำแหน่งที่ออกแบบไว้ ----------
   if (mode === "paper") {
     return (
+      <PhotoStampProvider value={schema.watermark ? stampOf : null}>
       <div className={themeScope}>
         <ThemeStyle scope={themeScope} theme={theme} />
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) */}
@@ -1279,6 +1318,7 @@ export default function FillWizard(props: Props) {
 
         {draftNotice}
         {banner}
+        {geoChip}
         {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
         {schema.steps.map((st, si) => (
@@ -1312,11 +1352,13 @@ export default function FillWizard(props: Props) {
         {caseTools}
         {caseModals}
       </div>
+      </PhotoStampProvider>
     );
   }
 
   // ---------- โหมดมือถือ: ทีละขั้นตอน ----------
   return (
+    <PhotoStampProvider value={schema.watermark ? stampOf : null}>
     <div className={themeScope} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
       <ThemeStyle scope={themeScope} theme={theme} />
       {branded && <FormBrandHeader theme={theme} icon={props.icon} title={props.title} description={schema.description} />}
@@ -1336,6 +1378,7 @@ export default function FillWizard(props: Props) {
 
       {draftNotice}
       {banner}
+      {geoChip}
       {attForm.length > 0 && <AttachmentChips items={attForm} variant="form" />}
 
       <div style={{ display: "flex", gap: 6, margin: "10px 0 16px" }}>
@@ -1384,6 +1427,7 @@ export default function FillWizard(props: Props) {
       </div>
       <FormFooterText text={theme.footer} />
     </div>
+    </PhotoStampProvider>
   );
 }
 
