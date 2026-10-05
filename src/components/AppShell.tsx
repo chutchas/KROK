@@ -35,12 +35,14 @@ const PRIMARY: NavEntry[] = [
 
 // เมนูระบบ (ผู้ดูแลแพลตฟอร์ม) — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
 const PLATFORM: NavEntry[] = [
+  // งาน Admin / Support
   { href: "/admin/users", key: "nav.adminUsers", icon: UsersRound, gate: "platform" },
-  { href: "/admin/settings", key: "nav.adminSystem", icon: Settings, gate: "dev" },
   { href: "/admin/audit", key: "nav.adminAudit", icon: ScrollText, gate: "platform" },
-  { href: "/admin/health", key: "nav.adminHealth", icon: HeartPulse, gate: "platform" },
   { href: "/admin/finance", key: "nav.adminFinance", icon: Wallet, gate: "platform" },
-  { href: "/admin/errors", key: "nav.adminErrors", icon: Bug, gate: "platform" },
+  { href: "/admin/settings", key: "nav.adminSystem", icon: Settings, gate: "platform" },
+  // งาน Technical (Developer เห็นด้วย)
+  { href: "/admin/health", key: "nav.adminHealth", icon: HeartPulse, gate: "dev" },
+  { href: "/admin/errors", key: "nav.adminErrors", icon: Bug, gate: "dev" },
   { href: "/admin/developer", key: "nav.developer", icon: Terminal, gate: "dev" },
 ];
 

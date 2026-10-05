@@ -13,12 +13,12 @@ export interface SavePlatformAiInput {
   api_key: string; // ว่าง = คงคีย์เดิม
 }
 
-// บันทึกการตั้งค่า AI ของ purpose หนึ่ง ๆ (ระดับแพลตฟอร์ม) — เฉพาะ Platform Admin / Developer
+// บันทึกการตั้งค่า AI ของ purpose หนึ่ง ๆ (ระดับแพลตฟอร์ม) — เฉพาะ Platform Admin
 export async function savePlatformAi(input: SavePlatformAiInput): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!session.isPlatformAdmin && session.platformRole !== "developer")
-    return { error: "เฉพาะ Platform Admin / Developer เท่านั้น" };
+  if (!session.isPlatformAdmin)
+    return { error: "เฉพาะ Platform Admin เท่านั้น" };
 
   const admin = getAdminClient();
   if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };

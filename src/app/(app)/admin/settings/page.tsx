@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 export default async function SystemSettingsPage() {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (!session.isPlatformAdmin && session.platformRole !== "developer")
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ Developer / Platform Admin เท่านั้น</div>;
+  if (!session.isPlatformAdmin)
+    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ Platform Admin เท่านั้น</div>;
 
   const admin = getAdminClient();
 

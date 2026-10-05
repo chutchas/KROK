@@ -12,14 +12,14 @@ export interface SavePaymentInput {
   values: Record<string, string>;
 }
 
-// บันทึกการตั้งค่า provider ชำระเงินระดับแพลตฟอร์ม — เฉพาะ Platform Admin / Developer
+// บันทึกการตั้งค่า provider ชำระเงินระดับแพลตฟอร์ม — เฉพาะ Platform Admin
 export async function savePaymentProvider(
   input: SavePaymentInput
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!session.isPlatformAdmin && session.platformRole !== "developer")
-    return { error: "เฉพาะ Platform Admin / Developer เท่านั้น" };
+  if (!session.isPlatformAdmin)
+    return { error: "เฉพาะ Platform Admin เท่านั้น" };
 
   const admin = getAdminClient();
   if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
@@ -89,7 +89,7 @@ export async function savePaymentProvider(
 // ---- แคตตาล็อกแพ็กเกจ (สร้าง/แก้/ซ่อน/เรียง/ลบ) ----
 
 /**
- * บันทึกแคตตาล็อกทั้งชุด — เฉพาะ Platform Admin / Developer
+ * บันทึกแคตตาล็อกทั้งชุด — เฉพาะ Platform Admin
  * - แพ็กเกจตั้งต้น (free/pro/business) ลบไม่ได้ · free แสดงเสมอ
  * - ลบแพ็กเกจที่ยังมี workspace ใช้อยู่ไม่ได้ (ให้ซ่อนแทน)
  * มีผลทันทีกับหน้าแผน/โควตา หน้า home และการบังคับโควตา (DB อ่านชุดเดียวกัน)
@@ -97,8 +97,8 @@ export async function savePaymentProvider(
 export async function savePlanCatalog(input: unknown[]): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!session.isPlatformAdmin && session.platformRole !== "developer")
-    return { error: "เฉพาะ Platform Admin / Developer เท่านั้น" };
+  if (!session.isPlatformAdmin)
+    return { error: "เฉพาะ Platform Admin เท่านั้น" };
   const admin = getAdminClient();
   if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
   if (!Array.isArray(input) || input.length > 30) return { error: "ข้อมูลแพ็กเกจไม่ถูกต้อง" };
@@ -148,7 +148,7 @@ export async function savePlanCatalog(input: unknown[]): Promise<{ ok: true } | 
 /** จำนวน workspace ต่อแพ็กเกจ (แสดงในหน้าแอดมิน) */
 export async function planTenantCounts(): Promise<Record<string, number>> {
   const session = await getSession();
-  if (!session || (!session.isPlatformAdmin && session.platformRole !== "developer")) return {};
+  if (!session || !session.isPlatformAdmin) return {};
   const admin = getAdminClient();
   if (!admin) return {};
   // นับบัญชีต่อแพ็กเกจ (0045) · ยังไม่รัน = นับ workspace แบบเดิม
