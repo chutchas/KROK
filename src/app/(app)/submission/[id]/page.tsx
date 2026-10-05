@@ -1,3 +1,4 @@
+import { isLateSync } from "@/lib/filled-at";
 import { notFound, redirect } from "next/navigation";
 import { InlineFormIcon } from "@/components/FormIcon";
 import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
@@ -141,6 +142,9 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 24px", fontSize: ".86rem", margin: "14px 0 8px" }}>
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.filledBy" /> </span><b>{sub.user_name || "—"}</b></div>
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.submittedAt" /> </span><LocalDate iso={sub.submitted_at} /></div>
+          {isLateSync(sub.filled_at, sub.submitted_at) && (
+            <div title="ใบนี้กรอกตอนออฟไลน์ แล้วส่งเข้าระบบเมื่อมีเน็ต"><span style={{ color: "var(--ink-3)" }}><T k="sub.filledAt" /> </span><LocalDate iso={sub.filled_at} /> <span style={{ color: "var(--amber)", fontSize: ".78rem" }}><T k="sub.offlineFilled" /></span></div>
+          )}
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.duration" /> </span><T k="sub.seconds" vars={{ s: sub.duration_s ?? "—" }} /></div>
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.formVersion" /> </span>v{sub.form_version ?? 1}</div>
         </div>

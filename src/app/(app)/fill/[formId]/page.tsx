@@ -9,7 +9,7 @@ import type { DraftData } from "@/lib/drafts";
 import { canManage } from "@/lib/session";
 import { isWorkflowSchema, rowToCase, stepTeam, stepUser, type CaseData } from "@/lib/case-flow";
 import { getWorkspaceBranding } from "@/lib/branding";
-import FillWizard from "./FillWizard";
+import FillWithLocalDraft from "./FillWithLocalDraft";
 
 export const dynamic = "force-dynamic";
 
@@ -149,7 +149,7 @@ export default async function FillPage({
   const [attachments, branding] = await Promise.all([attachmentsP, brandingP]);
 
   return (
-    <FillWizard
+    <FillWithLocalDraft
       key={caseData ? `case:${caseData.id}:${caseData.updatedAt}` : draft?.id ?? "new"}
       draft={draft}
       caseData={caseData}

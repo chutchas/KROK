@@ -1,3 +1,4 @@
+import { isLateSync } from "@/lib/filled-at";
 import { rateLimited } from "@/lib/rate-limit";
 import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -49,10 +50,10 @@ export async function GET(req: Request) {
   type Row = {
     form_title: string; user_name: string | null; result: "pass" | "fail";
     approval_status: string; fails: string[] | null; duration_s: number | null;
-    submitted_at: string; id: string; answers?: AnswerItem[] | null;
+    submitted_at: string; filled_at?: string | null; id: string; answers?: AnswerItem[] | null;
   };
   const rows: Row[] = [];
-  const selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id${withAnswers ? ", answers" : ""}`;
+  let selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, filled_at, id${withAnswers ? ", answers" : ""}`;
   // keyset pagination (submitted_at, id) — offset ลึก ๆ ช้าลงเรื่อย ๆ เพราะ DB ต้องข้ามแถวก่อนหน้าทุกครั้ง
   let cursor: { at: string; id: string } | null = null;
   while (rows.length < MAX_ROWS) {
@@ -71,6 +72,8 @@ export async function GET(req: Request) {
     if (approval && approval !== "all") q = q.eq("approval_status", approval);
 
     const { data, error } = await q;
+    // ยังไม่รัน 0059 (ไม่มี filled_at) → ดึงแบบเดิม
+    if (error && /filled_at/.test(error.message) && selectCols.includes("filled_at")) { selectCols = selectCols.replace(", filled_at", ""); continue; }
     if (error) return new Response(error.message, { status: 500 });
     const batch = (data || []) as unknown as Row[];
     rows.push(...batch);
@@ -87,6 +90,7 @@ export async function GET(req: Request) {
 
   const baseCols = [
     { header: "วันที่ส่ง", key: "when", width: 20 },
+    { header: "กรอกจริง (ออฟไลน์)", key: "filled", width: 20 },
     { header: "ฟอร์ม", key: "form", width: 26 },
     { header: "ผู้กรอก", key: "user", width: 20 },
     { header: "ผลลัพธ์", key: "result", width: 12 },
@@ -140,6 +144,9 @@ export async function GET(req: Request) {
     const row = ws.addRow({
       ...extra,
       when,
+      filled: isLateSync(s.filled_at, s.submitted_at)
+        ? new Date(s.filled_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" })
+        : "",
       form: s.form_title,
       user: s.user_name || "-",
       result: s.result === "fail" ? "ไม่ผ่าน" : "ผ่าน",

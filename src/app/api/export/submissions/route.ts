@@ -1,3 +1,4 @@
+import { isLateSync } from "@/lib/filled-at";
 import { rateLimited } from "@/lib/rate-limit";
 import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -30,31 +31,39 @@ export async function GET(req: Request) {
   const to = url.searchParams.get("to");
 
   const supabase = await createClient();
-  let q = supabase
-    .from("submissions")
-    .select("form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id")
-    .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
-    .order("submitted_at", { ascending: false })
-    .limit(5000);
-  if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
-  if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
-
-  const { data, error } = await q;
+  const query = (cols: string) => {
+    let q = supabase
+      .from("submissions")
+      .select(cols)
+      .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (RLS คืนทุก workspace ที่เป็นสมาชิก)
+      .order("submitted_at", { ascending: false })
+      .limit(5000);
+    if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
+    if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
+    return q;
+  };
+  const base = "form_title, user_name, result, approval_status, fails, duration_s, submitted_at, id";
+  let { data, error } = await query(`${base}, filled_at`);
+  if (error && /filled_at/.test(error.message)) ({ data, error } = await query(base)); // ยังไม่รัน 0059
   if (error) return new Response(error.message, { status: 500 });
 
   const origin = url.origin;
-  const headers = ["วันที่ส่ง", "ฟอร์ม", "ผู้กรอก", "ผลลัพธ์", "สถานะอนุมัติ", "จำนวนปัญหา", "รายการปัญหา", "ใช้เวลา(วินาที)", "ลิงก์เอกสาร"];
+  const headers = ["วันที่ส่ง", "กรอกจริง (ออฟไลน์)", "ฟอร์ม", "ผู้กรอก", "ผลลัพธ์", "สถานะอนุมัติ", "จำนวนปัญหา", "รายการปัญหา", "ใช้เวลา(วินาที)", "ลิงก์เอกสาร"];
 
   const lines = [headers.map(csvCell).join(",")];
-  for (const s of data || []) {
+  for (const s of (data || []) as unknown as Record<string, unknown>[]) {
     const fails = (s.fails as string[]) || [];
     let when = "";
     try {
       when = new Date(s.submitted_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
     } catch { /* ignore */ }
+    const filled = isLateSync(s.filled_at as string | null, s.submitted_at as string)
+      ? new Date(s.filled_at as string).toLocaleString("th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" })
+      : "";
     lines.push(
       [
         when,
+        filled,
         s.form_title,
         s.user_name,
         s.result === "fail" ? "ไม่ผ่าน" : "ผ่าน",

@@ -25,6 +25,7 @@ import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, mediaFieldId } from "@/lib/table-rows";
 import FillSourceBar, { type AppliedValue } from "@/components/FillSourceBar";
 import { enqueue, pushSubmission, PermanentSubmitError, type PendingSubmission } from "@/lib/offline-queue";
+import { deleteLocalDraft, saveLocalDraft, type LocalDraft } from "@/lib/offline-store";
 import AttachmentChips from "@/components/AttachmentView";
 import { groupAttachments, type Attachment } from "@/lib/attachments";
 import { defaultDeviceName, deviceShortCode, freshApproved, freshFormAllow, getDeviceKey, guessPlatform, writeDeviceState, writeFormAllow, type DeviceStatus } from "@/lib/device-client";
@@ -63,6 +64,10 @@ type Props = {
   requireDevice?: boolean;
   /** กรอกต่อจากแบบร่าง */
   draft?: DraftData | null;
+  /** แบบร่างที่บันทึกไว้ในเครื่องตอนออฟไลน์ (ใหม่กว่าร่างบน server) */
+  localDraft?: LocalDraft | null;
+  /** เปิดจากหน้าออฟไลน์ (ไม่มี server) — เปลี่ยนหน้าแบบโหลดเต็มหน้า */
+  offlineShell?: boolean;
   /** งานที่เปิดอยู่ (ฟอร์มกรอกหลายคน) */
   caseData?: CaseData | null;
   /** ฟอร์มนี้กรอกหลายคน: ชื่อทีม + สิทธิ์ของผู้ใช้ (null = ฟอร์มคนเดียวแบบเดิม) */
@@ -88,21 +93,28 @@ export default function FillWizard(props: Props) {
   const maxIdx = viewOnly ? nSteps - 1 : segEnd;
   const lockedStep = (i: number) => viewOnly || i < segStart || i > segEnd;
   const initialDraft = props.publicMode || kase ? null : props.draft ?? null;
+  // ร่างในเครื่อง (บันทึกตอนออฟไลน์) ใช้แทนร่างบน server เมื่อใหม่กว่า
+  const local = props.publicMode || kase || !props.localDraft ? null
+    : initialDraft && new Date(initialDraft.updatedAt).getTime() > props.localDraft.updatedAt && initialDraft.id !== props.localDraft.serverDraftId ? null
+    : props.localDraft;
+  const seed = local
+    ? { stepIdx: local.stepIdx, answers: local.answers, docExtracts: local.docExtracts, mode: local.mode, formVersion: local.formVersion }
+    : initialDraft;
   const [idx, setIdx] = useState(() => {
-    const start = kase ? (viewOnly ? Math.min(kase.stepIdx, nSteps - 1) : segStart) : initialDraft?.stepIdx ?? 0;
+    const start = kase ? (viewOnly ? Math.min(kase.stepIdx, nSteps - 1) : segStart) : seed?.stepIdx ?? 0;
     return Math.min(Math.max(start, 0), maxIdx);
   });
   // เริ่มจากคำตอบในร่าง/งาน (ตั้งก่อน render แรก — FieldControl อ่านค่าเริ่มต้นตอน mount)
-  const answers = useRef<Record<string, Answer>>(((kase?.answers ?? initialDraft?.answers) as Record<string, Answer>) ?? {});
-  const [photos, setPhotos] = useState<Record<string, string>>({}); // fieldId -> dataUrl
-  const docExtracts = useRef<DocRec[]>(((kase?.docExtracts ?? initialDraft?.docExtracts) as DocRec[]) ?? []); // หลักฐานการอ่านเอกสารด้วย AI
-  const [sigs, setSigs] = useState<Record<string, string>>({});
+  const answers = useRef<Record<string, Answer>>(((kase?.answers ?? seed?.answers) as Record<string, Answer>) ?? {});
+  const [photos, setPhotos] = useState<Record<string, string>>(() => local?.photos ?? {}); // fieldId -> dataUrl
+  const docExtracts = useRef<DocRec[]>(((kase?.docExtracts ?? seed?.docExtracts) as DocRec[]) ?? []); // หลักฐานการอ่านเอกสารด้วย AI
+  const [sigs, setSigs] = useState<Record<string, string>>(() => local?.sigs ?? {});
   const [, force] = useState(0);
   const rerender = useCallback(() => force((n) => n + 1), []);
   const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
-  const [mode, setMode] = useState<"mobile" | "paper">(initialDraft?.mode ?? "mobile");
+  const [mode, setMode] = useState<"mobile" | "paper">(seed?.mode ?? "mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
   const [caseModal, setCaseModal] = useState<null | "handoff" | "return" | "release" | "cancel">(null);
   const [caseBusy, setCaseBusy] = useState(false);
@@ -183,7 +195,7 @@ export default function FillWizard(props: Props) {
   const calcFrom = useCallback((ans: Record<string, Answer>) => computeFormulas(schema, { value: (id) => ans[id]?.value, rows: (id) => asRows(ans[id]?.value) }), [schema]);
   // ค่าเริ่มต้นคำนวณจากร่าง/งานที่โหลดมา · หลังจากนั้นคำนวณใหม่ทุกครั้งที่คำตอบเปลี่ยน (patchAnswer / applyFill)
   const [formulaVals, setFormulaVals] = useState<Record<string, number | null>>(() =>
-    calcFrom(((kase?.answers ?? initialDraft?.answers) as Record<string, Answer>) ?? {}));
+    calcFrom(((kase?.answers ?? seed?.answers) as Record<string, Answer>) ?? {}));
   // รูปถ่ายต่อแถว: อยู่ใน photos เดียวกับรูปของฟิลด์ (แบบร่าง/งาน/ส่งข้อมูลจัดการเหมือนกัน) key = <field>.<col>.<สุ่ม>
   const mediaPhotos = useMemo<MediaPhotos>(() => ({
     get: (k) => photos[k],
@@ -213,22 +225,22 @@ export default function FillWizard(props: Props) {
   // บันทึกเมื่อ: กดปุ่ม "บันทึกร่าง", เปลี่ยนขั้นตอน, กดออก, สลับแอป/ปิดแท็บ (หน้าถูกซ่อน)
   // บันทึกอัตโนมัติเฉพาะเมื่อมีคำตอบจริงและมีการเปลี่ยนตั้งแต่บันทึกล่าสุด → ไม่เกิดร่างขยะ
   const draftsOn = !props.publicMode && !viewOnly && (!kase || caseMine);
-  const dirty = useRef(0);          // นับการแก้ไข
+  const dirty = useRef(local ? 1 : 0); // นับการแก้ไข (ร่างในเครื่อง = ยังไม่ขึ้น server → นับว่ามีของต้องบันทึก)
   const savedAt = useRef(0);        // ค่า dirty ตอนบันทึกล่าสุด
-  const draftId = useRef<string | null>(initialDraft?.id ?? null);
+  const draftId = useRef<string | null>(local ? local.serverDraftId : initialDraft?.id ?? null);
   // งาน: media ของทั้งงาน (key → path ใน bucket 'cases') / ร่าง: media ของร่าง
-  const draftMedia = useRef<Record<string, string>>(kase?.media ?? initialDraft?.media ?? {});
+  const draftMedia = useRef<Record<string, string>>(kase?.media ?? (local ? (initialDraft && initialDraft.id === local.serverDraftId ? initialDraft.media : {}) : initialDraft?.media) ?? {});
   const uploadedMedia = useRef(new Map<string, string>());
   const saving = useRef<Promise<boolean> | null>(null);
   const submitLock = useRef(false); // กำลังส่ง/ส่งแล้ว → ห้ามบันทึกร่าง (กันร่างค้างหลังส่ง)
-  const [draftState, setDraftState] = useState<{ kind: "idle" | "saving" | "saved" | "error"; at?: number; msg?: string }>(
-    initialDraft ? { kind: "saved", at: new Date(initialDraft.updatedAt).getTime() } : { kind: "idle" }
+  const [draftState, setDraftState] = useState<{ kind: "idle" | "saving" | "saved" | "local" | "error"; at?: number; msg?: string }>(
+    local ? { kind: "local", at: local.updatedAt } : initialDraft ? { kind: "saved", at: new Date(initialDraft.updatedAt).getTime() } : { kind: "idle" }
   );
   const [mediaLoading, setMediaLoading] = useState(
     kase ? Object.keys(kase.media || {}).length > 0 || kase.docExtracts.some((d) => !!d.path)
-      : !!initialDraft && Object.keys(initialDraft.media || {}).length > 0
+      : !local && !!initialDraft && Object.keys(initialDraft.media || {}).length > 0
   );
-  const versionChanged = !!initialDraft && initialDraft.formVersion !== props.version;
+  const versionChanged = !!seed && seed.formVersion !== props.version;
   // state ล่าสุดสำหรับ callback ที่ถูกเรียกนอกรอบ render (visibilitychange)
   const latest = useRef({ idx, mode, photos, sigs });
   useEffect(() => { latest.current = { idx, mode, photos, sigs }; }, [idx, mode, photos, sigs]);
@@ -252,7 +264,7 @@ export default function FillWizard(props: Props) {
   }, []);
 
   useEffect(() => {
-    if (!initialDraft || !mediaLoading) return;
+    if (!initialDraft || local || !mediaLoading) return;
     let alive = true;
     loadDraftMedia(supabase, initialDraft.media).then((m) => {
       if (!alive) return;
@@ -304,7 +316,29 @@ export default function FillWizard(props: Props) {
         }
       }
     setDraftState({ kind: "saving" });
+    // ออฟไลน์ / server ไม่ตอบ → เก็บร่างไว้ในเครื่อง (รูป/ลายเซ็นเก็บเป็นข้อมูลในเครื่องด้วย) แล้วขึ้น server รอบถัดไปที่ออนไลน์
+    const saveLocal = async (): Promise<boolean> => {
+      if (kase) return false; // งาน (กรอกหลายคน) ต้องออนไลน์
+      try {
+        await saveLocalDraft({
+          userId: props.userId, tenantId: props.tenantId, formId: props.formId, formVersion: props.version,
+          serverDraftId: draftId.current, title, stepIdx: si, mode: md, answers: answers.current as Record<string, unknown>,
+          photos: ph, sigs: sg, docExtracts: docExtracts.current, updatedAt: Date.now(),
+        });
+        // savedAt ไม่ขยับ → ออนไลน์เมื่อไรบันทึกอัตโนมัติจะส่งร่างขึ้น server ให้
+        setDraftState({ kind: "local", at: Date.now() });
+        return true;
+      } catch {
+        return false;
+      }
+    };
     const job = (async () => {
+      if (!kase && typeof navigator !== "undefined" && navigator.onLine === false) {
+        const ok = await saveLocal();
+        saving.current = null;
+        if (!ok) setDraftState({ kind: "error", msg: t("fw.draftOffline") });
+        return ok;
+      }
       try {
         if (kase) {
           // งาน: บันทึกเฉพาะช่วงที่ถืออยู่ลง form_cases (ไม่ใช่แบบร่าง)
@@ -330,11 +364,13 @@ export default function FillWizard(props: Props) {
         draftMedia.current = res.media;
         savedAt.current = mark;
         setDraftState({ kind: "saved", at: Date.now() });
+        void deleteLocalDraft(props.userId, props.formId); // ขึ้น server แล้ว ไม่ต้องเก็บในเครื่อง
         return true;
       } catch (e) {
         const offline = typeof navigator !== "undefined" && navigator.onLine === false;
         const raw = e instanceof Error ? e.message : "";
         const network = /fetch|network|timeout/i.test(raw);
+        if ((offline || network) && (await saveLocal())) return true;
         setDraftState({
           kind: "error",
           msg: offline ? t("fw.draftOffline")
@@ -360,20 +396,27 @@ export default function FillWizard(props: Props) {
 
   // เปิดจากร่าง: สิ่งที่โหลดมา (คำตอบ/รูป) ถือว่าบันทึกแล้ว ยังไม่ต้องบันทึกซ้ำจนกว่าจะแก้
   useEffect(() => {
-    if (initialDraft && !mediaLoading) savedAt.current = dirty.current;
+    if (initialDraft && !local && !mediaLoading) savedAt.current = dirty.current;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mediaLoading]);
+
+  /** เปลี่ยนหน้า — ออฟไลน์/เปิดจากหน้าออฟไลน์ ใช้โหลดเต็มหน้า (service worker ส่งหน้าออฟไลน์ให้) */
+  const go = useCallback((path: string) => {
+    if (props.offlineShell || (typeof navigator !== "undefined" && navigator.onLine === false)) window.location.assign(path);
+    else router.push(path);
+  }, [props.offlineShell, router]);
 
   async function exitForm() {
     if (draftsOn && dirty.current !== savedAt.current && hasContent()) {
       const ok = await saveDraftNow("auto");
       if (!ok && !(await confirmDialog({ message: t("draft.exitUnsaved"), confirmLabel: t("fill.exit"), danger: true }))) return;
     }
-    router.push(kase ? "/forms?tab=tasks" : "/forms");
+    go(kase ? "/forms?tab=tasks" : "/forms");
   }
 
   /** ส่งฟอร์มสำเร็จแล้ว → ลบร่างทิ้ง */
   async function clearDraftAfterSubmit() {
+    void deleteLocalDraft(props.userId, props.formId);
     if (saving.current) await saving.current.catch(() => false); // รอบันทึกร่างที่ค้างอยู่ให้จบก่อน จะได้ลบถูกตัว
     if (!draftId.current) return;
     const id = draftId.current;
@@ -717,6 +760,7 @@ export default function FillWizard(props: Props) {
         // ออฟไลน์ลบร่างบน server ไม่ได้ตอนนี้ — ร่างจะถูกลบเมื่อกลับมาออนไลน์ครั้งถัดไปที่เปิดหน้าแบบร่าง
         // (ถือว่าส่งแล้ว: เก็บ id ไว้ให้หน้าแบบร่างซ่อน/ลบ)
         rememberSubmittedDraft(draftId.current);
+        void deleteLocalDraft(props.userId, props.formId);
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
         window.scrollTo(0, 0);
         return;
@@ -734,6 +778,7 @@ export default function FillWizard(props: Props) {
         await enqueue({ ...payload, queuedAt: nowMs() });
         window.dispatchEvent(new Event("krok-queue-changed"));
         rememberSubmittedDraft(draftId.current);
+        void deleteLocalDraft(props.userId, props.formId);
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
         window.scrollTo(0, 0);
         return;
@@ -921,7 +966,7 @@ export default function FillWizard(props: Props) {
           <Button variant="primary" onClick={() => checkDevice(deviceName)} loading={registering}>
             <Icon icon={RefreshCw} className="h-4 w-4" /> {device.status === "pending" ? t("fw.device.requestRecheck") : t("fw.device.retry")}
           </Button>
-          <Button onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
+          <Button onClick={() => go("/forms")}>{t("fill.backToList")}</Button>
         </div>
       </div>
     );
@@ -935,7 +980,7 @@ export default function FillWizard(props: Props) {
         <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={Users} className="h-11 w-11" strokeWidth={1.5} /></div>
         <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("wf.startTeamOnly")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>{t("wf.startTeamOnlySub").replace("{team}", tn || "-")}</p>
-        <Button onClick={() => router.push("/forms")} style={{ marginTop: 12 }}>{t("fill.backToList")}</Button>
+        <Button onClick={() => go("/forms")} style={{ marginTop: 12 }}>{t("fill.backToList")}</Button>
       </div>
     );
   }
@@ -954,7 +999,7 @@ export default function FillWizard(props: Props) {
         </p>
         <div style={{ display: "flex", gap: 10, justifyContent: "center", marginTop: 16, flexWrap: "wrap" }}>
           <Button variant="primary" onClick={() => router.push("/forms?tab=tasks")}>{t("wf.backToTasks")}</Button>
-          <Button onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
+          <Button onClick={() => go("/forms")}>{t("fill.backToList")}</Button>
         </div>
       </div>
     );
@@ -993,8 +1038,8 @@ export default function FillWizard(props: Props) {
             <Button variant="primary" onClick={() => window.location.reload()}>{t("fill.submitAgain")}</Button>
           ) : (
             <>
-              <Button variant="primary" onClick={() => router.push("/forms")}>{t("fill.backToList")}</Button>
-              <Button onClick={() => router.push("/dashboard")}>{t("fill.viewDash")}</Button>
+              <Button variant="primary" onClick={() => go("/forms")}>{t("fill.backToList")}</Button>
+              {!props.offlineShell && <Button onClick={() => go("/dashboard")}>{t("fill.viewDash")}</Button>}
             </>
           )}
         </div>
@@ -1088,6 +1133,11 @@ export default function FillWizard(props: Props) {
       {draftState.kind === "saved" && draftState.at && (
         <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
           <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
+        </span>
+      )}
+      {draftState.kind === "local" && draftState.at && (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+          <Icon icon={CloudOff} className="h-3.5 w-3.5" /> {t("draft.savedLocal").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
         </span>
       )}
       {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}

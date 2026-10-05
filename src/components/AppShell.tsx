@@ -14,6 +14,8 @@ import LanguageToggle from "@/components/LanguageToggle";
 import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { WorkspaceChip, type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import OfflineSync from "@/components/OfflineSync";
+import OfflinePrep from "@/components/OfflinePrep";
+import { clearBundles } from "@/lib/offline-store";
 import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
@@ -134,6 +136,7 @@ export default function AppShell({
       if (n > 0 && !(await confirmDialog({ message: tt("sync.signOutPending", { n }), confirmLabel: t("sync.signOutAnyway") }))) return;
     } catch { /* อ่านคิวไม่ได้ → ออกจากระบบตามปกติ */ }
     await sb.auth.signOut();
+    await clearBundles(userId); // ฟอร์มที่ดาวน์โหลดไว้ใช้ออฟไลน์ไม่ค้างในเครื่องหลังออกจากระบบ (คิวที่ยังไม่ส่งยังเก็บไว้)
     router.push("/login");
     router.refresh();
   }
@@ -309,6 +312,7 @@ export default function AppShell({
 
           <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <OfflineSync />
+            <OfflinePrep userId={userId} tenantId={activeTenantId} />
             <ThemeToggle />
             <LanguageToggle />
             <NotificationBell userId={userId} />

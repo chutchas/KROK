@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clampFilledAt } from "@/lib/filled-at";
 import { createHash } from "crypto";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -36,6 +37,7 @@ interface Body {
   photos?: unknown;
   docExtracts?: unknown;
   offline?: unknown;
+  filledAt?: unknown;
 }
 
 const fail = (status: number, error: string, extra: Record<string, unknown> = {}) => NextResponse.json({ error, ...extra }, { status });
@@ -147,7 +149,7 @@ export async function POST(req: Request) {
   // เวอร์ชันที่ผู้ใช้กรอกจริง (คิวออฟไลน์อาจกรอกก่อนฟอร์มถูกแก้) — ต้องไม่ใหม่กว่าปัจจุบัน
   const clientVer = Math.round(Number(body.version));
   if (!caseId && Number.isFinite(clientVer) && clientVer >= 1 && clientVer <= version) version = clientVer;
-  const { error: insErr } = await admin.from("submissions").insert({
+  const row: Record<string, unknown> = {
     id: subId,
     tenant_id: tenantId,
     form_id: formId,
@@ -165,7 +167,14 @@ export async function POST(req: Request) {
     approval_chain: chain,
     approval_step: 0,
     approval_history: [],
-  });
+    filled_at: clampFilledAt(body.filledAt, Date.now()),
+  };
+  let { error: insErr } = await admin.from("submissions").insert(row);
+  // ยังไม่ได้รัน migration 0059 (ไม่มีคอลัมน์ filled_at) → บันทึกแบบเดิม
+  if (insErr && (insErr.code === "PGRST204" || insErr.code === "42703") && /filled_at/.test(insErr.message)) {
+    delete row.filled_at;
+    ({ error: insErr } = await admin.from("submissions").insert(row));
+  }
   if (insErr) {
     if (insErr.code === "23505") return NextResponse.json({ ok: true, duplicate: true, result, fails });
     // โควตาแพ็กเกจเต็ม: ข้อความมีแท็ก [quota:…] ให้หน้ากรอกแสดงตรง ๆ

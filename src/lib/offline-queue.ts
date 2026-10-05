@@ -34,13 +34,17 @@ export interface PendingSubmission {
   queuedAt: number;
 }
 
-function openDb(): Promise<IDBDatabase> {
+/** ฐานข้อมูลในเครื่องของ KROK (v2: + ชุดฟอร์มออฟไลน์ + แบบร่างในเครื่อง) — ทุกโมดูลเปิดผ่านฟังก์ชันนี้ เวอร์ชันจะได้ตรงกัน */
+export function openDb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 1);
+    const req = indexedDB.open(DB, 2);
     req.onupgradeneeded = () => {
       const db = req.result;
       if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "subId" });
+      if (!db.objectStoreNames.contains("offline_bundles")) db.createObjectStore("offline_bundles", { keyPath: "key" });
+      if (!db.objectStoreNames.contains("local_drafts")) db.createObjectStore("local_drafts", { keyPath: "key" });
     };
+    req.onblocked = () => reject(new Error("db blocked"));
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
   });
@@ -154,6 +158,8 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
         photos: p.photos.map((ph) => ({ fieldId: ph.fieldId, ai: ph.ai })),
         docExtracts: (p.docExtracts ?? []).map((ex) => ({ source_id: ex.source_id, raw: ex.raw, accepted: ex.accepted })),
         offline: p.queuedAt > 0,
+        // เวลาที่กดส่งบนเครื่อง (ใบออฟไลน์ = ตอนเข้าคิว) — server ตรวจช่วงก่อนบันทึก
+        filledAt: p.queuedAt > 0 ? p.queuedAt : Date.now(),
       }),
     });
   } catch (e) {
