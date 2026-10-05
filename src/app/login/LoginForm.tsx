@@ -185,7 +185,9 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
         {googleOn && (mode === "signin" || mode === "signup") && (
           <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
-            <Button type="button" onClick={signInWithGoogle} disabled={busy} style={{ padding: 12, fontWeight: 600 }}>
+            <Button type="button" onClick={signInWithGoogle} disabled={busy} style={{ padding: 12, fontWeight: 600, gap: 10 }}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/brand/google-g.webp" alt="" width={22} height={22} style={{ display: "block", flex: "0 0 auto" }} />
               {isInvite ? t("login.googleJoin") : t("login.google")}
             </Button>
             {mode === "signup" && <span style={{ fontSize: ".76rem", color: "var(--ink-3)", lineHeight: 1.5 }}>{isInvite ? tt("login.googleInviteNote", { email: invited }) : t("login.googleSignupNote")}</span>}
