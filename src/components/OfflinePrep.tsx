@@ -35,6 +35,8 @@ export default function OfflinePrep({ userId, tenantId }: { userId: string; tena
         else if (j.same && cur) await saveBundle({ ...cur, savedAt: new Date().toISOString() });
         last = Date.now();
         precacheShell();
+        // ขอให้เบราว์เซอร์ไม่ลบข้อมูลออฟไลน์เอง (Safari ลบเมื่อไม่ได้เปิด ~7 วัน ถ้าไม่ได้รับอนุญาต)
+        void navigator.storage?.persist?.().catch(() => false);
         // ส่วนที่โหลดเมื่อใช้งาน (โหมดกระดาษ / ตัวอ่าน QR สำรองบน Safari) — โหลดไว้ก่อนให้ service worker เก็บ
         void import("@/components/FormPaperFill").catch(() => {});
         void import("jsqr").catch(() => {});

@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import { CloudOff, Wifi, FileText, ChevronRight } from "lucide-react";
 import { getLastBundle, getLocalDraft, listLocalDrafts, type LocalDraft, type StoredBundle } from "@/lib/offline-store";
 import { useT } from "@/i18n/LanguageProvider";
+import OfflineCheck from "./OfflineCheck";
 
 // path ที่ผู้ใช้เปิดจริง (/fill/<id>, /forms) — อ่านตอนโหลดสคริปต์ ก่อน router ของ Next ปรับ URL เป็น /offline
 const OPENED = typeof window !== "undefined" ? window.location.pathname + window.location.search : "";
@@ -77,7 +78,8 @@ export default function OfflineApp() {
   );
 
   let body: React.ReactNode = null;
-  if (view.kind === "loading") body = null;
+  if (/^\/offline\?check/.test(OPENED)) body = <OfflineCheck />;
+  else if (view.kind === "loading") body = null;
   else if (view.kind === "empty") body = <>{banner}<p style={{ color: "var(--ink-2)" }}>{t("offline.empty")}</p></>;
   else if (view.kind === "missing") body = <>{banner}<p style={{ color: "var(--ink-2)" }}>{t("offline.missing")}</p><a href="/forms">{t("offline.toList")}</a></>;
   else if (view.kind === "fill") {
