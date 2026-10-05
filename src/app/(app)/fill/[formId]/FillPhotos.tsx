@@ -23,9 +23,12 @@ export function PhotoSlots({ urls, captions, paper, min, hideMin = false, onPick
                   : <><Icon icon={Camera} className="h-5 w-5" /> {t("fw.photo.take")}</>}
               </button>
               {u && (
+                // พื้นที่แตะ 44px (ปุ่มที่เห็น 26px) — ใส่ถุงมือแล้วยังกดได้ ไม่โดนพื้นที่ถ่ายใหม่ข้างใต้
                 <button type="button" onClick={() => onRemove(i)} aria-label={t("ctype.photoRemove")} title={t("ctype.photoRemove")}
-                  style={{ position: "absolute", top: -7, right: -7, width: 24, height: 24, borderRadius: 999, border: "2px solid #fff", background: "#dc2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-                  <Icon icon={X} className="h-3.5 w-3.5" />
+                  style={{ position: "absolute", top: -16, right: -16, width: 44, height: 44, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, zIndex: 1 }}>
+                  <span style={{ width: 26, height: 26, borderRadius: 999, border: "2px solid #fff", background: "#dc2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 1px 3px rgba(0,0,0,.3)" }}>
+                    <Icon icon={X} className="h-3.5 w-3.5" />
+                  </span>
                 </button>
               )}
             </div>
@@ -66,8 +69,10 @@ export function MultiPhotoStrip({ urls, paper, compact, min, hideMin = false, on
               <img src={u} alt={`${i + 1}`} style={{ height: size, width: Math.round(size * 1.33), objectFit: "cover", display: "block" }} />
             </button>
             <button type="button" onClick={() => onRemove(i)} aria-label={t("ctype.photoRemove")} title={t("ctype.photoRemove")}
-              style={{ position: "absolute", top: -6, right: -6, width: compact ? 16 : 22, height: compact ? 16 : 22, borderRadius: 999, border: "1px solid #fff", background: "#dc2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0 }}>
-              <Icon icon={X} className={compact ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />
+              style={{ position: "absolute", top: compact ? -12 : -14, right: compact ? -12 : -14, width: compact ? 32 : 44, height: compact ? 32 : 44, border: "none", background: "transparent", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", padding: 0, zIndex: 1 }}>
+              <span style={{ width: compact ? 18 : 24, height: compact ? 18 : 24, borderRadius: 999, border: "1px solid #fff", background: "#dc2626", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon icon={X} className={compact ? "h-2.5 w-2.5" : "h-3.5 w-3.5"} />
+              </span>
             </button>
           </span>
         ))}

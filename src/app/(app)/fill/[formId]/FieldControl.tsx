@@ -88,11 +88,25 @@ export function FieldControl({
   const [liveOpen, setLiveOpen] = useState(false);
   const [scanValue, setScanValue] = useState<string>(typeof initial.value === "string" ? initial.value : "");
   const photoRef = useRef<HTMLInputElement>(null);
+  // ฟิลด์หลายรูป: แตะช่อง = เปิดกล้องตรง (เหมือนฟิลด์รูปเดียว) · "เลือกหลายรูป" = เปิดคลังรูป
+  const cameraRef = useRef<HTMLInputElement>(null);
   const scanRef = useRef<HTMLInputElement>(null);
+  // ลบรูปแล้วเลิกทำได้ภายใน 6 วินาที (แตะพลาดตอนใส่ถุงมือ — เดิมหายทันที)
+  const [undoPhoto, setUndoPhoto] = useState<{ slot: number; url: string } | null>(null);
+  const undoTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => { if (undoTimer.current) clearTimeout(undoTimer.current); }, []);
+  const removeSlot = (slot: number) => {
+    const url = slotPhotos?.[slot];
+    setSlotPhoto?.(slot, null);
+    if (!url) return;
+    setUndoPhoto({ slot, url });
+    if (undoTimer.current) clearTimeout(undoTimer.current);
+    undoTimer.current = setTimeout(() => setUndoPhoto(null), 6000);
+  };
 
   // ฟิลด์หลายรูป: ช่องที่จะใส่รูปถัดไป (null = ช่องว่างช่องแรก · เลือกหลายไฟล์ = ไล่ใส่ช่องว่างถัดไป)
   const targetSlot = useRef<number | null>(null);
-  const pickSlot = (slot: number | null) => { targetSlot.current = slot; photoRef.current?.click(); };
+  const pickSlot = (slot: number | null) => { targetSlot.current = slot; (slot === null ? photoRef : cameraRef).current?.click(); };
   async function onPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files || []);
     e.target.value = "";
@@ -185,6 +199,15 @@ export function FieldControl({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // แป้นตัวเลขของ iPhone ไม่มีปุ่ม "−" → ช่องที่ค่าติดลบได้ มีปุ่มสลับเครื่องหมาย
+  const allowNeg = f.type === "number" && (f.min == null || f.min < 0);
+  const toggleSign = () => {
+    const v = String(numValue ?? "").trim();
+    if (!v || v === "-") return;
+    const next = v.startsWith("-") ? v.slice(1) : `-${v}`;
+    setNumValue(next);
+    onPatch({ value: next });
+  };
   const passText = f.pass_label?.trim() || t("fw.pass");
   const failText = f.fail_label?.trim() || t("fw.fail");
   const textInputProps = {
@@ -253,14 +276,24 @@ export function FieldControl({
     <>
       {compact ? (
         <MultiPhotoStrip urls={slotPhotos} paper={paper} compact={compact} min={minPhotosOf(f)} hideMin={!!error}
-          onAdd={() => pickSlot(null)} onRetake={(i) => pickSlot(i)} onRemove={(i) => setSlotPhoto(i, null)} />
+          onAdd={() => pickSlot(null)} onRetake={(i) => pickSlot(i)} onRemove={removeSlot} />
       ) : (
         // มุมมองมือถือ: ช่องรูปแยกตามจำนวนที่ตั้ง พร้อมชื่อใต้รูป (รู้ว่าต้องถ่ายอะไรในแต่ละช่อง)
         <PhotoSlots urls={slotPhotos} paper={paper} min={minPhotosOf(f)} hideMin={!!error}
           captions={slotPhotos.map((_, i) => f.photo_labels?.[i]?.trim() || tt("print.photos.slotN", { n: i + 1 }))}
-          onPick={(i) => pickSlot(i)} onPickMany={() => pickSlot(null)} onRemove={(i) => setSlotPhoto(i, null)} />
+          onPick={(i) => pickSlot(i)} onPickMany={() => pickSlot(null)} onRemove={removeSlot} />
+      )}
+      {undoPhoto && (
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 6, fontSize: compact ? ".7rem" : ".84rem", color: paper || compact ? "#555" : "var(--ink-2)" }}>
+          {t("fw.photo.removed")}
+          <button type="button" onClick={() => { setSlotPhoto(undoPhoto.slot, undoPhoto.url); setUndoPhoto(null); }}
+            style={{ minHeight: compact ? 0 : 36, padding: compact ? "0 4px" : "0 10px", border: "1px solid var(--accent)", borderRadius: 8, background: "none", color: "var(--accent-text)", fontFamily: "inherit", fontWeight: 600, fontSize: "inherit", cursor: "pointer" }}>
+            {t("fw.photo.undo")}
+          </button>
+        </div>
       )}
       <input ref={photoRef} type="file" accept="image/*" multiple hidden onChange={onPhoto} />
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
     </>
   ) : null;
   if (compact) {
@@ -281,7 +314,13 @@ export function FieldControl({
         )}
         {f.type === "text" && inlineScan && scanBox(true)}
         {f.type === "number" && (
-          <input type="number" inputMode="decimal" style={{ ...paperInputStyle, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? tt("fw.rangeTitle", { min: f.min ?? "–", max: f.max ?? "–" }) : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+          <div style={{ display: "flex", gap: 4 }}>
+            <input type="number" inputMode="decimal" style={{ ...paperInputStyle, flex: 1, minWidth: 0, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? tt("fw.rangeTitle", { min: f.min ?? "–", max: f.max ?? "–" }) : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+            {allowNeg && (
+              <button type="button" onClick={toggleSign} aria-label={t("fw.num.sign")} title={t("fw.num.sign")}
+                style={{ height: CONTROL_H, width: 30, flexShrink: 0, border: "1px solid #b9bec4", borderRadius: 4, background: "#fff", color: "#333", fontWeight: 700, cursor: "pointer", padding: 0 }}>±</button>
+            )}
+          </div>
         )}
         {f.type === "datetime" && (
           <input type={dtInputType} style={paperInputStyle} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
@@ -382,7 +421,13 @@ export function FieldControl({
         {f.type === "number" && (
           <>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="number" inputMode="decimal" enterKeyHint="next" style={{ ...input, flex: 1 }} value={numValue} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.numPh")} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <input type="number" inputMode="decimal" enterKeyHint="next" style={{ ...input, flex: 1, minWidth: 0 }} value={numValue} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.numPh")} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              {allowNeg && (
+                <button type="button" onClick={toggleSign} aria-label={t("fw.num.sign")} title={t("fw.num.sign")}
+                  style={{ width: 48, height: 48, flexShrink: 0, border: "1px solid var(--line)", borderRadius: 10, background: "var(--surface)", color: "var(--ink)", fontSize: "1.15rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+                  ±
+                </button>
+              )}
               {f.unit && <span style={{ color: "var(--ink-2)" }}>{f.unit}</span>}
             </div>
             {(f.min != null || f.max != null) && <NumHint field={f} value={numValue} />}

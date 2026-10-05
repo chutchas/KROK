@@ -31,7 +31,7 @@ export default async function AppGroupLayout({ children }: { children: React.Rea
       activeTenantId={session.tenantId}
     >
       {session.termsVersion !== LEGAL_VERSION && <TermsGate version={LEGAL_VERSION} firstTime={!session.termsVersion} />}
-      {invites.length > 0 && <InviteBanner invites={invites} />}
+      <InviteBanner invites={invites} />
       {children}
     </AppShell>
   );

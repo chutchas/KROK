@@ -115,6 +115,10 @@ export default function FillWizard(props: Props) {
   const [startedAt] = useState(() => Date.now());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
+  // ส่งไม่สำเร็จ: แสดงแถบข้อความใกล้ปุ่มส่ง (เดิมไปติดที่ช่องแรกของขั้น — ผู้กรอกอยู่ท้ายหน้าเลยไม่เห็น)
+  const [submitErr, setSubmitErr] = useState<string | null>(null);
+  const submitErrRef = useRef<HTMLDivElement>(null);
+  useEffect(() => { if (submitErr) submitErrRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [submitErr]);
   const [mode, setMode] = useState<"mobile" | "paper">(seed?.mode ?? "mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
   const [caseModal, setCaseModal] = useState<null | "handoff" | "return" | "release" | "cancel">(null);
@@ -627,6 +631,7 @@ export default function FillWizard(props: Props) {
   async function submit() {
     submitLock.current = true;
     setSubmitting(true);
+    setSubmitErr(null);
     try {
       const subId = crypto.randomUUID();
       const list: Record<string, unknown>[] = [];
@@ -720,7 +725,7 @@ export default function FillWizard(props: Props) {
             throw new Error(j.error || t("fw.submitFailed"));
           }
         } catch (e) {
-          setErrors({ [step.fields[0].id]: tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }) });
+          setSubmitErr(tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }));
           setSubmitting(false);
           submitLock.current = false;
           return;
@@ -804,8 +809,7 @@ export default function FillWizard(props: Props) {
       setDone({ result: saved.result ?? result, fails: saved.fails ?? fails, dur, pending: props.requiresApproval, offline: false });
       window.scrollTo(0, 0);
     } catch (e) {
-      const fid = (lockedStep(idx) ? segFields()[0] : step.fields[0])?.id ?? step.fields[0].id;
-      setErrors({ [fid]: isQuotaExceeded(e) ? t("fw.deviceFull") : tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }) });
+      setSubmitErr(isQuotaExceeded(e) ? t("fw.deviceFull") : tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }));
       setSubmitting(false);
       submitLock.current = false;
     }
@@ -1283,6 +1287,12 @@ export default function FillWizard(props: Props) {
             <Button data-tour="fill-submit" variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
               {submitting ? t("fill.submitting") : wf && !isLastSeg ? handoffLabel : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
             </Button>
+            {submitErr && !submitting && (
+          <div ref={submitErrRef} role="alert" style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--fail)", background: "var(--fail-soft)", color: "var(--fail)", fontSize: ".88rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+            <span style={{ flex: "1 1 200px", display: "inline-flex", gap: 6, alignItems: "flex-start" }}><Icon icon={AlertTriangle} className="h-4 w-4" /> {submitErr}</span>
+            <Button onClick={() => void submitPaper()} style={{ padding: "8px 14px", minHeight: 44 }}>{t("fw.retry")}</Button>
+          </div>
+        )}
           </div>
         )}
         {caseTools}
@@ -1347,6 +1357,12 @@ export default function FillWizard(props: Props) {
           </Button>
         )}
       </div>
+      {submitErr && !submitting && (
+        <div ref={submitErrRef} role="alert" style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--fail)", background: "var(--fail-soft)", color: "var(--fail)", fontSize: ".88rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          <span style={{ flex: "1 1 200px", display: "inline-flex", gap: 6, alignItems: "flex-start" }}><Icon icon={AlertTriangle} className="h-4 w-4" /> {submitErr}</span>
+          <Button onClick={() => void next()} style={{ padding: "8px 14px", minHeight: 44 }}>{t("fw.retry")}</Button>
+        </div>
+      )}
       {caseTools}
       {caseModals}
       <div style={{ fontSize: ".78rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", marginTop: 10 }}>

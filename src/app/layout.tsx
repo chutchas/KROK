@@ -1,6 +1,14 @@
 import type { Metadata, Viewport } from "next";
 import { headers } from "next/headers";
 import { DialogHost } from "@/components/dialogs";
+// ฟอนต์โฮสต์ในแอปเอง (เดิมโหลดจาก Google Fonts — ต้องต่อโดเมนอื่นก่อนแสดงผล ช้าบนเน็ตมือถือ)
+// ไฟล์แยกตามชุดอักษร (unicode-range) — เบราว์เซอร์โหลดเฉพาะไทย/ละตินที่ใช้จริง
+import "@fontsource/anuphan/500.css";
+import "@fontsource/anuphan/600.css";
+import "@fontsource/anuphan/700.css";
+import "@fontsource/sarabun/400.css";
+import "@fontsource/sarabun/500.css";
+import "@fontsource/sarabun/600.css";
 import "./globals.css";
 import { LanguageProvider } from "@/i18n/LanguageProvider";
 import ErrorReporter from "@/components/ErrorReporter";
@@ -32,12 +40,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="th">
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Anuphan:wght@500;600;700&family=Sarabun:wght@400;500;600&display=swap"
-        />
       </head>
       <body>
         <ServiceWorkerRegister />

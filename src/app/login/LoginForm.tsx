@@ -58,6 +58,8 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   async function signInWithGoogle() {
     setBusy(true);
     setMsg(null);
+    // มาจากลิงก์เชิญ → หลังเข้าระบบให้รับคำเชิญให้อัตโนมัติ (ผู้ใช้กด "เข้าร่วมด้วย Google" เอง = ยินยอม)
+    try { if (isInvite) sessionStorage.setItem("krok_invite_auto", "1"); else sessionStorage.removeItem("krok_invite_auto"); } catch { /* ignore */ }
     // กลับมาที่ /auth/confirm (แลก code เป็น session) แล้วไปหน้าที่ตั้งใจจะเข้า — 2FA / ยอมรับข้อกำหนด ตรวจต่อในแอปตามปกติ
     const raw = sp.get("next") || "/dashboard";
     const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";

@@ -43,10 +43,11 @@ export async function GET(
   if (!allowed && admin) {
     const { data: f } = await admin
       .from("forms")
-      .select("visibility, status, deleted_at")
+      .select("tenant_id, visibility, status, deleted_at")
       .eq("id", att.form_id)
       .maybeSingle();
-    if (f && f.visibility === "public" && f.status === "published" && !f.deleted_at) allowed = true;
+    // เอกสารต้องเป็นของ workspace เจ้าของฟอร์ม (กันแถวที่คนนอกแปะเข้ามา)
+    if (f && f.tenant_id === att.tenant_id && f.visibility === "public" && f.status === "published" && !f.deleted_at) allowed = true;
   }
 
   if (!allowed) return NextResponse.json({ error: "ไม่มีสิทธิ์เปิดเอกสารนี้" }, { status: 403 });

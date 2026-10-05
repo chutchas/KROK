@@ -26,13 +26,14 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
   if (!admin) return notAvailable;
 
   // ฟอร์ม / เอกสารแนบ / สถานะล็อกอิน — โหลดพร้อมกัน (เดิมรอทีละตัว)
-  const attP: Promise<Attachment[]> = Promise.resolve(admin
+  // tenant_id ใช้กรองหลังรู้เจ้าของฟอร์ม (เอกสารต้องเป็นของ workspace เดียวกับฟอร์มเท่านั้น)
+  const attP: Promise<(Attachment & { tenantId: string })[]> = Promise.resolve(admin
     .from("form_attachments")
-    .select("id, field_id, kind, name, mime, size_bytes, url")
+    .select("id, tenant_id, field_id, kind, name, mime, size_bytes, url")
     .eq("form_id", formId)
     .order("sort", { ascending: true })
     .order("created_at", { ascending: true }))
-    .then((r) => (r.data || []).map((x) => rowToAttachment(x as Record<string, unknown>)), () => []);
+    .then((r) => (r.data || []).map((x) => ({ ...rowToAttachment(x as Record<string, unknown>), tenantId: (x as { tenant_id: string }).tenant_id })), () => []);
   // ผู้เปิดล็อกอินอยู่ไหม (tenant ไหนก็ได้) → แจ้งว่ากรอกในฐานะ guest · getClaims ตรวจ JWT ในเครื่อง ไม่ยิง Auth server
   const loggedInP: Promise<boolean> = createClient()
     .then((sb) => sb.auth.getClaims())
@@ -51,7 +52,7 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
   // schema ที่ผ่านการกรองไม่ได้ = ไม่เปิดให้คนนอก (กันค่าดิบ เช่น สี/URL ที่ไม่ผ่านการตรวจ หลุดไปถึงหน้าเว็บ)
   const raw = readSchema(data.schema);
   if (!raw) return notAvailable;
-  const [schema, attachments, loggedIn, orgName, branding] = await Promise.all([
+  const [schema, allAttachments, loggedIn, orgName, branding] = await Promise.all([
     resolveFormOptions(raw, admin, data.tenant_id as string).catch(() => raw),
     attP,
     loggedInP,
@@ -60,6 +61,7 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
       .then((r) => (r.data?.name as string | undefined) || "", () => ""),
     getWorkspaceBranding(admin, data.tenant_id as string),
   ]);
+  const attachments: Attachment[] = allAttachments.filter((a) => a.tenantId === data.tenant_id).map(({ tenantId: _t, ...a }) => { void _t; return a; });
 
   return (
     <PublicFillClient

@@ -1,6 +1,6 @@
 "use client";
 // แถบคำเชิญเข้าร่วม workspace สำหรับคนที่มีบัญชีอยู่แล้วตอนถูกเชิญ — กดเข้าร่วม (สลับไป workspace นั้น) หรือปฏิเสธ
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -27,6 +27,17 @@ export default function InviteBanner({ invites }: { invites: PendingInvite[] }) 
     if (accept) router.push("/dashboard");
     router.refresh();
   }
+
+  // เพิ่งเข้าระบบด้วย Google จากลิงก์เชิญ และมีคำเชิญเดียว → รับให้เลย (คำเชิญหลายใบ = ให้เลือกเอง)
+  const autoDone = useRef(false);
+  useEffect(() => {
+    if (autoDone.current) return;
+    let flag = false;
+    try { flag = sessionStorage.getItem("krok_invite_auto") === "1"; sessionStorage.removeItem("krok_invite_auto"); } catch { /* ignore */ }
+    autoDone.current = true;
+    if (flag && invites.length === 1) void run(invites[0], true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const list = invites.filter((i) => !hidden.includes(i.id));
   if (!list.length) return null;

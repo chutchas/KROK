@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { clampFilledAt } from "@/lib/filled-at";
+import { runLater } from "@/lib/background";
 import { createHash } from "crypto";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -65,19 +66,40 @@ export async function POST(req: Request) {
   if (!subId || !formId) return fail(400, "bad request");
 
   // workspace ของใบนี้ (คิวออฟไลน์อาจกรอกใน workspace อื่นก่อนสลับ) — ต้องเป็นสมาชิกจริง
-  let tenantId = session.tenantId;
-  if (typeof body.tenantId === "string" && UUID.test(body.tenantId) && body.tenantId !== session.tenantId) {
-    const { data: mem } = await admin.from("memberships").select("tenant_id").eq("tenant_id", body.tenantId).eq("user_id", session.userId).maybeSingle();
-    if (!mem) return fail(403, "คุณไม่ได้เป็นสมาชิกของ workspace ที่กรอกใบนี้แล้ว");
-    tenantId = body.tenantId;
-  }
+  const otherTenant = typeof body.tenantId === "string" && UUID.test(body.tenantId) && body.tenantId !== session.tenantId;
+  const tenantId = otherTenant ? (body.tenantId as string) : session.tenantId;
   const folder = `${tenantId}/${subId}`;
+  const deviceKey = typeof body.deviceKey === "string" && body.deviceKey.length >= 24 && body.deviceKey.length <= 200 ? body.deviceKey : null;
 
-  // กันสคริปต์ยิงรัว (คิวออฟไลน์ที่ค้างหลายใบยังผ่านได้สบาย)
-  if (await rateLimited(`submit:${session.userId}`, 60, 60)) return fail(429, "ส่งถี่เกินไป โปรดลองใหม่อีกสักครู่");
+  // คำขอที่ไม่ขึ้นต่อกัน → ยิงพร้อมกันรอบเดียว (เดิมรอทีละตัว ~6 รอบ — มือถือบนเน็ตช้ารู้สึกได้)
+  const supabase = await createClient();
+  const [limited, memRes, dupRes, formRes, devRes, names] = await Promise.all([
+    // กันสคริปต์ยิงรัว (คิวออฟไลน์ที่ค้างหลายใบยังผ่านได้สบาย)
+    rateLimited(`submit:${session.userId}`, 60, 60),
+    // ชื่อผู้กรอกจากรายชื่อสมาชิก (ไม่ใช้ชื่อในโปรไฟล์ที่ผู้ใช้แก้เองได้ — กันตั้งชื่อเป็นคนอื่น)
+    admin.from("memberships").select("tenant_id, name, email").eq("tenant_id", tenantId).eq("user_id", session.userId).maybeSingle(),
+    // เคยบันทึกแล้ว (เน็ตหลุดหลังบันทึก / คิวออฟไลน์ส่งซ้ำ)
+    admin.from("submissions").select("id, submitted_by, result, fails").eq("id", subId).maybeSingle(),
+    // ฟอร์ม: อ่านด้วยสิทธิ์ผู้ใช้ (RLS = เห็นฟอร์มนี้ได้จริง)
+    supabase
+      .from("forms")
+      .select("id, tenant_id, title, icon, version, schema, status, deleted_at, requires_approval, approval_chain, require_approved_device, device_scope")
+      .eq("id", formId)
+      .maybeSingle(),
+    // เครื่องที่อนุมัติ: พิสูจน์ด้วย device key (เก็บแค่ sha256) — ไม่เชื่อ device_id จากเบราว์เซอร์
+    deviceKey
+      ? admin.from("devices").select("id, status").eq("tenant_id", tenantId).eq("key_hash", createHash("sha256").update(deviceKey).digest("hex")).maybeSingle()
+      : Promise.resolve({ data: null }),
+    // ไฟล์ที่อัปโหลดมาจริง
+    listNames(admin, folder),
+  ]);
 
-  // เคยบันทึกแล้ว (เน็ตหลุดหลังบันทึก / คิวออฟไลน์ส่งซ้ำ) → ถือว่าสำเร็จ
-  const { data: dup } = await admin.from("submissions").select("id, submitted_by, result, fails").eq("id", subId).maybeSingle();
+  if (limited) return fail(429, "ส่งถี่เกินไป โปรดลองใหม่อีกสักครู่");
+  const mem = memRes.data as { name: string | null; email: string | null } | null;
+  if (!mem) return fail(403, "คุณไม่ได้เป็นสมาชิกของ workspace ที่กรอกใบนี้แล้ว");
+  const userName = (mem.name || "").trim() || mem.email || session.displayName;
+
+  const dup = dupRes.data;
   if (dup) {
     if (dup.submitted_by !== session.userId) return fail(409, "รหัสเอกสารซ้ำ");
     // รอบก่อนบันทึกใบสำเร็จแต่แถวรูปยังไม่ครบ (เน็ตหลุดกลางทาง) → เติมแถวรูปที่ขาด
@@ -85,13 +107,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, duplicate: true, result: dup.result, fails: dup.fails });
   }
 
-  // ฟอร์ม: อ่านด้วยสิทธิ์ผู้ใช้ (RLS = เห็นฟอร์มนี้ได้จริง)
-  const supabase = await createClient();
-  const { data: f } = await supabase
-    .from("forms")
-    .select("id, tenant_id, title, icon, version, schema, status, deleted_at, requires_approval, approval_chain, require_approved_device, device_scope")
-    .eq("id", formId)
-    .maybeSingle();
+  const f = formRes.data;
   if (!f || f.tenant_id !== tenantId) return fail(404, "ไม่พบฟอร์ม หรือไม่มีสิทธิ์กรอกฟอร์มนี้");
 
   let schemaRaw: unknown = f.schema;
@@ -114,18 +130,8 @@ export async function POST(req: Request) {
   let schema: FormSchema;
   try { schema = sanitizeSchema(schemaRaw); } catch { return fail(500, "ฟอร์มไม่ถูกต้อง"); }
 
-  // เครื่องที่อนุมัติ: พิสูจน์ด้วย device key (เก็บแค่ sha256) — ไม่เชื่อ device_id จากเบราว์เซอร์
-  let deviceId: string | null = null;
-  const deviceKey = typeof body.deviceKey === "string" && body.deviceKey.length >= 24 && body.deviceKey.length <= 200 ? body.deviceKey : null;
-  if (deviceKey) {
-    const { data: d } = await admin
-      .from("devices")
-      .select("id, status")
-      .eq("tenant_id", tenantId)
-      .eq("key_hash", createHash("sha256").update(deviceKey).digest("hex"))
-      .maybeSingle();
-    if (d && d.status === "approved") deviceId = d.id as string;
-  }
+  const d = devRes.data as { id: string; status: string } | null;
+  const deviceId: string | null = d && d.status === "approved" ? d.id : null;
   if (f.require_approved_device) {
     if (!deviceId) return fail(403, "เครื่องนี้ยังไม่ได้รับอนุมัติให้กรอกฟอร์มนี้");
     if (f.device_scope === "selected") {
@@ -134,8 +140,6 @@ export async function POST(req: Request) {
     }
   }
 
-  // ไฟล์ที่อัปโหลดมาจริง
-  const names = await listNames(admin, folder);
   if (!names) return fail(503, "อ่านไฟล์แนบไม่สำเร็จ โปรดลองใหม่");
   const uploaded = photoKeysOf(names);
 
@@ -157,7 +161,7 @@ export async function POST(req: Request) {
     form_icon: f.icon,
     form_version: version,
     submitted_by: session.userId,
-    user_name: session.displayName,
+    user_name: userName,
     result,
     fails,
     answers,
@@ -188,13 +192,10 @@ export async function POST(req: Request) {
   const photoRows = [...uploaded].map((k) => ({
     tenant_id: tenantId, submission_id: subId, field_id: k, storage_path: `${folder}/${k}.jpg`, ai_check: aiMap(body.photos).get(k) ?? null,
   }));
-  if (photoRows.length) {
-    const { error: phErr } = await admin.from("submission_photos").insert(photoRows);
-    if (phErr) { console.error("[krok] submit photo rows failed:", phErr.message); return fail(500, "บันทึกรูปไม่สำเร็จ โปรดลองใหม่"); }
-  }
 
   // หลักฐานการอ่านเอกสารด้วย AI: เฉพาะแหล่งที่มีในฟอร์ม · รูปต้นฉบับต้องอยู่ในโฟลเดอร์ของใบนี้
   const sources = new Set(schema.steps.flatMap((s) => (s.fill_sources ?? []).map((x) => x.id)));
+  let docRows: Record<string, unknown>[] = [];
   if (Array.isArray(body.docExtracts)) {
     const rows = (body.docExtracts.slice(0, 20) as { source_id?: unknown; raw?: unknown; accepted?: unknown }[])
       .filter((x) => typeof x?.source_id === "string" && sources.has(x.source_id))
@@ -210,17 +211,25 @@ export async function POST(req: Request) {
           created_by: session.userId,
         };
       });
-    if (rows.length) await admin.from("submission_doc_extracts").insert(rows);
+    if (rows.length) docRows = rows;
   }
 
-  await writeAudit({
+  // แถวรูป + หลักฐานเอกสาร บันทึกพร้อมกัน (รูปล้ม = ให้ส่งซ้ำ แล้วเติมให้ที่ทาง duplicate)
+  const [phRes] = await Promise.all([
+    photoRows.length ? admin.from("submission_photos").insert(photoRows) : Promise.resolve({ error: null }),
+    docRows.length ? admin.from("submission_doc_extracts").insert(docRows) : Promise.resolve({ error: null }),
+  ]);
+  if (phRes.error) { console.error("[krok] submit photo rows failed:", phRes.error.message); return fail(500, "บันทึกรูปไม่สำเร็จ โปรดลองใหม่"); }
+
+  // audit ทำหลังตอบผู้ใช้ (ไม่ให้ผู้กรอกรอ)
+  runLater(() => writeAudit({
     tenant_id: tenantId,
     actor_id: session.userId,
     action: "submission.create",
     target_type: "submission",
     target_id: subId,
     meta: { form_id: formId, result, fails: fails.length, offline: body.offline === true, case_id: caseId },
-  });
+  }));
 
   return NextResponse.json({ ok: true, result, fails });
 }
