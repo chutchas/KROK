@@ -41,6 +41,10 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   // (คิวที่รอส่งและร่างในเครื่องยังอยู่ — ส่ง/เปิดต่อได้เมื่อคนเดิมล็อกอินกลับมา)
   useEffect(() => { void clearBundles(); }, []);
 
+  // หลังเข้าสู่ระบบ: ไปหน้าที่ตั้งใจจะเข้า (?next= — path ภายในเท่านั้น) ไม่งั้นแดชบอร์ด
+  const nextRaw = sp.get("next") || "";
+  const nextPath = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "/dashboard";
+
   // ปุ่ม Google แสดงเมื่อเปิด provider ใน Supabase แล้วเท่านั้น (อ่านจาก /auth/v1/settings ซึ่งเป็นข้อมูลสาธารณะ)
   const [googleOn, setGoogleOn] = useState(false);
   useEffect(() => {
@@ -61,8 +65,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     // มาจากลิงก์เชิญ → หลังเข้าระบบให้รับคำเชิญให้อัตโนมัติ (ผู้ใช้กด "เข้าร่วมด้วย Google" เอง = ยินยอม)
     try { if (isInvite) sessionStorage.setItem("krok_invite_auto", "1"); else sessionStorage.removeItem("krok_invite_auto"); } catch { /* ignore */ }
     // กลับมาที่ /auth/confirm (แลก code เป็น session) แล้วไปหน้าที่ตั้งใจจะเข้า — 2FA / ยอมรับข้อกำหนด ตรวจต่อในแอปตามปกติ
-    const raw = sp.get("next") || "/dashboard";
-    const next = raw.startsWith("/") && !raw.startsWith("//") ? raw : "/dashboard";
+    const next = nextPath;
     const { error } = await createClient().auth.signInWithOAuth({
       provider: "google",
       options: {
@@ -90,7 +93,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
       setMsg(null);
       const { error } = await createClient().auth.mfa.challengeAndVerify({ factorId, code: code.trim() });
       if (error) { setBusy(false); setMsg({ t: t("mfa.codeWrong"), err: true }); return; }
-      router.push("/dashboard");
+      router.push(nextPath);
       router.refresh();
       return;
     }
@@ -151,8 +154,8 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           setMode("mfa");
           return;
         }
-        // ล็อกอินสำเร็จ → เข้าแดชบอร์ดเสมอ
-        router.push("/dashboard");
+        // ล็อกอินสำเร็จ → หน้าที่ตั้งใจจะเข้า (หรือแดชบอร์ด)
+        router.push(nextPath);
         router.refresh();
       }
     } catch (err) {

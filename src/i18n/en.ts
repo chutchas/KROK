@@ -672,6 +672,8 @@ export const en: Record<MessageKey, string> = {
   "fw.photo.removed": "Photo removed",
   "fw.photo.undo": "Undo",
   "fw.num.sign": "Toggle positive/negative",
+  "fw.required": "required",
+  "fw.pubLogin": "Sign in to fill this form",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",

@@ -209,7 +209,16 @@ export default function FillWizard(props: Props) {
       setPhotos((prev) => { const n = { ...prev }; if (d) n[k] = d; else delete n[k]; return n; });
     },
   }), [photos]);
-  const refreshFormulas = useCallback(() => { if (hasFormula) setFormulaVals(calcFrom(answers.current)); }, [hasFormula, calcFrom]);
+  // ค่าสูตรไม่เปลี่ยน → คืน state เดิม (ไม่ render ทั้งหน้าใหม่ทุกตัวอักษรที่พิมพ์ในช่องที่สูตรไม่ได้ใช้)
+  const refreshFormulas = useCallback(() => {
+    if (!hasFormula) return;
+    const next = calcFrom(answers.current);
+    setFormulaVals((prev) => {
+      const keys = Object.keys(next);
+      if (keys.length === Object.keys(prev).length && keys.every((k) => Object.is(prev[k], next[k]))) return prev;
+      return next;
+    });
+  }, [hasFormula, calcFrom]);
 
   // merge a patch into an answer (ref-owned by this component)
   const patchAnswer = useCallback((id: string, patch: Partial<Answer>, render = false) => {

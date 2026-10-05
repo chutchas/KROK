@@ -76,11 +76,13 @@ function DialogView({ req }: { req: Req }) {
   const { t } = useT();
   const titleId = useId();
   const okRef = useRef<HTMLButtonElement>(null);
+  const cancelRef = useRef<HTMLButtonElement>(null);
   const isAlert = req.kind === "alert";
   const { opts } = req;
 
   useEffect(() => {
-    okRef.current?.focus();
+    // การลบ/การกระทำอันตราย: โฟกัสที่ "ยกเลิก" ก่อน (กด Enter โดยไม่ตั้งใจจะไม่ลบ)
+    (req.opts.danger && req.kind !== "alert" ? cancelRef : okRef).current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") { e.preventDefault(); settle(req.id, isAlert); }
     };
@@ -97,8 +99,9 @@ function DialogView({ req }: { req: Req }) {
         {opts.title && <h3 id={titleId} style={{ margin: "0 0 8px", fontSize: "1.02rem" }}>{opts.title}</h3>}
         <p id={`${titleId}-m`} style={{ margin: 0, fontSize: ".92rem", color: "var(--ink-2)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{opts.message}</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, flexWrap: "wrap" }}>
-          {!isAlert && <Button onClick={() => settle(req.id, false)}>{opts.cancelLabel || t("common.cancel")}</Button>}
-          <Button ref={okRef} variant={opts.danger ? "danger" : "primary"} onClick={() => settle(req.id, true)}>
+          {!isAlert && <Button ref={cancelRef} onClick={() => settle(req.id, false)}>{opts.cancelLabel || t("common.cancel")}</Button>}
+          <Button ref={okRef} variant={opts.danger ? "danger" : "primary"} onClick={() => settle(req.id, true)}
+            style={opts.danger ? { background: "var(--fail)", borderColor: "var(--fail)", color: "#fff", fontWeight: 600 } : undefined}>
             {opts.confirmLabel || (isAlert ? t("common.ok") : opts.danger ? t("common.delete") : t("common.confirm"))}
           </Button>
         </div>

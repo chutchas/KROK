@@ -76,7 +76,7 @@ export default function OfflineApp() {
         {online ? t("offline.backOnline") : t("offline.mode")}
         {"bundle" in view && <span style={{ color: "var(--ink-3)" }}> · {tt("offline.savedAt", { t: fmt(view.bundle.savedAt, lang) })}</span>}
       </span>
-      {online && <a href={opened && !opened.startsWith("/offline") ? opened : "/forms"} style={{ fontWeight: 600 }}>{t("offline.reload")}</a>}
+      {online && <a href={opened && !opened.startsWith("/offline") ? opened : "/forms"} style={{ fontWeight: 600, display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 6px" }}>{t("offline.reload")}</a>}
     </div>
   );
 

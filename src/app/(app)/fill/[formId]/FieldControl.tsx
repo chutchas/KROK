@@ -392,10 +392,12 @@ export function FieldControl({
 
   return (
     // ใช้ border แบบเต็ม (ไม่ใช่ borderColor) — React ลบ longhand แล้วสีกรอบกลายเป็นสีดำ
-    <div style={{ ...box, ...(error ? (paper ? { borderBottom: "1px solid var(--fail)" } : { border: "1px solid var(--fail)" }) : {}) }}>
-      <div style={{ fontWeight: compact ? 700 : 600, fontSize: compact ? ".78rem" : undefined, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap", color: paper ? "#111" : undefined }}>
+    // role="group" + aria-labelledby: โปรแกรมอ่านหน้าจออ่านชื่อช่องก่อนช่องกรอกทุกแบบ (เดิมได้แค่ placeholder)
+    <div role="group" aria-labelledby={`lbl-${f.id}`} aria-describedby={error ? `err-${f.id}` : undefined} aria-invalid={error ? true : undefined}
+      style={{ ...box, ...(error ? (paper ? { borderBottom: "1px solid var(--fail)" } : { border: "1px solid var(--fail)" }) : {}) }}>
+      <div id={`lbl-${f.id}`} style={{ fontWeight: compact ? 700 : 600, fontSize: compact ? ".78rem" : undefined, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap", color: paper ? "#111" : undefined }}>
         {f.label}
-        {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
+        {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }} aria-label={t("fw.required")}>*</span>}
       </div>
       {!compact && f.tooltip && (
         <div style={{ fontSize: ".83rem", color: paper ? "#555" : "var(--ink-2)", background: paper ? "#f4f5f6" : "var(--code-bg)", borderRadius: 7, padding: "7px 11px", margin: "8px 0", display: "flex", gap: 7, alignItems: "flex-start" }}>
@@ -494,7 +496,7 @@ export function FieldControl({
         )}
         {f.type === "select" && !dsBound && (f.options || []).length <= MANY_OPTIONS &&
           (f.options || []).map((o) => (
-            <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
+            <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 4px", minHeight: 44 }}>
               <input type="radio" name={"r_" + f.id} value={o} checked={selVal === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => { setSelVal(o); onPatch({ value: o }); }} />
               {o}
             </label>
@@ -511,7 +513,7 @@ export function FieldControl({
         )}
         {f.type === "checkbox" && !dsBound && (f.options || []).length <= MANY_OPTIONS &&
           (f.options || []).map((o) => (
-            <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 4px" }}>
+            <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 4px", minHeight: 44 }}>
               <input
                 type="checkbox"
                 value={o}
@@ -543,10 +545,10 @@ export function FieldControl({
         {f.type === "photo" && multiStrip}
         {f.type === "photo" && !multiStrip && (
           <>
-            <div onClick={() => photoRef.current?.click()} style={{ border: paper ? "2px dashed #b9bec4" : "2px dashed var(--line)", borderRadius: 10, padding: compact ? 8 : 18, textAlign: "center", color: paper ? "#777" : "var(--ink-3)", fontSize: compact ? ".8rem" : ".9rem", cursor: "pointer" }}>
+            <button type="button" onClick={() => photoRef.current?.click()} style={{ display: "block", width: "100%", fontFamily: "inherit", background: "transparent", border: paper ? "2px dashed #b9bec4" : "2px dashed var(--line)", borderRadius: 10, padding: compact ? 8 : 18, textAlign: "center", color: paper ? "#777" : "var(--ink-3)", fontSize: compact ? ".8rem" : ".9rem", cursor: "pointer" }}>
               {photo && <img src={photo} alt={t("fw.photoAlt")} style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 8, display: "block", margin: "0 auto 8px" }} />}
-              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? t("fw.retake") : <><Icon icon={Camera} className="h-4 w-4" /> {t("fw.takePhoto")}</>}</div>
-            </div>
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>{photo ? t("fw.retake") : <><Icon icon={Camera} className="h-4 w-4" /> {t("fw.takePhoto")}</>}</span>
+            </button>
             <input ref={photoRef} type="file" accept="image/*" capture="environment" hidden onChange={onPhoto} />
             {/* โหมด public: ไม่มี AI ตรวจรูป (endpoint ต้องล็อกอิน + ใช้เครดิต tenant) */}
             {photo && !publicMode && (
@@ -597,7 +599,7 @@ export function FieldControl({
         )}
       </div>
 
-      {error && <div style={{ fontSize: ".82rem", color: "var(--fail)", marginTop: 6 }}>{error}</div>}
+      {error && <div id={`err-${f.id}`} role="alert" style={{ fontSize: ".82rem", color: "var(--fail)", marginTop: 6 }}>{error}</div>}
     </div>
   );
 }
@@ -624,7 +626,7 @@ export function PfBtn({ active, kind, onClick, children, paper = false }: { acti
     ? { border: "1px solid #b9bec4", background: "#fff", color: "#111" }
     : { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" };
   return (
-    <button onClick={onClick} style={{ padding: 14, fontWeight: 700, fontSize: "1rem", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", ...base, ...(active ? on : {}) }}>
+    <button type="button" aria-pressed={active} onClick={onClick} style={{ padding: 14, fontWeight: 700, fontSize: "1rem", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", ...base, ...(active ? on : {}), ...(active ? { boxShadow: "inset 0 0 0 1px currentColor" } : {}) }}>
       {children}
     </button>
   );

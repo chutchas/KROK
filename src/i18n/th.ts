@@ -677,6 +677,8 @@ export const th = {
   "fw.photo.removed": "ลบรูปแล้ว",
   "fw.photo.undo": "เลิกทำ",
   "fw.num.sign": "สลับค่าบวก/ลบ",
+  "fw.required": "จำเป็น",
+  "fw.pubLogin": "เข้าสู่ระบบเพื่อกรอกฟอร์ม",
   "print.photos.title": "ภาพประกอบ",
   "print.photos.section": "การพิมพ์รูปถ่าย",
   "print.photos.hint": "ตั้งครั้งเดียวใช้ทั้งฟอร์ม — มีผลกับมุมมองกระดาษ การพิมพ์ และหน้าผลการกรอก",

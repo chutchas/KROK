@@ -32,15 +32,25 @@ type Db = SupabaseClient;
  * ต้องส่ง tenantId เสมอ: dataset ที่ไม่ใช่ขององค์กรเจ้าของฟอร์มจะถูกข้าม
  * สำคัญมากเมื่อเรียกด้วย service role (ฟอร์มสาธารณะ) ซึ่งไม่มี RLS คุ้มกัน
  */
-export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: string): Promise<FormSchema> {
+/** ใช้ร่วมกันหลายฟอร์ม (ชุดฟอร์มออฟไลน์): ชื่อ dataset ของ workspace + ตัวเลือกที่ดึงแล้ว — ไม่ยิงซ้ำต่อฟอร์ม */
+export interface OptionsShared {
+  names?: Map<string, string>;
+  cache: Map<string, Promise<OptRow[] | null>>;
+}
+
+export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: string, shared?: OptionsShared): Promise<FormSchema> {
   const ids = datasetIdsOf(schema);
   if (ids.length === 0) return schema;
 
-  const { data: owned } = await db.from("datasets").select("id, name").eq("tenant_id", tenantId).in("id", ids);
-  const names = new Map(((owned || []) as { id: string; name: string }[]).map((d) => [d.id, d.name]));
+  let names = shared?.names;
+  if (!names) {
+    const { data: owned } = await db.from("datasets").select("id, name").eq("tenant_id", tenantId).in("id", ids);
+    names = new Map(((owned || []) as { id: string; name: string }[]).map((d) => [d.id, d.name]));
+  }
+  const nameOf = names;
 
   // ดึงแต่ละชุด (dataset, column, label column, parent column) ครั้งเดียว แม้หลายฟิลด์ใช้ซ้ำ
-  const cache = new Map<string, Promise<OptRow[] | null>>();
+  const cache = shared?.cache ?? new Map<string, Promise<OptRow[] | null>>();
   const load = (src: OptionsSource, withParent: boolean) => {
     const pc = withParent ? src.parent?.column ?? null : null;
     const lc = src.label_column ?? null;
@@ -54,7 +64,7 @@ export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: s
         : db.rpc("dataset_options", { p_dataset: src.dataset_id, p_column: src.column, p_parent_column: pc, p_limit: limit });
       cache.set(
         key,
-        names.has(src.dataset_id)
+        nameOf.has(src.dataset_id)
           ? Promise.resolve(call).then(({ data, error }) => (error ? null : ((data || []) as OptRow[])))
           : Promise.resolve(null)
       );
@@ -70,7 +80,7 @@ export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: s
       if (f.options_source && (f.type === "select" || f.type === "checkbox")) {
         const src = f.options_source;
         jobs.push(
-          load(src, !!src.parent).then((rows) => applyToField(f, rows, names.get(src.dataset_id), !!src.parent, !!src.label_column))
+          load(src, !!src.parent).then((rows) => applyToField(f, rows, nameOf.get(src.dataset_id), !!src.parent, !!src.label_column))
         );
       }
       for (const c of f.columns || []) {

@@ -19,6 +19,11 @@ export default async function PublicFillPage({ params }: { params: Promise<{ for
         <div style={{ fontSize: "2rem", marginBottom: 8 }}>🔒</div>
         <h1 style={{ fontSize: "1.15rem", margin: "0 0 6px" }}><T k="fw.pubNotAvailable" /></h1>
         <p style={{ color: "var(--ink-3)", fontSize: ".9rem" }}><T k="fw.pubNotAvailableSub" /></p>
+        {/* ฟอร์มที่ต้องล็อกอิน: พาไปเข้าสู่ระบบแล้วกลับมาที่ฟอร์มนี้ (เดิมเป็นทางตัน) */}
+        <a href={`/login?next=${encodeURIComponent(`/fill/${formId}`)}`}
+          style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 44, padding: "0 20px", marginTop: 12, borderRadius: 8, background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 600, textDecoration: "none" }}>
+          <T k="fw.pubLogin" />
+        </a>
       </div>
     </main>
   );
