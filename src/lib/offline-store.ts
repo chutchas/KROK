@@ -1,20 +1,11 @@
 "use client";
 // ชุดฟอร์มออฟไลน์ + แบบร่างในเครื่อง (IndexedDB เดียวกับคิวส่งฟอร์ม)
-import { openDb } from "@/lib/offline-queue";
+import { runTx } from "@/lib/offline-queue";
 import type { OfflineBundle } from "@/lib/offline-types";
 
 type StoreName = "offline_bundles" | "local_drafts";
 
-async function run<T>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T> {
-  const db = await openDb();
-  return new Promise<T>((resolve, reject) => {
-    const t = db.transaction(store, mode);
-    const req = fn(t.objectStore(store));
-    req.onsuccess = () => resolve(req.result as T);
-    req.onerror = () => reject(req.error);
-    t.oncomplete = () => db.close();
-  });
-}
+const run = <T,>(store: StoreName, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest) => runTx<T>(store, mode, fn);
 
 // ---------- ชุดฟอร์ม ----------
 export interface StoredBundle extends OfflineBundle { key: string }
@@ -29,18 +20,13 @@ export async function getBundle(userId: string, tenantId: string): Promise<Store
   catch { return null; }
 }
 
-/** ชุดที่ใช้ล่าสุดในเครื่องนี้ (หน้าออฟไลน์ไม่รู้ว่าใครล็อกอิน — ใช้ของคนล่าสุด) */
+/** ชุดของผู้ใช้ที่ใช้เครื่องนี้ล่าสุด (หน้าออฟไลน์ไม่รู้ว่าใครล็อกอิน) — ไม่มีคีย์ = ไม่แสดงของใคร */
 export async function getLastBundle(): Promise<StoredBundle | null> {
   let key: string | null = null;
   try { key = localStorage.getItem("krok_offline_last"); } catch { /* ignore */ }
-  try {
-    if (key) {
-      const b = await run<StoredBundle | undefined>("offline_bundles", "readonly", (s) => s.get(key!));
-      if (b) return b;
-    }
-    const all = (await run<StoredBundle[]>("offline_bundles", "readonly", (s) => s.getAll())) || [];
-    return all.sort((a, b) => b.savedAt.localeCompare(a.savedAt))[0] ?? null;
-  } catch { return null; }
+  if (!key) return null;
+  try { return (await run<StoredBundle | undefined>("offline_bundles", "readonly", (s) => s.get(key!))) ?? null; }
+  catch { return null; }
 }
 
 /** ออกจากระบบ → ลบชุดฟอร์มของผู้ใช้นี้ออกจากเครื่อง (คิวที่ยังไม่ส่งเก็บไว้ตามเดิม) */
@@ -68,6 +54,9 @@ export interface LocalDraft {
   photos: Record<string, string>;
   sigs: Record<string, string>;
   docExtracts: unknown[];
+  /** จำนวนช่องที่กรอกแล้ว / ทั้งหมด (แสดงในรายการแบบร่าง) */
+  filled?: number;
+  total?: number;
   updatedAt: number;
 }
 
@@ -85,6 +74,11 @@ export async function getLocalDraft(userId: string, formId: string): Promise<Loc
 export async function listLocalDrafts(userId: string): Promise<LocalDraft[]> {
   try { return ((await run<LocalDraft[]>("local_drafts", "readonly", (s) => s.getAll())) || []).filter((d) => d.userId === userId); }
   catch { return []; }
+}
+
+/** ลบร่างในเครื่องทั้งหมดของผู้ใช้ (ออกจากระบบ) */
+export async function clearLocalDrafts(userId: string): Promise<void> {
+  for (const d of await listLocalDrafts(userId)) await deleteLocalDraft(userId, d.formId);
 }
 
 export async function deleteLocalDraft(userId: string, formId: string): Promise<void> {

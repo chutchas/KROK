@@ -661,6 +661,8 @@ export const en: Record<MessageKey, string> = {
   "offline.note": "Multi-person (hand-off) forms need a connection · AI photo check / document reading need a connection",
   "sub.filledAt": "Actually filled",
   "sub.offlineFilled": "(filled offline)",
+  "fw.deviceFull": "This device is out of storage — couldn't save on the device. Free up space (photos/apps) or connect and try again",
+  "sync.signOutDrafts": "{n} draft(s) are saved only on this device (offline). Signing out deletes them — connect and open the form first to save the draft to the server.",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",

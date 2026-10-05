@@ -167,7 +167,8 @@ export async function POST(req: Request) {
     approval_chain: chain,
     approval_step: 0,
     approval_history: [],
-    filled_at: clampFilledAt(body.filledAt, Date.now()),
+    // เวลาที่กรอกจริงจากเครื่อง: รับเฉพาะใบที่เข้าคิวตอนออฟไลน์ (ใบออนไลน์ = เวลาของ server)
+    filled_at: body.offline === true ? clampFilledAt(body.filledAt, Date.now()) : null,
   };
   let { error: insErr } = await admin.from("submissions").insert(row);
   // ยังไม่ได้รัน migration 0059 (ไม่มีคอลัมน์ filled_at) → บันทึกแบบเดิม

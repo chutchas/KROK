@@ -7,6 +7,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { LogoMark } from "@/components/Logo";
 import { LEGAL_VERSION } from "@/lib/legal";
+import { clearBundles } from "@/lib/offline-store";
 
 export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
@@ -36,6 +37,9 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
   // /login?mfa=1 — ล็อกอินด้วยรหัสผ่านแล้วแต่ยังไม่ได้กรอกรหัส 2FA (เช่น เปิดแท็บใหม่ / session หมดระดับ aal2)
   const mfaParam = sp.has("mfa");
+  // ถึงหน้าล็อกอิน = ไม่มี session แล้ว (ออกจากระบบ / หมดอายุ) → ไม่เก็บฟอร์มของผู้ใช้คนก่อนไว้ในเครื่อง
+  // (คิวที่รอส่งและร่างในเครื่องยังอยู่ — ส่ง/เปิดต่อได้เมื่อคนเดิมล็อกอินกลับมา)
+  useEffect(() => { void clearBundles(); }, []);
   useEffect(() => {
     if (!mfaParam) return;
     let alive = true;

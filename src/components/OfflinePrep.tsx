@@ -1,6 +1,8 @@
 "use client";
 import { useEffect } from "react";
-import { getBundle, saveBundle } from "@/lib/offline-store";
+import { deleteLocalDraft, getBundle, listLocalDrafts, saveBundle } from "@/lib/offline-store";
+import { saveDraft, type DraftSnapshot } from "@/lib/drafts";
+import { createClient } from "@/lib/supabase/client";
 import type { OfflineBundle } from "@/lib/offline-types";
 
 const REFRESH_MS = 15 * 60_000;
@@ -11,6 +13,34 @@ function precacheShell() {
   navigator.serviceWorker.ready
     .then((reg) => reg.active?.postMessage({ type: "krok-precache-shell" }))
     .catch(() => {});
+}
+
+/**
+ * ร่างที่บันทึกในเครื่องตอนออฟไลน์ → ส่งขึ้น server เมื่อกลับมาออนไลน์ (แล้วลบออกจากเครื่อง)
+ * ข้ามฟอร์มที่เปิดกรอกอยู่ (หน้ากรอกจะบันทึกเอง — กันร่างซ้ำ) · ร่างบน server ใหม่กว่า = ทิ้งของในเครื่อง
+ */
+async function pushLocalDrafts(userId: string, tenantId: string) {
+  const drafts = (await listLocalDrafts(userId)).filter((d) => d.tenantId === tenantId);
+  if (!drafts.length) return;
+  const supabase = createClient();
+  for (const d of drafts) {
+    if (location.pathname.startsWith(`/fill/${d.formId}`)) continue;
+    try {
+      if (d.serverDraftId) {
+        const { data } = await supabase.from("submission_drafts").select("updated_at").eq("id", d.serverDraftId).maybeSingle();
+        if (data && Date.parse(data.updated_at as string) > d.updatedAt) { await deleteLocalDraft(userId, d.formId); continue; }
+      }
+      const snap: DraftSnapshot = {
+        tenantId: d.tenantId, userId: d.userId, formId: d.formId, formVersion: d.formVersion, title: d.title,
+        stepIdx: d.stepIdx, mode: d.mode, answers: d.answers, photos: d.photos, sigs: d.sigs,
+        docExtracts: d.docExtracts as DraftSnapshot["docExtracts"], filled: d.filled ?? 0, total: d.total ?? 0,
+      };
+      await saveDraft(supabase, d.serverDraftId, snap, new Map(), {});
+      await deleteLocalDraft(userId, d.formId);
+    } catch {
+      /* ยังส่งไม่ได้ — เก็บไว้ในเครื่อง ลองรอบหน้า */
+    }
+  }
 }
 
 /**
@@ -27,6 +57,7 @@ export default function OfflinePrep({ userId, tenantId }: { userId: string; tena
       if (!force && Date.now() - last < REFRESH_MS) return;
       busy = true;
       try {
+        await pushLocalDrafts(userId, tenantId).catch(() => {});
         const cur = await getBundle(userId, tenantId);
         const res = await fetch(`/api/offline/forms${cur ? `?v=${cur.hash}` : ""}`, { cache: "no-store" });
         if (!res.ok) return;

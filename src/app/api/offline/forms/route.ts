@@ -18,9 +18,9 @@ export async function GET(req: Request) {
 
   const supabase = await createClient();
   try {
-    const bundle = await buildOfflineBundle(supabase, session);
     const v = new URL(req.url).searchParams.get("v");
-    const res = v && v === bundle.hash ? { same: true } : { same: false, bundle };
+    const bundle = await buildOfflineBundle(supabase, session, v);
+    const res = bundle === "same" ? { same: true } : { same: false, bundle };
     return NextResponse.json(res, { headers: { "Cache-Control": "no-store" } });
   } catch {
     return NextResponse.json({ error: "load_failed" }, { status: 500 });

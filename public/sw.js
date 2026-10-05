@@ -1,32 +1,45 @@
-// KROK service worker — app-shell caching + offline fallback
+// KROK service worker — หน้าออฟไลน์ + ไฟล์ของแอป
 // (การส่งฟอร์มออฟไลน์จัดการด้วย IndexedDB queue ในแอป ไม่ใช่ที่นี่)
 // หน้าออฟไลน์ (/offline) = หน้ากรอกฟอร์มที่อ่านชุดฟอร์มจาก IndexedDB — แอปสั่งให้เก็บไว้ล่วงหน้า (krok-precache-shell)
-const CACHE = "krok-v2";
+// ไม่เก็บหน้าอื่นของแอป (แดชบอร์ด/รายงาน/ใบส่ง) ไว้ในเครื่อง — กันข้อมูลค้างให้คนอื่นเห็นบนเครื่องที่ใช้ร่วมกัน
+const SHELL_CACHE = "krok-shell-v3"; // หน้าออฟไลน์ + JS/CSS ที่หน้านั้นใช้ (สร้างใหม่ทุกครั้งที่เตรียม — ของเก่าถูกลบ)
+const STATIC_CACHE = "krok-static-v3"; // JS/CSS/รูปที่โหลดระหว่างใช้งาน (จำกัดจำนวน ลบของเก่าสุดก่อน)
+const KEEP = [SHELL_CACHE, STATIC_CACHE];
+const STATIC_MAX = 250;
 const SHELL = "/offline";
 // Next ตอบ header "Vary: Accept-Encoding, rsc, ..." — Safari นำ header ของคำขอมาเทียบตอนค้นใน cache ด้วย
 // ทำให้หาไฟล์ที่เก็บไว้ไม่เจอ (Chrome ไม่เป็น) → ค้นแบบไม่สน Vary เสมอ
 const IV = { ignoreVary: true };
-const SHELL_PATHS = /^\/(forms|fill)(\/|$)/;
 const OFFLINE_HTML =
   '<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ออฟไลน์</title>' +
   '<style>body{font-family:system-ui,"Sarabun",sans-serif;background:#f8fafc;color:#0f172a;display:flex;min-height:100vh;margin:0;align-items:center;justify-content:center;text-align:center;padding:24px}' +
   '.b{max-width:360px}h1{font-size:1.2rem;margin:0 0 8px}p{color:#475569;font-size:.92rem;line-height:1.5}</style></head>' +
-  '<body><div class="b"><h1>ออฟไลน์อยู่</h1><p>ยังไม่มีการเชื่อมต่ออินเทอร์เน็ต — หน้าที่เคยเปิดไว้ยังใช้กรอกฟอร์มได้ และระบบจะ sync ให้อัตโนมัติเมื่อกลับมาออนไลน์</p></div></body></html>';
+  '<body><div class="b"><h1>ออฟไลน์อยู่</h1><p>ยังไม่มีการเชื่อมต่ออินเทอร์เน็ต — เครื่องนี้ยังไม่ได้เตรียมฟอร์มสำหรับกรอกออฟไลน์ เปิดแอปตอนมีเน็ตสักครั้ง ระบบจะเตรียมให้อัตโนมัติ</p></div></body></html>';
 
-self.addEventListener("install", (e) => {
+self.addEventListener("install", () => {
   self.skipWaiting();
-  e.waitUntil(caches.open(CACHE));
 });
 
 self.addEventListener("activate", (e) => {
   e.waitUntil(
     (async () => {
+      // ลบ cache รุ่นเก่า (รวมหน้าที่เคยเก็บไว้ทั้งหมดจากรุ่นก่อน)
       const keys = await caches.keys();
-      await Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)));
+      await Promise.all(keys.filter((k) => !KEEP.includes(k)).map((k) => caches.delete(k)));
       await self.clients.claim();
     })()
   );
 });
+
+const offlineResponse = () => new Response(OFFLINE_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+
+/** เก็บเพิ่มแล้วตัดของเก่าสุดออก (keys() เรียงตามลำดับที่เก็บ — put ซ้ำ = ย้ายไปท้าย) */
+async function putStatic(req, res) {
+  const cache = await caches.open(STATIC_CACHE);
+  await cache.put(req, res);
+  const keys = await cache.keys();
+  for (let i = 0; i < keys.length - STATIC_MAX; i++) await cache.delete(keys[i]);
+}
 
 self.addEventListener("fetch", (e) => {
   const req = e.request;
@@ -35,38 +48,28 @@ self.addEventListener("fetch", (e) => {
   if (url.origin !== self.location.origin) return; // ข้าม supabase/api ภายนอก
   if (url.pathname.startsWith("/api/")) return; // API ต้องสด
 
-  // นำทางหน้า → network-first, ล้มเหลวใช้ cache หรือหน้า offline
-  // หน้ากรอก/รายการฟอร์ม: ใช้หน้าออฟไลน์ก่อน (อ่านชุดฟอร์มล่าสุดจากเครื่อง + มีแบบร่างในเครื่อง)
+  // นำทางหน้า → ใช้เครือข่ายเสมอ (ไม่เก็บหน้า) · ไม่มีเน็ต → หน้าออฟไลน์ (รายการฟอร์ม/หน้ากรอกจากข้อมูลในเครื่อง)
   if (req.mode === "navigate") {
     e.respondWith(
       (async () => {
         try {
-          const fresh = await fetch(req);
-          if (fresh.ok && !fresh.redirected) {
-            const cache = await caches.open(CACHE);
-            cache.put(req, fresh.clone());
-          }
-          return fresh;
+          return await fetch(req);
         } catch {
-          const shell = await caches.match(SHELL, IV);
-          const cached = await caches.match(req, IV);
-          const first = SHELL_PATHS.test(url.pathname) ? shell || cached : cached || shell;
-          return first || new Response(OFFLINE_HTML, { headers: { "Content-Type": "text/html; charset=utf-8" } });
+          return (await caches.match(SHELL, { ...IV, cacheName: SHELL_CACHE })) || offlineResponse();
         }
       })()
     );
     return;
   }
 
-  // static assets → stale-while-revalidate
+  // static assets → ใช้ของในเครื่องก่อน แล้วอัปเดตเบื้องหลัง
   if (url.pathname.startsWith("/_next/static/") || /\.(?:js|css|png|jpg|jpeg|svg|webp|woff2?)$/.test(url.pathname)) {
     e.respondWith(
       (async () => {
-        const cache = await caches.open(CACHE);
-        const cached = await cache.match(req, IV);
+        const cached = await caches.match(req, IV);
         const network = fetch(req)
           .then((res) => {
-            if (res.ok) cache.put(req, res.clone());
+            if (res.ok) e.waitUntil(putStatic(req, res.clone()).catch(() => {}));
             return res;
           })
           .catch(() => cached);
@@ -76,14 +79,14 @@ self.addEventListener("fetch", (e) => {
   }
 });
 
-// แอปสั่ง: เก็บหน้าออฟไลน์ + ไฟล์ JS/CSS ที่หน้านั้นใช้ (ทำซ้ำได้ — ไฟล์ที่มีแล้วข้าม)
+// แอปสั่ง: เก็บหน้าออฟไลน์ + ไฟล์ JS/CSS ที่หน้านั้นใช้ · ไฟล์ของรุ่นก่อนที่ไม่ใช้แล้วถูกลบ
 async function precacheShell() {
-  const cache = await caches.open(CACHE);
+  const cache = await caches.open(SHELL_CACHE);
   const res = await fetch(SHELL, { credentials: "same-origin", cache: "no-store" });
   if (!res.ok || res.redirected) return;
   const html = await res.clone().text();
   const assets = new Set();
-  for (const m of html.matchAll(/\/_next\/static\/[^"'\s\\)]+/g)) assets.add(m[0]);
+  for (const m of html.matchAll(/\/_next\/static\/[^"'\s\\)]+/g)) assets.add(new URL(m[0], self.location.origin).href);
   for (const a of assets) {
     if (await cache.match(a, IV)) continue;
     try {
@@ -92,11 +95,14 @@ async function precacheShell() {
     } catch { /* ข้ามไฟล์ที่โหลดไม่ได้ */ }
   }
   await cache.put(SHELL, res);
+  const shellUrl = new URL(SHELL, self.location.origin).href;
+  for (const k of await cache.keys()) if (k.url !== shellUrl && !assets.has(k.url)) await cache.delete(k);
 }
 
 let shellJob = null;
 self.addEventListener("message", (e) => {
-  if (e.data && e.data.type === "krok-precache-shell" && !shellJob) {
+  const type = e.data && e.data.type;
+  if (type === "krok-precache-shell" && !shellJob) {
     shellJob = precacheShell().catch(() => {}).finally(() => { shellJob = null; });
     if (e.waitUntil) e.waitUntil(shellJob);
   }

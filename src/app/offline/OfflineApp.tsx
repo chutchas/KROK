@@ -27,12 +27,15 @@ export default function OfflineApp() {
   const { t, tt, lang } = useT();
   const [view, setView] = useState<View>({ kind: "loading" });
   const [online, setOnline] = useState(false);
+  // ใช้ใน render หลัง mount เท่านั้น (ฝั่ง server ไม่รู้ path จริง — กัน hydration mismatch)
+  const [opened, setOpened] = useState("");
 
   useEffect(() => {
     // คืน URL ที่ผู้ใช้เปิด (รีเฟรช/กดกลับยังอยู่หน้าเดิม)
     const tm = setTimeout(() => {
       if (OPENED && OPENED !== "/offline" && window.location.pathname === "/offline") window.history.replaceState(window.history.state, "", OPENED);
     }, 0);
+    setOpened(OPENED);
     const upd = () => setOnline(navigator.onLine);
     upd();
     window.addEventListener("online", upd);
@@ -73,12 +76,12 @@ export default function OfflineApp() {
         {online ? t("offline.backOnline") : t("offline.mode")}
         {"bundle" in view && <span style={{ color: "var(--ink-3)" }}> · {tt("offline.savedAt", { t: fmt(view.bundle.savedAt, lang) })}</span>}
       </span>
-      {online && <a href={OPENED && OPENED !== "/offline" ? OPENED : "/forms"} style={{ fontWeight: 600 }}>{t("offline.reload")}</a>}
+      {online && <a href={opened && !opened.startsWith("/offline") ? opened : "/forms"} style={{ fontWeight: 600 }}>{t("offline.reload")}</a>}
     </div>
   );
 
   let body: React.ReactNode = null;
-  if (/^\/offline\?check/.test(OPENED)) body = <OfflineCheck />;
+  if (/^\/offline\?check/.test(opened)) body = <OfflineCheck />;
   else if (view.kind === "loading") body = null;
   else if (view.kind === "empty") body = <>{banner}<p style={{ color: "var(--ink-2)" }}>{t("offline.empty")}</p></>;
   else if (view.kind === "missing") body = <>{banner}<p style={{ color: "var(--ink-2)" }}>{t("offline.missing")}</p><a href="/forms">{t("offline.toList")}</a></>;

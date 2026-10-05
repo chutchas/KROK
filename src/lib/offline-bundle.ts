@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
+import { datasetIdsOf, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { rowToAttachment, type Attachment } from "@/lib/attachments";
 import { resolveFormOptions } from "@/lib/datasets-server";
 import { isWorkflowSchema } from "@/lib/case-flow";
@@ -16,8 +16,16 @@ import type { OfflineBundle, OfflineForm } from "@/lib/offline-types";
 // ============================================================
 
 const MAX_FORMS = 150;
+/** สร้างชุดเต็มใหม่อย่างน้อยทุก 6 ชม. แม้ลายนิ้วมือไม่เปลี่ยน (เผื่อข้อมูลอ้างอิงแก้รายแถวโดยไม่แตะตาราง datasets) */
+const REBUILD_BUCKET_MS = 6 * 3600_000;
 
-export async function buildOfflineBundle(supabase: SupabaseClient, session: KrokSession): Promise<OfflineBundle> {
+const sha = (v: unknown) => createHash("sha1").update(JSON.stringify(v)).digest("hex").slice(0, 16);
+
+/**
+ * ชุดฟอร์มออฟไลน์ · knownHash = ลายนิ้วมือที่เครื่องมีอยู่
+ * ตรวจแบบเบาก่อน (ฟอร์ม/เวอร์ชัน/เอกสารแนบ/ข้อมูลอ้างอิง/แบรนด์) — ตรงกัน = ไม่ต้องดึงตัวเลือกจากข้อมูลอ้างอิงใหม่ทั้งหมด
+ */
+export async function buildOfflineBundle(supabase: SupabaseClient, session: KrokSession, knownHash?: string | null): Promise<OfflineBundle | "same"> {
   const [{ data, error }, { data: teamIdRows }, branding] = await Promise.all([
     supabase
       .from("forms")
@@ -58,34 +66,61 @@ export async function buildOfflineBundle(supabase: SupabaseClient, session: Krok
     } catch { /* ไม่มีตาราง = ไม่มีเอกสารแนบ */ }
   }
 
-  const forms: OfflineForm[] = [];
+  // ---- ลายนิ้วมือแบบเบา ----
+  const schemas = new Map<string, FormSchema>();
   for (const r of rows) {
-    let schema: FormSchema;
-    try { schema = sanitizeSchema(r.schema); } catch { continue; }
-    if (isWorkflowSchema(schema)) continue;
-    schema = await resolveFormOptions(schema, supabase, session.tenantId).catch(() => schema);
-    forms.push({
-      formId: r.id as string,
-      title: r.title as string,
-      icon: r.icon as string,
-      version: (r.version as number) ?? 1,
-      requiresApproval: !!r.requires_approval,
-      approvalChain: (r.approval_chain as unknown[]) || [],
-      requireDevice: !!r.require_approved_device,
-      schema,
-      attachments: attByForm.get(r.id as string) || [],
-    });
+    try {
+      const sc = sanitizeSchema(r.schema);
+      if (!isWorkflowSchema(sc)) schemas.set(r.id as string, sc);
+    } catch { /* schema เสีย = ข้าม */ }
+  }
+  const dsIds = [...new Set([...schemas.values()].flatMap((sc) => datasetIdsOf(sc)))];
+  let dsMeta: unknown[] = [];
+  if (dsIds.length) {
+    const { data: ds } = await supabase.from("datasets").select("id, updated_at, active_batch, row_count, last_synced_at").in("id", dsIds);
+    dsMeta = ((ds || []) as Record<string, unknown>[]).sort((a, b) => String(a.id).localeCompare(String(b.id)));
+  }
+  const fingerprint = sha({
+    v: 2,
+    bucket: Math.floor(Date.now() / REBUILD_BUCKET_MS),
+    user: [session.userId, session.displayName, session.tenantName],
+    forms: rows.filter((r) => schemas.has(r.id as string)).map((r) => [r.id, r.version, r.updated_at, r.title, r.icon, r.requires_approval, r.require_approved_device]),
+    att: [...attByForm.entries()].map(([k, v]) => [k, v.map((a) => [a.id, a.name, a.url])]),
+    ds: dsMeta,
+    branding,
+  });
+  if (knownHash && knownHash === fingerprint) return "same";
+
+  // ดึงตัวเลือกจากข้อมูลอ้างอิงทีละ 6 ฟอร์มพร้อมกัน (ไม่ยิงฐานข้อมูลรัวทีเดียวทั้งหมด)
+  const todo = rows.filter((r) => schemas.has(r.id as string));
+  const forms: OfflineForm[] = [];
+  for (let i = 0; i < todo.length; i += 6) {
+    const batch = await Promise.all(todo.slice(i, i + 6).map(async (r): Promise<OfflineForm> => {
+      const base = schemas.get(r.id as string)!;
+      const schema = await resolveFormOptions(base, supabase, session.tenantId).catch(() => base);
+      return {
+        formId: r.id as string,
+        title: r.title as string,
+        icon: r.icon as string,
+        version: (r.version as number) ?? 1,
+        requiresApproval: !!r.requires_approval,
+        approvalChain: (r.approval_chain as unknown[]) || [],
+        requireDevice: !!r.require_approved_device,
+        schema,
+        attachments: attByForm.get(r.id as string) || [],
+      };
+    }));
+    forms.push(...batch);
   }
 
-  const body = { forms, branding };
-  const hash = createHash("sha1").update(JSON.stringify(body)).digest("hex").slice(0, 16);
   return {
-    hash,
+    hash: fingerprint,
     savedAt: new Date().toISOString(),
     tenantId: session.tenantId,
     tenantName: session.tenantName,
     userId: session.userId,
     userName: session.displayName,
-    ...body,
+    branding,
+    forms,
   };
 }

@@ -24,7 +24,7 @@ import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, mediaFieldId } from "@/lib/table-rows";
 import FillSourceBar, { type AppliedValue } from "@/components/FillSourceBar";
-import { enqueue, pushSubmission, PermanentSubmitError, type PendingSubmission } from "@/lib/offline-queue";
+import { enqueue, isQuotaExceeded, pushSubmission, PermanentSubmitError, type PendingSubmission } from "@/lib/offline-queue";
 import { deleteLocalDraft, saveLocalDraft, type LocalDraft } from "@/lib/offline-store";
 import AttachmentChips from "@/components/AttachmentView";
 import { groupAttachments, type Attachment } from "@/lib/attachments";
@@ -95,7 +95,8 @@ export default function FillWizard(props: Props) {
   const initialDraft = props.publicMode || kase ? null : props.draft ?? null;
   // ร่างในเครื่อง (บันทึกตอนออฟไลน์) ใช้แทนร่างบน server เมื่อใหม่กว่า
   const local = props.publicMode || kase || !props.localDraft ? null
-    : initialDraft && new Date(initialDraft.updatedAt).getTime() > props.localDraft.updatedAt && initialDraft.id !== props.localDraft.serverDraftId ? null
+    // ร่างบน server ใหม่กว่า (เช่นกรอกต่อจากอีกเครื่อง) → ใช้ของ server เสมอ ไม่ให้ร่างเก่าในเครื่องทับ
+    : initialDraft && new Date(initialDraft.updatedAt).getTime() > props.localDraft.updatedAt ? null
     : props.localDraft;
   const seed = local
     ? { stepIdx: local.stepIdx, answers: local.answers, docExtracts: local.docExtracts, mode: local.mode, formVersion: local.formVersion }
@@ -323,20 +324,22 @@ export default function FillWizard(props: Props) {
         await saveLocalDraft({
           userId: props.userId, tenantId: props.tenantId, formId: props.formId, formVersion: props.version,
           serverDraftId: draftId.current, title, stepIdx: si, mode: md, answers: answers.current as Record<string, unknown>,
-          photos: ph, sigs: sg, docExtracts: docExtracts.current, updatedAt: Date.now(),
+          photos: ph, sigs: sg, docExtracts: docExtracts.current, filled, total, updatedAt: Date.now(),
         });
         // savedAt ไม่ขยับ → ออนไลน์เมื่อไรบันทึกอัตโนมัติจะส่งร่างขึ้น server ให้
         setDraftState({ kind: "local", at: Date.now() });
         return true;
-      } catch {
+      } catch (e) {
+        if (isQuotaExceeded(e)) { setDraftState({ kind: "error", msg: t("fw.deviceFull") }); localFull = true; }
         return false;
       }
     };
+    let localFull = false;
     const job = (async () => {
       if (!kase && typeof navigator !== "undefined" && navigator.onLine === false) {
         const ok = await saveLocal();
         saving.current = null;
-        if (!ok) setDraftState({ kind: "error", msg: t("fw.draftOffline") });
+        if (!ok && !localFull) setDraftState({ kind: "error", msg: t("fw.draftOffline") });
         return ok;
       }
       try {
@@ -370,7 +373,10 @@ export default function FillWizard(props: Props) {
         const offline = typeof navigator !== "undefined" && navigator.onLine === false;
         const raw = e instanceof Error ? e.message : "";
         const network = /fetch|network|timeout/i.test(raw);
-        if ((offline || network) && (await saveLocal())) return true;
+        if (offline || network) {
+          if (await saveLocal()) return true;
+          if (localFull) return false;
+        }
         setDraftState({
           kind: "error",
           msg: offline ? t("fw.draftOffline")
@@ -415,9 +421,15 @@ export default function FillWizard(props: Props) {
   }
 
   /** ส่งฟอร์มสำเร็จแล้ว → ลบร่างทิ้ง */
+  /** ลบร่างในเครื่องหลังส่ง — รอการบันทึกร่างที่ค้างอยู่จบก่อน (ไม่งั้นร่างที่บันทึกทีหลังจะโผล่กลับมา) */
+  async function dropLocalDraft() {
+    if (saving.current) await saving.current.catch(() => false);
+    await deleteLocalDraft(props.userId, props.formId);
+  }
+
   async function clearDraftAfterSubmit() {
-    void deleteLocalDraft(props.userId, props.formId);
     if (saving.current) await saving.current.catch(() => false); // รอบันทึกร่างที่ค้างอยู่ให้จบก่อน จะได้ลบถูกตัว
+    await deleteLocalDraft(props.userId, props.formId);
     if (!draftId.current) return;
     const id = draftId.current;
     draftId.current = null;
@@ -760,7 +772,7 @@ export default function FillWizard(props: Props) {
         // ออฟไลน์ลบร่างบน server ไม่ได้ตอนนี้ — ร่างจะถูกลบเมื่อกลับมาออนไลน์ครั้งถัดไปที่เปิดหน้าแบบร่าง
         // (ถือว่าส่งแล้ว: เก็บ id ไว้ให้หน้าแบบร่างซ่อน/ลบ)
         rememberSubmittedDraft(draftId.current);
-        void deleteLocalDraft(props.userId, props.formId);
+        await dropLocalDraft();
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
         window.scrollTo(0, 0);
         return;
@@ -778,7 +790,7 @@ export default function FillWizard(props: Props) {
         await enqueue({ ...payload, queuedAt: nowMs() });
         window.dispatchEvent(new Event("krok-queue-changed"));
         rememberSubmittedDraft(draftId.current);
-        void deleteLocalDraft(props.userId, props.formId);
+        await dropLocalDraft();
         setDone({ result, fails, dur, pending: props.requiresApproval, offline: true });
         window.scrollTo(0, 0);
         return;
@@ -793,7 +805,7 @@ export default function FillWizard(props: Props) {
       window.scrollTo(0, 0);
     } catch (e) {
       const fid = (lockedStep(idx) ? segFields()[0] : step.fields[0])?.id ?? step.fields[0].id;
-      setErrors({ [fid]: tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }) });
+      setErrors({ [fid]: isQuotaExceeded(e) ? t("fw.deviceFull") : tt("fw.submitFailedMsg", { msg: e instanceof Error ? e.message : t("fw.error") }) });
       setSubmitting(false);
       submitLock.current = false;
     }

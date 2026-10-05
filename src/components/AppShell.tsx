@@ -15,7 +15,7 @@ import ThemeToggle from "@/components/ThemeToggle";
 import WorkspaceSwitcher, { WorkspaceChip, type WorkspaceItem } from "@/components/WorkspaceSwitcher";
 import OfflineSync from "@/components/OfflineSync";
 import OfflinePrep from "@/components/OfflinePrep";
-import { clearBundles } from "@/lib/offline-store";
+import { clearBundles, clearLocalDrafts, listLocalDrafts } from "@/lib/offline-store";
 import Icon, { type IconType } from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
@@ -134,9 +134,14 @@ export default function AppShell({
       const me = (await sb.auth.getSession()).data.session?.user.id;
       const n = me ? (await getAllPending()).filter((p) => p.userId === me).length : 0;
       if (n > 0 && !(await confirmDialog({ message: tt("sync.signOutPending", { n }), confirmLabel: t("sync.signOutAnyway") }))) return;
+      // ร่างที่บันทึกในเครื่อง (ตอนออฟไลน์) จะถูกลบเมื่อออกจากระบบ — เครื่องที่ใช้ร่วมกันจะได้ไม่เห็นงานของคนก่อน
+      const d = me ? (await listLocalDrafts(me)).length : 0;
+      if (d > 0 && !(await confirmDialog({ message: tt("sync.signOutDrafts", { n: d }), confirmLabel: t("sync.signOutAnyway"), danger: true }))) return;
     } catch { /* อ่านคิวไม่ได้ → ออกจากระบบตามปกติ */ }
     await sb.auth.signOut();
-    await clearBundles(userId); // ฟอร์มที่ดาวน์โหลดไว้ใช้ออฟไลน์ไม่ค้างในเครื่องหลังออกจากระบบ (คิวที่ยังไม่ส่งยังเก็บไว้)
+    // ฟอร์มที่ดาวน์โหลดไว้ + ร่างในเครื่องไม่ค้างหลังออกจากระบบ (คิวที่ยังไม่ส่งยังเก็บไว้ — ส่งเมื่อคนเดิมล็อกอินกลับมา)
+    await clearBundles(userId);
+    await clearLocalDrafts(userId);
     router.push("/login");
     router.refresh();
   }

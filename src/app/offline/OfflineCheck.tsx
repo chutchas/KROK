@@ -31,11 +31,12 @@ export default function OfflineCheck() {
     try {
       const keys = await caches.keys();
       r.push(["Cache", keys.join(", ") || "ว่าง", keys.length ? "ok" : "bad"]);
-      const c = await caches.open("krok-v2");
-      const reqs = await c.keys();
-      const shell = await c.match("/offline", { ignoreVary: true });
+      const shellCache = await caches.open("krok-shell-v3");
+      const shellFiles = (await shellCache.keys()).length;
+      const staticFiles = (await (await caches.open("krok-static-v3")).keys()).length;
+      const shell = await shellCache.match("/offline", { ignoreVary: true });
       r.push(["หน้าออฟไลน์ในเครื่อง", shell ? "มี" : "ยังไม่มี", shell ? "ok" : "bad"]);
-      r.push(["ไฟล์ที่เก็บไว้", `${reqs.length} ไฟล์ (JS/CSS ${reqs.filter((q) => q.url.includes("/_next/static/")).length})`, reqs.length > 5 ? "ok" : "bad"]);
+      r.push(["ไฟล์ที่เก็บไว้", `หน้าออฟไลน์ ${shellFiles} ไฟล์ · ใช้งานทั่วไป ${staticFiles} ไฟล์`, shellFiles > 3 ? "ok" : "bad"]);
     } catch (e) {
       r.push(["Cache", `อ่านไม่ได้: ${e instanceof Error ? e.message : String(e)}`, "bad"]);
     }

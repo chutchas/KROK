@@ -34,32 +34,73 @@ export interface PendingSubmission {
   queuedAt: number;
 }
 
-/** ฐานข้อมูลในเครื่องของ KROK (v2: + ชุดฟอร์มออฟไลน์ + แบบร่างในเครื่อง) — ทุกโมดูลเปิดผ่านฟังก์ชันนี้ เวอร์ชันจะได้ตรงกัน */
-export function openDb(): Promise<IDBDatabase> {
+const STORES: [string, string][] = [[STORE, "subId"], ["offline_bundles", "key"], ["local_drafts", "key"]];
+
+function openRaw(version?: number): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB, 2);
+    const req = version ? indexedDB.open(DB, version) : indexedDB.open(DB);
     req.onupgradeneeded = () => {
       const db = req.result;
-      if (!db.objectStoreNames.contains(STORE)) db.createObjectStore(STORE, { keyPath: "subId" });
-      if (!db.objectStoreNames.contains("offline_bundles")) db.createObjectStore("offline_bundles", { keyPath: "key" });
-      if (!db.objectStoreNames.contains("local_drafts")) db.createObjectStore("local_drafts", { keyPath: "key" });
+      for (const [name, keyPath] of STORES) if (!db.objectStoreNames.contains(name)) db.createObjectStore(name, { keyPath });
     };
-    req.onblocked = () => reject(new Error("db blocked"));
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
+    // แท็บอื่นถือการเชื่อมต่อเก่าอยู่ → รอให้มันปิด (ไม่ล้มทันที — upgrade จะสำเร็จตามมา)
+    let tm: ReturnType<typeof setTimeout> | undefined;
+    req.onblocked = () => { tm = setTimeout(() => reject(new Error("db blocked — ปิดแท็บ KROK อื่นแล้วลองใหม่")), 8000); };
+    req.onsuccess = () => {
+      if (tm) clearTimeout(tm);
+      const db = req.result;
+      // แท็บอื่นจะอัปเวอร์ชัน → ปิดของเราเพื่อไม่ขวาง
+      db.onversionchange = () => db.close();
+      resolve(db);
+    };
+    req.onerror = () => { if (tm) clearTimeout(tm); reject(req.error); };
   });
 }
 
-async function tx<T>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T> {
+/**
+ * ฐานข้อมูลในเครื่องของ KROK — ทุกโมดูลเปิดผ่านฟังก์ชันนี้
+ * เปิดแบบไม่ระบุเวอร์ชัน (ได้เวอร์ชันปัจจุบันเสมอ แม้โค้ดเวอร์ชันใหม่กว่าอัปไปแล้ว — ไม่เกิด VersionError)
+ * ขาด store ไหน → อัปเวอร์ชัน +1 แล้วสร้างเพิ่ม
+ */
+export async function openDb(): Promise<IDBDatabase> {
+  const db = await openRaw();
+  if (STORES.every(([n]) => db.objectStoreNames.contains(n))) return db;
+  const next = db.version + 1;
+  db.close();
+  return openRaw(next);
+}
+
+/** ข้อผิดพลาดตอนบันทึก (พื้นที่เต็ม ฯลฯ) — แยกให้หน้าจอบอกผู้ใช้ได้ */
+export function isQuotaExceeded(e: unknown): boolean {
+  const n = (e as { name?: string } | null)?.name;
+  return n === "QuotaExceededError" || n === "NS_ERROR_DOM_QUOTA_REACHED";
+}
+
+/**
+ * ทำงานกับ store หนึ่งใน transaction เดียว
+ * คืนผลเมื่อ transaction commit แล้วเท่านั้น (พื้นที่เต็มจะล้มตอน commit — ถ้าคืนตอน request สำเร็จจะเข้าใจผิดว่าบันทึกแล้ว)
+ */
+export async function runTx<T>(store: string, mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest): Promise<T> {
   const db = await openDb();
   return new Promise<T>((resolve, reject) => {
-    const t = db.transaction(STORE, mode);
-    const req = fn(t.objectStore(STORE));
-    req.onsuccess = () => resolve(req.result as T);
-    req.onerror = () => reject(req.error);
-    t.oncomplete = () => db.close();
+    let result: T;
+    let t: IDBTransaction;
+    try {
+      t = db.transaction(store, mode);
+      const req = fn(t.objectStore(store));
+      req.onsuccess = () => { result = req.result as T; };
+    } catch (e) {
+      db.close();
+      reject(e);
+      return;
+    }
+    t.oncomplete = () => { db.close(); resolve(result); };
+    t.onabort = () => { db.close(); reject(t.error ?? new Error("transaction aborted")); };
+    t.onerror = () => { /* ตามด้วย onabort */ };
   });
 }
+
+const tx = <T,>(mode: IDBTransactionMode, fn: (s: IDBObjectStore) => IDBRequest) => runTx<T>(STORE, mode, fn);
 
 export async function enqueue(p: PendingSubmission): Promise<void> {
   await tx("readwrite", (s) => s.put(p));
@@ -158,8 +199,8 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
         photos: p.photos.map((ph) => ({ fieldId: ph.fieldId, ai: ph.ai })),
         docExtracts: (p.docExtracts ?? []).map((ex) => ({ source_id: ex.source_id, raw: ex.raw, accepted: ex.accepted })),
         offline: p.queuedAt > 0,
-        // เวลาที่กดส่งบนเครื่อง (ใบออฟไลน์ = ตอนเข้าคิว) — server ตรวจช่วงก่อนบันทึก
-        filledAt: p.queuedAt > 0 ? p.queuedAt : Date.now(),
+        // เวลาที่กดส่งบนเครื่อง — เฉพาะใบที่เข้าคิวตอนออฟไลน์ (ส่งออนไลน์ใช้เวลาของ server อย่างเดียว)
+        filledAt: p.queuedAt > 0 ? p.queuedAt : null,
       }),
     });
   } catch (e) {
