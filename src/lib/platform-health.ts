@@ -127,6 +127,8 @@ export async function runHealth(admin: SupabaseClient): Promise<HealthReport> {
       envCheck("NEXT_PUBLIC_SITE_URL", false, "ลิงก์ในอีเมลใช้โดเมนหลักของ Vercel แทน"),
       envCheck("RESEND_API_KEY", false, "ไม่ส่งอีเมลเชิญ (ต้องคัดลอกลิงก์เอง)"),
       envCheck("EMAIL_FROM", false, "ใช้ผู้ส่งทดสอบของ Resend (ส่งได้เฉพาะถึงเจ้าของบัญชี Resend)"),
+      { name: "Web Push (VAPID)", status: env("NEXT_PUBLIC_VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY") ? "ok" : "warn",
+        detail: env("NEXT_PUBLIC_VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY") ? "ตั้งแล้ว" : "ยังไม่ได้ตั้ง NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY — แจ้งเตือนเด้งบนมือถือใช้ไม่ได้ (กระดิ่งในแอปใช้ได้ปกติ)" },
       { name: "ข้อมูลผู้ให้บริการ (PDPA)", status: env("NEXT_PUBLIC_LEGAL_NAME") && env("NEXT_PUBLIC_PRIVACY_EMAIL") ? "ok" : "warn",
         detail: env("NEXT_PUBLIC_LEGAL_NAME") && env("NEXT_PUBLIC_PRIVACY_EMAIL") ? "ตั้งแล้ว" : "ยังไม่ได้ตั้ง NEXT_PUBLIC_LEGAL_NAME / NEXT_PUBLIC_PRIVACY_EMAIL — หน้านโยบายแสดงข้อความแทนที่" },
     ],

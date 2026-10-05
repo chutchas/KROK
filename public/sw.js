@@ -124,3 +124,38 @@ self.addEventListener("message", (e) => {
     if (e.waitUntil) e.waitUntil(shellJob);
   }
 });
+
+// ---------- แจ้งเตือนเด้ง (Web Push · 0067) ----------
+self.addEventListener("push", (e) => {
+  let d = {};
+  try { d = e.data ? e.data.json() : {}; } catch { d = { body: e.data ? e.data.text() : "" }; }
+  const title = d.title || "KROK";
+  e.waitUntil(
+    self.registration.showNotification(title, {
+      body: d.body || "",
+      icon: "/icon-192.png",
+      badge: "/icon-192.png",
+      tag: d.tag || undefined,
+      data: { url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : "/dashboard" },
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (e) => {
+  e.notification.close();
+  const url = new URL((e.notification.data && e.notification.data.url) || "/dashboard", self.location.origin).href;
+  e.waitUntil(
+    (async () => {
+      const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
+      // มีแท็บของแอปเปิดอยู่ → ใช้แท็บนั้น
+      for (const w of wins) {
+        if (new URL(w.url).origin === self.location.origin && "focus" in w) {
+          await w.focus();
+          if ("navigate" in w) { try { await w.navigate(url); } catch { /* ข้ามได้ */ } }
+          return;
+        }
+      }
+      await self.clients.openWindow(url);
+    })()
+  );
+});

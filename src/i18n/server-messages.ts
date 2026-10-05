@@ -205,4 +205,8 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ไม่พบเวอร์ชันนี้": "Version not found",
   "เวอร์ชันนี้เป็นเวอร์ชันปัจจุบันอยู่แล้ว": "This is already the current version",
   "ฟอร์มนี้ต้องระบุตำแหน่ง (GPS) ก่อนส่ง": "This form requires your location (GPS) before submitting",
+  "ระบบยังไม่ได้ตั้งค่าแจ้งเตือนเด้ง (VAPID) — ติดต่อผู้ดูแลระบบ": "Push notifications aren't set up yet (VAPID) — contact your system admin",
+  "ข้อมูลการแจ้งเตือนของเครื่องไม่ถูกต้อง": "Invalid device notification data",
+  "ไม่พบเครื่องนี้ในรายการ — กดเปิดแจ้งเตือนอีกครั้ง": "This device isn't registered — enable notifications again",
+  "ส่งไม่สำเร็จ — ลองปิดแล้วเปิดแจ้งเตือนใหม่": "Sending failed — try turning notifications off and on again",
 };

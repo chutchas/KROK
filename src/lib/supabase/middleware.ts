@@ -11,10 +11,10 @@ import { buildCsp, newNonce } from "@/lib/csp";
 // - /api/cron: งานตั้งเวลา (ตรวจ CRON_SECRET ในตัว)
 // - /api/billing/callback: ผลการชำระจาก Payment Gateway (ตรวจลายเซ็นในตัว)
 // - /sw.js, /offline, /manifest: ไฟล์ PWA/ออฟไลน์
-const PUBLIC_PATHS = ["/login", "/auth", "/privacy", "/terms", "/api/health", "/f/", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
+const PUBLIC_PATHS = ["/login", "/auth", "/privacy", "/terms", "/api/health", "/f/", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/push/dispatch", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
 // เส้นทางที่ไม่ใช้ session ผู้ใช้เลย (ตรวจ API key / secret เอง หรือเป็นไฟล์) — ข้ามการเช็ก login ทั้งหมด
-const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
+const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/push/dispatch", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
 export async function updateSession(request: NextRequest) {
   // CSP + nonce ใหม่ทุกคำขอ — Next แปะ nonce ให้สคริปต์ของตัวเองอัตโนมัติจาก header นี้ (หน้าต้อง render แบบ dynamic)

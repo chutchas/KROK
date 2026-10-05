@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2, FilePlus2, Inbox, CornerUpLeft, CheckCheck, CalendarClock, AlarmClock } from "lucide-react";
+import { Bell, Clock, AlertTriangle, CheckCircle2, Undo2, FilePlus2, Inbox, CornerUpLeft, CheckCheck, CalendarClock, AlarmClock, BellRing } from "lucide-react";
 import { localizeStored } from "@/i18n/stored-text";
 import Icon, { type IconType } from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
@@ -129,6 +129,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
               </button>
             ))}
           </div>
+          <a href="/settings/profile#push" onClick={() => setOpen(false)} style={{ display: "flex", alignItems: "center", gap: 6, padding: "9px 14px", fontSize: ".8rem", color: "var(--accent-text)", borderTop: "1px solid var(--line)", textDecoration: "none" }}>
+            <Icon icon={BellRing} className="h-4 w-4" /> {t("bell.pushLink")}
+          </a>
         </div>
       )}
     </div>
