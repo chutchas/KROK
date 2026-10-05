@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { createClient } from "@/lib/supabase/server";
 import { getSession, hasMenu } from "@/lib/session";
@@ -56,7 +57,7 @@ export async function saveDashboardLayout(widgets: unknown): Promise<{ ok: true 
     },
     { onConflict: "user_id,tenant_id" }
   );
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   return { ok: true };
 }
 
@@ -141,7 +142,7 @@ export async function computeWidgets(ws: DashWidget[]): Promise<WidgetResult[]> 
 export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!(await hasMenu(session, "dashboard"))) return { error: "ไม่มีสิทธิ์ใช้แดชบอร์ด" };
+  if (!(await hasMenu(session, "dashboard"))) return { error: await sm("ไม่มีสิทธิ์ใช้แดชบอร์ด") };
   if (!WIDGET_FORMATS.includes(w.format) || !WIDGET_METRICS.includes(w.metric)) return { error: "bad widget" };
   if (!RANGES.includes(w.range)) return { error: "bad widget" };
 
@@ -171,7 +172,7 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
     if (scoped) q = q.eq("form_id", scoped);
     if (startIso) q = q.gte("submitted_at", startIso);
     const { data, error } = await q;
-    if (error) return { error: dbError(error) };
+    if (error) return { error: await sm(dbError(error)) };
     const batch = (data || []) as unknown as SRow[];
     rows.push(...batch);
     if (batch.length < PAGE) break;

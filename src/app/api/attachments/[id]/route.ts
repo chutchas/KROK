@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { createClient } from "@/lib/supabase/server";
@@ -29,7 +30,7 @@ export async function GET(
     .eq("id", id)
     .maybeSingle();
 
-  if (!att) return NextResponse.json({ error: "ไม่พบเอกสาร" }, { status: 404 });
+  if (!att) return NextResponse.json({ error: await sm("ไม่พบเอกสาร") }, { status: 404 });
 
   // ---- ตรวจสิทธิ์ (ก่อนทั้งลิงก์และไฟล์) ----
   let allowed = false;
@@ -50,15 +51,15 @@ export async function GET(
     if (f && f.tenant_id === att.tenant_id && f.visibility === "public" && f.status === "published" && !f.deleted_at) allowed = true;
   }
 
-  if (!allowed) return NextResponse.json({ error: "ไม่มีสิทธิ์เปิดเอกสารนี้" }, { status: 403 });
+  if (!allowed) return NextResponse.json({ error: await sm("ไม่มีสิทธิ์เปิดเอกสารนี้") }, { status: 403 });
 
   // ลิงก์ภายนอก — ไม่ต้องออก signed URL
   if (att.kind === "link") {
-    if (!att.url) return NextResponse.json({ error: "ลิงก์ว่าง" }, { status: 404 });
+    if (!att.url) return NextResponse.json({ error: await sm("ลิงก์ว่าง") }, { status: 404 });
     // ไม่ redirect อัตโนมัติ (กันใช้โดเมน KROK เป็นทางผ่านไปเว็บหลอกลวง) — แสดงหน้าคั่นให้ผู้ใช้เห็นปลายทางก่อนกด
     let target: URL;
-    try { target = new URL(att.url as string); } catch { return NextResponse.json({ error: "ลิงก์ไม่ถูกต้อง" }, { status: 400 }); }
-    if (target.protocol !== "https:" && target.protocol !== "http:") return NextResponse.json({ error: "ลิงก์ไม่ถูกต้อง" }, { status: 400 });
+    try { target = new URL(att.url as string); } catch { return NextResponse.json({ error: await sm("ลิงก์ไม่ถูกต้อง") }, { status: 400 }); }
+    if (target.protocol !== "https:" && target.protocol !== "http:") return NextResponse.json({ error: await sm("ลิงก์ไม่ถูกต้อง") }, { status: 400 });
     return new NextResponse(leavePage(target.toString(), String(att.name || "")), {
       status: 200,
       headers: { "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer" },
@@ -68,7 +69,7 @@ export async function GET(
   // path ที่บันทึกไว้ต้องอยู่ใต้ <tenant>/<form>/ ของเอกสารนี้จริง (กันข้อมูลเก่าที่มี ".." หลุดมา)
   const sp = String(att.storage_path || "");
   if (!sp.startsWith(`${att.tenant_id}/${att.form_id}/`) || sp.includes("..") || sp.includes("\\") || sp.includes("%"))
-    return NextResponse.json({ error: "เปิดเอกสารไม่ได้" }, { status: 400 });
+    return NextResponse.json({ error: await sm("เปิดเอกสารไม่ได้") }, { status: 400 });
 
   const signer = admin ?? (await createClient());
   const { data: signed, error } = await signer.storage
@@ -76,7 +77,7 @@ export async function GET(
     .createSignedUrl(att.storage_path as string, SIGNED_TTL, download ? { download: (att.name as string) || "document" } : undefined);
 
   if (error || !signed?.signedUrl)
-    return NextResponse.json({ error: "เปิดเอกสารไม่ได้" }, { status: 500 });
+    return NextResponse.json({ error: await sm("เปิดเอกสารไม่ได้") }, { status: 500 });
 
   return NextResponse.redirect(signed.signedUrl);
 }

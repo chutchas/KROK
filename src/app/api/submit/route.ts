@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { clampFilledAt } from "@/lib/filled-at";
 import { runLater } from "@/lib/background";
@@ -47,14 +48,14 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return fail(401, "unauthorized");
   const admin = getAdminClient();
-  if (!admin) return fail(503, "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY");
+  if (!admin) return fail(503, await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY"));
 
   const len = Number(req.headers.get("content-length") || 0);
-  if (len > MAX_BODY) return fail(413, "ข้อมูลใหญ่เกินไป");
+  if (len > MAX_BODY) return fail(413, await sm("ข้อมูลใหญ่เกินไป"));
   let body: Body;
   try {
     const text = await req.text();
-    if (text.length > MAX_BODY) return fail(413, "ข้อมูลใหญ่เกินไป");
+    if (text.length > MAX_BODY) return fail(413, await sm("ข้อมูลใหญ่เกินไป"));
     body = JSON.parse(text) as Body;
   } catch {
     return fail(400, "bad request");
@@ -94,21 +95,21 @@ export async function POST(req: Request) {
     listNames(admin, folder),
   ]);
 
-  if (limited) return fail(429, "ส่งถี่เกินไป โปรดลองใหม่อีกสักครู่");
+  if (limited) return fail(429, await sm("ส่งถี่เกินไป โปรดลองใหม่อีกสักครู่"));
   const mem = memRes.data as { name: string | null; email: string | null } | null;
-  if (!mem) return fail(403, "คุณไม่ได้เป็นสมาชิกของ workspace ที่กรอกใบนี้แล้ว");
+  if (!mem) return fail(403, await sm("คุณไม่ได้เป็นสมาชิกของ workspace ที่กรอกใบนี้แล้ว"));
   const userName = (mem.name || "").trim() || mem.email || session.displayName;
 
   const dup = dupRes.data;
   if (dup) {
-    if (dup.submitted_by !== session.userId) return fail(409, "รหัสเอกสารซ้ำ");
+    if (dup.submitted_by !== session.userId) return fail(409, await sm("รหัสเอกสารซ้ำ"));
     // รอบก่อนบันทึกใบสำเร็จแต่แถวรูปยังไม่ครบ (เน็ตหลุดกลางทาง) → เติมแถวรูปที่ขาด
     await backfillPhotos(admin, tenantId, subId, folder, body.photos);
     return NextResponse.json({ ok: true, duplicate: true, result: dup.result, fails: dup.fails });
   }
 
   const f = formRes.data;
-  if (!f || f.tenant_id !== tenantId) return fail(404, "ไม่พบฟอร์ม หรือไม่มีสิทธิ์กรอกฟอร์มนี้");
+  if (!f || f.tenant_id !== tenantId) return fail(404, await sm("ไม่พบฟอร์ม หรือไม่มีสิทธิ์กรอกฟอร์มนี้"));
 
   let schemaRaw: unknown = f.schema;
   let version = (f.version as number) ?? 1;
@@ -119,28 +120,28 @@ export async function POST(req: Request) {
       .select("id, tenant_id, form_id, status, claimed_by, schema, form_version")
       .eq("id", caseId)
       .maybeSingle();
-    if (!c || c.tenant_id !== tenantId || c.form_id !== formId) return fail(404, "ไม่พบงาน");
-    if (c.status !== "open" || c.claimed_by !== session.userId) return fail(409, "งานนี้ไม่ได้อยู่กับคุณแล้ว");
+    if (!c || c.tenant_id !== tenantId || c.form_id !== formId) return fail(404, await sm("ไม่พบงาน"));
+    if (c.status !== "open" || c.claimed_by !== session.userId) return fail(409, await sm("งานนี้ไม่ได้อยู่กับคุณแล้ว"));
     schemaRaw = c.schema;
     version = (c.form_version as number) ?? version;
   } else if (f.deleted_at || f.status !== "published") {
-    return fail(409, "ฟอร์มนี้ปิดรับข้อมูลแล้ว");
+    return fail(409, await sm("ฟอร์มนี้ปิดรับข้อมูลแล้ว"));
   }
 
   let schema: FormSchema;
-  try { schema = sanitizeSchema(schemaRaw); } catch { return fail(500, "ฟอร์มไม่ถูกต้อง"); }
+  try { schema = sanitizeSchema(schemaRaw); } catch { return fail(500, await sm("ฟอร์มไม่ถูกต้อง")); }
 
   const d = devRes.data as { id: string; status: string } | null;
   const deviceId: string | null = d && d.status === "approved" ? d.id : null;
   if (f.require_approved_device) {
-    if (!deviceId) return fail(403, "เครื่องนี้ยังไม่ได้รับอนุมัติให้กรอกฟอร์มนี้");
+    if (!deviceId) return fail(403, await sm("เครื่องนี้ยังไม่ได้รับอนุมัติให้กรอกฟอร์มนี้"));
     if (f.device_scope === "selected") {
       const { data: link } = await admin.from("form_devices").select("device_id").eq("form_id", formId).eq("device_id", deviceId).maybeSingle();
-      if (!link) return fail(403, "เครื่องนี้ไม่ได้รับอนุญาตสำหรับฟอร์มนี้");
+      if (!link) return fail(403, await sm("เครื่องนี้ไม่ได้รับอนุญาตสำหรับฟอร์มนี้"));
     }
   }
 
-  if (!names) return fail(503, "อ่านไฟล์แนบไม่สำเร็จ โปรดลองใหม่");
+  if (!names) return fail(503, await sm("อ่านไฟล์แนบไม่สำเร็จ โปรดลองใหม่"));
   const uploaded = photoKeysOf(names);
 
   // ไม่เชื่อผลจากเบราว์เซอร์: กรองคำตอบตาม schema + คำนวณ ผ่าน/ไม่ผ่าน ใหม่
@@ -185,7 +186,7 @@ export async function POST(req: Request) {
     // โควตาแพ็กเกจเต็ม: ข้อความมีแท็ก [quota:…] ให้หน้ากรอกแสดงตรง ๆ
     if (/\[quota:[a-z_]+\]/.test(insErr.message)) return fail(402, insErr.message, { quota: true });
     console.error("[krok] submit insert failed:", insErr.message);
-    return fail(500, "บันทึกไม่สำเร็จ โปรดลองใหม่");
+    return fail(500, await sm("บันทึกไม่สำเร็จ โปรดลองใหม่"));
   }
 
   // แถวรูป: เฉพาะไฟล์ที่มีอยู่จริงในโฟลเดอร์ของใบนี้ (ล้ม = ส่งซ้ำแล้วเติมให้ที่ทาง duplicate)
@@ -219,7 +220,7 @@ export async function POST(req: Request) {
     photoRows.length ? admin.from("submission_photos").insert(photoRows) : Promise.resolve({ error: null }),
     docRows.length ? admin.from("submission_doc_extracts").insert(docRows) : Promise.resolve({ error: null }),
   ]);
-  if (phRes.error) { console.error("[krok] submit photo rows failed:", phRes.error.message); return fail(500, "บันทึกรูปไม่สำเร็จ โปรดลองใหม่"); }
+  if (phRes.error) { console.error("[krok] submit photo rows failed:", phRes.error.message); return fail(500, await sm("บันทึกรูปไม่สำเร็จ โปรดลองใหม่")); }
 
   // audit ทำหลังตอบผู้ใช้ (ไม่ให้ผู้กรอกรอ)
   runLater(() => writeAudit({

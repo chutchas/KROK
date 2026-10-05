@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/i18n/T";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import AuditClient, { type AuditRow } from "./AuditClient";
@@ -11,7 +12,7 @@ export default async function AuditPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (!session.canManageWs)
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับผู้ดูแล workspace เท่านั้น</div>;
+    return <div style={{ color: "var(--ink-2)" }}><T k="page.wsAdminOnly" /></div>;
 
   const supabase = await createClient();
   // แสดงย้อนหลังตามแพ็กเกจ (auditDays) — ข้อมูลเก่ากว่านั้นยังเก็บอยู่ อัปเกรดแล้วเห็นได้

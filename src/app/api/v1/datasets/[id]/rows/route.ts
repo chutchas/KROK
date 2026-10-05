@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { NextResponse } from "next/server";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -81,26 +82,26 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!admin) return NextResponse.json({ error: "service unavailable" }, { status: 503 });
   const a = await authenticate(req, id, admin);
   if (!a) return unauthorized();
-  if (await rateLimited(admin, id)) return NextResponse.json({ error: "rate limit — สูงสุด 60 ครั้ง/นาที" }, { status: 429 });
+  if (await rateLimited(admin, id)) return NextResponse.json({ error: await sm("rate limit — สูงสุด 60 ครั้ง/นาที") }, { status: 429 });
 
   const len = Number(req.headers.get("content-length") || 0);
-  if (len > MAX_IMPORT_BYTES) return NextResponse.json({ error: "payload ใหญ่เกิน 10MB" }, { status: 413 });
+  if (len > MAX_IMPORT_BYTES) return NextResponse.json({ error: await sm("payload ใหญ่เกิน 10MB") }, { status: 413 });
 
   let body: Record<string, unknown>;
   try {
     const text = await req.text();
-    if (text.length > MAX_IMPORT_BYTES) return NextResponse.json({ error: "payload ใหญ่เกิน 10MB" }, { status: 413 });
+    if (text.length > MAX_IMPORT_BYTES) return NextResponse.json({ error: await sm("payload ใหญ่เกิน 10MB") }, { status: 413 });
     body = JSON.parse(text);
   } catch {
-    return NextResponse.json({ error: "body ต้องเป็น JSON" }, { status: 400 });
+    return NextResponse.json({ error: await sm("body ต้องเป็น JSON") }, { status: 400 });
   }
-  if (!body || typeof body !== "object") return NextResponse.json({ error: "body ต้องเป็น JSON object" }, { status: 400 });
+  if (!body || typeof body !== "object") return NextResponse.json({ error: await sm("body ต้องเป็น JSON object") }, { status: 400 });
 
   const rows = Array.isArray(body.rows) ? body.rows : [];
   const deleteKeys = Array.isArray(body.delete_keys) ? body.delete_keys.map(String).filter(Boolean).slice(0, 5000) : [];
   const mode = body.mode === "replace" ? "replace" : body.mode === "upsert" ? "upsert" : a.ds.syncMode;
   if (rows.length > MAX_DATASET_ROWS) return NextResponse.json({ error: `rows เกิน ${MAX_DATASET_ROWS} แถวต่อคำขอ` }, { status: 400 });
-  if (!rows.length && !deleteKeys.length && mode !== "replace") return NextResponse.json({ error: "ไม่มี rows หรือ delete_keys" }, { status: 400 });
+  if (!rows.length && !deleteKeys.length && mode !== "replace") return NextResponse.json({ error: await sm("ไม่มี rows หรือ delete_keys") }, { status: 400 });
 
   let { columns } = a.ds;
   let keyColumn = a.ds.keyColumn;
@@ -116,7 +117,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   }
 
   if ((mode === "upsert" || deleteKeys.length) && !keyColumn)
-    return NextResponse.json({ error: "dataset นี้ยังไม่มี key column — ใช้ mode=replace หรือกำหนด key ในหน้า KROK (หรือส่ง key_column มาในครั้งแรก)" }, { status: 400 });
+    return NextResponse.json({ error: await sm("dataset นี้ยังไม่มี key column — ใช้ mode=replace หรือกำหนด key ในหน้า KROK (หรือส่ง key_column มาในครั้งแรก)") }, { status: 400 });
 
   const records = rows.map((r) => mapPushedRecord(r, columns)).filter((r): r is DatasetRecord => r !== null);
 

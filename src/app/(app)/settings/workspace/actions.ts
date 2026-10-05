@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -12,13 +13,13 @@ import { cleanImageUrl, sanitizeThemeSettings } from "@/lib/theme";
 export async function renameWorkspace(name: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { error: "ไม่มีสิทธิ์เปลี่ยนชื่อ workspace" };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("ไม่มีสิทธิ์เปลี่ยนชื่อ workspace") };
   const clean = name.trim();
-  if (!clean) return { error: "ชื่อ workspace ห้ามว่าง" };
+  if (!clean) return { error: await sm("ชื่อ workspace ห้ามว่าง") };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("rename_workspace", { p_tenant: session.tenantId, p_name: clean });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   await writeAudit({
     tenant_id: session.tenantId,
@@ -37,13 +38,13 @@ export async function renameWorkspace(name: string): Promise<{ ok: true } | { er
 export async function deleteWorkspace(confirmName: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner") return { error: "เฉพาะเจ้าของ workspace เท่านั้นที่ลบได้" };
+  if (session.role !== "owner") return { error: await sm("เฉพาะเจ้าของ workspace เท่านั้นที่ลบได้") };
   if (confirmName.trim() !== session.tenantName)
-    return { error: "ชื่อยืนยันไม่ตรงกับชื่อ workspace" };
+    return { error: await sm("ชื่อยืนยันไม่ตรงกับชื่อ workspace") };
 
   const supabase = await createClient();
   const { error } = await supabase.rpc("delete_workspace", { p_tenant: session.tenantId });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   // ไฟล์โลโก้/รูปของ workspace ใน storage ไม่ถูกลบตามตาราง — ลบทั้งโฟลเดอร์ (ลบ workspace สำเร็จแล้วเท่านั้น)
   const admin = getAdminClient();
@@ -63,10 +64,10 @@ export async function deleteWorkspace(confirmName: string): Promise<{ ok: true }
 export async function saveBranding(input: { logo_url?: string | null; primary?: string; header?: string; footer_text?: string }): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { error: "ไม่มีสิทธิ์แก้แบรนด์ของ workspace" };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("ไม่มีสิทธิ์แก้แบรนด์ของ workspace") };
   const theme = sanitizeThemeSettings(input);
   const logo = cleanImageUrl(input.logo_url) ?? null;
-  if (input.logo_url && !logo) return { error: "ไฟล์โลโก้ไม่ถูกต้อง" };
+  if (input.logo_url && !logo) return { error: await sm("ไฟล์โลโก้ไม่ถูกต้อง") };
 
   const supabase = await createClient();
   const { error } = await supabase.from("tenant_branding").upsert({
@@ -94,7 +95,7 @@ export async function saveBranding(input: { logo_url?: string | null; primary?: 
 export async function listBrandLibrary(): Promise<{ assets: BrandAsset[] } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   try {
     const supabase = await createClient();
     return { assets: await getBrandLibrary(supabase, getAdminClient() ?? supabase, session.tenantId) };
@@ -111,7 +112,7 @@ export async function listBrandLibrary(): Promise<{ assets: BrandAsset[] } | { e
 export async function deleteBrandAssets(paths: string[]): Promise<{ deleted: number; skipped: string[] } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { error: "เฉพาะ owner/admin เท่านั้นที่ลบรูปได้" };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะ owner/admin เท่านั้นที่ลบรูปได้") };
   const prefix = `${session.tenantId}/`;
   const wanted = [...new Set(paths)].filter((p) => typeof p === "string" && p.startsWith(prefix) && !p.includes("..") && !p.slice(prefix.length).includes("/")).slice(0, 500);
   if (!wanted.length) return { deleted: 0, skipped: [] };
@@ -121,13 +122,13 @@ export async function deleteBrandAssets(paths: string[]): Promise<{ deleted: num
   try {
     uses = await brandAssetUses(getAdminClient() ?? supabase, session.tenantId);
   } catch {
-    return { error: "ตรวจการใช้งานรูปไม่สำเร็จ — ยังไม่ลบ" };
+    return { error: await sm("ตรวจการใช้งานรูปไม่สำเร็จ — ยังไม่ลบ") };
   }
   const skipped = wanted.filter((p) => (uses.get(p)?.length ?? 0) > 0);
   const del = wanted.filter((p) => !skipped.includes(p));
   if (del.length) {
     const { error } = await supabase.storage.from("branding").remove(del);
-    if (error) return { error: dbError(error) };
+    if (error) return { error: await sm(dbError(error)) };
     await writeAudit({
       tenant_id: session.tenantId,
       actor_id: session.userId,

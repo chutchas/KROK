@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -28,7 +29,7 @@ export async function saveProfile(input: ProfileInput): Promise<{ ok: true } | {
 
   const supabase = await createClient();
   const { error } = await supabase.from("profiles").upsert(clean, { onConflict: "user_id" });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   // ซิงก์ชื่อที่แสดง (display_name) กับ membership rows เพื่อให้หน้า Team/Dashboard เห็นตรงกัน
   const display = [clean.first_name, clean.last_name].filter(Boolean).join(" ").trim();
@@ -52,7 +53,7 @@ export async function saveAvatar(url: string): Promise<{ ok: true } | { error: s
   const { error } = await supabase
     .from("profiles")
     .upsert({ user_id: session.userId, avatar_url: clean || null, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   await supabase.auth.updateUser({ data: { avatar_url: clean || null } });
 

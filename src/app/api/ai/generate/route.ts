@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
 import { aiRateLimited } from "@/lib/rate-limit";
@@ -11,9 +12,9 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (await aiRateLimited(session.userId, "generate"))
-    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
+    return NextResponse.json({ error: await sm("เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่") }, { status: 429 });
   if (!canManage(session.role))
-    return NextResponse.json({ error: "ไม่มีสิทธิ์สร้างฟอร์ม" }, { status: 403 });
+    return NextResponse.json({ error: await sm("ไม่มีสิทธิ์สร้างฟอร์ม") }, { status: 403 });
 
   let body: { prompt?: string; schema?: unknown; instruction?: string };
   try {
@@ -36,13 +37,13 @@ export async function POST(req: Request) {
     } else if (body.prompt) {
       schema = await generateForm(body.prompt.slice(0, 2000), { tenantId: session.tenantId });
     } else {
-      return NextResponse.json({ error: "ต้องมี prompt หรือ instruction" }, { status: 400 });
+      return NextResponse.json({ error: await sm("ต้องมี prompt หรือ instruction") }, { status: 400 });
     }
     return NextResponse.json({ schema });
   } catch (e) {
     console.error("ai/generate", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "AI ผิดพลาด" },
+      { error: e instanceof Error ? await sm(e.message) : "AI ผิดพลาด" },
       { status: 500 }
     );
   }

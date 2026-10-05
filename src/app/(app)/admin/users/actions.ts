@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -10,18 +11,18 @@ const PLATFORM_ROLES: PlatformRole[] = ["platform_admin", "developer", "user"];
 async function requirePlatform() {
   const session = await getSession();
   if (!session) return { ok: false as const, error: "unauthorized" };
-  if (!session.isPlatformAdmin) return { ok: false as const, error: "เฉพาะ admin ของระบบเท่านั้น" };
+  if (!session.isPlatformAdmin) return { ok: false as const, error: await sm("เฉพาะ admin ของระบบเท่านั้น") };
   const admin = getAdminClient();
-  if (!admin) return { ok: false as const, error: "ระบบยังไม่ได้ตั้งค่า service key" };
+  if (!admin) return { ok: false as const, error: await sm("ระบบยังไม่ได้ตั้งค่า service key") };
   return { ok: true as const, session, admin };
 }
 
 export async function setPlatformRole(userId: string, role: PlatformRole): Promise<{ ok: true } | { error: string }> {
   const a = await requirePlatform();
   if (!a.ok) return { error: a.error };
-  if (!PLATFORM_ROLES.includes(role)) return { error: "role ไม่ถูกต้อง" };
+  if (!PLATFORM_ROLES.includes(role)) return { error: await sm("role ไม่ถูกต้อง") };
   if (userId === a.session.userId && role !== "platform_admin")
-    return { error: "ถอดสิทธิ์ platform admin ของตัวเองไม่ได้" };
+    return { error: await sm("ถอดสิทธิ์ platform admin ของตัวเองไม่ได้") };
 
   const { error } = await a.admin.from("profiles").update({ platform_role: role }).eq("user_id", userId);
   if (error) return { error: error.message };
@@ -39,7 +40,7 @@ export async function removeFromWorkspace(userId: string, tenantId: string): Pro
     .eq("tenant_id", tenantId)
     .eq("role", "owner");
   const isOnlyOwner = (owners || []).length <= 1 && (owners || []).some((o) => o.user_id === userId);
-  if (isOnlyOwner) return { error: "ลบ owner คนสุดท้ายของ workspace ไม่ได้" };
+  if (isOnlyOwner) return { error: await sm("ลบ owner คนสุดท้ายของ workspace ไม่ได้") };
 
   const { error } = await a.admin.from("memberships").delete().eq("user_id", userId).eq("tenant_id", tenantId);
   if (error) return { error: error.message };
@@ -55,7 +56,7 @@ export async function setUserPlan(userId: string, plan: string): Promise<{ ok: t
   const a = await requirePlatform();
   if (!a.ok) return { error: a.error };
   const plans = await getEffectivePlans();
-  if (typeof plan !== "string" || !plans[plan]) return { error: "ไม่พบแพ็กเกจนี้" };
+  if (typeof plan !== "string" || !plans[plan]) return { error: await sm("ไม่พบแพ็กเกจนี้") };
 
   const { data: cur, error: readErr } = await a.admin.from("account_plans").select("plan").eq("user_id", userId).maybeSingle();
   if (readErr) return { error: /account_plans/.test(readErr.message) ? "ต้องรัน migration 0045_account_plans ก่อน" : readErr.message };

@@ -62,6 +62,8 @@ export function LanguageProvider({
   useEffect(() => {
     try {
       document.documentElement.lang = lang;
+      // ให้ server ตอบข้อความ error เป็นภาษาเดียวกับหน้าจอ
+      document.cookie = `krok_lang=${lang}; path=/; max-age=31536000; samesite=lax`;
     } catch {
       /* ignore */
     }

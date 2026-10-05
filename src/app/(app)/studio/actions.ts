@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -109,7 +110,7 @@ function deviceScopeOf(requireDevice: boolean, vis: Visibility, scope: "any" | "
 export async function loadFormSchema(id: string): Promise<{ schema: FormSchema } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   const supabase = await createClient();
   const { data, error } = await supabase.from("forms").select("schema").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
   if (error || !data) return { error: error?.message || "ไม่พบฟอร์ม" };
@@ -124,21 +125,21 @@ export async function setFormVisibility(
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์แก้สิทธิ์การแชร์" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์แก้สิทธิ์การแชร์") };
 
   const vis = sanitizeVisibility(rawVisibility);
   const supabase = await createClient();
   const patch: Record<string, unknown> = { visibility: vis.mode, visible_teams: vis.teamIds, visible_users: vis.userIds };
   if (typeof privacyNotice === "string") {
     const { data: cur } = await supabase.from("forms").select("schema").eq("id", formId).eq("tenant_id", session.tenantId).maybeSingle();
-    if (!cur) return { error: "ไม่พบฟอร์ม" };
+    if (!cur) return { error: await sm("ไม่พบฟอร์ม") };
     try {
       const sc = sanitizeSchema(cur.schema);
       const pn = privacyNotice.trim().slice(0, 2000);
       if (pn) sc.privacy_notice = pn; else delete sc.privacy_notice;
       patch.schema = sc;
     } catch {
-      return { error: "schema ไม่ถูกต้อง" };
+      return { error: await sm("schema ไม่ถูกต้อง") };
     }
   }
   const { error } = await supabase
@@ -146,7 +147,7 @@ export async function setFormVisibility(
     .update(patch)
     .eq("id", formId)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   await audit(session.tenantId, session.userId, "form.visibility", formId, { mode: vis.mode });
   revalidatePath("/studio");
@@ -164,13 +165,13 @@ export async function saveForm(
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์สร้างฟอร์ม" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์สร้างฟอร์ม") };
 
   let schema: FormSchema;
   try {
     schema = sanitizeSchema(rawSchema);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
+    return { error: e instanceof Error ? await sm(e.message) : "schema ไม่ถูกต้อง" };
   }
   const chain = requiresApproval ? sanitizeChain(rawChain) : [];
   const vis = sanitizeVisibility(rawVisibility);
@@ -204,7 +205,7 @@ export async function saveForm(
     .select("id")
     .single();
 
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await audit(session.tenantId, session.userId, "form.publish", data.id, {
     title: schema.title,
     fields: countFields(schema),
@@ -231,13 +232,13 @@ export async function updateForm(
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์แก้ไขฟอร์ม" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์แก้ไขฟอร์ม") };
 
   let schema: FormSchema;
   try {
     schema = sanitizeSchema(rawSchema);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
+    return { error: e instanceof Error ? await sm(e.message) : "schema ไม่ถูกต้อง" };
   }
   const chain = requiresApproval ? sanitizeChain(rawChain) : [];
   const vis = sanitizeVisibility(rawVisibility);
@@ -272,7 +273,7 @@ export async function updateForm(
     .select("id")
     .single();
 
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   // ซิงก์ชื่อ/ไอคอนไปยัง submissions เดิม เพื่อให้ทุกหน้า (dashboard/ประวัติ/อนุมัติ) แสดงชื่อใหม่ตรงกัน
   // เฉพาะตอนที่ชื่อหรือไอคอนเปลี่ยนจริง — เดิมเขียนทับทุก submission ทุกครั้งที่กดบันทึก (ช้า + realtime ถล่ม dashboard)
@@ -307,13 +308,13 @@ export async function saveDraft(
 ): Promise<{ id: string } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์สร้างฟอร์ม" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์สร้างฟอร์ม") };
 
   let schema: FormSchema;
   try {
     schema = sanitizeSchema(rawSchema);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "schema ไม่ถูกต้อง" };
+    return { error: e instanceof Error ? await sm(e.message) : "schema ไม่ถูกต้อง" };
   }
   const chain = requiresApproval ? sanitizeChain(rawChain) : [];
   const vis = sanitizeVisibility(rawVisibility);
@@ -339,7 +340,7 @@ export async function saveDraft(
     })
     .select("id")
     .single();
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await audit(session.tenantId, session.userId, "form.draft", data.id, { title: schema.title });
   revalidatePath("/studio");
   return { id: data.id as string };
@@ -351,8 +352,8 @@ export async function setFormStatus(
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
-  if (!["draft", "published", "archived"].includes(status)) return { error: "สถานะไม่ถูกต้อง" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
+  if (!["draft", "published", "archived"].includes(status)) return { error: await sm("สถานะไม่ถูกต้อง") };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -360,7 +361,7 @@ export async function setFormStatus(
     .update({ status, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await audit(session.tenantId, session.userId, "form.status", id, { status });
 
   // เผยแพร่ (จากร่าง/กู้คืน) → แจ้งเตือนสมาชิกที่มีสิทธิ์เห็นฟอร์ม
@@ -388,7 +389,7 @@ export async function setFormStatus(
 export async function deleteForm(id: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
 
   const supabase = await createClient();
   const { error } = await supabase
@@ -396,7 +397,7 @@ export async function deleteForm(id: string): Promise<{ ok: true } | { error: st
     .update({ deleted_at: new Date().toISOString(), status: "archived" })
     .eq("id", id)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await audit(session.tenantId, session.userId, "form.delete", id);
   revalidatePath("/forms");
   revalidatePath("/studio");

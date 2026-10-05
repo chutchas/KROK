@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
 import { aiRateLimited } from "@/lib/rate-limit";
@@ -12,9 +13,9 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (await aiRateLimited(session.userId, "from_image"))
-    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
+    return NextResponse.json({ error: await sm("เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่") }, { status: 429 });
   if (!canManage(session.role))
-    return NextResponse.json({ error: "ไม่มีสิทธิ์สร้างฟอร์ม" }, { status: 403 });
+    return NextResponse.json({ error: await sm("ไม่มีสิทธิ์สร้างฟอร์ม") }, { status: 403 });
 
   try {
     const form = await req.formData();
@@ -25,13 +26,13 @@ export async function POST(req: Request) {
     let total = 0;
     for (const f of files) {
       if (!ALLOWED.includes(f.type))
-        return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
+        return NextResponse.json({ error: await sm("ชนิดไฟล์ไม่รองรับ") }, { status: 400 });
       total += f.size;
       if (f.size > 8 * 1024 * 1024)
-        return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 8MB" }, { status: 400 });
+        return NextResponse.json({ error: await sm("ไฟล์ใหญ่เกิน 8MB") }, { status: 400 });
     }
     if (total > 20 * 1024 * 1024)
-      return NextResponse.json({ error: "รวมไฟล์ใหญ่เกิน 20MB" }, { status: 400 });
+      return NextResponse.json({ error: await sm("รวมไฟล์ใหญ่เกิน 20MB") }, { status: 400 });
 
     const credit = await consumeAiCredit(session.tenantId, "form_from_image");
     if (!credit.ok)

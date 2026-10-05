@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -26,16 +27,16 @@ export async function setPlan(plan: PlanKey, opts: { autoRenew?: boolean } = {})
   if (!session) return { error: "unauthorized" };
   const pool = await getTenantPool(session.tenantId);
   if (pool.ownerId ? pool.ownerId !== session.userId : session.role !== "owner")
-    return { error: "เฉพาะเจ้าของบัญชีที่สร้าง workspace นี้เปลี่ยนแพ็กเกจได้" };
+    return { error: await sm("เฉพาะเจ้าของบัญชีที่สร้าง workspace นี้เปลี่ยนแพ็กเกจได้") };
   const plans = await getEffectivePlans();
   const target = typeof plan === "string" ? plans[plan] : undefined;
   // ต้องเป็นแพ็กเกจที่เปิดให้ลูกค้าเลือก (ที่ซ่อน = แอดมินกำหนดให้เท่านั้น)
-  if (!target || (!target.visible && plan !== "free")) return { error: "แผนไม่ถูกต้อง" };
+  if (!target || (!target.visible && plan !== "free")) return { error: await sm("แผนไม่ถูกต้อง") };
 
   if (target.priceThb <= 0) {
     const supabase = await createClient();
     const { error } = await supabase.rpc("set_plan", { p_tenant: session.tenantId, p_plan: plan });
-    if (error) return { error: dbError(error) };
+    if (error) return { error: await sm(dbError(error)) };
     await writeAudit({
       tenant_id: session.tenantId, actor_id: session.userId, action: "plan.change",
       target_type: "tenant", target_id: session.tenantId, meta: { plan },
@@ -45,9 +46,9 @@ export async function setPlan(plan: PlanKey, opts: { autoRenew?: boolean } = {})
     return { ok: true };
   }
 
-  if (!paymentsEnabled()) return { error: "ระบบชำระเงินยังไม่เปิดให้บริการ — ยังไม่สามารถซื้อแผนนี้ได้" };
+  if (!paymentsEnabled()) return { error: await sm("ระบบชำระเงินยังไม่เปิดให้บริการ — ยังไม่สามารถซื้อแผนนี้ได้") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า service key" };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า service key") };
 
   // ใช้ใบแจ้งหนี้ที่ค้างจ่ายของแพ็กเกจเดียวกัน ถ้าลิงก์ยังไม่หมดอายุ (กันออกใบซ้ำเมื่อกดหลายครั้ง)
   const { data: open } = await admin
@@ -105,7 +106,7 @@ export async function invoiceStatus(invoiceId: string): Promise<{ status: string
   const admin = getAdminClient();
   if (!admin) return { error: "not configured" };
   const { data } = await admin.from("invoices").select("status, user_id").eq("id", invoiceId).maybeSingle();
-  if (!data || data.user_id !== session.userId) return { error: "ไม่พบใบแจ้งหนี้" };
+  if (!data || data.user_id !== session.userId) return { error: await sm("ไม่พบใบแจ้งหนี้") };
   return { status: data.status as string };
 }
 
@@ -114,9 +115,9 @@ async function requireBillingOwner() {
   if (!session) return { error: "unauthorized" as const };
   const pool = await getTenantPool(session.tenantId);
   if (pool.ownerId ? pool.ownerId !== session.userId : session.role !== "owner")
-    return { error: "เฉพาะเจ้าของบัญชีเปลี่ยนการตั้งค่าการชำระเงินได้" as const };
+    return { error: await sm("เฉพาะเจ้าของบัญชีเปลี่ยนการตั้งค่าการชำระเงินได้") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า service key" as const };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า service key") };
   return { session, admin };
 }
 
@@ -130,17 +131,17 @@ export async function setAutoRenew(on: boolean): Promise<{ ok: true } | { error:
   const { session, admin } = g;
   const { data: acct } = await admin.from("account_plans")
     .select("plan, expires_at, payment_method_ref, renew_price").eq("user_id", session.userId).maybeSingle();
-  if (!acct || acct.plan === "free") return { error: "ยังไม่มีแพ็กเกจเสียเงิน" };
+  if (!acct || acct.plan === "free") return { error: await sm("ยังไม่มีแพ็กเกจเสียเงิน") };
   if (on) {
-    if (!paymentsEnabled()) return { error: "ระบบชำระเงินยังไม่เปิดให้บริการ" };
-    if (!acct.payment_method_ref) return { error: "ยังไม่มีบัตรที่บันทึกไว้ — เพิ่มบัตรก่อน" };
-    if (!acct.expires_at || new Date(acct.expires_at as string).getTime() + 3 * 86400_000 < Date.now()) return { error: "แพ็กเกจหมดอายุแล้ว — ต่ออายุใหม่จากหน้าแพ็กเกจ" };
+    if (!paymentsEnabled()) return { error: await sm("ระบบชำระเงินยังไม่เปิดให้บริการ") };
+    if (!acct.payment_method_ref) return { error: await sm("ยังไม่มีบัตรที่บันทึกไว้ — เพิ่มบัตรก่อน") };
+    if (!acct.expires_at || new Date(acct.expires_at as string).getTime() + 3 * 86400_000 < Date.now()) return { error: await sm("แพ็กเกจหมดอายุแล้ว — ต่ออายุใหม่จากหน้าแพ็กเกจ") };
   }
   const plans = await getEffectivePlans();
   const patch: Record<string, unknown> = { auto_renew: on };
   if (on) Object.assign(patch, { renew_attempts: 0, next_attempt_at: null, last_renew_error: null, renew_price: acct.renew_price ?? plans[acct.plan as string]?.priceThb ?? null });
   const { error } = await admin.from("account_plans").update(patch).eq("user_id", session.userId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await admin.from("audit_log").insert({
     tenant_id: session.tenantId, actor_id: session.userId, action: on ? "plan.autorenew_on" : "plan.autorenew_off",
     target_type: "tenant", target_id: session.tenantId, meta: { plan: acct.plan },
@@ -154,7 +155,7 @@ export async function startCardUpdate(): Promise<{ setupUrl: string } | { error:
   const g = await requireBillingOwner();
   if (!("admin" in g) || !g.admin) return { error: String(g.error) };
   const { session, admin } = g;
-  if (!paymentsEnabled()) return { error: "ระบบชำระเงินยังไม่เปิดให้บริการ" };
+  if (!paymentsEnabled()) return { error: await sm("ระบบชำระเงินยังไม่เปิดให้บริการ") };
   const { data: setup, error } = await admin.from("card_setups").insert({ user_id: session.userId }).select("id").single();
   if (error || !setup) return { error: error?.message || "สร้างคำขอไม่สำเร็จ" };
   const origin = await siteOrigin();

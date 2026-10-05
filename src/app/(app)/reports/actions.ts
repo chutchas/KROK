@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -30,7 +31,7 @@ export async function previewReport(
 ): Promise<{ rows: PreviewRow[]; total: number } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!(await hasMenu(session, "reports"))) return { error: "ไม่มีสิทธิ์ใช้เมนูรายงาน" };
+  if (!(await hasMenu(session, "reports"))) return { error: await sm("ไม่มีสิทธิ์ใช้เมนูรายงาน") };
 
   const supabase = await createClient();
 
@@ -57,7 +58,7 @@ export async function previewReport(
   if (f.result === "pass" || f.result === "fail") q = q.eq("result", f.result);
   if (f.approval && f.approval !== "all") q = q.eq("approval_status", f.approval);
   const { data, error } = await q;
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   const rows: PreviewRow[] = ((data || []) as Record<string, unknown>[]).map((s) => {
     return {

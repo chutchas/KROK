@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
@@ -149,7 +150,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     pdf = await buildSubmissionPdf(data);
   } catch (e) {
     console.error("[krok] PDF generation failed:", e);
-    return NextResponse.json({ error: "สร้าง PDF ไม่สำเร็จ" }, { status: 500 });
+    return NextResponse.json({ error: await sm("สร้าง PDF ไม่สำเร็จ") }, { status: 500 });
   }
   const filename = `KROK-${data.docNo}.pdf`;
 

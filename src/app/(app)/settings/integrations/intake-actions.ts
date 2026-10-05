@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 // API รับข้อมูลเข้า — ตั้งค่าต่อฟอร์ม (เฉพาะผู้ดูแล; RLS can_manage ตรวจซ้ำอีกชั้น)
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -13,8 +14,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 async function guard(formId: string) {
   const session = await getSession();
-  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" } as const;
-  if (!UUID.test(formId)) return { error: "ไม่พบฟอร์ม" } as const;
+  if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") } as const;
+  if (!UUID.test(formId)) return { error: await sm("ไม่พบฟอร์ม") } as const;
   const supabase = await createClient();
   const { data: f } = await supabase
     .from("forms")
@@ -23,7 +24,7 @@ async function guard(formId: string) {
     .eq("tenant_id", session.tenantId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!f) return { error: "ไม่พบฟอร์ม" } as const;
+  if (!f) return { error: await sm("ไม่พบฟอร์ม") } as const;
   return { session, supabase, form: f };
 }
 
@@ -49,7 +50,7 @@ export async function saveIntake(
   const { session, supabase, form } = g;
 
   let schema;
-  try { schema = sanitizeSchema(form.schema); } catch { return { error: "schema ของฟอร์มไม่ถูกต้อง" }; }
+  try { schema = sanitizeSchema(form.schema); } catch { return { error: await sm("schema ของฟอร์มไม่ถูกต้อง") }; }
   const v = validateFieldKeys(schema, input.field_keys);
   if ("error" in v) return { error: v.error };
 
@@ -58,11 +59,11 @@ export async function saveIntake(
   const a = String(input.assignee || "");
   if (a.startsWith("t:") && UUID.test(a.slice(2))) {
     const { data } = await supabase.from("teams").select("id").eq("id", a.slice(2)).eq("tenant_id", session.tenantId).maybeSingle();
-    if (!data) return { error: "ไม่พบทีมนี้" };
+    if (!data) return { error: await sm("ไม่พบทีมนี้") };
     assignee = { team_id: a.slice(2) };
   } else if (a.startsWith("u:") && UUID.test(a.slice(2))) {
     const { data } = await supabase.from("memberships").select("user_id").eq("user_id", a.slice(2)).eq("tenant_id", session.tenantId).maybeSingle();
-    if (!data) return { error: "ไม่พบสมาชิกนี้" };
+    if (!data) return { error: await sm("ไม่พบสมาชิกนี้") };
     assignee = { user_id: a.slice(2) };
   }
 
@@ -94,7 +95,7 @@ export async function rotateIntakeKey(formId: string, days: number | null = 90):
   if ("error" in g) return { error: g.error! };
   const { session, supabase } = g;
   const expires = expiryFrom(days);
-  if (expires === undefined) return { error: "อายุ key ไม่ถูกต้อง" };
+  if (expires === undefined) return { error: await sm("อายุ key ไม่ถูกต้อง") };
   const k = newIntakeKey();
   const { error } = await supabase.from("form_intake").upsert({
     form_id: formId,
@@ -135,12 +136,12 @@ export async function setIntakeKeyExpiry(formId: string, days: number | null): P
   if ("error" in g) return { error: g.error! };
   const { session, supabase } = g;
   const expires = expiryFrom(days);
-  if (expires === undefined) return { error: "อายุ key ไม่ถูกต้อง" };
+  if (expires === undefined) return { error: await sm("อายุ key ไม่ถูกต้อง") };
   const { data, error } = await supabase.from("form_intake")
     .update({ key_expires_at: expires, updated_by: session.userId, updated_at: new Date().toISOString() })
     .eq("form_id", formId).not("key_hash", "is", null).select("form_id");
   if (error) return { error: migrationMsg(error.message) };
-  if (!data?.length) return { error: "ยังไม่มี key" };
+  if (!data?.length) return { error: await sm("ยังไม่มี key") };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId, action: "intake.key_expiry", target_type: "form", target_id: formId, meta: { expires_days: days },
   });

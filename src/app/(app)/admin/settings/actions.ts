@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { PAYMENT_PROVIDERS, PAYMENT_PROVIDER_IDS, type PaymentProviderId } from "@/lib/payment-meta";
@@ -19,12 +20,12 @@ export async function savePaymentProvider(
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!session.isPlatformAdmin)
-    return { error: "เฉพาะ Platform Admin เท่านั้น" };
+    return { error: await sm("เฉพาะ Platform Admin เท่านั้น") };
 
   const admin = getAdminClient();
-  if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
+  if (!admin) return { error: await sm("ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server") };
 
-  if (!PAYMENT_PROVIDER_IDS.includes(input.provider)) return { error: "ผู้ให้บริการไม่ถูกต้อง" };
+  if (!PAYMENT_PROVIDER_IDS.includes(input.provider)) return { error: await sm("ผู้ให้บริการไม่ถูกต้อง") };
   const meta = PAYMENT_PROVIDERS.find((p) => p.id === input.provider)!;
 
   // โหลดของเดิมทั้งก้อน
@@ -40,7 +41,7 @@ export async function savePaymentProvider(
   // (กันชี้ปลายทางไปเซิร์ฟเวอร์อื่นแล้วให้ระบบส่ง secret เดิมออกไป)
   const nonSecretChanged = meta.fields.some((f) => !f.secret && (input.values?.[f.key] ?? "").toString().trim().slice(0, 300) !== String(prev[f.key] ?? ""));
   const reusesSecret = meta.fields.some((f) => f.secret && !(input.values?.[f.key] ?? "").toString().trim() && typeof prev[f.key] === "string" && prev[f.key]);
-  if (nonSecretChanged && reusesSecret) return { error: "เปลี่ยนการตั้งค่าแล้ว ต้องกรอกคีย์ลับ (secret) ทุกช่องใหม่" };
+  if (nonSecretChanged && reusesSecret) return { error: await sm("เปลี่ยนการตั้งค่าแล้ว ต้องกรอกคีย์ลับ (secret) ทุกช่องใหม่") };
 
   // ประกอบ config ใหม่ของ provider นี้
   const next: Record<string, unknown> = { enabled: !!input.enabled };
@@ -98,10 +99,10 @@ export async function savePlanCatalog(input: unknown[]): Promise<{ ok: true } | 
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!session.isPlatformAdmin)
-    return { error: "เฉพาะ Platform Admin เท่านั้น" };
+    return { error: await sm("เฉพาะ Platform Admin เท่านั้น") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server" };
-  if (!Array.isArray(input) || input.length > 30) return { error: "ข้อมูลแพ็กเกจไม่ถูกต้อง" };
+  if (!admin) return { error: await sm("ยังไม่ได้ตั้ง SUPABASE_SERVICE_ROLE_KEY ฝั่ง server") };
+  if (!Array.isArray(input) || input.length > 30) return { error: await sm("ข้อมูลแพ็กเกจไม่ถูกต้อง") };
 
   const seen = new Set<string>();
   const list: Plan[] = [];

@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { isRowPhotoKey } from "@/lib/table-rows";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -25,7 +26,7 @@ export async function POST(req: Request) {
   const lenHeader = req.headers.get("content-length");
   if (!lenHeader) return NextResponse.json({ error: "length required" }, { status: 411 });
   const len = Number(lenHeader) || 0;
-  if (len > MAX_BODY_BYTES) return NextResponse.json({ error: "ข้อมูลใหญ่เกินไป" }, { status: 413 });
+  if (len > MAX_BODY_BYTES) return NextResponse.json({ error: await sm("ข้อมูลใหญ่เกินไป") }, { status: 413 });
 
   let form: FormData;
   try {
@@ -45,7 +46,7 @@ export async function POST(req: Request) {
     .maybeSingle();
 
   if (!f || f.visibility !== "public" || f.status !== "published" || f.deleted_at) {
-    return NextResponse.json({ error: "ฟอร์มนี้ไม่เปิดให้กรอกแบบสาธารณะ" }, { status: 403 });
+    return NextResponse.json({ error: await sm("ฟอร์มนี้ไม่เปิดให้กรอกแบบสาธารณะ") }, { status: 403 });
   }
 
   // กันสแปมระดับ IP (atomic ผ่าน Postgres) — 20 ครั้ง/60 วินาทีต่อ IP ต่อฟอร์ม
@@ -58,7 +59,7 @@ export async function POST(req: Request) {
       p_window_seconds: 60,
     });
     if (!rlErr && allowed === false) {
-      return NextResponse.json({ error: "ส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่" }, { status: 429 });
+      return NextResponse.json({ error: await sm("ส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่") }, { status: 429 });
     }
   } catch { /* ไม่มีฟังก์ชัน/ผิดพลาด → ไม่บล็อก ใช้ backstop ต่อฟอร์มแทน */ }
 
@@ -72,7 +73,7 @@ export async function POST(req: Request) {
       .is("submitted_by", null)
       .gte("submitted_at", since);
     if ((count ?? 0) >= 60) {
-      return NextResponse.json({ error: "มีการส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่" }, { status: 429 });
+      return NextResponse.json({ error: await sm("มีการส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่") }, { status: 429 });
     }
   } catch { /* ถ้านับไม่ได้ ไม่บล็อกการส่ง */ }
 
@@ -88,7 +89,7 @@ export async function POST(req: Request) {
       .is("submitted_by", null)
       .gte("submitted_at", dayStart);
     if ((count ?? 0) >= dailyLimit) {
-      return NextResponse.json({ error: "ฟอร์มนี้รับข้อมูลครบจำนวนของวันนี้แล้ว โปรดลองใหม่พรุ่งนี้" }, { status: 429 });
+      return NextResponse.json({ error: await sm("ฟอร์มนี้รับข้อมูลครบจำนวนของวันนี้แล้ว โปรดลองใหม่พรุ่งนี้") }, { status: 429 });
     }
   } catch { /* นับไม่ได้ → ไม่บล็อก */ }
 
@@ -99,7 +100,7 @@ export async function POST(req: Request) {
 
   // รูป/ลายเซ็นที่รับ: เฉพาะช่องชนิด photo/signature ที่มีอยู่จริงในฟอร์ม, ไม่เกิน 40 ไฟล์, ไฟล์ละ ≤ 4MB
   let schema;
-  try { schema = sanitizeSchema(f.schema); } catch { return NextResponse.json({ error: "ฟอร์มไม่ถูกต้อง" }, { status: 500 }); }
+  try { schema = sanitizeSchema(f.schema); } catch { return NextResponse.json({ error: await sm("ฟอร์มไม่ถูกต้อง") }, { status: 500 }); }
   const mediaFields = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "photo" || x.type === "signature").map((x) => x.id)));
   // รูปถ่ายต่อแถวของตาราง: key = <tableId>.<colId>.<สุ่ม> และคอลัมน์ต้องเป็นชนิดรูปถ่ายจริง
   const photoCols = new Set(schema.steps.flatMap((st) => st.fields.filter((x) => x.type === "table").flatMap((x) => (x.columns || []).filter((c) => c.type === "photo").map((c) => `${x.id}.${c.id}`))));
@@ -146,7 +147,7 @@ export async function POST(req: Request) {
     // ไม่ส่งข้อความ error ดิบของฐานข้อมูลให้คนนอก (ยกเว้นข้อความโควตาที่ตั้งใจให้เห็น)
     if (/\[quota:[a-z_]+\]/.test(subErr.message)) return NextResponse.json({ error: subErr.message.replace(/\s*\[quota:[a-z_]+\]/, "") }, { status: 429 });
     console.error("[krok] public submit failed:", subErr.message);
-    return NextResponse.json({ error: "บันทึกไม่สำเร็จ โปรดลองใหม่" }, { status: 500 });
+    return NextResponse.json({ error: await sm("บันทึกไม่สำเร็จ โปรดลองใหม่") }, { status: 500 });
   }
 
   // audit: บันทึกการส่งฟอร์มสาธารณะ (ให้ Platform Admin ตรวจย้อนหลังได้)

@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { aiRateLimited } from "@/lib/rate-limit";
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (await aiRateLimited(session.userId, "doc_extract"))
-    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
+    return NextResponse.json({ error: await sm("เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่") }, { status: 429 });
 
   try {
     const form = await req.formData();
@@ -26,9 +27,9 @@ export async function POST(req: Request) {
 
     if (!(file instanceof File)) return NextResponse.json({ error: "no file" }, { status: 400 });
     if (!ALLOWED.includes(file.type))
-      return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
+      return NextResponse.json({ error: await sm("ชนิดไฟล์ไม่รองรับ") }, { status: 400 });
     if (file.size > 8 * 1024 * 1024)
-      return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 8MB" }, { status: 400 });
+      return NextResponse.json({ error: await sm("ไฟล์ใหญ่เกิน 8MB") }, { status: 400 });
 
     let keys: ExtractKey[];
     try {
@@ -47,10 +48,10 @@ export async function POST(req: Request) {
         }))
         .filter((k) => k.key.length > 0);
     } catch {
-      return NextResponse.json({ error: "รายการค่าที่จะดึงไม่ถูกต้อง" }, { status: 400 });
+      return NextResponse.json({ error: await sm("รายการค่าที่จะดึงไม่ถูกต้อง") }, { status: 400 });
     }
     if (keys.length === 0)
-      return NextResponse.json({ error: "ไม่ได้ระบุค่าที่จะดึง" }, { status: 400 });
+      return NextResponse.json({ error: await sm("ไม่ได้ระบุค่าที่จะดึง") }, { status: 400 });
 
     const credit = await consumeAiCredit(session.tenantId, "doc_extract");
     if (!credit.ok)
@@ -67,7 +68,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("ai/extract-doc", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "อ่านเอกสารไม่สำเร็จ" },
+      { error: e instanceof Error ? await sm(e.message) : "อ่านเอกสารไม่สำเร็จ" },
       { status: 500 }
     );
   }

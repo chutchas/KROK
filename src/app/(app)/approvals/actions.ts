@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -14,7 +15,7 @@ export async function reviewSubmission(
 ): Promise<{ ok: true; advanced?: boolean } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์อนุมัติ" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์อนุมัติ") };
 
   const supabase = await createClient();
   // ตรวจคิวผู้อนุมัติ + เลื่อนขั้น/ปิดงาน ทำใน RPC (ฐานข้อมูลบังคับกติกาเดียวกัน กันการยิง REST ข้ามผู้อนุมัติ)
@@ -24,7 +25,7 @@ export async function reviewSubmission(
     return { error: /review_submission/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ยังไม่ได้รัน migration 0036_review_rpc.sql" : m };
   }
   const r = data as { status: "pending" | "approved" | "rejected"; step: number; advanced: boolean; form_id: string; form_title: string; tenant_id: string };
-  if (r.tenant_id !== session.tenantId) return { error: "ไม่พบรายการ" };
+  if (r.tenant_id !== session.tenantId) return { error: await sm("ไม่พบรายการ") };
   const sub = { form_id: r.form_id, form_title: r.form_title };
   const newStatus = r.status;
   const advanced = r.advanced;

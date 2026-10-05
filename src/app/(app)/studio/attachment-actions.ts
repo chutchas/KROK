@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -35,7 +36,7 @@ type Guard = { ok: false; error: string } | { ok: true; session: KrokSession; su
 async function guard(formId: string): Promise<Guard> {
   const session = await getSession();
   if (!session) return { ok: false, error: "unauthorized" };
-  if (!canManage(session.role)) return { ok: false, error: "ไม่มีสิทธิ์แนบเอกสาร" };
+  if (!canManage(session.role)) return { ok: false, error: await sm("ไม่มีสิทธิ์แนบเอกสาร") };
 
   const supabase = await createClient();
   const { data: form } = await supabase
@@ -45,7 +46,7 @@ async function guard(formId: string): Promise<Guard> {
     .eq("tenant_id", session.tenantId)
     .is("deleted_at", null)
     .maybeSingle();
-  if (!form) return { ok: false, error: "ไม่พบฟอร์มนี้" };
+  if (!form) return { ok: false, error: await sm("ไม่พบฟอร์มนี้") };
   return { ok: true, session, supabase };
 }
 
@@ -76,10 +77,10 @@ export async function addFileAttachment(
   const mime = String(input.mime || "").slice(0, 120);
   const size = Number(input.size) || 0;
 
-  if (!isAllowedMime(mime)) return { error: "รองรับเฉพาะ PDF, รูปภาพ, วิดีโอ MP4 และไฟล์ข้อความ" };
-  if (size > MAX_ATTACH_BYTES) return { error: "ไฟล์ใหญ่เกินกำหนด" };
+  if (!isAllowedMime(mime)) return { error: await sm("รองรับเฉพาะ PDF, รูปภาพ, วิดีโอ MP4 และไฟล์ข้อความ") };
+  if (size > MAX_ATTACH_BYTES) return { error: await sm("ไฟล์ใหญ่เกินกำหนด") };
   if (!isSafeAttachmentPath(String(input.storagePath || ""), session.tenantId, formId))
-    return { error: "path ไม่ถูกต้อง" };
+    return { error: await sm("path ไม่ถูกต้อง") };
   if ((await slotCount(supabase, formId, fieldId)) >= MAX_ATTACH_PER_SLOT)
     return { error: `แนบได้สูงสุด ${MAX_ATTACH_PER_SLOT} รายการต่อจุด` };
 
@@ -99,7 +100,7 @@ export async function addFileAttachment(
     .select(SELECT)
     .single();
 
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   await writeAudit({
     tenant_id: session.tenantId,
@@ -125,7 +126,7 @@ export async function addLinkAttachment(
   const { session, supabase } = g;
 
   const url = String(input.url || "").trim();
-  if (!/^https?:\/\//i.test(url)) return { error: "ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://" };
+  if (!/^https?:\/\//i.test(url)) return { error: await sm("ลิงก์ต้องขึ้นต้นด้วย http:// หรือ https://") };
   const name = String(input.name || "").slice(0, 160).trim() || url.slice(0, 60);
   if ((await slotCount(supabase, formId, fieldId)) >= MAX_ATTACH_PER_SLOT)
     return { error: `แนบได้สูงสุด ${MAX_ATTACH_PER_SLOT} รายการต่อจุด` };
@@ -145,7 +146,7 @@ export async function addLinkAttachment(
     .select(SELECT)
     .single();
 
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/studio");
   return { attachment: rowToAttachment(data as Record<string, unknown>) };
 }
@@ -153,14 +154,14 @@ export async function addLinkAttachment(
 export async function renameAttachment(id: string, name: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   const supabase = await createClient();
   const { error } = await supabase
     .from("form_attachments")
     .update({ name: String(name || "").slice(0, 160).trim() || "เอกสาร" })
     .eq("id", id)
     .eq("tenant_id", session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/studio");
   return { ok: true };
 }
@@ -168,7 +169,7 @@ export async function renameAttachment(id: string, name: string): Promise<{ ok: 
 export async function removeAttachment(id: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
 
   const supabase = await createClient();
   const { data: att } = await supabase
@@ -177,10 +178,10 @@ export async function removeAttachment(id: string): Promise<{ ok: true } | { err
     .eq("id", id)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
-  if (!att) return { error: "ไม่พบเอกสาร" };
+  if (!att) return { error: await sm("ไม่พบเอกสาร") };
 
   const { error } = await supabase.from("form_attachments").delete().eq("id", id).eq("tenant_id", session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   // ลบไฟล์จริงตามหลัง (ถ้าลบไม่ได้ก็ไม่ล้มทั้ง action — แถวหายแล้ว)
   if (att.kind === "file" && att.storage_path) {

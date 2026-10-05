@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 // ============================================================
 // ลบบัญชีด้วยตัวเอง (สิทธิขอให้ลบ — PDPA ม.33) · ลบแล้วกู้คืนไม่ได้
 // กติกา: เป็น owner คนเดียวของ workspace ที่ยังมีสมาชิกคนอื่น → ต้องโอน owner ก่อน (ไม่ลบข้อมูลของทีม)
@@ -52,7 +53,7 @@ export async function previewAccountDeletion(): Promise<Plan | { error: string }
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่พร้อมลบบัญชี (ไม่มี service role key)" };
+  if (!admin) return { error: await sm("ระบบยังไม่พร้อมลบบัญชี (ไม่มี service role key)") };
   return planDeletion(admin, session.userId);
 }
 
@@ -79,12 +80,12 @@ async function removeAll(admin: Admin, bucket: string, paths: string[]) {
 export async function deleteMyAccount(confirmEmail: string): Promise<{ ok: true } | { error: string; blockers?: Plan["blockers"] }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (confirmEmail.trim().toLowerCase() !== session.email.toLowerCase()) return { error: "อีเมลยืนยันไม่ตรงกับบัญชี" };
+  if (confirmEmail.trim().toLowerCase() !== session.email.toLowerCase()) return { error: await sm("อีเมลยืนยันไม่ตรงกับบัญชี") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่พร้อมลบบัญชี (ไม่มี service role key)" };
+  if (!admin) return { error: await sm("ระบบยังไม่พร้อมลบบัญชี (ไม่มี service role key)") };
 
   const plan = await planDeletion(admin, session.userId);
-  if (plan.blockers.length) return { error: "ต้องโอน owner ของ workspace ที่ยังมีสมาชิกก่อน", blockers: plan.blockers };
+  if (plan.blockers.length) return { error: await sm("ต้องโอน owner ของ workspace ที่ยังมีสมาชิกก่อน"), blockers: plan.blockers };
 
   // บันทึกใน workspace ที่ยังอยู่ต่อ (ใครออกไป เมื่อไร) — ก่อนลบ user
   if (plan.leaveTenants.length)
@@ -99,7 +100,7 @@ export async function deleteMyAccount(confirmEmail: string): Promise<{ ok: true 
     const { count: invCount } = await admin.from("invoices").select("id", { count: "exact", head: true }).eq("tenant_id", t.tenantId);
     if (invCount) {
       const { error: detachErr } = await admin.from("invoices").update({ tenant_id: null }).eq("tenant_id", t.tenantId);
-      if (detachErr) return { error: "ระบบยังไม่พร้อมลบ workspace ที่มีใบแจ้งหนี้ (ผู้ดูแลต้องรัน migration 0051)" };
+      if (detachErr) return { error: await sm("ระบบยังไม่พร้อมลบ workspace ที่มีใบแจ้งหนี้ (ผู้ดูแลต้องรัน migration 0051)") };
     }
     const files = await tenantFiles(admin, t.tenantId);
     await removeAll(admin, "submissions", files.submissions);

@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -39,7 +40,7 @@ const MASK = "••••••••";
 async function guard(): Promise<{ session: KrokSession } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์จัดการถังข้อมูล" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์จัดการถังข้อมูล") };
   return { session };
 }
 
@@ -77,7 +78,7 @@ export async function createDataset(input: { name: string; description?: string;
   const g = await guard();
   if ("error" in g) return g;
   const name = (input.name || "").trim().slice(0, 120);
-  if (!name) return { error: "กรุณาตั้งชื่อ" };
+  if (!name) return { error: await sm("กรุณาตั้งชื่อ") };
   const kind: DatasetSourceKind = ["file", "api_pull", "api_push"].includes(input.sourceKind) ? input.sourceKind : "file";
 
   const supabase = await createClient();
@@ -116,12 +117,12 @@ export async function updateDataset(id: string, patch: DatasetPatch): Promise<R>
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
 
   const upd: Record<string, unknown> = {};
   if (patch.name !== undefined) {
     const n = patch.name.trim().slice(0, 120);
-    if (!n) return { error: "กรุณาตั้งชื่อ" };
+    if (!n) return { error: await sm("กรุณาตั้งชื่อ") };
     upd.name = n;
   }
   if (patch.description !== undefined) upd.description = patch.description.slice(0, 500);
@@ -140,19 +141,19 @@ export async function updateDataset(id: string, patch: DatasetPatch): Promise<R>
     upd.columns = next;
   }
   if (patch.keyColumn !== undefined) {
-    if (patch.keyColumn && !columns.some((c) => c.key === patch.keyColumn)) return { error: "ไม่พบคอลัมน์ key ที่เลือก" };
+    if (patch.keyColumn && !columns.some((c) => c.key === patch.keyColumn)) return { error: await sm("ไม่พบคอลัมน์ key ที่เลือก") };
     upd.key_column = patch.keyColumn || null;
   }
   const keyAfter = (upd.key_column !== undefined ? upd.key_column : ds.keyColumn) as string | null;
   if (keyAfter && !columns.some((c) => c.key === keyAfter)) upd.key_column = null;
   if (patch.syncMode !== undefined) {
     if (patch.syncMode === "upsert" && !((upd.key_column ?? ds.keyColumn) as string | null))
-      return { error: "โหมดอัปเดตตาม key ต้องเลือกคอลัมน์ key ก่อน" };
+      return { error: await sm("โหมดอัปเดตตาม key ต้องเลือกคอลัมน์ key ก่อน") };
     upd.sync_mode = patch.syncMode === "upsert" ? "upsert" : "replace";
   }
   if (patch.scheduleMinutes !== undefined) {
     const m = SCHEDULE_MINUTES.includes(patch.scheduleMinutes) ? patch.scheduleMinutes : 0;
-    if (m > 0 && ds.sourceKind !== "api_pull") return { error: "ตั้งเวลาได้เฉพาะข้อมูลที่ดึงจาก API" };
+    if (m > 0 && ds.sourceKind !== "api_pull") return { error: await sm("ตั้งเวลาได้เฉพาะข้อมูลที่ดึงจาก API") };
     upd.schedule_minutes = m;
     upd.next_sync_at = m > 0 ? new Date(Date.now() + 60000).toISOString() : null;
   }
@@ -160,7 +161,7 @@ export async function updateDataset(id: string, patch: DatasetPatch): Promise<R>
 
   const supabase = await createClient();
   const { error } = await supabase.from("datasets").update(upd).eq("id", id).eq("tenant_id", g.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath(`/datasets/${id}`);
   revalidatePath("/datasets");
   return { ok: true };
@@ -170,13 +171,13 @@ export async function deleteDataset(id: string): Promise<R> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   const supabase = await createClient();
   const used = await formsUsingDataset(supabase, g.session.tenantId, id);
   if (used.length)
     return { error: `ลบไม่ได้ — ยังมี ${used.length} ฟอร์มใช้อยู่ (${used.slice(0, 3).map((f) => f.title).join(", ")}) ให้เปลี่ยนฟิลด์ในฟอร์มก่อน` };
   const { error } = await supabase.from("datasets").delete().eq("id", id).eq("tenant_id", g.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await audit(g.session, "dataset.delete", id, { name: ds.name, rows: ds.rowCount });
   revalidatePath("/datasets");
   return { ok: true };
@@ -187,13 +188,13 @@ export async function clearRows(id: string): Promise<R> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   try {
     const supabase = await createClient();
     await writeRecords(supabase, ds, [], "replace");
     await logRun(supabase, { id, tenantId: g.session.tenantId }, "manual", "ok", 0, "ล้างข้อมูลทั้งหมด", g.session.userId);
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "ผิดพลาด" };
+    return { error: e instanceof Error ? await sm(e.message) : "ผิดพลาด" };
   }
   revalidatePath(`/datasets/${id}`);
   return { ok: true };
@@ -211,9 +212,9 @@ export async function getPullConfig(id: string): Promise<R<{ config: PullConfigV
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY") };
   const { data } = await admin.from("dataset_secrets").select("pull_config").eq("dataset_id", id).maybeSingle();
   const cfg = sanitizePullConfig(data?.pull_config);
   return {
@@ -256,7 +257,7 @@ export async function testPull(id: string, config: unknown): Promise<R<{ result:
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   try {
     const cfg = await mergedPullConfig(id, config);
     const records = await fetchPullRecords(cfg);
@@ -271,7 +272,7 @@ export async function testPull(id: string, config: unknown): Promise<R<{ result:
     });
     return { ok: true, result: { total: records.length, paths, sample, suggested: columnsFromPaths(records, paths) } };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "เรียก API ไม่สำเร็จ" };
+    return { error: e instanceof Error ? await sm(e.message) : "เรียก API ไม่สำเร็จ" };
   }
 }
 
@@ -280,9 +281,9 @@ export async function savePullConfig(id: string, config: unknown, columns: Datas
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY") };
 
   let cfg: PullConfig;
   try {
@@ -294,7 +295,7 @@ export async function savePullConfig(id: string, config: unknown, columns: Datas
   }
   const cols = sanitizeColumns(columns);
   cfg.field_map = cfg.field_map.filter((m) => cols.some((c) => c.key === m.column));
-  if (!cfg.field_map.length) return { error: "เลือกฟิลด์ที่จะนำเข้าอย่างน้อย 1 ช่อง" };
+  if (!cfg.field_map.length) return { error: await sm("เลือกฟิลด์ที่จะนำเข้าอย่างน้อย 1 ช่อง") };
 
   // คอลัมน์ที่ฟอร์มใช้อยู่ห้ามหายไป
   const colRes = await updateDataset(id, { columns: cols, keyColumn: keyColumn && cols.some((c) => c.key === keyColumn) ? keyColumn : null });
@@ -303,7 +304,7 @@ export async function savePullConfig(id: string, config: unknown, columns: Datas
   const { error } = await admin
     .from("dataset_secrets")
     .upsert({ dataset_id: id, tenant_id: g.session.tenantId, pull_config: cfg, updated_at: new Date().toISOString() }, { onConflict: "dataset_id" });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   const supabase = await createClient();
   await supabase.from("datasets").update({ pull_host: new URL(cfg.url).host }).eq("id", id);
   await audit(g.session, "dataset.pull_config", id, { host: new URL(cfg.url).host });
@@ -315,11 +316,11 @@ export async function syncNow(id: string): Promise<R<{ rows: number }>> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   if (ds.lastSyncStatus === "running" && ds.updatedAt && Date.now() - new Date(ds.updatedAt).getTime() < 120000)
-    return { error: "กำลัง sync อยู่ ลองใหม่อีกสักครู่" };
+    return { error: await sm("กำลัง sync อยู่ ลองใหม่อีกสักครู่") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY") };
   const res = await runPull(admin, id, "manual", g.session.userId);
   revalidatePath(`/datasets/${id}`);
   return res;
@@ -334,14 +335,14 @@ export async function rotatePushKey(id: string): Promise<R<{ key: string }>> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY") };
   const k = newPushKey();
   const { error } = await admin
     .from("dataset_secrets")
     .upsert({ dataset_id: id, tenant_id: g.session.tenantId, push_key_hash: k.hash, updated_at: new Date().toISOString() }, { onConflict: "dataset_id" });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await admin.from("datasets").update({ push_key_prefix: k.prefix }).eq("id", id);
   await audit(g.session, "dataset.push_key_rotate", id);
   revalidatePath(`/datasets/${id}`);
@@ -352,9 +353,9 @@ export async function revokePushKey(id: string): Promise<R> {
   const g = await guard();
   if ("error" in g) return g;
   const ds = await loadOwn(id, g.session);
-  if (!ds) return { error: "ไม่พบถังข้อมูล" };
+  if (!ds) return { error: await sm("ไม่พบถังข้อมูล") };
   const admin = getAdminClient();
-  if (!admin) return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY" };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY") };
   await admin.from("dataset_secrets").update({ push_key_hash: null }).eq("dataset_id", id);
   await admin.from("datasets").update({ push_key_prefix: "" }).eq("id", id);
   await audit(g.session, "dataset.push_key_revoke", id);

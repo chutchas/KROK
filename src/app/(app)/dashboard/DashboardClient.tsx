@@ -1,4 +1,5 @@
 "use client";
+import { localizeServerMsg } from "@/i18n/stored-text";
 import StoredText from "@/i18n/StoredText";
 import { backdropClose } from "@/lib/backdrop";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
@@ -273,7 +274,7 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
 
       <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
         {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
-        {res && "error" in res && <div style={{ color: "var(--fail)", fontSize: ".82rem" }}>{res.error}</div>}
+        {res && "error" in res && <div style={{ color: "var(--fail)", fontSize: ".82rem" }}><StoredErr text={res.error} /></div>}
         {res && !("error" in res) && (
           <>
             {res.kind === "stat" && <StatView res={res} metric={w.metric} en={en} />}
@@ -559,4 +560,10 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
       </div>
     </div>
   );
+}
+
+/** ข้อความ error จาก server ตามภาษาที่เลือก */
+function StoredErr({ text }: { text: string }) {
+  const { lang } = useT();
+  return <>{localizeServerMsg(text, lang)}</>;
 }

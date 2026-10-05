@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { NextResponse } from "next/server";
 import ExcelJS from "exceljs";
@@ -63,22 +64,22 @@ function matchColumns(fileCols: DatasetColumn[], existing: DatasetColumn[]): (st
 export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-  if (!canManage(session.role)) return NextResponse.json({ error: "ไม่มีสิทธิ์" }, { status: 403 });
+  if (!canManage(session.role)) return NextResponse.json({ error: await sm("ไม่มีสิทธิ์") }, { status: 403 });
 
   const len = Number(req.headers.get("content-length") || 0);
-  if (len > MAX_IMPORT_BYTES + 64 * 1024) return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 10MB" }, { status: 413 });
+  if (len > MAX_IMPORT_BYTES + 64 * 1024) return NextResponse.json({ error: await sm("ไฟล์ใหญ่เกิน 10MB") }, { status: 413 });
 
   let fd: FormData;
   try {
     fd = await req.formData();
   } catch {
-    return NextResponse.json({ error: "อ่านไฟล์ไม่ได้" }, { status: 400 });
+    return NextResponse.json({ error: await sm("อ่านไฟล์ไม่ได้") }, { status: 400 });
   }
   const file = fd.get("file");
   const datasetId = String(fd.get("dataset_id") || "");
   const action = fd.get("action") === "import" ? "import" : "preview";
-  if (!(file instanceof File)) return NextResponse.json({ error: "ไม่พบไฟล์" }, { status: 400 });
-  if (file.size > MAX_IMPORT_BYTES) return NextResponse.json({ error: "ไฟล์ใหญ่เกิน 10MB" }, { status: 413 });
+  if (!(file instanceof File)) return NextResponse.json({ error: await sm("ไม่พบไฟล์") }, { status: 400 });
+  if (file.size > MAX_IMPORT_BYTES) return NextResponse.json({ error: await sm("ไฟล์ใหญ่เกิน 10MB") }, { status: 413 });
 
   const supabase = await createClient();
   const { data: row } = await supabase
@@ -87,17 +88,17 @@ export async function POST(req: Request) {
     .eq("id", datasetId)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
-  if (!row) return NextResponse.json({ error: "ไม่พบถังข้อมูล" }, { status: 404 });
+  if (!row) return NextResponse.json({ error: await sm("ไม่พบถังข้อมูล") }, { status: 404 });
   const ds = rowToMeta(row as Record<string, unknown>);
 
   let parsed: { table: ParsedTable; sheets: string[] };
   try {
     parsed = await readTable(file, String(fd.get("sheet") || "") || undefined);
   } catch (e) {
-    return NextResponse.json({ error: e instanceof Error ? e.message : "อ่านไฟล์ไม่ได้" }, { status: 400 });
+    return NextResponse.json({ error: e instanceof Error ? await sm(e.message) : "อ่านไฟล์ไม่ได้" }, { status: 400 });
   }
   const { table } = parsed;
-  if (table.columns.length === 0) return NextResponse.json({ error: "ไม่พบหัวคอลัมน์ในแถวแรก" }, { status: 400 });
+  if (table.columns.length === 0) return NextResponse.json({ error: await sm("ไม่พบหัวคอลัมน์ในแถวแรก") }, { status: 400 });
 
   const maxRows = Math.min((await getTenantPlan(session.tenantId)).maxDatasetRows, MAX_DATASET_ROWS);
   const mapping = ds.columns.length ? matchColumns(table.columns, ds.columns) : table.columns.map((c) => c.key);
@@ -132,7 +133,7 @@ export async function POST(req: Request) {
     } catch { /* ใช้ค่าจากไฟล์ */ }
     const fileKeys = new Set(table.columns.map((c) => c.key));
     columns = (chosen.length ? chosen : table.columns).filter((c) => fileKeys.has(c.key));
-    if (!columns.length) return NextResponse.json({ error: "ไม่ได้เลือกคอลัมน์" }, { status: 400 });
+    if (!columns.length) return NextResponse.json({ error: await sm("ไม่ได้เลือกคอลัมน์") }, { status: 400 });
     for (const c of columns) pick.set(c.key, c);
     const k = String(fd.get("key_column") || "");
     keyColumn = k && columns.some((c) => c.key === k) ? k : null;
@@ -149,11 +150,11 @@ export async function POST(req: Request) {
         pick.set(fc.key, nc);
       }
     });
-    if (pick.size === 0) return NextResponse.json({ error: "ไม่มีคอลัมน์ในไฟล์ที่ตรงกับข้อมูลเดิม" }, { status: 400 });
+    if (pick.size === 0) return NextResponse.json({ error: await sm("ไม่มีคอลัมน์ในไฟล์ที่ตรงกับข้อมูลเดิม") }, { status: 400 });
   }
-  if (mode === "upsert" && !keyColumn) return NextResponse.json({ error: "โหมดอัปเดตตาม key ต้องมีคอลัมน์ key" }, { status: 400 });
+  if (mode === "upsert" && !keyColumn) return NextResponse.json({ error: await sm("โหมดอัปเดตตาม key ต้องมีคอลัมน์ key") }, { status: 400 });
   if (mode === "upsert" && ![...pick.values()].some((c) => c.key === keyColumn))
-    return NextResponse.json({ error: "ไฟล์ไม่มีคอลัมน์ key ของชุดข้อมูลนี้ — อัปเดตตาม key ไม่ได้" }, { status: 400 });
+    return NextResponse.json({ error: await sm("ไฟล์ไม่มีคอลัมน์ key ของชุดข้อมูลนี้ — อัปเดตตาม key ไม่ได้") }, { status: 400 });
 
   const records: DatasetRecord[] = table.records.map((r) => {
     const out: DatasetRecord = {};
@@ -169,7 +170,7 @@ export async function POST(req: Request) {
       .update({ columns, key_column: keyColumn, sync_mode: mode })
       .eq("id", ds.id)
       .eq("tenant_id", session.tenantId);
-    if (error) return NextResponse.json({ error: dbError(error) }, { status: 400 });
+    if (error) return NextResponse.json({ error: await sm(dbError(error)) }, { status: 400 });
   }
 
   try {

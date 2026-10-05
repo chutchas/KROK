@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -17,11 +18,11 @@ export async function deleteDraftAction(id: string): Promise<{ ok: true } | { er
     .eq("id", id)
     .eq("user_id", session.userId)
     .maybeSingle();
-  if (!data) return { error: "ไม่พบแบบร่าง" };
+  if (!data) return { error: await sm("ไม่พบแบบร่าง") };
   const paths = Object.values((data.media as Record<string, string>) || {});
   if (paths.length) await supabase.storage.from(BUCKET).remove(paths);
   const { error } = await supabase.from("submission_drafts").delete().eq("id", id).eq("user_id", session.userId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/forms");
   return { ok: true };
 }

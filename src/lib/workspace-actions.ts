@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
@@ -17,7 +18,7 @@ const COOKIE_OPTS = {
 /** สลับ workspace ที่กำลังใช้งาน (ตรวจว่าผู้ใช้เป็นสมาชิกจริงก่อน) */
 export async function switchWorkspace(tenantId: string): Promise<{ ok: true } | { error: string }> {
   const list = await listWorkspaces();
-  if (!list.some((w) => w.tenantId === tenantId)) return { error: "ไม่พบ workspace นี้" };
+  if (!list.some((w) => w.tenantId === tenantId)) return { error: await sm("ไม่พบ workspace นี้") };
   const store = await cookies();
   store.set(WS_COOKIE, tenantId, COOKIE_OPTS);
   revalidatePath("/", "layout");
@@ -29,8 +30,8 @@ export async function createWorkspace(name: string): Promise<{ ok: true; id: str
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   const clean = name.trim();
-  if (!clean) return { error: "ต้องระบุชื่อ workspace" };
-  if (clean.length > 60) return { error: "ชื่อยาวเกินไป (สูงสุด 60 ตัวอักษร)" };
+  if (!clean) return { error: await sm("ต้องระบุชื่อ workspace") };
+  if (clean.length > 60) return { error: await sm("ชื่อยาวเกินไป (สูงสุด 60 ตัวอักษร)") };
 
   // จำกัดจำนวน workspace ตามแพ็กเกจของบัญชีผู้ใช้ (workspace ใหม่ใช้แพ็กเกจเดียวกันและนับโควตารวม)
   const plan = await getUserPlan(session.userId, session.tenantId);
@@ -40,7 +41,7 @@ export async function createWorkspace(name: string): Promise<{ ok: true; id: str
 
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("create_workspace", { p_name: clean });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   const id = data as string;
   const store = await cookies();
@@ -65,7 +66,7 @@ export async function acceptInvite(id: string): Promise<{ ok: true } | { error: 
   if (!session) return { error: "unauthorized" };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("accept_invite", { p_id: id });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   const store = await cookies();
   store.set(WS_COOKIE, data as string, COOKIE_OPTS);
   revalidatePath("/", "layout");
@@ -77,7 +78,7 @@ export async function declineInvite(id: string): Promise<{ ok: true } | { error:
   if (!session) return { error: "unauthorized" };
   const supabase = await createClient();
   const { error } = await supabase.rpc("decline_invite", { p_id: id });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/", "layout");
   return { ok: true };
 }

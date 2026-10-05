@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { rateLimited } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
@@ -59,11 +60,11 @@ export async function registerDevice(
 ): Promise<RegisterResult | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!deviceKey || deviceKey.length < 24) return { error: "device key ไม่ถูกต้อง" };
+  if (!deviceKey || deviceKey.length < 24) return { error: await sm("device key ไม่ถูกต้อง") };
 
   const admin = getAdminClient();
   if (!admin)
-    return { error: "ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY — ลงทะเบียนอุปกรณ์ไม่ได้" };
+    return { error: await sm("ระบบยังไม่ได้ตั้งค่า SUPABASE_SERVICE_ROLE_KEY — ลงทะเบียนอุปกรณ์ไม่ได้") };
 
   const key_hash = hashKey(deviceKey);
 
@@ -88,13 +89,13 @@ export async function registerDevice(
   }
 
   // กันสร้างเครื่องรออนุมัติรัว ๆ (สคริปต์ใช้ device key สุ่มใหม่ทุกครั้ง) และแจ้งเตือนถล่มผู้ดูแล
-  if (await rateLimited(`devreg:${session.userId}`, 10, 3600)) return { error: "ลงทะเบียนเครื่องถี่เกินไป โปรดลองใหม่ภายหลัง" };
+  if (await rateLimited(`devreg:${session.userId}`, 10, 3600)) return { error: await sm("ลงทะเบียนเครื่องถี่เกินไป โปรดลองใหม่ภายหลัง") };
   const { count: pendingCount } = await admin
     .from("devices")
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", session.tenantId)
     .eq("status", "pending");
-  if ((pendingCount ?? 0) >= 50) return { error: "มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้ผู้ดูแลอนุมัติ/ลบก่อน" };
+  if ((pendingCount ?? 0) >= 50) return { error: await sm("มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้ผู้ดูแลอนุมัติ/ลบก่อน") };
 
   const { data, error } = await admin
     .from("devices")
@@ -141,7 +142,7 @@ async function manageGuard(): Promise<Guard> {
   const session = await getSession();
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.role !== "owner" && session.role !== "admin")
-    return { ok: false, error: "จัดการอุปกรณ์ได้เฉพาะ owner/admin" };
+    return { ok: false, error: await sm("จัดการอุปกรณ์ได้เฉพาะ owner/admin") };
   const supabase = await createClient();
   return { ok: true, session, supabase };
 }
@@ -165,7 +166,7 @@ export async function setDeviceStatus(
 ): Promise<{ ok: true } | { error: string }> {
   const g = await manageGuard();
   if (!g.ok) return { error: g.error };
-  if (!["pending", "approved", "revoked"].includes(status)) return { error: "สถานะไม่ถูกต้อง" };
+  if (!["pending", "approved", "revoked"].includes(status)) return { error: await sm("สถานะไม่ถูกต้อง") };
 
   const patch: Record<string, unknown> = { status };
   if (status === "approved") {
@@ -178,7 +179,7 @@ export async function setDeviceStatus(
     .update(patch)
     .eq("id", id)
     .eq("tenant_id", g.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   await audit(`device.${status}`, id);
   revalidatePath("/settings/devices");
@@ -223,7 +224,7 @@ export async function setFormDeviceScope(
 ): Promise<{ ok: true } | { error: string }> {
   const g = await manageGuard();
   if (!g.ok) return { error: g.error };
-  if (scope !== "any" && scope !== "selected") return { error: "ค่าไม่ถูกต้อง" };
+  if (scope !== "any" && scope !== "selected") return { error: await sm("ค่าไม่ถูกต้อง") };
 
   const { error } = await g.supabase
     .from("forms")
@@ -231,7 +232,7 @@ export async function setFormDeviceScope(
     .eq("id", formId)
     .eq("tenant_id", g.session.tenantId)
     .eq("require_approved_device", true);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   await audit("form.device_scope", formId, { scope });
   revalidatePath("/settings/devices");
@@ -255,7 +256,7 @@ export async function toggleFormDevice(
         { tenant_id: g.session.tenantId, form_id: formId, device_id: deviceId, created_by: g.session.userId },
         { onConflict: "form_id,device_id" }
       );
-    if (error) return { error: dbError(error) };
+    if (error) return { error: await sm(dbError(error)) };
   } else {
     const { error } = await g.supabase
       .from("form_devices")
@@ -263,7 +264,7 @@ export async function toggleFormDevice(
       .eq("form_id", formId)
       .eq("device_id", deviceId)
       .eq("tenant_id", g.session.tenantId);
-    if (error) return { error: dbError(error) };
+    if (error) return { error: await sm(dbError(error)) };
   }
 
   await audit(linked ? "form.device_link" : "form.device_unlink", deviceId, { form_id: formId });
@@ -280,7 +281,7 @@ export async function renameDevice(id: string, name: string): Promise<{ ok: true
     .update({ name: String(name || "").slice(0, 80).trim() || "อุปกรณ์" })
     .eq("id", id)
     .eq("tenant_id", g.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/devices");
   return { ok: true };
 }
@@ -289,7 +290,7 @@ export async function deleteDevice(id: string): Promise<{ ok: true } | { error: 
   const g = await manageGuard();
   if (!g.ok) return { error: g.error };
   const { error } = await g.supabase.from("devices").delete().eq("id", id).eq("tenant_id", g.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await audit("device.delete", id);
   revalidatePath("/settings/devices");
   return { ok: true };

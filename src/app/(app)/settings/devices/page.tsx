@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { T } from "@/i18n/T";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import DevicesClient, { type DeviceRow, type LockedForm } from "./DevicesClient";
@@ -9,7 +10,7 @@ export default async function DevicesPage() {
   const session = await getSession();
   if (!session) redirect("/login");
   if (session.role !== "owner" && session.role !== "admin")
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
+    return <div style={{ color: "var(--ink-2)" }}><T k="page.ownerAdminOnly" /></div>;
 
   const supabase = await createClient();
   const [{ data: devices }, { data: lockedForms }, { data: links }] = await Promise.all([

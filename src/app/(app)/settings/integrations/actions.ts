@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -52,8 +53,8 @@ export async function createWebhook(
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
-  if (!validUrl(url.trim())) return { error: "URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)" };
+  if (!canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
+  if (!validUrl(url.trim())) return { error: await sm("URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)") };
 
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
@@ -62,7 +63,7 @@ export async function createWebhook(
   const gate = await gateWebhookAdd(session.tenantId);
   if (gate) return { error: gate };
   const form_id = await ownForm(supabase, session.tenantId, formId);
-  if (form_id === false) return { error: "ไม่พบฟอร์มที่เลือก" };
+  if (form_id === false) return { error: await sm("ไม่พบฟอร์มที่เลือก") };
   const fieldIds = cleanFields(fields);
 
   const { error } = await admin.from("webhooks").insert({
@@ -75,30 +76,30 @@ export async function createWebhook(
     fields: fieldIds,
     created_by: session.userId,
   });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
 
 export async function toggleWebhook(id: string, active: boolean): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
-  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
   const { data, error } = await admin.from("webhooks").update({ active }).eq("id", id).eq("tenant_id", session.tenantId).select("id");
-  if (!error && !data?.length) return { error: "ไม่พบ webhook" };
-  if (error) return { error: dbError(error) };
+  if (!error && !data?.length) return { error: await sm("ไม่พบ webhook") };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
 
 export async function deleteWebhook(id: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
-  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
   const { error } = await admin.from("webhooks").delete().eq("id", id).eq("tenant_id", session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
@@ -109,13 +110,13 @@ export async function updateWebhook(
   input: { name: string; url: string; events: unknown; secret: string; clearSecret?: boolean; formId?: string | null; fields?: unknown }
 ): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
-  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
-  if (!validUrl(input.url.trim())) return { error: "URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)" };
+  if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
+  if (!validUrl(input.url.trim())) return { error: await sm("URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)") };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
   const supabase = await createClient();
   const form_id = await ownForm(supabase, session.tenantId, input.formId);
-  if (form_id === false) return { error: "ไม่พบฟอร์มที่เลือก" };
+  if (form_id === false) return { error: await sm("ไม่พบฟอร์มที่เลือก") };
   const patch: Record<string, unknown> = {
     name: input.name.trim().slice(0, 80) || "Webhook",
     url: input.url.trim(),
@@ -126,8 +127,8 @@ export async function updateWebhook(
   if (input.secret.trim()) patch.secret = input.secret.trim().slice(0, 200);
   else if (input.clearSecret) patch.secret = null;
   const { data, error } = await admin.from("webhooks").update(patch).eq("id", id).eq("tenant_id", session.tenantId).select("id");
-  if (error) return { error: dbError(error) };
-  if (!data?.length) return { error: "ไม่พบ webhook" };
+  if (error) return { error: await sm(dbError(error)) };
+  if (!data?.length) return { error: await sm("ไม่พบ webhook") };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }
@@ -137,7 +138,7 @@ export interface DeliveryRow { id: string; event: string; status: number | null;
 /** ประวัติการส่งล่าสุดของ webhook (20 รายการ) — ยังไม่รัน 0043 = รายการว่าง */
 export async function listDeliveries(webhookId: string): Promise<{ rows: DeliveryRow[] } | { error: string }> {
   const session = await getSession();
-  if (!session || !canManage(session.role)) return { error: "ไม่มีสิทธิ์" };
+  if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
   const { data, error } = await admin
@@ -147,7 +148,7 @@ export async function listDeliveries(webhookId: string): Promise<{ rows: Deliver
     .eq("tenant_id", session.tenantId)
     .order("created_at", { ascending: false })
     .limit(20);
-  if (error) return /webhook_deliveries/.test(error.message) ? { rows: [] } : { error: dbError(error) };
+  if (error) return /webhook_deliveries/.test(error.message) ? { rows: [] } : { error: await sm(dbError(error)) };
   return { rows: (data || []) as DeliveryRow[] };
 }
 
@@ -203,10 +204,10 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
   // ตรวจปลายทาง SMTP ตั้งแต่ตอนบันทึก (ตอนส่งจริงตรวจ DNS/IP ซ้ำอีกชั้น)
   const host = input.smtp_host?.trim() || "";
   const port = Number.isFinite(input.smtp_port) ? Math.round(input.smtp_port) : 0;
-  if (host && !smtpHostShapeOk(host)) return { error: "ชื่อโฮสต์ SMTP ไม่ถูกต้อง (ต้องเป็นโดเมน เช่น smtp.gmail.com)" };
+  if (host && !smtpHostShapeOk(host)) return { error: await sm("ชื่อโฮสต์ SMTP ไม่ถูกต้อง (ต้องเป็นโดเมน เช่น smtp.gmail.com)") };
   if ((host || input.email_enabled) && !smtpPortAllowed(port)) return { error: `พอร์ต SMTP ต้องเป็น ${SMTP_PORTS.join(" / ")}` };
   if (input.line_enabled && !input.line_target?.trim() && !input.line_broadcast)
-    return { error: "LINE: ใส่ userId/groupId ของผู้รับ หรือเลือก \"ส่งถึงผู้ติดตามทั้งหมด\"" };
+    return { error: await sm("LINE: ใส่ userId/groupId ของผู้รับ หรือเลือก “ส่งถึงผู้ติดตามทั้งหมด”") };
 
   // อ่านของเดิมเพื่อคงค่า secret ถ้าผู้ใช้ไม่ได้กรอกใหม่
   const { data: cur } = await admin
@@ -219,10 +220,10 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
   // (กันเปลี่ยน host เป็นเซิร์ฟเวอร์ของผู้ไม่หวังดีแล้วกด "ทดสอบ" เพื่อดักรหัสเดิม)
   const smtpTargetChanged = !!cur?.smtp_pass && (
     (cur.smtp_host || "") !== host || (Number(cur.smtp_port) || 0) !== port || (cur.smtp_user || "") !== (input.smtp_user?.trim() || ""));
-  if (smtpTargetChanged && !input.smtp_pass) return { error: "เปลี่ยนเซิร์ฟเวอร์/พอร์ต/ชื่อผู้ใช้ SMTP แล้ว ต้องกรอกรหัสผ่าน SMTP ใหม่" };
+  if (smtpTargetChanged && !input.smtp_pass) return { error: await sm("เปลี่ยนเซิร์ฟเวอร์/พอร์ต/ชื่อผู้ใช้ SMTP แล้ว ต้องกรอกรหัสผ่าน SMTP ใหม่") };
   // เปิด "ส่งถึงผู้ติดตามทั้งหมด" = ส่งหาลูกค้าทุกคนของ LINE OA → ต้องยืนยันด้วยการกรอก token ใหม่
   if (input.line_broadcast && cur?.line_broadcast === false && cur?.line_token && !input.line_token)
-    return { error: "เปิดส่งถึงผู้ติดตามทั้งหมด ต้องกรอก LINE Channel access token อีกครั้ง" };
+    return { error: await sm("เปิดส่งถึงผู้ติดตามทั้งหมด ต้องกรอก LINE Channel access token อีกครั้ง") };
 
   // แพ็กเกจ: เปิดช่องทางใหม่ต้องมีสิทธิ์แจ้งเตือน (ที่เปิดอยู่แล้วใช้ต่อได้)
   const turningOn = (!!input.line_enabled && !cur?.line_enabled) || (!!input.email_enabled && !cur?.email_enabled);
@@ -263,7 +264,7 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
       ({ error } = await admin.from("tenant_notify").upsert(row, { onConflict: "tenant_id" }));
     }
   }
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/integrations");
   return { ok: true };
 }

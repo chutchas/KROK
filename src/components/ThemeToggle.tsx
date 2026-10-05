@@ -1,4 +1,5 @@
 "use client";
+import { useT } from "@/i18n/LanguageProvider";
 import { useEffect, useState } from "react";
 import { SunMedium, MoonStar } from "lucide-react";
 import Icon from "@/components/Icon";
@@ -11,6 +12,7 @@ function apply(theme: Theme) {
 }
 
 export default function ThemeToggle() {
+  const { t } = useT();
   const [theme, setTheme] = useState<Theme>("light");
 
   useEffect(() => {
@@ -42,8 +44,8 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggle}
-      title={isDark ? "โหมดมืด (แตะเพื่อเป็นสว่าง)" : "โหมดสว่าง (แตะเพื่อเป็นมืด)"}
-      aria-label={isDark ? "สลับเป็นโหมดสว่าง" : "สลับเป็นโหมดมืด"}
+      title={isDark ? t("theme.darkHint") : t("theme.lightHint")}
+      aria-label={isDark ? t("theme.toLight") : t("theme.toDark")}
       className={`inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm ${isDark ? "text-indigo-400" : "text-amber-500"}`}
       style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
     >

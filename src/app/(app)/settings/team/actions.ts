@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { writeAudit } from "@/lib/audit";
 import { revalidatePath } from "next/cache";
@@ -42,7 +43,7 @@ async function requireAdmin(): Promise<AdminGate> {
   const session = await getSession();
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.role !== "owner" && session.role !== "admin")
-    return { ok: false, error: "เฉพาะ owner/admin เท่านั้น" };
+    return { ok: false, error: await sm("เฉพาะ owner/admin เท่านั้น") };
   return { ok: true, session };
 }
 
@@ -82,13 +83,13 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
   if (!a.ok) return { error: a.error };
   const { session } = a;
   const clean = email.trim().toLowerCase();
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { error: "อีเมลไม่ถูกต้อง" };
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(clean)) return { error: await sm("อีเมลไม่ถูกต้อง") };
 
   const supabase = await createClient();
   const { data: roleDef } = await supabase
     .from("tenant_roles").select("key, can_manage").eq("tenant_id", session.tenantId).eq("key", roleKey).maybeSingle();
-  if (!roleDef) return { error: "ไม่พบ role นี้" };
-  if (roleKey === "owner" && session.role !== "owner") return { error: "เฉพาะ owner เชิญ owner ได้" };
+  if (!roleDef) return { error: await sm("ไม่พบ role นี้") };
+  if (roleKey === "owner" && session.role !== "owner") return { error: await sm("เฉพาะ owner เชิญ owner ได้") };
 
   // enum role (ชั้นความปลอดภัย/RLS) จาก can_manage
   const role: Role = roleKey === "owner" ? "owner" : roleDef.can_manage ? "admin" : "operator";
@@ -107,7 +108,7 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
 
   // เป็นสมาชิกอยู่แล้ว → ไม่ต้องเชิญ
   const { data: already } = await supabase.from("memberships").select("user_id").eq("tenant_id", session.tenantId).ilike("email", clean.replace(/[%_\\]/g, "\\$&")).maybeSingle();
-  if (already) return { error: "อีเมลนี้เป็นสมาชิกของ workspace นี้อยู่แล้ว" };
+  if (already) return { error: await sm("อีเมลนี้เป็นสมาชิกของ workspace นี้อยู่แล้ว") };
 
   const { error } = await supabase
     .from("invites")
@@ -115,7 +116,7 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
       { tenant_id: session.tenantId, email: clean, role, role_key: roleKey, team_ids: teams, invited_by: session.userId, accepted_at: null },
       { onConflict: "tenant_id,email" }
     );
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
 
   const { link, sent } = await sendInviteMail(supabase, session, { email: clean, role_key: roleKey, team_ids: teams });
   await writeAudit({
@@ -134,7 +135,7 @@ export async function resendInvite(id: string): Promise<InviteResult> {
   const supabase = await createClient();
   const { data: inv } = await supabase
     .from("invites").select("email, role_key, team_ids").eq("id", id).eq("tenant_id", a.session.tenantId).is("accepted_at", null).maybeSingle();
-  if (!inv) return { error: "ไม่พบคำเชิญนี้ หรือมีคนรับไปแล้ว" };
+  if (!inv) return { error: await sm("ไม่พบคำเชิญนี้ หรือมีคนรับไปแล้ว") };
   const { link, sent } = await sendInviteMail(supabase, a.session, inv as { email: string; role_key: string | null; team_ids: string[] | null });
   await writeAudit({
     tenant_id: a.session.tenantId, actor_id: a.session.userId,
@@ -149,7 +150,7 @@ export async function cancelInvite(id: string): Promise<{ ok: true } | { error: 
   if (!a.ok) return { error: a.error };
   const supabase = await createClient();
   const { error } = await supabase.from("invites").delete().eq("id", id).eq("tenant_id", a.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -163,10 +164,10 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
 
   const { data: roleDef } = await supabase
     .from("tenant_roles").select("key, can_manage").eq("tenant_id", session.tenantId).eq("key", roleKey).maybeSingle();
-  if (!roleDef) return { error: "ไม่พบ role นี้" };
+  if (!roleDef) return { error: await sm("ไม่พบ role นี้") };
 
   const isOwnerRole = roleKey === "owner";
-  if (isOwnerRole && session.role !== "owner") return { error: "เฉพาะ owner ตั้ง owner ได้" };
+  if (isOwnerRole && session.role !== "owner") return { error: await sm("เฉพาะ owner ตั้ง owner ได้") };
 
   // กัน owner คนสุดท้ายหลุด
   if (!isOwnerRole) {
@@ -176,7 +177,7 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
       const { count } = await supabase
         .from("memberships").select("id", { count: "exact", head: true })
         .eq("tenant_id", session.tenantId).eq("role", "owner");
-      if ((count ?? 0) <= 1) return { error: "ต้องมี owner อย่างน้อย 1 คน" };
+      if ((count ?? 0) <= 1) return { error: await sm("ต้องมี owner อย่างน้อย 1 คน") };
     }
   }
 
@@ -190,7 +191,7 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
   const { error } = await supabase
     .from("memberships").update({ role: enumRole, role_key: roleKey })
     .eq("tenant_id", session.tenantId).eq("user_id", userId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.role_change", target_type: "user", target_id: userId, meta: { role_key: roleKey },
@@ -203,8 +204,8 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const { session } = a;
-  if (!ROLES.includes(role)) return { error: "role ไม่ถูกต้อง" };
-  if (role === "owner" && session.role !== "owner") return { error: "เฉพาะ owner ตั้ง owner ได้" };
+  if (!ROLES.includes(role)) return { error: await sm("role ไม่ถูกต้อง") };
+  if (role === "owner" && session.role !== "owner") return { error: await sm("เฉพาะ owner ตั้ง owner ได้") };
 
   const supabase = await createClient();
   // กันเปลี่ยน owner คนสุดท้ายให้กลายเป็น role อื่น
@@ -215,13 +216,13 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
       const { count } = await supabase
         .from("memberships").select("id", { count: "exact", head: true })
         .eq("tenant_id", session.tenantId).eq("role", "owner");
-      if ((count ?? 0) <= 1) return { error: "ต้องมี owner อย่างน้อย 1 คน" };
+      if ((count ?? 0) <= 1) return { error: await sm("ต้องมี owner อย่างน้อย 1 คน") };
     }
   }
 
   const { error } = await supabase
     .from("memberships").update({ role }).eq("tenant_id", session.tenantId).eq("user_id", userId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.role_change", target_type: "user", target_id: userId, meta: { role },
@@ -234,13 +235,13 @@ export async function removeMember(userId: string, confirmPlan = false): Promise
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const { session } = a;
-  if (userId === session.userId) return { error: "ลบตัวเองไม่ได้" };
+  if (userId === session.userId) return { error: await sm("ลบตัวเองไม่ได้") };
 
   const supabase = await createClient();
   const { data: target } = await supabase
     .from("memberships").select("role").eq("tenant_id", session.tenantId).eq("user_id", userId).maybeSingle();
   if (target?.role === "owner" && session.role !== "owner")
-    return { error: "เฉพาะ owner ลบ owner ได้" };
+    return { error: await sm("เฉพาะ owner ลบ owner ได้") };
   if (target?.role === "owner" && !confirmPlan) {
     const shift = await planShift(session.tenantId, userId);
     if (shift) return { needConfirm: shift };
@@ -248,7 +249,7 @@ export async function removeMember(userId: string, confirmPlan = false): Promise
 
   const { error } = await supabase
     .from("memberships").delete().eq("tenant_id", session.tenantId).eq("user_id", userId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   await writeAudit({
     tenant_id: session.tenantId, actor_id: session.userId,
     action: "member.remove", target_type: "user", target_id: userId,
@@ -266,14 +267,14 @@ export async function createTeam(name: string): Promise<{ ok: true } | { error: 
   if (!a.ok) return { error: a.error };
   const { session } = a;
   const clean = name.trim();
-  if (!clean) return { error: "ต้องระบุชื่อทีม" };
-  if (clean.length > 60) return { error: "ชื่อยาวเกินไป" };
+  if (!clean) return { error: await sm("ต้องระบุชื่อทีม") };
+  if (clean.length > 60) return { error: await sm("ชื่อยาวเกินไป") };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("teams")
     .insert({ tenant_id: session.tenantId, name: clean, created_by: session.userId });
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -282,12 +283,12 @@ export async function renameTeam(teamId: string, name: string): Promise<{ ok: tr
   const a = await requireAdmin();
   if (!a.ok) return { error: a.error };
   const clean = name.trim();
-  if (!clean) return { error: "ต้องระบุชื่อทีม" };
+  if (!clean) return { error: await sm("ต้องระบุชื่อทีม") };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("teams").update({ name: clean }).eq("id", teamId).eq("tenant_id", a.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -298,7 +299,7 @@ export async function deleteTeam(teamId: string): Promise<{ ok: true } | { error
   const supabase = await createClient();
   const { error } = await supabase
     .from("teams").delete().eq("id", teamId).eq("tenant_id", a.session.tenantId);
-  if (error) return { error: dbError(error) };
+  if (error) return { error: await sm(dbError(error)) };
   revalidatePath("/settings/team");
   return { ok: true };
 }
@@ -312,7 +313,7 @@ export async function setTeamMembers(teamId: string, userIds: string[]): Promise
   // ยืนยันว่า team อยู่ใน tenant นี้
   const { data: team } = await supabase
     .from("teams").select("id").eq("id", teamId).eq("tenant_id", session.tenantId).maybeSingle();
-  if (!team) return { error: "ไม่พบทีม" };
+  if (!team) return { error: await sm("ไม่พบทีม") };
 
   // ยืนยันว่า userIds เป็นสมาชิกของ tenant จริง
   const { data: mem } = await supabase
@@ -321,11 +322,11 @@ export async function setTeamMembers(teamId: string, userIds: string[]): Promise
   const clean = Array.from(new Set(userIds.filter((u) => valid.has(u))));
 
   const { error: delErr } = await supabase.from("team_members").delete().eq("team_id", teamId);
-  if (delErr) return { error: dbError(delErr) };
+  if (delErr) return { error: await sm(dbError(delErr)) };
   if (clean.length > 0) {
     const rows = clean.map((user_id) => ({ team_id: teamId, user_id, tenant_id: session.tenantId }));
     const { error: insErr } = await supabase.from("team_members").insert(rows);
-    if (insErr) return { error: dbError(insErr) };
+    if (insErr) return { error: await sm(dbError(insErr)) };
   }
   revalidatePath("/settings/team");
   return { ok: true };

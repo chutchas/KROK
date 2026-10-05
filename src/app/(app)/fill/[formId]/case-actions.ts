@@ -1,4 +1,5 @@
 "use server";
+import { sm } from "@/lib/server-msg";
 // งาน (ฟอร์มกรอกหลายคน) — เรียก RPC ด้วยสิทธิ์ของผู้ใช้ (ตรวจสิทธิ์ใน DB) แล้วส่ง LINE/Email ต่อ
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
@@ -63,8 +64,8 @@ async function afterMove(row: CaseRow, ev: "case.assigned" | "case.returned", ac
 
 export async function advanceCaseAction(caseId: string, note: string | null): Promise<Res> {
   const session = await getSession();
-  if (!session) return { error: "กรุณาเข้าสู่ระบบ" };
-  if (!UUID.test(caseId)) return { error: "ไม่พบงาน" };
+  if (!session) return { error: await sm("กรุณาเข้าสู่ระบบ") };
+  if (!UUID.test(caseId)) return { error: await sm("ไม่พบงาน") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("case_advance", { p_case: caseId, p_note: note?.slice(0, 500) || null });
   if (error || !data) return { error: errMsg(error) };
@@ -73,9 +74,9 @@ export async function advanceCaseAction(caseId: string, note: string | null): Pr
 
 export async function returnCaseAction(caseId: string, toStep: number, note: string): Promise<Res> {
   const session = await getSession();
-  if (!session) return { error: "กรุณาเข้าสู่ระบบ" };
-  if (!UUID.test(caseId) || !Number.isInteger(toStep)) return { error: "ไม่พบงาน" };
-  if (!note.trim()) return { error: "ต้องระบุเหตุผลที่ส่งกลับ" };
+  if (!session) return { error: await sm("กรุณาเข้าสู่ระบบ") };
+  if (!UUID.test(caseId) || !Number.isInteger(toStep)) return { error: await sm("ไม่พบงาน") };
+  if (!note.trim()) return { error: await sm("ต้องระบุเหตุผลที่ส่งกลับ") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("case_return", { p_case: caseId, p_to: toStep, p_note: note.slice(0, 500) });
   if (error || !data) return { error: errMsg(error) };
@@ -84,8 +85,8 @@ export async function returnCaseAction(caseId: string, toStep: number, note: str
 
 export async function claimCaseAction(caseId: string): Promise<Res> {
   const session = await getSession();
-  if (!session) return { error: "กรุณาเข้าสู่ระบบ" };
-  if (!UUID.test(caseId)) return { error: "ไม่พบงาน" };
+  if (!session) return { error: await sm("กรุณาเข้าสู่ระบบ") };
+  if (!UUID.test(caseId)) return { error: await sm("ไม่พบงาน") };
   const supabase = await createClient();
   const { error } = await supabase.rpc("case_claim", { p_case: caseId });
   if (error) return { error: errMsg(error) };
@@ -95,8 +96,8 @@ export async function claimCaseAction(caseId: string): Promise<Res> {
 
 export async function releaseCaseAction(caseId: string): Promise<Res> {
   const session = await getSession();
-  if (!session) return { error: "กรุณาเข้าสู่ระบบ" };
-  if (!UUID.test(caseId)) return { error: "ไม่พบงาน" };
+  if (!session) return { error: await sm("กรุณาเข้าสู่ระบบ") };
+  if (!UUID.test(caseId)) return { error: await sm("ไม่พบงาน") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("case_release", { p_case: caseId });
   if (error || !data) return { error: errMsg(error) };
@@ -118,8 +119,8 @@ async function purgeCaseFiles(row: Pick<CaseRow, "media" | "doc_extracts">) {
 
 export async function cancelCaseAction(caseId: string, note: string | null): Promise<Res> {
   const session = await getSession();
-  if (!session) return { error: "กรุณาเข้าสู่ระบบ" };
-  if (!UUID.test(caseId)) return { error: "ไม่พบงาน" };
+  if (!session) return { error: await sm("กรุณาเข้าสู่ระบบ") };
+  if (!UUID.test(caseId)) return { error: await sm("ไม่พบงาน") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("case_cancel", { p_case: caseId, p_note: note?.slice(0, 500) || null });
   if (error || !data) return { error: errMsg(error) };
@@ -131,8 +132,8 @@ export async function cancelCaseAction(caseId: string, note: string | null): Pro
 /** ขั้นสุดท้าย: หลัง insert submission สำเร็จ → ปิดงาน */
 export async function completeCaseAction(caseId: string, submissionId: string): Promise<Res> {
   const session = await getSession();
-  if (!session) return { error: "กรุณาเข้าสู่ระบบ" };
-  if (!UUID.test(caseId) || !UUID.test(submissionId)) return { error: "ไม่พบงาน" };
+  if (!session) return { error: await sm("กรุณาเข้าสู่ระบบ") };
+  if (!UUID.test(caseId) || !UUID.test(submissionId)) return { error: await sm("ไม่พบงาน") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("case_complete", { p_case: caseId, p_submission: submissionId });
   if (error || !data) return { error: errMsg(error) };

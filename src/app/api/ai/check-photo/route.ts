@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
 import { aiRateLimited } from "@/lib/rate-limit";
@@ -13,7 +14,7 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (await aiRateLimited(session.userId, "photo_check"))
-    return NextResponse.json({ error: "เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่" }, { status: 429 });
+    return NextResponse.json({ error: await sm("เรียกใช้ AI ถี่เกินไป — รอสักครู่แล้วลองใหม่") }, { status: 429 });
 
   try {
     const form = await req.formData();
@@ -23,8 +24,8 @@ export async function POST(req: Request) {
     const label = String(form.get("label") || "").slice(0, 300);
     if (!(file instanceof File)) return NextResponse.json({ error: "no file" }, { status: 400 });
     if (!ALLOWED.includes(file.type))
-      return NextResponse.json({ error: "ชนิดไฟล์ไม่รองรับ" }, { status: 400 });
-    if (file.size > MAX_BYTES) return NextResponse.json({ error: "ไฟล์ใหญ่เกินไป (สูงสุด 8MB)" }, { status: 413 });
+      return NextResponse.json({ error: await sm("ชนิดไฟล์ไม่รองรับ") }, { status: 400 });
+    if (file.size > MAX_BYTES) return NextResponse.json({ error: await sm("ไฟล์ใหญ่เกินไป (สูงสุด 8MB)") }, { status: 413 });
 
     const credit = await consumeAiCredit(session.tenantId, "photo_check");
     if (!credit.ok)
@@ -39,7 +40,7 @@ export async function POST(req: Request) {
   } catch (e) {
     console.error("ai/check-photo", e);
     return NextResponse.json(
-      { error: e instanceof Error ? e.message : "ตรวจรูปไม่สำเร็จ" },
+      { error: e instanceof Error ? await sm(e.message) : "ตรวจรูปไม่สำเร็จ" },
       { status: 500 }
     );
   }

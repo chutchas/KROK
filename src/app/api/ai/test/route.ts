@@ -1,3 +1,4 @@
+import { sm } from "@/lib/server-msg";
 import { NextResponse } from "next/server";
 import { getSession, canManage } from "@/lib/session";
 import { pingModel } from "@/lib/ai";
@@ -13,10 +14,10 @@ export async function POST(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   const platformStaff = session.isPlatformAdmin || session.platformRole === "developer";
-  if (!canManage(session.role) && !platformStaff) return NextResponse.json({ error: "ไม่มีสิทธิ์" }, { status: 403 });
+  if (!canManage(session.role) && !platformStaff) return NextResponse.json({ error: await sm("ไม่มีสิทธิ์") }, { status: 403 });
   // ไม่หักเครดิต → กันยิงรัวให้เสียค่า LLM ของระบบ: 6 ครั้ง/นาที/ผู้ใช้ (ผู้ดูแลระบบ 30)
   if (await rateLimited(`ai:test:${session.userId}`, platformStaff ? 30 : 6, 60))
-    return NextResponse.json({ error: "ทดสอบถี่เกินไป โปรดลองใหม่อีกสักครู่" }, { status: 429 });
+    return NextResponse.json({ error: await sm("ทดสอบถี่เกินไป โปรดลองใหม่อีกสักครู่") }, { status: 429 });
 
   let purpose = "form_gen";
   try {
