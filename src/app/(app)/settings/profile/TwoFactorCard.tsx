@@ -38,7 +38,7 @@ export default function TwoFactorCard() {
     // ล้าง factor ที่เริ่มไว้แต่ยังไม่ยืนยัน (กด "เปิดใช้" ซ้ำ)
     const { data: list } = await sb.auth.mfa.listFactors();
     for (const f of list?.all ?? []) if (f.status !== "verified") await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => {});
-    const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: `KROK ${new Date().toISOString().slice(0, 10)}` });
+    const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", issuer: "KROK", friendlyName: `KROK ${new Date().toISOString().slice(0, 10)}` });
     setBusy(false);
     if (error || !data) { setMsg({ t: error?.message || "error", err: true }); return; }
     setEnroll({ factorId: data.id, qr: data.totp.qr_code, secret: data.totp.secret });
