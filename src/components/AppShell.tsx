@@ -384,7 +384,7 @@ export default function AppShell({
                     <Icon icon={CircleHelp} className="h-[18px] w-[18px]" /> {t("tour.replay")}
                   </button>
                   <Link
-                    href="/contact"
+                    href="/help/contact"
                     onClick={() => setProfileOpen(false)}
                     className="inline-flex items-center gap-2.5"
                     style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", textDecoration: "none", color: "var(--ink)" }}
@@ -496,7 +496,7 @@ export default function AppShell({
                   <Icon icon={CircleHelp} className="h-[19px] w-[19px]" /> {t("tour.replay")}
                 </button>
                 <Link
-                  href="/contact"
+                  href="/help/contact"
                   onClick={() => setMenuOpen(false)}
                   className="inline-flex items-center gap-3"
                   style={{ width: "100%", padding: "10px 12px", borderRadius: 9, fontSize: ".95rem", textDecoration: "none", fontWeight: 500, color: "var(--ink)" }}
