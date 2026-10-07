@@ -37,21 +37,25 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
     .eq("status", "published")
     .is("deleted_at", null)
     .order("created_at", { ascending: false });
-  // สรุปย่อ (0050) แทน schema เต็ม · ยังไม่รัน = ดึง schema แบบเดิม
-  const [first, { data: teamIdRows }] = await Promise.all([formsQuery("summary"), supabase.rpc("my_team_ids")]);
-  const { data } = first.error ? await formsQuery("schema") : first;
-
-  const myTeams = new Set(((teamIdRows as string[] | null) || []).map(String));
   const manager = canManage(session.role);
-
-  const visible = ((data || []) as unknown as FormRow[]).filter((f) => {
-    if (manager) return true; // ผู้ดูแลเห็นทุกฟอร์มเพื่อทดสอบ/แก้ไข
-    const mode = f.visibility ?? "all";
-    if (mode === "all") return true;
-    if (mode === "teams") return (f.visible_teams || []).some((tid) => myTeams.has(String(tid)));
-    if (mode === "users") return (f.visible_users || []).includes(session.userId);
-    return true;
-  });
+  // รายการฟอร์มที่ผู้ใช้เห็น (สรุปย่อ 0050 แทน schema เต็ม · ยังไม่รัน = ดึง schema แบบเดิม)
+  const formsP = (async () => {
+    const [first, { data: teamIdRows }] = await Promise.all([formsQuery("summary"), supabase.rpc("my_team_ids")]);
+    const { data } = first.error ? await formsQuery("schema") : first;
+    const myTeams = new Set(((teamIdRows as string[] | null) || []).map(String));
+    const visible = ((data || []) as unknown as FormRow[]).filter((f) => {
+      if (manager) return true; // ผู้ดูแลเห็นทุกฟอร์มเพื่อทดสอบ/แก้ไข
+      const mode = f.visibility ?? "all";
+      if (mode === "all") return true;
+      if (mode === "teams") return (f.visible_teams || []).some((tid) => myTeams.has(String(tid)));
+      if (mode === "users") return (f.visible_users || []).includes(session.userId);
+      return true;
+    });
+    return { myTeams, visible };
+  })();
+  // รอบตรวจวันนี้ (0064): เริ่มโหลดพร้อมกับรายการฟอร์ม แล้วกรองด้วยฟอร์มที่เห็นทีหลัง · ยังไม่รัน/พลาด = ไม่แสดงแท็บ
+  const todayP = loadTodayRounds(supabase, session.tenantId, session.userId, manager, formsP.then((r) => new Set(r.visible.map((f) => f.id)))).catch(() => null);
+  const { myTeams, visible } = await formsP;
 
   const forms: FormListItem[] = visible.map((f) => {
     const sm = f.schema ? summaryOf(f.schema) : readSummary(f.summary);
@@ -62,7 +66,7 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
     draftsP,
     loadCases(supabase, session.tenantId, session.userId, [...myTeams], manager),
     // รอบตรวจตามตาราง (0064) · ยังไม่รัน/พลาด = ไม่แสดงแท็บ
-    loadTodayRounds(supabase, session.tenantId, session.userId, manager, new Set(visible.map((f) => f.id))).catch(() => null),
+    todayP,
   ]);
 
   return (

@@ -80,7 +80,10 @@ export default function TourGuide({ userId }: { userId: string }) {
   // เริ่มเองเมื่อเข้าหน้าที่ยังไม่เคยดู — ตรวจซ้ำเป็นระยะ (เช่น เปิด editor ทีหลังในหน้าเดียวกัน)
   useEffect(() => {
     if (!seen || tour) return;
+    // หน้านี้ไม่มีทัวร์ / ดูครบทุกทัวร์ของหน้านี้แล้ว = ไม่ต้องคอยตรวจ
+    if (!TOURS.some((x) => x.match(path) && !seen.has(x.id))) return;
     const tryStart = () => {
+      if (document.hidden) return false;
       if (document.querySelector('[role="dialog"], [role="alertdialog"]')) return false; // มีหน้าต่างอื่นเปิดอยู่
       const def = tourFor(path, visible, (id) => seen.has(id));
       if (def) { start(def); return true; }
@@ -222,10 +225,18 @@ export function TourHelpButton() {
   const { t } = useT();
   const [has, setHas] = useState(false);
   useEffect(() => {
-    const check = () => setHas(!!tourFor(path, visible));
+    // หน้านี้ไม่มีทัวร์เลย = ไม่ต้องตรวจ DOM
+    if (!TOURS.some((x) => x.match(path))) return;
+    let iv: ReturnType<typeof setInterval> | undefined;
+    const check = () => {
+      if (document.hidden) return;
+      const ok = !!tourFor(path, visible);
+      setHas(ok);
+      if (ok && iv) { clearInterval(iv); iv = undefined; } // เจอแล้วหยุดตรวจ
+    };
     const first = setTimeout(check, 400);
-    const iv = setInterval(check, 2000);
-    return () => { clearTimeout(first); clearInterval(iv); setHas(false); };
+    iv = setInterval(check, 2000);
+    return () => { clearTimeout(first); if (iv) clearInterval(iv); setHas(false); };
   }, [path]);
   if (!has) return null;
   return (

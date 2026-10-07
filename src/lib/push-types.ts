@@ -28,3 +28,20 @@ export function urlB64ToBytes(b64: string): Uint8Array {
   for (let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
   return out;
 }
+
+/** endpoint ของบริการ push จริงเท่านั้น (กันให้ server ยิงไปเว็บอื่น) — Chrome/Edge(FCM) · Firefox · Edge/Windows · Safari/iOS */
+const PUSH_HOSTS = [/^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/, /(^|\.)push\.services\.mozilla\.com$/, /(^|\.)notify\.windows\.com$/, /^web\.push\.apple\.com$/, /(^|\.)push\.apple\.com$/];
+export function isPushEndpoint(u: unknown): u is string {
+  if (typeof u !== "string" || u.length < 20 || u.length > 1000) return false;
+  try {
+    const url = new URL(u);
+    return url.protocol === "https:" && !url.port && PUSH_HOSTS.some((re) => re.test(url.hostname));
+  } catch {
+    return false;
+  }
+}
+/** เครื่องที่เปิดแจ้งเตือนได้สูงสุดต่อคน */
+export const MAX_PUSH_DEVICES = 10;
+/** ลิงก์ในแจ้งเตือน: path ภายในเท่านั้น (ไม่รับ "//host" หรือ "/\\host") */
+export const safePushLink = (link: unknown, fallback = "/dashboard") =>
+  typeof link === "string" && /^\/(?![/\\])[^\s]*$/.test(link) ? link : fallback;

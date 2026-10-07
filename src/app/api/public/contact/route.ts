@@ -11,7 +11,7 @@ import { cleanContact, contactEmail, contactErrors, CONTACT_MIN_MS } from "@/lib
 
 // ============================================================
 // ฟอร์ม "ติดต่อเรา" (/contact) — ไม่ต้องล็อกอิน · ล็อกอินอยู่ = แนบ user/workspace (0069)
-// กันบอท: ช่องลับ (website) · ส่งเร็วผิดปกติ · จำกัด 5 ครั้ง/ชม. (ต่อผู้ใช้ถ้าล็อกอิน ไม่งั้นต่อ IP) และ 200 ครั้ง/วันทั้งระบบ
+// กันบอท: ช่องลับ (website) · ส่งเร็วผิดปกติ · จำกัด 5 ครั้ง/ชม. (ต่อผู้ใช้ถ้าล็อกอิน ไม่งั้นต่อ IP) · อีเมลแจ้งทีมไม่เกิน 200 ฉบับ/วัน (เกิน = บันทึกอย่างเดียว)
 // เก็บลง contact_requests (0068) แล้วส่งอีเมลถึงทีมขาย (Reply-To = ลูกค้า)
 // ============================================================
 export const runtime = "nodejs";
@@ -38,7 +38,7 @@ export async function POST(req: Request) {
   const ipHash = createHash("sha256").update(`krok-contact:${ip}`).digest("hex").slice(0, 32);
   // ผู้ใช้ในระบบนับต่อบัญชี (ออฟฟิศเดียวกันใช้ IP เดียวกันได้หลายคน)
   const limitKey = session ? `contact:u:${session.userId}` : `contact:${ipHash}`;
-  if ((await rateLimited(limitKey, 5, 3600)) || (await rateLimited("contact:all", 200, 86400))) {
+  if (await rateLimited(limitKey, 5, 3600)) {
     return NextResponse.json({ error: await sm("ส่งข้อความหลายครั้งเกินไป — ลองใหม่ภายหลัง หรือโทรหาเราโดยตรง") }, { status: 429 });
   }
 
@@ -57,7 +57,9 @@ export async function POST(req: Request) {
 
   const sender = session ? { workspace: session.tenantName, role: session.roleName || session.role, userId: session.userId } : null;
   const mail = contactEmail(c, `${await siteOrigin()}/admin/contacts`, sender);
-  const sent = await sendEmail({ to: TO(), replyTo: c.email, ...mail });
+  // เพดานรวมทั้งระบบคุมเฉพาะการส่งอีเมล (กันโดนยิงจนกล่องเมลเต็ม) — ข้อความยังบันทึกลงระบบ คนจริงไม่โดนปฏิเสธ
+  const mailCapped = await rateLimited("contact:mail", 200, 86400);
+  const sent = mailCapped && rowId ? { ok: false as const, error: "daily email cap reached (stored only)" } : await sendEmail({ to: TO(), replyTo: c.email, ...mail });
   if (admin && rowId) await admin.from("contact_requests").update({ emailed: sent.ok, email_error: sent.ok ? null : sent.error.slice(0, 300) }).eq("id", rowId);
 
   // เก็บลงฐานข้อมูลได้ = ทีมเห็นแน่ แม้อีเมลไม่ออก · ไม่มีทั้งสองทาง = แจ้งให้ติดต่อช่องทางอื่น

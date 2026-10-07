@@ -315,11 +315,9 @@ export const getPendingPlanChange = cache(async (tenantId: string): Promise<{ pl
 
 /** webhook ที่ยังส่งได้: แพ็กเกจไม่รวม = none · ไม่จำกัด = all · เกินโควตา = เฉพาะ N เส้นแรกที่สร้าง (รวมทุก workspace) */
 export async function webhookAllowance(tenantId: string): Promise<"all" | "none" | Set<string>> {
-  const plan = await getTenantPlan(tenantId);
+  const [plan, { tenantIds }, c] = await Promise.all([getTenantPlan(tenantId), getTenantPool(tenantId), db()]);
   if (plan.maxWebhooks <= 0) return "none";
   if (plan.maxWebhooks >= UNLIMITED) return "all";
-  const c = await db();
-  const { tenantIds } = await getTenantPool(tenantId);
   const { data, error } = await c.from("webhooks").select("id").in("tenant_id", tenantIds).order("created_at", { ascending: true }).order("id").limit(plan.maxWebhooks);
   if (error) return "all"; // อ่านไม่ได้ = ไม่ตัดการส่งของลูกค้า
   return new Set((data || []).map((r) => r.id as string));
@@ -327,11 +325,9 @@ export async function webhookAllowance(tenantId: string): Promise<"all" | "none"
 
 /** API รับข้อมูลของฟอร์มนี้ยังรับได้ไหม (แพ็กเกจไม่รวม / ฟอร์มนี้อยู่นอก N ฟอร์มแรกของโควตา) */
 export async function intakeAllowed(tenantId: string, formId: string): Promise<boolean> {
-  const plan = await getTenantPlan(tenantId);
+  const [plan, { tenantIds }, c] = await Promise.all([getTenantPlan(tenantId), getTenantPool(tenantId), db()]);
   if (plan.maxIntakeForms <= 0) return false;
   if (plan.maxIntakeForms >= UNLIMITED) return true;
-  const c = await db();
-  const { tenantIds } = await getTenantPool(tenantId);
   const { data, error } = await c.from("form_intake").select("form_id").in("tenant_id", tenantIds).eq("enabled", true)
     .order("key_created_at", { ascending: true, nullsFirst: false }).order("form_id").limit(plan.maxIntakeForms);
   if (error) return true;

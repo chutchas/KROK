@@ -2,7 +2,7 @@ import "server-only";
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import webpush from "web-push";
-import { pushGroupOf, cleanOffGroups } from "@/lib/push-types";
+import { pushGroupOf, cleanOffGroups, isPushEndpoint, safePushLink, MAX_PUSH_DEVICES } from "@/lib/push-types";
 import { siteOrigin } from "@/lib/site-origin";
 
 // ============================================================
@@ -51,10 +51,11 @@ export async function sendToUser(admin: SupabaseClient, userId: string, payload:
   const k = vapidKeys();
   if (!k) return { sent: 0, failed: 0, devices: 0 };
   webpush.setVapidDetails(k.subject, k.publicKey, k.privateKey);
-  let q = admin.from("push_subscriptions").select("id, endpoint, p256dh, auth, fail_count").eq("user_id", userId).limit(20);
+  let q = admin.from("push_subscriptions").select("id, endpoint, p256dh, auth, fail_count").eq("user_id", userId).order("created_at", { ascending: false }).limit(MAX_PUSH_DEVICES);
   if (onlyEndpoint) q = q.eq("endpoint", onlyEndpoint);
   const { data } = await q;
-  const subs = (data || []) as SubRow[];
+  // แถวเก่าที่ไม่ใช่บริการ push จริง (ก่อนมีการตรวจ) = ข้าม ไม่ยิงออกไป
+  const subs = ((data || []) as SubRow[]).filter((s) => isPushEndpoint(s.endpoint));
   const body = JSON.stringify({ ...payload, title: payload.title.slice(0, 120), body: payload.body.slice(0, 240) });
   let sent = 0, failed = 0;
   await Promise.all(subs.map(async (s) => {
@@ -83,7 +84,7 @@ export async function pushNotification(admin: SupabaseClient, id: string): Promi
     const { data: pref } = await admin.from("push_prefs").select("off_types").eq("user_id", n.user_id).maybeSingle();
     if (cleanOffGroups(pref?.off_types).includes(group)) return { sent: 0, skipped: "pref_off" };
   }
-  const link = typeof n.link === "string" && n.link.startsWith("/") ? n.link : "/dashboard";
+  const link = safePushLink(n.link);
   const r = await sendToUser(admin, n.user_id as string, { title: (n.title as string) || "KROK", body: (n.body as string) || "", url: link, tag: id });
   return { sent: r.sent };
 }

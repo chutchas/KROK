@@ -7,27 +7,16 @@
 // สำเร็จ → เข้าแอป (next) · เปิดลิงก์คนละเครื่องกับที่สมัคร (PKCE แลก code ไม่ได้ แต่ Supabase ยืนยันอีเมลไปแล้ว)
 //   → กลับหน้า login พร้อมข้อความ "ยืนยันอีเมลแล้ว เข้าสู่ระบบได้เลย"
 // ============================================================
+import { safeNextPath } from "@/lib/safe-next";
 import { NextResponse, type NextRequest } from "next/server";
 import type { EmailOtpType } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 
 const OTP_TYPES: EmailOtpType[] = ["signup", "invite", "magiclink", "recovery", "email_change", "email"];
 
-/** กันเปิด redirect ไปเว็บอื่น: รับเฉพาะ path ภายใน (parse จริงแล้วเทียบ origin — กัน "/\t/evil.com" ที่ browser ตัด tab ทิ้ง) */
-function safeNext(raw: string | null, origin: string): string {
-  if (!raw || !raw.startsWith("/")) return "/dashboard";
-  try {
-    const u = new URL(raw, origin);
-    if (u.origin !== origin) return "/dashboard";
-    return u.pathname + u.search + u.hash;
-  } catch {
-    return "/dashboard";
-  }
-}
-
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const next = safeNext(url.searchParams.get("next"), url.origin);
+  const next = safeNextPath(url.searchParams.get("next"));
   const code = url.searchParams.get("code");
   const tokenHash = url.searchParams.get("token_hash");
   const type = url.searchParams.get("type") as EmailOtpType | null;
@@ -38,9 +27,8 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     ok = !error;
   } else if (tokenHash && type && OTP_TYPES.includes(type)) {
-    // ลิงก์รีเซ็ตรหัสผ่าน: ออกจากบัญชีที่ค้างอยู่ในเบราว์เซอร์นี้ก่อน (อาจเป็นคนละคนกับเจ้าของลิงก์)
-    // กันตั้งรหัสผิดบัญชี / ลิงก์ใช้ไม่ได้แล้วเด้งเข้าแอปด้วยบัญชีเดิม
-    if (type === "recovery") await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+    // สำเร็จ = session ของเจ้าของลิงก์แทนที่บัญชีเดิมในเบราว์เซอร์นี้เอง
+    // (ไม่ล็อกเอาต์ก่อนตรวจ token — กันเว็บอื่นใช้ลิงก์มั่วทำให้ผู้ใช้หลุดจากระบบ)
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     ok = !error;
   }
@@ -52,6 +40,6 @@ export async function GET(request: NextRequest) {
   const back = new URL("/login", url.origin);
   if (next.startsWith("/reset-password")) back.searchParams.set("auth_error", "reset"); // ลิงก์รีเซ็ตใช้ไม่ได้/เปิดคนละเบราว์เซอร์ → ขอใหม่
   else if (code && !desc) back.searchParams.set("confirmed", "1"); // ยืนยันแล้ว แต่ต้องล็อกอินเอง (เปิดคนละเครื่อง)
-  else back.searchParams.set("auth_error", desc ? desc.slice(0, 200) : "1");
+  else back.searchParams.set("auth_error", /expired/i.test(desc || "") ? "expired" : "1"); // รหัสคงที่ — ไม่ส่งข้อความจาก URL ไปแสดง
   return NextResponse.redirect(back);
 }

@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const session = await enforceMenu("dashboard");
   const supabase = await createClient();
 
-  const [snap, recentRes, formsRes, layoutRes] = await Promise.all([
+  const [snap, recentRes, formsRes, layoutRes, schedRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
     supabase
@@ -35,6 +35,8 @@ export default async function DashboardPage() {
       .eq("user_id", session.userId)
       .eq("tenant_id", session.tenantId)
       .maybeSingle(),
+    // มีรอบตรวจตามตารางไหม (ไม่มี = ไม่โหลดการ์ด compliance เลย) · ยังไม่รัน 0064 = error → ไม่มี
+    supabase.from("form_schedules").select("form_id", { count: "exact", head: true }).eq("tenant_id", session.tenantId).eq("enabled", true),
   ]);
 
   const summary: Summary = {
@@ -59,6 +61,7 @@ export default async function DashboardPage() {
       initial={(recentRes.data || []) as SubRow[]}
       forms={forms}
       summary={summary}
+      hasSchedules={!schedRes.error && (schedRes.count ?? 0) > 0}
       initialWidgets={initialWidgets}
     />
   </>);

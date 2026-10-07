@@ -8,6 +8,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { LogoMark } from "@/components/Logo";
 import { LEGAL_VERSION } from "@/lib/legal";
+import { safeNextPath } from "@/lib/safe-next";
 import GoogleSignInButton, { googleClientId } from "@/components/GoogleSignInButton";
 import { emailIssue, hasNonAscii, passwordIssue, PASSWORD_MIN } from "@/lib/auth-validate";
 import { clearBundles } from "@/lib/offline-store";
@@ -39,7 +40,8 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     if (sp.get("deleted")) return { t: t("login.accountDeleted") };
     const e = sp.get("auth_error");
     if (e === "reset") return { t: t("login.resetLinkFail"), err: true };
-    if (e) return { t: e === "1" ? t("login.confirmFail") : `${t("login.confirmFail")} (${e})`, err: true };
+    if (e === "expired") return { t: t("login.linkExpired"), err: true };
+    if (e) return { t: t("login.confirmFail"), err: true }; // ไม่แสดงข้อความจาก URL (กันข้อความหลอกบนโดเมนเรา)
     return null;
   });
   const isInvite = mode === "signup" && !!invited && email.trim().toLowerCase() === invited;
@@ -59,7 +61,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
   // หลังเข้าสู่ระบบ: ไปหน้าที่ตั้งใจจะเข้า (?next= — path ภายในเท่านั้น) ไม่งั้นแดชบอร์ด
   const nextRaw = sp.get("next") || "";
-  const nextPath = /^\/(?![/\\])/.test(nextRaw) ? nextRaw : "/dashboard";
+  const nextPath = safeNextPath(nextRaw);
 
   // ปุ่ม Google แสดงเมื่อเปิด provider ใน Supabase แล้วเท่านั้น (อ่านจาก /auth/v1/settings ซึ่งเป็นข้อมูลสาธารณะ)
   const [googleOn, setGoogleOn] = useState(false);

@@ -80,9 +80,11 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 }
 
 export default function DashboardClient({
-  tenantId, initial, forms, summary, initialWidgets,
+  tenantId, initial, forms, summary, initialWidgets, hasSchedules = false,
 }: {
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
+  /** มีรอบตรวจตามตาราง — ไม่มี = ไม่แสดง/ไม่โหลดการ์ด compliance */
+  hasSchedules?: boolean;
 }) {
   const { t, tt, lang } = useT();
   const en = lang === "en";
@@ -158,7 +160,7 @@ export default function DashboardClient({
       </div>
 
       {/* รอบตรวจตามตาราง — ความครบถ้วน (มีตารางเท่านั้น) */}
-      <ComplianceCard />
+      {hasSchedules && <ComplianceCard />}
 
       {/* โซน widget ปรับเองได้ */}
       {widgets.length > 0 && (

@@ -136,14 +136,15 @@ self.addEventListener("push", (e) => {
       icon: "/icon-192.png",
       badge: "/icon-192.png",
       tag: d.tag || undefined,
-      data: { url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : "/dashboard" },
+      data: { url: typeof d.url === "string" && /^\/(?![/\\])[^\s]*$/.test(d.url) ? d.url : "/dashboard" },
     })
   );
 });
 
 self.addEventListener("notificationclick", (e) => {
   e.notification.close();
-  const url = new URL((e.notification.data && e.notification.data.url) || "/dashboard", self.location.origin).href;
+  let url = new URL((e.notification.data && e.notification.data.url) || "/dashboard", self.location.origin).href;
+  if (new URL(url).origin !== self.location.origin) url = new URL("/dashboard", self.location.origin).href; // เปิดเฉพาะหน้าในเว็บนี้
   e.waitUntil(
     (async () => {
       const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });

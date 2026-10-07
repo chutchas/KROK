@@ -2,6 +2,7 @@
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import { interpolate, type Dict, type Lang, type MessageKey } from "./dictionaries";
 import { th } from "./th";
+import { loadServerMessagesEn } from "./stored-text";
 
 // ภาษาไทยมากับ bundle เสมอ (ภาษาหลัก + ใช้แทนระหว่างรอคำแปล)
 // ภาษาอังกฤษโหลดแยกเป็น chunk เมื่อผู้ใช้เลือก EN ครั้งแรก แล้วเก็บไว้ในหน่วยความจำ
@@ -9,7 +10,8 @@ let enCache: Dict | null = null;
 let enLoading: Promise<Dict> | null = null;
 function loadEn(): Promise<Dict> {
   if (enCache) return Promise.resolve(enCache);
-  enLoading ??= import("./en").then((m) => (enCache = m.en)).catch((e) => { enLoading = null; throw e; });
+  // พร้อมกัน: ตารางแปลข้อความจาก server (ไม่ใส่ใน bundle หลักของผู้ใช้ภาษาไทย)
+  enLoading ??= Promise.all([import("./en"), loadServerMessagesEn()]).then(([m]) => (enCache = m.en)).catch((e) => { enLoading = null; throw e; });
   return enLoading;
 }
 

@@ -1,4 +1,10 @@
-import { SERVER_MESSAGES_EN } from "@/i18n/server-messages";
+// ตารางแปลข้อความจาก server (~27KB) โหลดแยกเมื่อเลือกภาษาอังกฤษเท่านั้น (LanguageProvider เรียก loadServerMessagesEn)
+let serverEn: Record<string, string> | null = null;
+let serverEnLoading: Promise<void> | null = null;
+export function loadServerMessagesEn(): Promise<void> {
+  serverEnLoading ??= import("@/i18n/server-messages").then((m) => { serverEn = m.SERVER_MESSAGES_EN; }).catch(() => { serverEnLoading = null; });
+  return serverEnLoading;
+}
 
 // ============================================================
 // ข้อความที่ระบบบันทึกลงผลการส่ง (เป็นภาษาไทยเสมอ — รายงาน/PDF/ข้อมูลเดิมอ้างรูปแบบนี้อยู่)
@@ -37,5 +43,6 @@ export function localizeStored(text: string | null | undefined, lang: string): s
 export function localizeServerMsg(text: string | null | undefined, lang: string): string {
   if (text == null) return "";
   if (lang !== "en") return text;
-  return SERVER_MESSAGES_EN[text.trim()] ?? localizeStored(text, lang);
+  if (!serverEn) void loadServerMessagesEn(); // ยังไม่โหลด = ใช้กฎแปลพื้นฐานไปก่อน
+  return serverEn?.[text.trim()] ?? localizeStored(text, lang);
 }

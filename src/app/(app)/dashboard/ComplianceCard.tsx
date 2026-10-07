@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import FormIcon from "@/components/FormIcon";
 import Icon from "@/components/Icon";
@@ -19,10 +19,16 @@ export default function ComplianceCard() {
   const [view, setView] = useState<"forms" | "teams">("forms");
   const [openId, setOpenId] = useState<string | null>(null);
 
+  const first = useRef(true);
   useEffect(() => {
     let alive = true;
+    // ครั้งแรก: หน่วงไว้ให้ widget อื่นโหลดก่อน (server action ของ client เดียวกันวิ่งทีละรายการ)
+    const delay = first.current ? 1200 : 0;
+    first.current = false;
+    const tm = setTimeout(() => {
     loadScheduleCompliance(days).then((r) => { if (alive) setData(r && "error" in r ? null : r); }).catch(() => { if (alive) setData(null); });
-    return () => { alive = false; };
+    }, delay);
+    return () => { alive = false; clearTimeout(tm); };
   }, [days]);
 
   if (!data || !data.forms.length) return null;

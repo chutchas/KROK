@@ -132,15 +132,26 @@ export async function POST(req: Request) {
 
   // เวอร์ชันที่ผู้ใช้กรอกจริง (คิวออฟไลน์/แบบร่างอาจกรอกก่อนฟอร์มถูกแก้) — ต้องไม่ใหม่กว่าปัจจุบัน
   // มีสำเนาเวอร์ชันนั้น (0065) → ตรวจคำตอบกับ schema ที่ผู้ใช้เห็นจริง ช่องที่ถูกลบไปทีหลังจะไม่หาย
+  // ยอมใช้เวอร์ชันเก่าเฉพาะใบจากคิวออฟไลน์ที่กรอกก่อนฟอร์มถูกแก้จริง (กันยิงอ้างเวอร์ชันเก่าเพื่อเลี่ยงกฎปัจจุบัน)
+  // ข้อบังคับ GPS ใช้ของฟอร์มปัจจุบันเสมอ
+  let currentGeo: FormSchema["geo"];
+  try { currentGeo = sanitizeSchema(schemaRaw).geo; } catch { currentGeo = undefined; }
   const clientVer = Math.round(Number(body.version));
-  if (!caseId && Number.isFinite(clientVer) && clientVer >= 1 && clientVer < version) {
-    const { data: old } = await admin.from("form_versions").select("schema").eq("form_id", formId).eq("version", clientVer).maybeSingle();
-    if (old?.schema) schemaRaw = old.schema;
-    version = clientVer;
+  const filledIso = body.offline === true ? clampFilledAt(body.filledAt, Date.now()) : null;
+  if (!caseId && filledIso && Number.isFinite(clientVer) && clientVer >= 1 && clientVer < version) {
+    const { data: vers } = await admin.from("form_versions").select("version, schema, saved_at").eq("form_id", formId).in("version", [clientVer, clientVer + 1]);
+    const old = vers?.find((v) => v.version === clientVer);
+    const next = vers?.find((v) => v.version === clientVer + 1);
+    // กรอกก่อนเวอร์ชันถัดไปถูกบันทึก = กรอกบนเวอร์ชันนั้นจริง
+    if (old?.schema && next?.saved_at && Date.parse(filledIso) < Date.parse(next.saved_at as string)) {
+      schemaRaw = old.schema;
+      version = clientVer;
+    }
   }
 
   let schema: FormSchema;
   try { schema = sanitizeSchema(schemaRaw); } catch { return fail(500, await sm("ฟอร์มไม่ถูกต้อง")); }
+  schema = { ...schema, geo: currentGeo };
 
   const d = devRes.data as { id: string; status: string } | null;
   const deviceId: string | null = d && d.status === "approved" ? d.id : null;
@@ -181,7 +192,7 @@ export async function POST(req: Request) {
     approval_step: 0,
     approval_history: [],
     // เวลาที่กรอกจริงจากเครื่อง: รับเฉพาะใบที่เข้าคิวตอนออฟไลน์ (ใบออนไลน์ = เวลาของ server)
-    filled_at: body.offline === true ? clampFilledAt(body.filledAt, Date.now()) : null,
+    filled_at: filledIso,
   };
   // พิกัด (เฉพาะฟอร์มที่เปิด GPS ในเวอร์ชันที่กรอก) · บังคับแต่ไม่มี = ไม่รับ
   if (schema.geo) {

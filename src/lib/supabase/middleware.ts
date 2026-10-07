@@ -16,6 +16,10 @@ const PUBLIC_PATHS = ["/login", "/auth", "/privacy", "/terms", "/contact", "/api
 // เส้นทางที่ไม่ใช้ session ผู้ใช้เลย (ตรวจ API key / secret เอง หรือเป็นไฟล์) — ข้ามการเช็ก login ทั้งหมด
 const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/client-error", "/api/v1/", "/api/cron/", "/api/push/dispatch", "/api/billing/callback", "/sw.js", "/offline", "/manifest"];
 
+/** ตรงเส้นทาง: รายการที่ลงท้าย "/" = ขึ้นต้นด้วย · ไม่ลงท้าย = ตรงทั้งตัว หรือมี "/" "." ต่อ (กัน "/contactX" กลายเป็นหน้าสาธารณะ) */
+const matches = (path: string, p: string) =>
+  p.endsWith("/") ? path.startsWith(p) : path === p || path.startsWith(p + "/") || path.startsWith(p + ".");
+
 export async function updateSession(request: NextRequest) {
   // CSP + nonce ใหม่ทุกคำขอ — Next แปะ nonce ให้สคริปต์ของตัวเองอัตโนมัติจาก header นี้ (หน้าต้อง render แบบ dynamic)
   const nonce = newNonce();
@@ -30,7 +34,7 @@ export async function updateSession(request: NextRequest) {
     return r;
   };
 
-  if (NO_SESSION_PATHS.some((p) => request.nextUrl.pathname.startsWith(p))) return next();
+  if (NO_SESSION_PATHS.some((p) => matches(request.nextUrl.pathname, p))) return next();
 
   let response = next();
 
@@ -58,7 +62,7 @@ export async function updateSession(request: NextRequest) {
   const user = claimData?.claims?.sub ? claimData.claims : null;
 
   const path = request.nextUrl.pathname;
-  const isPublic = PUBLIC_PATHS.some((p) => path.startsWith(p));
+  const isPublic = PUBLIC_PATHS.some((p) => matches(path, p));
 
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();

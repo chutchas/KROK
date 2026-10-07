@@ -15,12 +15,23 @@ export function useGeo(enabled: boolean) {
   const last = useRef<GeoFix | null>(null);
   const [fix, setFix] = useState<GeoFix | null>(null);
 
+  const watchId = useRef<number | null>(null);
+  const stopWatch = useCallback(() => {
+    if (watchId.current != null && typeof navigator !== "undefined") navigator.geolocation?.clearWatch(watchId.current);
+    watchId.current = null;
+  }, []);
+
   const onPos = useCallback((p: GeolocationPosition) => {
     const f = toFix(p);
-    // เก็บตัวที่แม่นกว่า ถ้าตัวใหม่ไม่ได้ใหม่กว่ามาก
+    // เก็บตัวที่แม่นกว่า ถ้าตัวใหม่ไม่ได้ใหม่กว่ามาก (เก็บใน ref — รูป/ตอนส่งอ่านจาก ref)
     const prev = last.current;
-    if (!prev || f.acc <= prev.acc || f.at - prev.at > 30_000) { last.current = f; setFix(f); }
+    if (!prev || f.acc <= prev.acc || f.at - prev.at > 30_000) {
+      last.current = f;
+      // re-render ทั้งฟอร์มเฉพาะเมื่อค่าที่แสดง (ความคลาดเคลื่อนปัด 5 ม.) เปลี่ยน — ไม่ใช่ทุกครั้งที่ GPS ส่งค่ามา
+      setFix((cur) => (cur && Math.round(cur.acc / 5) === Math.round(f.acc / 5) ? cur : f));
+    }
     setStatus("ok");
+    // ไม่หยุดติดตาม: ลายน้ำบนรูปอ่านพิกัดล่าสุดตอนถ่าย — ถ้าหยุด คนที่เดินไปจุดอื่นจะได้พิกัดเก่า
   }, []);
   const onErr = useCallback((e: GeolocationPositionError) => {
     if (e.code === e.PERMISSION_DENIED) setStatus("denied");
@@ -30,9 +41,9 @@ export function useGeo(enabled: boolean) {
   useEffect(() => {
     if (!enabled) return;
     if (typeof navigator === "undefined" || !navigator.geolocation) { setStatus("unavailable"); return; }
-    const id = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 });
-    return () => navigator.geolocation.clearWatch(id);
-  }, [enabled, onPos, onErr]);
+    watchId.current = navigator.geolocation.watchPosition(onPos, onErr, { enableHighAccuracy: true, maximumAge: 30_000, timeout: 20_000 });
+    return stopWatch;
+  }, [enabled, onPos, onErr, stopWatch]);
 
   /** พิกัดสำหรับส่ง: ใช้ตัวล่าสุดถ้ายังสด (≤2 นาที) ไม่งั้นขอใหม่ (รอสูงสุด timeoutMs) */
   const getFix = useCallback((timeoutMs = 12_000): Promise<GeoFix | null> => {

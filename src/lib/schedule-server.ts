@@ -134,9 +134,10 @@ export interface TodayRound {
  * ผู้ดูแลเห็นทุกตาราง · คนอื่นเห็นเฉพาะที่ตัวเองรับผิดชอบ (ตารางที่ไม่ระบุผู้รับผิดชอบ = ทุกคนที่เห็นฟอร์ม)
  */
 export async function loadTodayRounds(
-  supabase: SupabaseClient, tenantId: string, userId: string, manager: boolean, visibleFormIds: Set<string>, nowMs = Date.now(),
+  supabase: SupabaseClient, tenantId: string, userId: string, manager: boolean, visibleFormIdsIn: Set<string> | Promise<Set<string>>, nowMs = Date.now(),
 ): Promise<TodayRound[] | null> {
-  const ctx = await loadCtx(supabase, tenantId);
+  // โหลดตารางพร้อมกับที่หน้ากำลังโหลดรายการฟอร์ม (ไม่ต้องรอรายชื่อฟอร์มที่เห็นก่อน)
+  const [ctx, visibleFormIds] = await Promise.all([loadCtx(supabase, tenantId), visibleFormIdsIn]);
   if (!ctx) return null;
   const today = bkkDayStart(nowMs);
   const from = today - DAY;
