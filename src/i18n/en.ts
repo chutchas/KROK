@@ -1637,7 +1637,7 @@ export const en: Record<MessageKey, string> = {
   "invite.decline": "Decline",
   "invite.declineConfirm": "Decline the invitation to {name}? An admin will need to invite you again.",
   "login.inviteNotice": "Already have a KROK account? Sign in below, then tap “Join” on the banner at the top of the app.",
-  "login.checkEmail": "Almost done — we sent a confirmation link to {email}. Click it to get started (check spam if you don't see it).",
+  "login.checkEmail": "If {email} hasn't signed up before, we've sent a confirmation link — click it to get started (check spam if you don't see it). If you've used this email before (e.g. with Google), use “Continue with Google” or “Forgot password?” instead.",
   "login.alreadyRegistered": "This email already has an account — please sign in.",
   "login.confirmedOk": "Email confirmed — you can sign in now.",
   "login.confirmFail": "This confirmation link is invalid or expired — try signing in, or sign up again for a new link.",
