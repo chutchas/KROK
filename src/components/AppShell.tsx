@@ -26,6 +26,9 @@ import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, We
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
 // เมนูกลุ่มงานหลัก — อยู่บน navbar ครบทุกตัว (ไม่อยู่ใน sidebar) กรองตามสิทธิ์เมนูของ role
+// ชื่อสั้นในแถบบน (ชื่อเต็มอยู่ใน title / เมนูข้าง / หัวหน้า) — กันแถบเมนูล้น
+const NAV_SHORT: Partial<Record<MessageKey, MessageKey>> = { "hub.billing": "nav.short.billing", "hub.workspace": "nav.short.workspace", "hub.people": "nav.short.people" };
+
 const PRIMARY: NavEntry[] = [
   { href: "/dashboard", key: "nav.dashboard", icon: BarChart3, menu: "dashboard" },
   { href: "/studio", key: "nav.studio", icon: PenSquare, menu: "studio" },
@@ -172,8 +175,13 @@ export default function AppShell({
     const nav = navRef.current;
     const el = nav?.querySelector<HTMLElement>('a[aria-current="page"]');
     if (!nav || !el || nav.scrollWidth <= nav.clientWidth) return;
-    const target = el.offsetLeft - nav.offsetLeft - (nav.clientWidth - el.offsetWidth) / 2;
-    nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
+    // เลื่อนน้อยที่สุดพอให้แท็บที่เลือกเห็นครบ (ไม่จัดกึ่งกลาง → เมนูแรก ๆ ไม่ถูกดันออกโดยไม่จำเป็น)
+    const left = el.offsetLeft - nav.offsetLeft;
+    const pad = 28; // เผื่อขอบจาง
+    let target = nav.scrollLeft;
+    if (left - pad < nav.scrollLeft) target = left - pad;
+    else if (left + el.offsetWidth + pad > nav.scrollLeft + nav.clientWidth) target = left + el.offsetWidth + pad - nav.clientWidth;
+    if (target !== nav.scrollLeft) nav.scrollTo({ left: Math.max(0, target), behavior: "smooth" });
   }, [path]);
   // ขอบจาง ซ้าย/ขวา บอกว่ายังมีเมนูให้ปัดดู
   const [edge, setEdge] = useState({ l: false, r: false });
@@ -217,6 +225,10 @@ export default function AppShell({
         @media (min-width: 641px){
           .krok-topbar{ flex-wrap: nowrap !important; }
           .krok-ws-slot, .krok-controls{ flex-shrink: 0; }
+        }
+        /* ชื่อ workspace: จอช่วง 641–1280px ที่เมนูแน่นที่สุด ให้แคบลง (ชื่อเต็มอยู่ใน title) */
+        @media (min-width: 641px) and (max-width: 1280px){
+          .krok-ws-slot .krok-ws-name{ max-width: 120px !important; }
         }
         @media (max-width: 640px){
           /* มือถือ: ปุ่มควบคุม (theme/lang/noti/profile) ขึ้นแถวบนชิดขวา */
@@ -301,7 +313,7 @@ export default function AppShell({
                     background: on ? "var(--accent-soft)" : "transparent",
                   }}
                 >
-                  <Icon icon={n.icon} className="h-[17px] w-[17px]" /> <span className="krok-nav-label">{t(n.key)}</span>
+                  <Icon icon={n.icon} className="h-[17px] w-[17px]" /> <span className="krok-nav-label">{t(NAV_SHORT[n.key] ?? n.key)}</span>
                 </Link>
               );
             })}

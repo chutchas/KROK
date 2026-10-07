@@ -28,7 +28,7 @@ function WsChipBody({ name, chevron }: { name: string; chevron: boolean }) {
   return (
     <>
       <WsAvatar name={name} />
-      <span className="krok-ws-name" style={{ fontWeight: 600, fontSize: ".9rem", color: "var(--ink)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 220 }}>{name}</span>
+      <span className="krok-ws-name" style={{ fontWeight: 600, fontSize: ".9rem", color: "var(--ink)", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>{name}</span>
       {chevron && <span style={{ flex: "0 0 auto", display: "inline-flex", color: "var(--ink-3)" }}><Icon icon={ChevronDown} className="h-4 w-4" /></span>}
     </>
   );
