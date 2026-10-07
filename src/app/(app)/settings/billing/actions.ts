@@ -12,11 +12,12 @@ import { paymentsEnabled, createCheckout, createCardSetup } from "@/lib/billing-
 import { getTenantPool, currentPeriod } from "@/lib/quota";
 import { siteOrigin } from "@/lib/site-origin";
 
-export type SetPlanResult = { ok: true } | { checkoutUrl: string } | { error: string };
+export type SetPlanResult = { ok: true; scheduledAt?: string } | { checkoutUrl: string } | { error: string };
 
 /**
  * เปลี่ยน/ซื้อ/ต่ออายุแพ็กเกจของบัญชี (เฉพาะเจ้าของบัญชี = คนสร้าง workspace)
- * - แพ็กเกจราคา 0 → เปลี่ยนทันที (ยกเลิกวันหมดอายุ)
+ * - แพ็กเกจราคา 0 → ยังอยู่ในรอบแพ็กเกจเสียเงิน = ตั้งเวลาเปลี่ยนเมื่อหมดรอบ (0070) · ไม่มีรอบค้าง = เปลี่ยนทันที
+ * - แพ็กเกจเสียเงินที่ถูกกว่าแพ็กเกจปัจจุบัน ระหว่างรอบที่จ่ายแล้ว → ไม่ให้ซื้อ (ซื้อได้เมื่อหมดรอบ)
  * - แพ็กเกจเสียเงิน → ออกใบแจ้งหนี้ pending + สร้างคำขอชำระที่ Payment Gateway → คืนลิงก์หน้าชำระ
  *   แพ็กเกจจะเปลี่ยนเมื่อ Gateway แจ้งผลสำเร็จกลับมาที่ /api/billing/callback เท่านั้น
  *   เลือกแพ็กเกจเดิม = ต่ออายุ (นับต่อจากวันหมดอายุเดิม)
@@ -33,17 +34,39 @@ export async function setPlan(plan: PlanKey, opts: { autoRenew?: boolean } = {})
   // ต้องเป็นแพ็กเกจที่เปิดให้ลูกค้าเลือก (ที่ซ่อน = แอดมินกำหนดให้เท่านั้น)
   if (!target || (!target.visible && plan !== "free")) return { error: await sm("แผนไม่ถูกต้อง") };
 
+  const admin0 = getAdminClient();
+  const { data: acct } = admin0 && pool.ownerId
+    ? await admin0.from("account_plans").select("plan, expires_at").eq("user_id", pool.ownerId).maybeSingle()
+    : { data: null };
+  const activeUntil = acct?.expires_at && Date.parse(acct.expires_at as string) > Date.now() ? (acct.expires_at as string) : null;
+  const currentPlan = acct?.plan ? plans[acct.plan as string] : undefined;
+
   if (target.priceThb <= 0) {
     const supabase = await createClient();
-    const { error } = await supabase.rpc("set_plan", { p_tenant: session.tenantId, p_plan: plan });
-    if (error) return { error: await sm(dbError(error)) };
+    let scheduledAt: string | undefined;
+    const r = await supabase.rpc("request_plan_change", { p_tenant: session.tenantId, p_plan: plan });
+    if (r.error && /request_plan_change|function/i.test(r.error.message) && /not find|does not exist|schema cache/i.test(r.error.message)) {
+      // ยังไม่รัน 0070 → เปลี่ยนทันทีแบบเดิม
+      const { error } = await supabase.rpc("set_plan", { p_tenant: session.tenantId, p_plan: plan });
+      if (error) return { error: await sm(dbError(error)) };
+    } else if (r.error) {
+      return { error: await sm(dbError(r.error)) };
+    } else if (r.data === "scheduled" && activeUntil) {
+      scheduledAt = activeUntil;
+    }
     await writeAudit({
-      tenant_id: session.tenantId, actor_id: session.userId, action: "plan.change",
-      target_type: "tenant", target_id: session.tenantId, meta: { plan },
+      tenant_id: session.tenantId, actor_id: session.userId, action: scheduledAt ? "plan.change_scheduled" : "plan.change",
+      target_type: "tenant", target_id: session.tenantId, meta: scheduledAt ? { plan, at: scheduledAt } : { plan },
     });
     revalidatePath("/settings/billing");
     revalidatePath("/", "layout");
-    return { ok: true };
+    return scheduledAt ? { ok: true, scheduledAt } : { ok: true };
+  }
+
+  // ลดเป็นแพ็กเกจเสียเงินที่ถูกกว่า ระหว่างรอบที่จ่ายแล้ว → ต้องรอหมดรอบ (ไม่ให้เสียวันที่จ่ายไปแล้ว)
+  if (activeUntil && currentPlan && currentPlan.key !== target.key && target.priceThb < currentPlan.priceThb) {
+    const d = new Date(activeUntil).toLocaleDateString("th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" });
+    return { error: await sm(`เปลี่ยนเป็นแพ็กเกจที่ราคาต่ำกว่าได้เมื่อรอบปัจจุบันหมด (${d}) — ระหว่างนี้ยังใช้แพ็กเกจเดิมได้ครบ`) };
   }
 
   if (!paymentsEnabled()) return { error: await sm("ระบบชำระเงินยังไม่เปิดให้บริการ — ยังไม่สามารถซื้อแผนนี้ได้") };
@@ -172,4 +195,18 @@ export async function startCardUpdate(): Promise<{ setupUrl: string } | { error:
     await admin.from("card_setups").update({ status: "failed" }).eq("id", setup.id);
     return { error: `เชื่อมต่อระบบชำระเงินไม่สำเร็จ (${e instanceof Error ? e.message : "error"})` };
   }
+}
+
+
+/** ยกเลิกการลดแพ็กเกจที่ตั้งเวลาไว้ (0070) */
+export async function cancelPlanChange(): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  const supabase = await createClient();
+  const { error } = await supabase.rpc("cancel_plan_change", { p_tenant: session.tenantId });
+  if (error) return { error: await sm(dbError(error)) };
+  await writeAudit({ tenant_id: session.tenantId, actor_id: session.userId, action: "plan.change_cancelled", target_type: "tenant", target_id: session.tenantId, meta: {} });
+  revalidatePath("/settings/billing");
+  revalidatePath("/", "layout");
+  return { ok: true };
 }

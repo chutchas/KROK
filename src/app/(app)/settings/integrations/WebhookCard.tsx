@@ -19,7 +19,7 @@ const noopSub = () => () => {};
 
 export default function WebhookCard({ w, forms, onMsg, locked = false }: {
   w: WebhookItem;
-  /** แพ็กเกจไม่รวม webhook (ตั้งไว้ก่อนลดแพ็กเกจ): ปิด/ดูประวัติ/ลบได้ · ทดสอบ/แก้ไข/เปิดใหม่ไม่ได้ */
+  /** แพ็กเกจไม่รวม webhook (ลดแพ็กเกจแล้ว): หยุดส่ง · ปิด/ดูประวัติ/ลบได้ · ทดสอบ/แก้ไข/เปิดใหม่ไม่ได้ */
   locked?: boolean;
   forms: FormOption[];
   onMsg: (m: { t: string; err?: boolean }) => void;
@@ -76,7 +76,7 @@ export default function WebhookCard({ w, forms, onMsg, locked = false }: {
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 160 }}>
           <b style={{ fontSize: ".95rem" }}>{w.name}</b>
-          {w.active ? <Pill kind="pass">{t("intg.on")}</Pill> : <Pill kind="na">{t("intg.off")}</Pill>}
+          {locked ? <Pill kind="fail">{t("intg.stopped")}</Pill> : w.active ? <Pill kind="pass">{t("intg.on")}</Pill> : <Pill kind="na">{t("intg.off")}</Pill>}
           {w.hasSecret && <span style={{ fontSize: ".72rem", color: "var(--ink-3)", marginLeft: 6, display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Lock} className="h-3 w-3" /> {t("intg.signed")}</span>}
           <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem", overflowWrap: "anywhere", marginTop: 2 }}>{w.url}</small>
           <div style={{ marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap" }}>

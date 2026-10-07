@@ -5,7 +5,7 @@ import { Notice } from "@/components/ui";
 import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySettings } from "./IntegrationsClient";
 import type { IntakeConfig } from "./IntakePanel";
 import { T } from "@/i18n/T";
-import { getTenantPlan, getTenantPool } from "@/lib/quota";
+import { getTenantPlan, getTenantPool, getPendingPlanChange } from "@/lib/quota";
 import { getEffectivePlans } from "@/lib/plans-server";
 import { cheapestWith } from "@/lib/plans";
 
@@ -23,10 +23,11 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   const none = Promise.resolve({ data: null });
   const intakeCols = "form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at";
   // ทุก query ยิงพร้อมกันรอบเดียว (เดิม 3 รอบต่อกัน)
-  const [plan, pool, catalog, { data: whData }, { data: formData }, { data: nData }, { data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
+  const [plan, pool, catalog, pendingChange, { data: whData }, { data: formData }, { data: nData }, { data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
     getTenantPlan(session.tenantId),
     getTenantPool(session.tenantId),
     getEffectivePlans(),
+    getPendingPlanChange(session.tenantId).catch(() => null),
     admin ? admin
       .from("webhooks")
       .select("id, name, url, events, secret, active, last_status, last_at, form_id, fields")
@@ -136,6 +137,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       plan={{
         name: plan.name, nameEn: plan.nameEn, notify: plan.notify, maxWebhooks: plan.maxWebhooks, maxIntakeForms: plan.maxIntakeForms,
         usedWebhooks: pooled.webhooks, usedIntake: pooled.intake, workspaces: pool.tenantIds.length, unlock,
+        pending: pendingChange ? { name: pendingChange.plan.name, nameEn: pendingChange.plan.nameEn, at: pendingChange.at, notify: pendingChange.plan.notify, maxWebhooks: pendingChange.plan.maxWebhooks, maxIntakeForms: pendingChange.plan.maxIntakeForms } : null,
       }}
       webhooks={webhooks} forms={forms} notify={notify} intake={intake} teams={teams} members={members}
       initialTab={tab === "webhooks" || tab === "intake" ? tab : "notify"}

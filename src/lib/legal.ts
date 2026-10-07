@@ -8,8 +8,8 @@
 // เปลี่ยนเนื้อหาสาระของเอกสาร → เพิ่ม LEGAL_VERSION (ใช้บันทึกว่าผู้ใช้ยอมรับฉบับไหน)
 // ============================================================
 
-export const LEGAL_VERSION = "2026-10-03";
-export const LEGAL_EFFECTIVE_TH = "3 ตุลาคม 2569";
+export const LEGAL_VERSION = "2026-10-07";
+export const LEGAL_EFFECTIVE_TH = "7 ตุลาคม 2569";
 
 export const LEGAL = {
   name: process.env.NEXT_PUBLIC_LEGAL_NAME || "InnOlistic Co., Ltd",

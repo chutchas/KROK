@@ -4,6 +4,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { resolveFormOptions } from "@/lib/datasets-server";
 import { INTAKE_API_KEY_RE, coerceIntake, intakeFields, missingRequired } from "@/lib/intake";
+import { intakeAllowed } from "@/lib/quota";
 import { createIntakeCase, createIntakeSubmission, hashIntakeKey, type IntakeForm } from "@/lib/intake-server";
 
 export const runtime = "nodejs";
@@ -32,6 +33,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BODY = 512 * 1024;
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
+const PLAN_OFF = { error: "แพ็กเกจปัจจุบันขององค์กรไม่รวม API รับข้อมูล (หรือเกินจำนวนฟอร์มที่แพ็กเกจรองรับ) — ให้ผู้ดูแลอัปเกรดแพ็กเกจในหน้า แพ็กเกจและการชำระเงิน", code: "plan_not_included" };
 const DISABLED = { error: "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้ผู้ดูแลเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล", code: "intake_disabled" };
 
 async function authenticate(req: Request, formId: string, admin: Admin) {
@@ -56,6 +58,8 @@ async function authenticate(req: Request, formId: string, admin: Admin) {
     .eq("id", formId)
     .maybeSingle();
   if (!f || f.tenant_id !== cfg.tenant_id || f.deleted_at) return null;
+  // แพ็กเกจปัจจุบันไม่รวม (เช่น ลดแพ็กเกจแล้วหมดรอบ) → ปฏิเสธพร้อมบอกเหตุผล
+  if (!(await intakeAllowed(f.tenant_id as string, formId).catch(() => true))) return "plan" as const;
   return { cfg, f };
 }
 
@@ -83,6 +87,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
     return json({ error: "เรียกถี่เกินไป (สูงสุด 60 ครั้ง/นาที)" }, 429);
   const a = await authenticate(req, id, admin);
   if (a === "disabled") return json(DISABLED, 403);
+  if (a === "plan") return json(PLAN_OFF, 403);
   if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   const schema = await loadSchema(admin, a.f.schema, a.f.tenant_id);
@@ -102,6 +107,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const a = await authenticate(req, id, admin);
   if (a === "disabled") return json(DISABLED, 403);
+  if (a === "plan") return json(PLAN_OFF, 403);
   if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   if (a.f.status !== "published") return json({ error: "ฟอร์มนี้ยังไม่เผยแพร่" }, 409);

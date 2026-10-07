@@ -1,6 +1,7 @@
 import "server-only";
 import crypto from "crypto";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { webhookAllowance } from "@/lib/quota";
 import { filterAnswersByFields } from "@/lib/webhook-utils";
 import { safeFetch } from "@/lib/safe-fetch";
 
@@ -116,6 +117,14 @@ export async function dispatchWebhooks(
       (h.form_id == null || (!!formId && h.form_id === formId))
   );
   if (hooks.length === 0) return;
+  // แพ็กเกจปัจจุบัน: ไม่รวม webhook = หยุดทั้งหมด · เกินโควตา = ส่งเฉพาะเส้นแรก ๆ ที่สร้างไว้
+  const allow = await webhookAllowance(tenantId).catch(() => "all" as const);
+  if (allow === "none") return;
+  if (allow !== "all") {
+    const kept = hooks.filter((h) => allow.has(h.id));
+    if (kept.length === 0) return;
+    hooks.splice(0, hooks.length, ...kept);
+  }
 
   // ต้องจับคู่ answers กับ field id เฉพาะเมื่อมี webhook ที่เลือกฟิลด์ + payload มี answers
   const answers = Array.isArray((payload as { answers?: unknown[] }).answers)

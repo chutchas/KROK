@@ -8,13 +8,15 @@ import { Check, Lock, CreditCard, Minus, Sparkles } from "lucide-react";
 import { usePayT as useT } from "@/i18n/ns/pay";
 import { DEFAULT_PLANS, UNLIMITED, planFeatures, type PlanKey, type Plan } from "@/lib/plans";
 import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
-import { setPlan, invoiceStatus } from "./actions";
+import { setPlan, invoiceStatus, cancelPlanChange } from "./actions";
+import { confirmDialog } from "@/components/dialogs";
 import PurchaseDialog from "./PurchaseDialog";
 import SubscriptionCard, { type SubscriptionInfo } from "./SubscriptionCard";
 import { useEffect, useSyncExternalStore } from "react";
 
 export default function BillingClient({
   view = "quota",
+  pendingChange = null,
   isOwner,
   ownerName,
   workspaces = 1,
@@ -33,6 +35,8 @@ export default function BillingClient({
 }: {
   /** แท็บ: แผนปัจจุบัน/โควตา · แพ็กเกจ (เลือกซื้อ) */
   view?: "quota" | "plans";
+  /** ลดแพ็กเกจที่ตั้งเวลาไว้ — เปลี่ยนเมื่อหมดรอบ (0070) */
+  pendingChange?: { key: string; name: string; nameEn: string; at: string } | null;
   /** สถานะต่ออายุอัตโนมัติ (0047) */
   subscription?: SubscriptionInfo | null;
   /** กลับมาจากหน้าบันทึกบัตรของ Gateway */
@@ -72,9 +76,15 @@ export default function BillingClient({
 
   // แพ็กเกจเสียเงิน → เปิดหน้ายืนยัน (ยอด + ความยินยอมต่ออายุอัตโนมัติ) ก่อนไปหน้าชำระ
   const [buying, setBuying] = useState<Plan | null>(null);
-  function choose(p: PlanKey) {
+  const fmtDay = (iso: string) => new Date(iso).toLocaleDateString(en ? "en-GB" : "th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" });
+  async function choose(p: PlanKey) {
     const target = plans.find((x) => x.key === p) ?? (plan.key === p ? plan : null);
     if (target && target.priceThb > 0) { setBuying(target); return; }
+    // ลดเป็นแพ็กเกจฟรีระหว่างรอบที่จ่ายแล้ว = ตั้งเวลาเปลี่ยนเมื่อหมดรอบ → บอกให้ชัดก่อน
+    if (target && plan.priceThb > 0 && expiresAt && (daysLeft ?? 0) > 0) {
+      const ok = await confirmDialog({ message: tt("plan.downgradeConfirm", { to: en ? target.nameEn : target.name, cur: en ? plan.nameEn : plan.name, date: fmtDay(expiresAt) }) });
+      if (!ok) return;
+    }
     void doChoose(p);
   }
 
@@ -86,7 +96,7 @@ export default function BillingClient({
     setBusy(null);
     if ("error" in res) setMsg({ t: res.error, err: true });
     else {
-      setMsg({ t: t("plan.changed") });
+      setMsg({ t: "scheduledAt" in res && res.scheduledAt ? tt("plan.scheduled", { date: fmtDay(res.scheduledAt) }) : t("plan.changed") });
       router.refresh();
     }
   }
@@ -164,6 +174,19 @@ export default function BillingClient({
         </span>
       </Notice>
     )}
+    {pendingChange && (
+      <Notice>
+        <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {tt("plan.pending", { to: en ? pendingChange.nameEn : pendingChange.name, date: fmtDay(pendingChange.at), cur: en ? plan.nameEn : plan.name })}
+          {isOwner && (
+            <button type="button" onClick={async () => { const r = await cancelPlanChange(); if ("error" in r) setMsg({ t: r.error, err: true }); else { setMsg({ t: t("plan.pendingCancelled") }); router.refresh(); } }}
+              style={{ border: "none", background: "none", padding: 0, color: "var(--accent-text)", fontWeight: 600, cursor: "pointer", fontFamily: "inherit", fontSize: "inherit" }}>
+              {t("plan.pendingCancel")}
+            </button>
+          )}
+        </span>
+      </Notice>
+    )}
     {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
   </>);
 
@@ -174,7 +197,7 @@ export default function BillingClient({
       {cardReturn && <Notice>{t("sub.cardReturn")}</Notice>}
       {daysLeft !== null && expiresAt && plan.priceThb > 0 && (
         <SubscriptionCard plan={plan} expiresAt={expiresAt} daysLeft={daysLeft} sub={subscription} isOwner={isOwner} payable={payable}
-          onRenew={() => choose(plan.key)} renewBusy={busy === plan.key} />
+          onRenew={() => void choose(plan.key)} renewBusy={busy === plan.key} />
       )}
       {buying && (
         <PurchaseDialog plan={buying} renewing={buying.key === plan.key} busy={busy === buying.key}
@@ -260,7 +283,9 @@ export default function BillingClient({
                 ))}
               </ul>
               <div style={{ marginTop: "auto" }}>
-                {isCurrent ? (
+                {pendingChange?.key === key ? (
+                  <div style={{ textAlign: "center", padding: "10px 0", color: "var(--accent-text)", fontSize: ".84rem", fontWeight: 600 }}>{tt("plan.pendingBadge", { date: fmtDay(pendingChange.at) })}</div>
+                ) : isCurrent ? (
                   <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".88rem", fontWeight: 600 }}>{t("plan.currentBadge")}</div>
                 ) : !isOwner ? (
                   <div style={{ textAlign: "center", padding: "10px 0", color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.billingOwnerOnly")}</div>
@@ -269,7 +294,7 @@ export default function BillingClient({
                     <Icon icon={Lock} className="h-4 w-4" /> {t("plan.locked")}
                   </Button>
                 ) : (
-                  <Button variant={p.highlight ? "primary" : "default"} onClick={() => choose(key)} disabled={!!busy} loading={busy === key} style={{ width: "100%" }}>
+                  <Button variant={p.highlight ? "primary" : "default"} onClick={() => void choose(key)} disabled={!!busy} loading={busy === key} style={{ width: "100%" }}>
                     {t("plan.select")}
                   </Button>
                 )}

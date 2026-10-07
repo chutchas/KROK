@@ -40,6 +40,7 @@ export default function TermsGate({ version, firstTime }: { version: string; fir
           <b id="krok-terms-title" style={{ fontSize: "1.05rem", fontFamily: "var(--font-anuphan)" }}>{firstTime ? t("legal.gateTitleNew") : t("legal.gateTitleUpd")}</b>
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", lineHeight: 1.6, margin: "0 0 10px" }}>{t("legal.gateBody")}</p>
+        {!firstTime && <p style={{ color: "var(--ink-2)", fontSize: ".84rem", lineHeight: 1.6, margin: "0 0 10px", background: "var(--accent-soft)", borderRadius: 8, padding: "8px 10px" }}>{t("legal.gateChanges")}</p>}
         <div style={{ fontSize: ".88rem", display: "flex", gap: 14, flexWrap: "wrap", marginBottom: 14 }}>
           <a href="/terms" target="_blank" rel="noopener" style={link}>{t("legal.terms")}</a>
           <a href="/privacy" target="_blank" rel="noopener" style={link}>{t("legal.privacy")}</a>

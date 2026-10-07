@@ -57,6 +57,8 @@ export interface PlanGate {
   name: string; nameEn: string; notify: boolean; maxWebhooks: number; maxIntakeForms: number; usedWebhooks?: number; usedIntake?: number; workspaces?: number;
   /** แพ็กเกจแรกที่มีฟีเจอร์นี้ */
   unlock?: { notify: PlanName; webhook: PlanName; intake: PlanName };
+  /** ลดแพ็กเกจที่ตั้งเวลาไว้: ชื่อ + วันที่ + ฟีเจอร์ที่จะหยุด */
+  pending?: { name: string; nameEn: string; at: string; notify: boolean; maxWebhooks: number; maxIntakeForms: number } | null;
 }
 
 export default function IntegrationsClient({ webhooks, forms, notify, intake, teams, members, initialTab = "notify", plan }: {
@@ -82,6 +84,14 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
   const intakeLocked = !!plan && plan.maxIntakeForms <= 0;
   const unlockName = (k: "notify" | "webhook" | "intake") => { const u = plan?.unlock?.[k]; return u ? (lang === "en" ? u.nameEn : u.name) : ""; };
   const legacyIntake = forms.filter((f) => intake[f.id]?.enabled);
+  // ลดแพ็กเกจที่ตั้งเวลาไว้: ฟีเจอร์ที่ใช้อยู่และจะหยุดเมื่อถึงวัน
+  const pend = plan?.pending;
+  const willStop = pend ? [
+    !pend.notify && (notify.line_enabled || notify.email_enabled) && t("intg.tabNotify"),
+    pend.maxWebhooks <= 0 && webhooks.some((w) => w.active) && "Webhook",
+    pend.maxIntakeForms <= 0 && legacyIntake.length > 0 && t("intg.tabIntake"),
+  ].filter(Boolean) as string[] : [];
+  const overWebhook = !!plan && plan.maxWebhooks > 0 && plan.maxWebhooks < UNLIMITED && webhookUsed > plan.maxWebhooks;
   const [tab, setTab] = useState<IntgTab>(initialTab);
   function switchTab(next: IntgTab) {
     setTab(next);
@@ -96,6 +106,10 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("intg.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("intg.subtitle")}</p>
       </div>
+
+      {pend && willStop.length > 0 && (
+        <Notice>{tt("intg.pendingStop", { to: lang === "en" ? pend.nameEn : pend.name, date: new Date(pend.at).toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium", timeZone: "Asia/Bangkok" }), what: willStop.join(" · ") })}</Notice>
+      )}
 
       {/* แท็บ: แจ้งเตือน | Webhook ขาออก | API รับข้อมูลเข้า */}
       <div role="tablist" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
@@ -161,6 +175,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
         {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
       </>)}
       {tab === "webhooks" && plan && !webhookLocked && plan.maxWebhooks < UNLIMITED && <Usage text={tt("intg.useWebhook", { used: webhookUsed, max: fmtLimit(plan.maxWebhooks) }) + allWs} full={webhookFull} />}
+      {tab === "webhooks" && overWebhook && plan && <Notice kind="error">{tt("intg.overWebhook", { used: webhookUsed, max: plan.maxWebhooks })}</Notice>}
       {tab === "webhooks" && !webhookLocked && (<>
       {!webhookFull && <Card>
         <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intg.addTitle")}</h2>
@@ -254,7 +269,7 @@ function FeatureLock({ icon, title, bullets, current, unlock, children }: {
   );
 }
 
-/** ของที่ตั้งไว้ก่อนลดแพ็กเกจ — ยังทำงานอยู่ · ปิด/ลบได้ แก้ไขไม่ได้ */
+/** ของที่ตั้งไว้ก่อนลดแพ็กเกจ (หมดรอบแล้ว) — หยุดทำงาน · ปิด/ลบได้ แก้ไขไม่ได้ · อัปเกรดแล้วกลับมาทำงานเอง */
 function Legacy({ title, action, children }: { title: string; action?: React.ReactNode; children: React.ReactNode }) {
   const { t } = useT();
   return (
@@ -263,7 +278,9 @@ function Legacy({ title, action, children }: { title: string; action?: React.Rea
         <h2 style={{ fontSize: "1.02rem", margin: 0, flex: 1, minWidth: 200 }}>{title}</h2>
         {action}
       </div>
-      <p style={{ color: "var(--amber)", fontSize: ".84rem", margin: "6px 0 10px", lineHeight: 1.6 }}>{t("intg.legacyNote")}</p>
+      <p style={{ color: "var(--fail)", fontSize: ".84rem", margin: "6px 0 10px", lineHeight: 1.6, display: "flex", gap: 6, alignItems: "flex-start" }}>
+        <span style={{ display: "inline-flex", marginTop: 3 }}><Icon icon={PauseCircle} className="h-4 w-4" /></span>{t("intg.stoppedNote")}
+      </p>
       <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "grid", gap: 8, fontSize: ".9rem" }}>{children}</ul>
     </Card>
   );

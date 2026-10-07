@@ -1,6 +1,6 @@
 import "server-only";
 import { enforceMenu } from "@/lib/session";
-import { getQuotaSnapshot } from "@/lib/quota";
+import { getQuotaSnapshot, getPendingPlanChange } from "@/lib/quota";
 import { getEnabledPaymentMethods } from "@/lib/payments-server";
 import { getPlanCatalog } from "@/lib/plans-server";
 import type BillingClient from "./BillingClient";
@@ -13,10 +13,11 @@ export async function loadBilling(sp: { invoice?: string; card?: string }): Prom
   const { invoice, card } = sp;
   const session = await enforceMenu("billing");
 
-  const [snap, payMethods, plans] = await Promise.all([
+  const [snap, payMethods, plans, pendingChange] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     getEnabledPaymentMethods(),
     getPlanCatalog(),
+    getPendingPlanChange(session.tenantId).catch(() => null),
   ]);
 
   // เจ้าของบัญชีที่จ่าย (billing owner) — คนอื่นเห็นแพ็กเกจแต่เปลี่ยนไม่ได้
@@ -59,6 +60,7 @@ export async function loadBilling(sp: { invoice?: string; card?: string }): Prom
 
   return {
       payable: paymentsEnabled(),
+      pendingChange: pendingChange ? { key: pendingChange.plan.key, name: pendingChange.plan.name, nameEn: pendingChange.plan.nameEn, at: pendingChange.at } : null,
       expiresAt: expiresAt,
       subscription: sub,
       cardReturn: typeof card === "string" && /^[0-9a-f-]{36}$/i.test(card),

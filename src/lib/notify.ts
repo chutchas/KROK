@@ -2,6 +2,7 @@ import "server-only";
 import nodemailer from "nodemailer";
 import dns from "node:dns";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { notifyAllowed } from "@/lib/quota";
 import { isBlockedIp } from "@/lib/safe-fetch";
 import { smtpHostShapeOk, smtpPortAllowed, friendlySmtpError, SMTP_PORTS } from "@/lib/notify-utils";
 
@@ -188,6 +189,8 @@ export async function dispatchNotifications(tenantId: string, ev: NotifyEvent, i
 
   const { data } = await admin.from("tenant_notify").select("*").eq("tenant_id", tenantId).maybeSingle();
   if (!data) return;
+  // แพ็กเกจปัจจุบันไม่รวมแจ้งเตือน (เช่น ลดแพ็กเกจแล้วหมดรอบ) = หยุดส่ง · ค่าที่ตั้งไว้ยังเก็บอยู่
+  if ((data.line_enabled || data.email_enabled) && !(await notifyAllowed(tenantId).catch(() => true))) return;
   const cfg = data as NotifyConfig;
 
   if (!wanted(cfg, ev)) return;
