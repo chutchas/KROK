@@ -8,6 +8,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { LogoMark } from "@/components/Logo";
 import { LEGAL_VERSION } from "@/lib/legal";
+import { emailIssue, hasNonAscii, passwordIssue, PASSWORD_MIN } from "@/lib/auth-validate";
 import { clearBundles } from "@/lib/offline-store";
 
 export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
@@ -25,6 +26,11 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const [org, setOrg] = useState("");
   const [name, setName] = useState("");
   const [agree, setAgree] = useState(false);
+  // ตรวจระหว่างกรอก: แสดงหลังออกจากช่อง (หรือหลังกดส่งครั้งแรก) · พิมพ์ภาษาไทยในช่องอีเมล = แจ้งทันที
+  const [touched, setTouched] = useState<{ email?: boolean; password?: boolean; org?: boolean; name?: boolean }>({});
+  const [tried, setTried] = useState(false);
+  // เปลี่ยนโหมด (เข้าสู่ระบบ ↔ สมัคร ↔ ลืมรหัส) → เริ่มตรวจใหม่ ไม่ค้างข้อความแดงจากโหมดก่อน
+  useEffect(() => { setTried(false); setTouched({}); }, [mode]);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(() => {
     if (sp.get("confirmed")) return { t: t("login.confirmedOk") };
@@ -36,6 +42,13 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
     return null;
   });
   const isInvite = mode === "signup" && !!invited && email.trim().toLowerCase() === invited;
+  const eIssue = emailIssue(email);
+  const showEmailErr = !!eIssue && (tried || !!touched.email || (eIssue === "login.emailThai" && hasNonAscii(email)));
+  const pIssue = passwordIssue(password, mode === "signup");
+  const showPwErr = mode !== "reset" && mode !== "mfa" && !!pIssue && (tried || !!touched.password);
+  const showOrgErr = mode === "signup" && !isInvite && !org.trim() && (tried || !!touched.org);
+  const showNameErr = mode === "signup" && !name.trim() && (tried || !!touched.name);
+  const errBorder = (on: boolean): React.CSSProperties | undefined => (on ? { borderColor: "var(--fail)", boxShadow: "0 0 0 1px var(--fail)" } : undefined);
 
   // /login?mfa=1 — ล็อกอินด้วยรหัสผ่านแล้วแต่ยังไม่ได้กรอกรหัส 2FA (เช่น เปิดแท็บใหม่ / session หมดระดับ aal2)
   const mfaParam = sp.has("mfa");
@@ -99,8 +112,12 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
       router.refresh();
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
-      setMsg({ t: t("login.emailInvalid"), err: true });
+    setTried(true);
+    if (emailIssue(email) || (mode !== "reset" && passwordIssue(password, mode === "signup"))
+      || (mode === "signup" && ((!isInvite && !org.trim()) || !name.trim() || !agree))) {
+      // ช่องที่ผิดแสดงข้อความใต้ช่องอยู่แล้ว → พาไปช่องแรกที่ต้องแก้
+      const first = document.querySelector<HTMLInputElement>("[data-auth-form] [aria-invalid='true']");
+      first?.focus();
       return;
     }
     setBusy(true);
@@ -118,7 +135,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
         return;
       }
       if (mode === "signup") {
-        if (!agree) { setMsg({ t: t("legal.mustAgree"), err: true }); return; }
+        if (!agree) return; // ข้อความแจ้งใต้ช่องติ๊กแล้ว
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -204,12 +221,24 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           </div>
         )}
 
-        <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
+        <form onSubmit={submit} noValidate data-auth-form style={{ display: "grid", gap: 12, marginTop: 10 }}>
           {isInvite && <Notice kind="info">{t("login.inviteNotice")}</Notice>}
           {mode === "signup" && (
             <>
-              {!isInvite && <Field placeholder={t("login.org")} value={org} onChange={(e) => setOrg(e.target.value)} required />}
-              <Field placeholder={t("login.name")} value={name} onChange={(e) => setName(e.target.value)} required />
+              {!isInvite && (
+                <div>
+                  <FieldLabel htmlFor="f-org" text={t("login.org")} />
+                  <Field id="f-org" placeholder={t("login.orgPh")} value={org} onChange={(e) => setOrg(e.target.value)} onBlur={() => setTouched((x) => ({ ...x, org: true }))}
+                    aria-label={t("login.org")} aria-invalid={showOrgErr} aria-describedby={showOrgErr ? "err-org" : undefined} style={{ width: "100%", ...errBorder(showOrgErr) }} />
+                  {showOrgErr && <FieldErr id="err-org" text={t("login.orgRequired")} />}
+                </div>
+              )}
+              <div>
+                <FieldLabel htmlFor="f-name" text={t("login.name")} />
+                <Field id="f-name" placeholder={t("login.namePh")} value={name} onChange={(e) => setName(e.target.value)} onBlur={() => setTouched((x) => ({ ...x, name: true }))}
+                  aria-label={t("login.name")} aria-invalid={showNameErr} aria-describedby={showNameErr ? "err-name" : undefined} style={{ width: "100%", ...errBorder(showNameErr) }} />
+                {showNameErr && <FieldErr id="err-name" text={t("login.nameRequired")} />}
+              </div>
             </>
           )}
           {mode === "mfa" && (
@@ -219,28 +248,45 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           {mode !== "mfa" && <>
           {/* Android: type="email" / inputMode="email" ทำให้คีย์บอร์ดเข้าโหมดอีเมล แล้วกดค้างปุ่มเปลี่ยนภาษาแล้วคีย์บอร์ดปิด
               → ใช้ช่องข้อความธรรมดา (คีย์บอร์ดปกติ เปลี่ยนภาษาได้) แล้วตรวจรูปแบบอีเมลเองตอนกดส่ง */}
-          <Field
-            type="text"
-            name="email"
-            placeholder={t("login.email")}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            autoComplete="username"
-            autoCapitalize="none"
-            autoCorrect="off"
-            spellCheck={false}
-          />
-          {mode !== "reset" && (
+          <div>
+            <FieldLabel htmlFor="f-email" text={t("login.email")} />
             <Field
-              type="password"
-              placeholder={t("login.password")}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={6}
-              autoComplete={mode === "signin" ? "current-password" : "new-password"}
+              id="f-email"
+              type="text"
+              name="email"
+              placeholder="name@company.com"
+              aria-label={t("login.email")}
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              onBlur={() => setTouched((x) => ({ ...x, email: true }))}
+              aria-invalid={showEmailErr}
+              aria-describedby={showEmailErr ? "err-email" : undefined}
+              autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              style={{ width: "100%", ...errBorder(showEmailErr) }}
             />
+            {showEmailErr && eIssue && <FieldErr id="err-email" text={t(eIssue)} />}
+          </div>
+          {mode !== "reset" && (
+            <div>
+              <FieldLabel htmlFor="f-pw" text={t("login.password")} />
+              <Field
+                id="f-pw"
+                type="password"
+                placeholder={mode === "signup" ? tt("login.passwordNew", { n: PASSWORD_MIN }) : "••••••"}
+                aria-label={t("login.password")}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onBlur={() => setTouched((x) => ({ ...x, password: true }))}
+                aria-invalid={showPwErr}
+                aria-describedby={showPwErr ? "err-pw" : undefined}
+                autoComplete={mode === "signin" ? "current-password" : "new-password"}
+                style={{ width: "100%", ...errBorder(showPwErr) }}
+              />
+              {showPwErr && pIssue && <FieldErr id="err-pw" text={pIssue === "login.passwordShort" ? tt("login.passwordShort", { n: PASSWORD_MIN }) : t(pIssue)} />}
+            </div>
           )}
           </>}
           {mode === "signin" && (
@@ -251,12 +297,15 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           )}
           {mode === "signup" && (
             <label style={{ display: "flex", gap: 8, alignItems: "flex-start", fontSize: ".84rem", color: "var(--ink-2)", cursor: "pointer", lineHeight: 1.5 }}>
-              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} required
+              <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} aria-invalid={mode === "signup" && tried && !agree}
                 style={{ width: 17, height: 17, marginTop: 2, flexShrink: 0, accentColor: "var(--accent)" }} />
               <span>
                 {t("legal.agreePre")} <a href="/terms" target="_blank" rel="noopener" style={legalLink}>{t("legal.terms")}</a> {t("legal.agreeMid")} <a href="/privacy" target="_blank" rel="noopener" style={legalLink}>{t("legal.privacy")}</a>
               </span>
             </label>
+          )}
+          {mode === "signup" && tried && !agree && (
+            <FieldErr id="err-agree" text={t("legal.mustAgree")} />
           )}
           <Button variant="primary" type="submit" disabled={busy} style={{ padding: 13 }}>
             {busy ? t("login.working") : mode === "mfa" ? t("mfa.verify") : mode === "signin" ? t("login.doSignin") : mode === "reset" ? t("login.doReset") : isInvite ? t("login.doJoin") : t("login.doSignup")}
@@ -302,3 +351,12 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 }
 
 const legalLink: React.CSSProperties = { color: "var(--accent-text)", textDecoration: "underline" };
+
+/** ข้อความผิดใต้ช่อง (อ่านโดยโปรแกรมอ่านหน้าจอผ่าน aria-describedby) */
+function FieldErr({ id, text }: { id: string; text: string }) {
+  return <div id={id} role="alert" style={{ color: "var(--fail)", fontSize: ".8rem", marginTop: 4, lineHeight: 1.4 }}>{text}</div>;
+}
+
+function FieldLabel({ htmlFor, text }: { htmlFor: string; text: string }) {
+  return <label htmlFor={htmlFor} style={{ display: "block", fontSize: ".84rem", fontWeight: 600, color: "var(--ink-2)", marginBottom: 4 }}>{text}</label>;
+}
