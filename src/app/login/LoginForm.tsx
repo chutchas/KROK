@@ -339,7 +339,14 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           </Button>
         </form>
 
-        {msg && <Notice kind={msg.err ? "error" : "info"}><span style={{ whiteSpace: "pre-line" }}>{msg.t}</span></Notice>}
+        {msg && (
+          <Notice kind={msg.err ? "error" : "info"}>
+            {/* บรรทัดแรก = ข้อความหลัก · บรรทัดถัดไป = หมายเหตุ (ตัวเล็ก สีจาง) */}
+            {msg.t.split("\n").map((line, i) => (
+              <span key={i} style={i === 0 ? { display: "block" } : { display: "block", marginTop: 6, fontSize: ".8rem", color: "var(--ink-3)" }}>{line}</span>
+            ))}
+          </Notice>
+        )}
 
         <button
           onClick={async () => {
