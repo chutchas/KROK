@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
 import LanguageToggle from "@/components/LanguageToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import LegalContact from "@/components/LegalContact";
 import Icon from "@/components/Icon";
 import { CheckCircle2, Send } from "lucide-react";
@@ -143,6 +144,7 @@ export default function ContactClient({ me, defaultTopic }: { me: Me; defaultTop
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
           </Link>
           <Link href={me ? "/dashboard" : "/login#pricing"} style={{ marginLeft: "auto", fontSize: ".86rem" }}>{me ? t("contact.backApp") : t("contact.backPricing")}</Link>
+          <ThemeToggle />
           <LanguageToggle />
         </div>
       </header>

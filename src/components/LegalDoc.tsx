@@ -2,6 +2,7 @@
 import Link from "next/link";
 import { LogoMark } from "@/components/Logo";
 import LanguageToggle from "@/components/LanguageToggle";
+import ThemeToggle from "@/components/ThemeToggle";
 import { useT } from "@/i18n/LanguageProvider";
 import type { Lang } from "@/i18n/dictionaries";
 import { LEGAL_EFFECTIVE_TH, LEGAL_VERSION } from "@/lib/legal";
@@ -33,6 +34,7 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
           </Link>
           <Link href={d.other.href} style={{ marginLeft: "auto", fontSize: ".86rem" }}>{d.other.label}</Link>
+          <ThemeToggle />
           <LanguageToggle />
         </div>
       </header>
