@@ -339,7 +339,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           </Button>
         </form>
 
-        {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
+        {msg && <Notice kind={msg.err ? "error" : "info"}><span style={{ whiteSpace: "pre-line" }}>{msg.t}</span></Notice>}
 
         <button
           onClick={async () => {
