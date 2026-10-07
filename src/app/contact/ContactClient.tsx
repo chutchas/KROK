@@ -9,17 +9,19 @@ import { CheckCircle2, Send } from "lucide-react";
 import { Button, Field, TextArea } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
-import { cleanContact, contactErrors, SEAT_OPTIONS, type ContactField, type ContactInput } from "@/lib/contact";
+import { cleanContact, contactErrors, SEAT_OPTIONS, TOPIC_OPTIONS, type ContactField, type ContactInput, type ContactTopic } from "@/lib/contact";
 
-const EMPTY: ContactInput = { name: "", company: "", email: "", phone: "", seats: "", message: "" };
+const EMPTY: ContactInput = { name: "", company: "", email: "", phone: "", seats: "", topic: "", message: "" };
 const lbl: React.CSSProperties = { display: "block", fontSize: ".84rem", fontWeight: 600, color: "var(--ink-2)", marginBottom: 4 };
 const errSt: React.CSSProperties = { color: "var(--fail)", fontSize: ".8rem", marginTop: 4 };
 const bad: React.CSSProperties = { borderColor: "var(--fail)", boxShadow: "0 0 0 1px var(--fail)" };
+const selSt: React.CSSProperties = { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
 
-/** หน้า "ติดต่อเรา" — ไม่ต้องล็อกอิน · ส่งถึงทีมขายทางอีเมล (+ เก็บในระบบ) */
-export default function ContactClient() {
+/** หน้า "ติดต่อเรา" — ไม่ต้องล็อกอิน · ส่งถึงทีมทางอีเมล (+ เก็บในระบบ) · me = ผู้ใช้ที่ล็อกอินอยู่ (เติมให้) */
+export default function ContactClient({ me, defaultTopic }: { me: { name: string; email: string; company: string } | null; defaultTopic: ContactTopic | "" }) {
   const { t, lang } = useT();
-  const [v, setV] = useState<ContactInput>(EMPTY);
+  const [v, setV] = useState<ContactInput>(() => ({ ...EMPTY, ...(me || {}), topic: defaultTopic }));
+  const home = me ? "/dashboard" : "/login";
   const [touched, setTouched] = useState<Partial<Record<ContactField, boolean>>>({});
   const [tried, setTried] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,7 @@ export default function ContactClient() {
   const set = (f: ContactField) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setV((x) => ({ ...x, [f]: e.target.value }));
   const blur = (f: ContactField) => () => setTouched((x) => ({ ...x, [f]: true }));
   const errText: Record<ContactField, string> = {
-    name: t("contact.errName"), email: t("contact.errEmail"), phone: t("contact.errPhone"), message: t("contact.errMessage"), company: "", seats: "",
+    name: t("contact.errName"), email: t("contact.errEmail"), phone: t("contact.errPhone"), message: t("contact.errMessage"), company: "", seats: "", topic: "",
   };
 
   async function submit(e: React.FormEvent) {
@@ -73,11 +75,11 @@ export default function ContactClient() {
     <div style={{ minHeight: "100vh", background: "var(--ground)", color: "var(--ink)" }}>
       <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 0" }}>
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", gap: 10 }}>
-          <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}>
+          <Link href={home} style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}>
             <LogoMark size={26} variant="compact" title="KROK" />
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
           </Link>
-          <Link href="/login#pricing" style={{ marginLeft: "auto", fontSize: ".86rem" }}>{t("contact.backPricing")}</Link>
+          <Link href={me ? "/dashboard" : "/login#pricing"} style={{ marginLeft: "auto", fontSize: ".86rem" }}>{me ? t("contact.backApp") : t("contact.backPricing")}</Link>
           <LanguageToggle />
         </div>
       </header>
@@ -85,7 +87,7 @@ export default function ContactClient() {
       <main className="krok-contact" style={{ maxWidth: 1180, margin: "0 auto", padding: "32px 24px 80px" }}>
         <section>
           <h1 style={{ fontSize: "1.7rem", margin: "0 0 8px" }}>{t("contact.title")}</h1>
-          <p style={{ color: "var(--ink-2)", lineHeight: 1.7, margin: "0 0 20px" }}>{t("contact.sub")}</p>
+          <p style={{ color: "var(--ink-2)", lineHeight: 1.7, margin: "0 0 20px" }}>{me ? t("contact.subMember") : t("contact.sub")}</p>
           <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface)", padding: "14px 18px", lineHeight: 1.8, fontSize: ".92rem" }}>
             <LegalContact en={lang === "en"} />
           </div>
@@ -97,10 +99,17 @@ export default function ContactClient() {
               <span style={{ color: "var(--pass)", display: "inline-flex" }}><Icon icon={CheckCircle2} className="h-10 w-10" /></span>
               <h2 style={{ fontSize: "1.2rem", margin: "10px 0 6px" }}>{t("contact.doneTitle")}</h2>
               <p style={{ color: "var(--ink-2)", margin: 0 }}>{t("contact.doneSub")}</p>
-              <Link href="/login" style={{ display: "inline-block", marginTop: 18 }}>{t("contact.backHome")}</Link>
+              <Link href={home} style={{ display: "inline-block", marginTop: 18 }}>{me ? t("contact.backApp") : t("contact.backHome")}</Link>
             </div>
           ) : (
             <form onSubmit={submit} noValidate data-contact style={{ display: "grid", gap: 14 }}>
+              <div>
+                <label htmlFor="c-topic" style={lbl}>{t("contact.topic")}</label>
+                <select id="c-topic" value={v.topic} onChange={set("topic")} style={selSt}>
+                  <option value="">{t("contact.seatsPick")}</option>
+                  {TOPIC_OPTIONS.map((o) => <option key={o} value={o}>{t(`contact.topic.${o}`)}</option>)}
+                </select>
+              </div>
               <div className="krok-contact-2">
                 {input("name", `${t("contact.name")} *`, { autoComplete: "name" })}
                 {input("company", t("contact.company"), { autoComplete: "organization" })}
@@ -111,8 +120,7 @@ export default function ContactClient() {
               </div>
               <div>
                 <label htmlFor="c-seats" style={lbl}>{t("contact.seats")}</label>
-                <select id="c-seats" value={v.seats} onChange={set("seats")}
-                  style={{ width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" }}>
+                <select id="c-seats" value={v.seats} onChange={set("seats")} style={selSt}>
                   <option value="">{t("contact.seatsPick")}</option>
                   {SEAT_OPTIONS.map((o) => <option key={o} value={o}>{o} {t("contact.people")}</option>)}
                 </select>

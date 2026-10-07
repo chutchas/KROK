@@ -71,7 +71,7 @@ export default function Pricing({ onLogin, plans = DEFAULT_PLANS }: { onLogin: (
                 </li>
               ))}
             </ul>
-            <Link href="/contact" className="lp-btn lp-btn-sm lp-btn-ghost" style={{ flex: "0 0 auto", textDecoration: "none" }}>{t(CONTACT.cta)}</Link>
+            <Link href="/contact?from=pricing" className="lp-btn lp-btn-sm lp-btn-ghost" style={{ flex: "0 0 auto", textDecoration: "none" }}>{t(CONTACT.cta)}</Link>
           </div>
         </Reveal>
       </div>

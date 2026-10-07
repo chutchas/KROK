@@ -21,7 +21,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, CircleHelp, Bug, HeartPulse, Wallet, Inbox } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, CircleHelp, Bug, HeartPulse, Wallet, Inbox, LifeBuoy } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -383,6 +383,14 @@ export default function AppShell({
                   >
                     <Icon icon={CircleHelp} className="h-[18px] w-[18px]" /> {t("tour.replay")}
                   </button>
+                  <Link
+                    href="/contact"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex items-center gap-2.5"
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", textDecoration: "none", color: "var(--ink)" }}
+                  >
+                    <Icon icon={LifeBuoy} className="h-[18px] w-[18px]" /> {t("nav.contactTeam")}
+                  </Link>
                   <button
                     onClick={signOut}
                     className="inline-flex items-center gap-2.5"
@@ -476,6 +484,26 @@ export default function AppShell({
                   </div>
                 );
               })}
+              <div style={{ marginTop: 12 }}>
+                <div style={{ fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
+                  {t("grp.help")}
+                </div>
+                <button
+                  onClick={() => { setMenuOpen(false); window.dispatchEvent(new Event(TOUR_START_EVENT)); }}
+                  className="inline-flex items-center gap-3"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, fontSize: ".95rem", fontWeight: 500, border: "none", background: "transparent", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
+                >
+                  <Icon icon={CircleHelp} className="h-[19px] w-[19px]" /> {t("tour.replay")}
+                </button>
+                <Link
+                  href="/contact"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-3"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, fontSize: ".95rem", textDecoration: "none", fontWeight: 500, color: "var(--ink)" }}
+                >
+                  <Icon icon={LifeBuoy} className="h-[19px] w-[19px]" /> {t("nav.contactTeam")}
+                </Link>
+              </div>
             </nav>
           </aside>
         </div>
