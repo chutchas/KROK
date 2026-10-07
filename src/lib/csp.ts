@@ -3,7 +3,8 @@
 // - script: เฉพาะสคริปต์ที่มี nonce ของคำขอนี้ (+ ที่สคริปต์เหล่านั้นโหลดต่อ — strict-dynamic) → สคริปต์ที่ถูกฉีดเข้ามาไม่รัน
 // - style: ยังต้อง 'unsafe-inline' เพราะแอปใช้ style attribute ทั่วไป (style รันโค้ดไม่ได้ ความเสี่ยงต่ำกว่า script มาก)
 // - img: data:/blob: (รูปถ่าย/ลายเซ็น/QR) + https: (ไฟล์ใน Supabase Storage)
-// - connect: self + Supabase เท่านั้น (กันส่งข้อมูลออกไปโฮสต์แปลกปลอม)
+// - connect: self + Supabase (กันส่งข้อมูลออกไปโฮสต์แปลกปลอม)
+// - Google Identity Services (ปุ่มเข้าด้วย Google บนหน้า login): frame/connect/style ของ accounts.google.com/gsi เท่านั้น
 // ============================================================
 
 function supabaseOrigins(): string {
@@ -20,10 +21,11 @@ export function buildCsp(nonce: string): string {
   return [
     "default-src 'self'",
     `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'${dev ? " 'unsafe-eval'" : ""}`,
-    "style-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://accounts.google.com/gsi/style",
     "img-src 'self' data: blob: https:",
     "font-src 'self' data:",
-    `connect-src 'self' ${supabaseOrigins()}`,
+    `connect-src 'self' ${supabaseOrigins()} https://accounts.google.com/gsi/`,
+    "frame-src 'self' https://accounts.google.com/gsi/",
     "worker-src 'self' blob:",
     "media-src 'self' blob:",
     "object-src 'none'",

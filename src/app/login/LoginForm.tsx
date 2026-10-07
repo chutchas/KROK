@@ -8,12 +8,13 @@ import { useT } from "@/i18n/LanguageProvider";
 import LanguageToggle from "@/components/LanguageToggle";
 import { LogoMark } from "@/components/Logo";
 import { LEGAL_VERSION } from "@/lib/legal";
+import GoogleSignInButton, { googleClientId } from "@/components/GoogleSignInButton";
 import { emailIssue, hasNonAscii, passwordIssue, PASSWORD_MIN } from "@/lib/auth-validate";
 import { clearBundles } from "@/lib/offline-store";
 
 export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
   const router = useRouter();
-  const { t, tt } = useT();
+  const { t, tt, lang } = useT();
   const sp = useSearchParams();
   // ลิงก์จากอีเมลเชิญ: /login?invite=<email> → เปิดหน้าสมัครพร้อมอีเมล ไม่ต้องตั้งชื่อองค์กร (เข้า workspace ที่เชิญ)
   const invited = (sp.get("invite") || "").trim().toLowerCase();
@@ -73,6 +74,28 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
       .catch(() => {});
     return () => { alive = false; };
   }, []);
+
+  // ปุ่ม Google แบบล็อกอินบนหน้าเว็บ KROK เอง (ตั้ง NEXT_PUBLIC_GOOGLE_CLIENT_ID แล้ว) · ใช้ไม่ได้ = ปุ่มแบบเดิม (ผ่านหน้า Supabase)
+  const [gsiOk, setGsiOk] = useState(() => !!googleClientId());
+
+  async function signInWithGoogleToken(token: string, nonce: string) {
+    setBusy(true);
+    setMsg(null);
+    try { if (isInvite) sessionStorage.setItem("krok_invite_auto", "1"); else sessionStorage.removeItem("krok_invite_auto"); } catch { /* ignore */ }
+    try {
+      const { data, error } = await (await createClient()).auth.signInWithIdToken({ provider: "google", token, nonce });
+      if (error) throw error;
+      // เปิด 2FA ไว้ → ขอรหัสก่อนเข้าแอป (เหมือนเข้าด้วยรหัสผ่าน)
+      const totp = data.user?.factors?.find((f) => f.status === "verified" && f.factor_type === "totp");
+      if (totp) { setFactorId(totp.id); setMode("mfa"); return; }
+      router.push(nextPath);
+      router.refresh();
+    } catch (err) {
+      setMsg({ t: err instanceof Error ? err.message : "เกิดข้อผิดพลาด", err: true });
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function signInWithGoogle() {
     setBusy(true);
@@ -209,11 +232,15 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
 
         {googleOn && (mode === "signin" || mode === "signup") && (
           <div style={{ display: "grid", gap: 12, marginTop: 10 }}>
-            <Button type="button" onClick={signInWithGoogle} disabled={busy} style={{ padding: 12, fontWeight: 600, gap: 10 }}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/brand/google-g.webp" alt="" width={22} height={22} style={{ display: "block", flex: "0 0 auto" }} />
-              {isInvite ? t("login.googleJoin") : t("login.google")}
-            </Button>
+            {gsiOk ? (
+              <GoogleSignInButton lang={lang} onCredential={signInWithGoogleToken} onUnavailable={() => setGsiOk(false)} />
+            ) : (
+              <Button type="button" onClick={signInWithGoogle} disabled={busy} style={{ padding: 12, fontWeight: 600, gap: 10 }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/brand/google-g.webp" alt="" width={22} height={22} style={{ display: "block", flex: "0 0 auto" }} />
+                {isInvite ? t("login.googleJoin") : t("login.google")}
+              </Button>
+            )}
             {mode === "signup" && <span style={{ fontSize: ".76rem", color: "var(--ink-3)", lineHeight: 1.5 }}>{isInvite ? tt("login.googleInviteNote", { email: invited }) : t("login.googleSignupNote")}</span>}
             <div style={{ display: "flex", alignItems: "center", gap: 10, color: "var(--ink-3)", fontSize: ".8rem" }}>
               <span style={{ flex: 1, height: 1, background: "var(--line)" }} />{t("login.orEmail")}<span style={{ flex: 1, height: 1, background: "var(--line)" }} />
