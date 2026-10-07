@@ -1,6 +1,7 @@
 "use client";
 import { Check } from "lucide-react";
 import Icon from "@/components/Icon";
+import Link from "next/link";
 import { useLp as useT } from "@/i18n/landing";
 import type { AnyKey as MessageKey } from "@/i18n/landing";
 import { DEFAULT_PLANS, planFeatures, type Plan } from "@/lib/plans";
@@ -70,7 +71,7 @@ export default function Pricing({ onLogin, plans = DEFAULT_PLANS }: { onLogin: (
                 </li>
               ))}
             </ul>
-            <button type="button" onClick={onLogin} className="lp-btn lp-btn-sm lp-btn-ghost" style={{ flex: "0 0 auto" }}>{t(CONTACT.cta)}</button>
+            <Link href="/contact" className="lp-btn lp-btn-sm lp-btn-ghost" style={{ flex: "0 0 auto", textDecoration: "none" }}>{t(CONTACT.cta)}</Link>
           </div>
         </Reveal>
       </div>

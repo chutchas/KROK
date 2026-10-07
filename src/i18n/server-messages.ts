@@ -212,4 +212,7 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ยังไม่ได้ตั้งค่าการส่งอีเมล (RESEND_API_KEY หรือ SMTP_*)": "Email sending isn't set up (RESEND_API_KEY or SMTP_*)",
   "SMTP ล็อกอินไม่ผ่าน — ตรวจ SMTP_USER และ SMTP_PASS (ต้องเป็น App Password ไม่ใช่รหัสผ่าน Gmail)": "SMTP login failed — check SMTP_USER and SMTP_PASS (must be an App Password, not your Gmail password)",
   "Gmail ส่งครบโควตาวันนี้แล้ว — ลองใหม่พรุ่งนี้": "Gmail's daily sending limit was reached — try again tomorrow",
+  "กรุณากรอกข้อมูลให้ครบและถูกต้อง": "Please fill in all required fields correctly",
+  "ส่งข้อความหลายครั้งเกินไป — ลองใหม่ภายหลัง หรือโทรหาเราโดยตรง": "Too many messages — try again later, or call us directly",
+  "ส่งข้อความไม่สำเร็จ — โปรดโทรหรืออีเมลหาเราโดยตรง": "Couldn't send your message — please call or email us directly",
 };
