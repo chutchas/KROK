@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import LegalContact from "@/components/LegalContact";
 import LegalDoc, { type LegalSection } from "@/components/LegalDoc";
 import { LEGAL } from "@/lib/legal";
 
@@ -137,7 +138,7 @@ export default function PrivacyPage() {
       id: "contact",
       title: "ติดต่อเรา",
       body: (
-        <p>{LEGAL.name}<br />{LEGAL.address}<br />อีเมล: {contact}</p>
+        <LegalContact />
       ),
     },
     {
@@ -225,7 +226,7 @@ export default function PrivacyPage() {
       <p>We use only cookies and browser storage that are strictly necessary: sign-in cookies, the selected workspace, language and theme, and an offline queue that keeps unsent documents on the device until it is back online. We do not use advertising or third-party tracking cookies.</p>
     ) },
     { id: "minors", title: "Minors", body: <p>The service is designed for organisations and adult users. We do not intend to collect minors&apos; data directly. If a customer organisation uses a form to collect minors&apos; data, that organisation must obtain consent from the holder of parental responsibility as the law requires.</p> },
-    { id: "contact", title: "Contact us", body: <p>{LEGAL.name}<br />{LEGAL.address}<br />Email: {contactEn}</p> },
+    { id: "contact", title: "Contact us", body: <LegalContact en /> },
     { id: "changes", title: "Changes to this policy", body: <p>We may update this policy from time to time. For material changes we will notify you in the app or by email before they take effect. The effective date and version are shown at the top of this page.</p> },
   ];
 

@@ -26,8 +26,8 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
   const ui = UI[lang] ?? UI.th;
   return (
     <div style={{ minHeight: "100vh", background: "var(--ground)", color: "var(--ink)" }}>
-      <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 16px" }} className="no-print">
-        <div style={{ maxWidth: 820, margin: "0 auto", display: "flex", alignItems: "center", gap: 10 }}>
+      <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 0" }} className="no-print">
+        <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}>
             <LogoMark size={26} variant="compact" title="KROK" />
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
@@ -36,7 +36,7 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
           <LanguageToggle />
         </div>
       </header>
-      <main lang={lang} style={{ maxWidth: 820, margin: "0 auto", padding: "28px 18px 80px", lineHeight: 1.75, fontSize: ".95rem" }}>
+      <main lang={lang} style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 80px", lineHeight: 1.75, fontSize: ".95rem" }}>
         <h1 style={{ fontSize: "1.6rem", margin: "0 0 4px" }}>{d.title}</h1>
         <div style={{ color: "var(--ink-3)", fontSize: ".82rem", marginBottom: 18 }}>
           {ui.effective} · {ui.version} {LEGAL_VERSION}

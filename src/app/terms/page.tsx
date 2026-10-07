@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import LegalContact from "@/components/LegalContact";
 import LegalDoc, { type LegalSection } from "@/components/LegalDoc";
 import { LEGAL } from "@/lib/legal";
 
@@ -7,7 +8,6 @@ export const metadata: Metadata = { title: "ข้อกำหนดการใ
 
 // ร่างข้อกำหนดการใช้งาน + ข้อตกลงการประมวลผลข้อมูล (มาตรา 40 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล) — ควรให้ที่ปรึกษากฎหมายตรวจก่อนใช้จริง
 export default function TermsPage() {
-  const contact = LEGAL.email ? <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a> : <span>〔อีเมลติดต่อ〕</span>;
 
   const sections: LegalSection[] = [
     {
@@ -107,11 +107,10 @@ export default function TermsPage() {
     {
       id: "contact",
       title: "ติดต่อ",
-      body: <p>{LEGAL.name}<br />{LEGAL.address}<br />อีเมล: {contact}</p>,
+      body: <LegalContact />,
     },
   ];
 
-  const contactEn = LEGAL.email ? <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a> : <span>[contact email]</span>;
   const sectionsEn: LegalSection[] = [
     { id: "service", title: "The service", body: <p>KROK ({LEGAL.name} — the “Provider”) provides a system for building digital forms, collecting data, documents, approvals and integrations through its website and app. By signing up or using the service, you (the “User”, and the organisation you represent — the “Customer”) accept these terms.</p> },
     { id: "account", title: "Accounts and security", body: (
@@ -163,7 +162,7 @@ export default function TermsPage() {
     { id: "liability", title: "Limitation of liability", body: <p>To the extent permitted by law, the Provider is not liable for indirect losses or loss of profit, and total liability is capped at the fees the Customer paid in the 12 months before the event. This does not limit liability that cannot be limited by law.</p> },
     { id: "termination", title: "Termination", body: <p>The Customer may cancel at any time by contacting us or not renewing. The Provider may terminate if the Customer materially breaches these terms and does not remedy the breach within the notified period. Data is then handled as set out in the data processing terms.</p> },
     { id: "law", title: "Governing law", body: <p>These terms are governed by Thai law, and disputes fall under the jurisdiction of the Thai courts.</p> },
-    { id: "contact", title: "Contact", body: <p>{LEGAL.name}<br />{LEGAL.address}<br />Email: {contactEn}</p> },
+    { id: "contact", title: "Contact", body: <LegalContact en /> },
   ];
 
   return (

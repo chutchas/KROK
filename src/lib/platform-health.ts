@@ -130,8 +130,8 @@ export async function runHealth(admin: SupabaseClient): Promise<HealthReport> {
       envCheck("EMAIL_FROM", false, "ใช้ผู้ส่งทดสอบของ Resend (ส่งได้เฉพาะถึงเจ้าของบัญชี Resend)"),
       { name: "Web Push (VAPID)", status: env("NEXT_PUBLIC_VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY") ? "ok" : "warn",
         detail: env("NEXT_PUBLIC_VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY") ? "ตั้งแล้ว" : "ยังไม่ได้ตั้ง NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY — แจ้งเตือนเด้งบนมือถือใช้ไม่ได้ (กระดิ่งในแอปใช้ได้ปกติ)" },
-      { name: "ข้อมูลผู้ให้บริการ (PDPA)", status: env("NEXT_PUBLIC_LEGAL_NAME") && env("NEXT_PUBLIC_PRIVACY_EMAIL") ? "ok" : "warn",
-        detail: env("NEXT_PUBLIC_LEGAL_NAME") && env("NEXT_PUBLIC_PRIVACY_EMAIL") ? "ตั้งแล้ว" : "ยังไม่ได้ตั้ง NEXT_PUBLIC_LEGAL_NAME / NEXT_PUBLIC_PRIVACY_EMAIL — หน้านโยบายแสดงข้อความแทนที่" },
+      { name: "ข้อมูลผู้ให้บริการ (PDPA)", status: "ok",
+        detail: env("NEXT_PUBLIC_LEGAL_NAME") ? `ตั้งผ่าน env: ${process.env.NEXT_PUBLIC_LEGAL_NAME}` : "ใช้ค่าในโค้ด (InnOlistic Co., Ltd) — เปลี่ยนได้ด้วย NEXT_PUBLIC_LEGAL_*" },
     ],
   });
 
