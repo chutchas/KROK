@@ -107,7 +107,10 @@ export default function BillingClient({
     return () => { stop = true; };
   }, [returnInvoice, router]);
 
-  const now = useSyncExternalStore(noopSub, () => Date.now(), () => 0);
+  // getSnapshot ต้องคืนค่าเดิมทุกครั้ง — คืน Date.now() ใหม่ทุก render ทำให้ React วน render ไม่จบ (error #185)
+  const mounted = useSyncExternalStore(noopSub, () => true, () => false);
+  const [loadedAt] = useState(() => Date.now());
+  const now = mounted ? loadedAt : 0;
   const daysLeft = expiresAt && now ? Math.ceil((new Date(expiresAt).getTime() - now) / 86400_000) : null;
 
   return (
