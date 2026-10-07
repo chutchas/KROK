@@ -852,6 +852,7 @@ export const th = {
   "push.g.fail": "พบรายการไม่ผ่าน",
   "push.g.form": "ฟอร์มใหม่",
   "bell.pushLink": "เปิดแจ้งเตือนเด้งบนเครื่องนี้",
+  "team.inviteRoleHasAccount": "สิทธิ์ {role} · มีบัญชีแล้ว รอกดเข้าร่วม",
   "print.photos.title": "ภาพประกอบ",
   "print.photos.section": "การพิมพ์รูปถ่าย",
   "print.photos.hint": "ตั้งครั้งเดียวใช้ทั้งฟอร์ม — มีผลกับมุมมองกระดาษ การพิมพ์ และหน้าผลการกรอก",

@@ -847,6 +847,7 @@ export const en: Record<MessageKey, string> = {
   "push.g.fail": "Failed items found",
   "push.g.form": "New forms",
   "bell.pushLink": "Enable push on this device",
+  "team.inviteRoleHasAccount": "Role {role} · has an account, waiting to accept",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",

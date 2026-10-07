@@ -1,22 +1,68 @@
 // ============================================================
-// KROK · ส่งอีเมลของระบบผ่าน Resend (เช่น อีเมลเชิญสมาชิก)
+// KROK · ส่งอีเมลของระบบ (เช่น อีเมลเชิญสมาชิก) — เลือกช่องทางจาก env (ฝั่ง server เท่านั้น):
 //
-// ตั้งค่าใน env (ฝั่ง server เท่านั้น):
-//   RESEND_API_KEY = re_xxx                         (บังคับ — ไม่ตั้ง = ไม่ส่ง แต่ระบบยังทำงานต่อได้)
-//   EMAIL_FROM     = "KROK <no-reply@โดเมนคุณ>"     (โดเมนต้องยืนยันใน Resend แล้ว;
-//                    ไม่ตั้ง = ใช้ onboarding@resend.dev ซึ่งส่งได้เฉพาะถึงอีเมลเจ้าของบัญชี Resend)
-// อีเมลยืนยันการสมัคร/รีเซ็ตรหัสผ่าน ส่งโดย Supabase Auth — ตั้ง SMTP ของ Resend ใน Supabase แยกต่างหาก
+// ① Resend (มีโดเมนของตัวเอง)
+//   RESEND_API_KEY = re_xxx
+//   EMAIL_FROM     = "KROK <no-reply@โดเมนคุณ>"  (ไม่ตั้ง = onboarding@resend.dev ส่งได้เฉพาะถึงเจ้าของบัญชี Resend)
+// ② SMTP (ไม่มีโดเมน — เช่น Gmail + App Password) ใช้เมื่อไม่ได้ตั้ง RESEND_API_KEY
+//   SMTP_HOST = smtp.gmail.com · SMTP_PORT = 465 · SMTP_USER = xxx@gmail.com · SMTP_PASS = App Password 16 ตัว
+//   EMAIL_FROM = "KROK <xxx@gmail.com>" (ไม่ตั้ง = KROK <SMTP_USER>) · Gmail ส่งได้ราว 500 ผู้รับ/วัน
+// ไม่ได้ตั้งทั้งสองแบบ = ไม่ส่ง แต่ระบบยังทำงานต่อได้ (หน้าเชิญให้คัดลอกลิงก์ส่งเอง)
+// อีเมลยืนยันการสมัคร/รีเซ็ตรหัสผ่าน ส่งโดย Supabase Auth — ตั้ง SMTP ใน Supabase แยกต่างหาก
 // ============================================================
+import nodemailer from "nodemailer";
 
 export type SendResult = { ok: true; id: string } | { ok: false; error: string; notConfigured?: boolean };
 
-export function emailConfigured(): boolean {
-  return !!process.env.RESEND_API_KEY;
+function smtpEnv() {
+  const host = process.env.SMTP_HOST?.trim();
+  const user = process.env.SMTP_USER?.trim();
+  const pass = process.env.SMTP_PASS?.replace(/\s+/g, ""); // App Password ของ Google แสดงเป็น 4 กลุ่มมีช่องว่าง
+  if (!host || !user || !pass) return null;
+  const port = Number(process.env.SMTP_PORT) || 465;
+  return { host, user, pass, port };
 }
 
-export async function sendEmail(msg: { to: string; subject: string; html: string; text: string; replyTo?: string }): Promise<SendResult> {
+/** ช่องทางที่ใช้ส่งอีเมลของระบบ */
+export function emailProvider(): "resend" | "smtp" | null {
+  if (process.env.RESEND_API_KEY) return "resend";
+  if (smtpEnv()) return "smtp";
+  return null;
+}
+
+export function emailConfigured(): boolean {
+  return emailProvider() !== null;
+}
+
+type Msg = { to: string; subject: string; html: string; text: string; replyTo?: string };
+
+async function sendSmtp(msg: Msg, cfg: NonNullable<ReturnType<typeof smtpEnv>>): Promise<SendResult> {
+  try {
+    const t = nodemailer.createTransport({
+      host: cfg.host, port: cfg.port, secure: cfg.port === 465, auth: { user: cfg.user, pass: cfg.pass },
+      connectionTimeout: 10_000, greetingTimeout: 8_000, socketTimeout: 15_000,
+    });
+    const info = await t.sendMail({
+      from: process.env.EMAIL_FROM || `KROK <${cfg.user}>`, to: msg.to, subject: msg.subject, html: msg.html, text: msg.text,
+      ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
+    });
+    return { ok: true, id: String(info.messageId || "smtp") };
+  } catch (e) {
+    const m = e instanceof Error ? e.message : String(e);
+    // ข้อความที่พบบ่อยของ Gmail → บอกวิธีแก้
+    if (/535|Username and Password not accepted|BadCredentials/i.test(m)) return { ok: false, error: "SMTP ล็อกอินไม่ผ่าน — ตรวจ SMTP_USER และ SMTP_PASS (ต้องเป็น App Password ไม่ใช่รหัสผ่าน Gmail)" };
+    if (/Daily user sending limit|550 5\.4\.5/i.test(m)) return { ok: false, error: "Gmail ส่งครบโควตาวันนี้แล้ว — ลองใหม่พรุ่งนี้" };
+    return { ok: false, error: `ส่งอีเมลไม่สำเร็จ: ${m.slice(0, 160)}` };
+  }
+}
+
+export async function sendEmail(msg: Msg): Promise<SendResult> {
   const key = process.env.RESEND_API_KEY;
-  if (!key) return { ok: false, error: "ยังไม่ได้ตั้งค่า RESEND_API_KEY", notConfigured: true };
+  if (!key) {
+    const smtp = smtpEnv();
+    if (smtp) return sendSmtp(msg, smtp);
+    return { ok: false, error: "ยังไม่ได้ตั้งค่าการส่งอีเมล (RESEND_API_KEY หรือ SMTP_*)", notConfigured: true };
+  }
   const from = process.env.EMAIL_FROM || "KROK <onboarding@resend.dev>";
   try {
     const res = await fetch("https://api.resend.com/emails", {

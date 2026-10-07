@@ -26,6 +26,8 @@ export interface Invite {
   role_key: string | null;
   team_ids?: string[] | null;
   created_at: string;
+  /** อีเมลนี้มีบัญชี KROK แล้ว (รอกดเข้าร่วม ไม่ใช่รอสมัคร) */
+  hasAccount?: boolean;
 }
 export interface Team {
   id: string;
@@ -163,7 +165,7 @@ export default function TeamClient({
                 <div style={{ flex: "1 1 220px", minWidth: 0 }}>
                   <b style={{ fontSize: ".92rem" }}>{inv.email}</b>
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>
-                    {tt("team.inviteRole", { role: roleOptions.find((r) => r.key === inv.role_key)?.name || t(ROLE_LABEL[inv.role]) })}
+                    {tt(inv.hasAccount ? "team.inviteRoleHasAccount" : "team.inviteRole", { role: roleOptions.find((r) => r.key === inv.role_key)?.name || t(ROLE_LABEL[inv.role]) })}
                     {(inv.team_ids || []).map(teamName).filter(Boolean).length > 0 && <> · {t("team.inviteTeamsShort")}: {(inv.team_ids || []).map(teamName).filter(Boolean).join(", ")}</>}
                   </small>
                 </div>

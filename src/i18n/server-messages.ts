@@ -209,4 +209,7 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ข้อมูลการแจ้งเตือนของเครื่องไม่ถูกต้อง": "Invalid device notification data",
   "ไม่พบเครื่องนี้ในรายการ — กดเปิดแจ้งเตือนอีกครั้ง": "This device isn't registered — enable notifications again",
   "ส่งไม่สำเร็จ — ลองปิดแล้วเปิดแจ้งเตือนใหม่": "Sending failed — try turning notifications off and on again",
+  "ยังไม่ได้ตั้งค่าการส่งอีเมล (RESEND_API_KEY หรือ SMTP_*)": "Email sending isn't set up (RESEND_API_KEY or SMTP_*)",
+  "SMTP ล็อกอินไม่ผ่าน — ตรวจ SMTP_USER และ SMTP_PASS (ต้องเป็น App Password ไม่ใช่รหัสผ่าน Gmail)": "SMTP login failed — check SMTP_USER and SMTP_PASS (must be an App Password, not your Gmail password)",
+  "Gmail ส่งครบโควตาวันนี้แล้ว — ลองใหม่พรุ่งนี้": "Gmail's daily sending limit was reached — try again tomorrow",
 };

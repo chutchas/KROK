@@ -125,7 +125,8 @@ export async function runHealth(admin: SupabaseClient): Promise<HealthReport> {
       envCheck("SUPABASE_SERVICE_ROLE_KEY", true, "ส่งฟอร์ม/ฟอร์มสาธารณะ/audit ทำงานไม่ได้"),
       envCheck("CRON_SECRET", true, "งานตั้งเวลาไม่ทำงาน"),
       envCheck("NEXT_PUBLIC_SITE_URL", false, "ลิงก์ในอีเมลใช้โดเมนหลักของ Vercel แทน"),
-      envCheck("RESEND_API_KEY", false, "ไม่ส่งอีเมลเชิญ (ต้องคัดลอกลิงก์เอง)"),
+      { name: "ส่งอีเมลของระบบ (Resend หรือ SMTP)", status: env("RESEND_API_KEY") || (env("SMTP_HOST") && env("SMTP_USER") && env("SMTP_PASS")) ? "ok" : "warn",
+        detail: env("RESEND_API_KEY") ? "ใช้ Resend" : env("SMTP_HOST") && env("SMTP_USER") && env("SMTP_PASS") ? "ใช้ SMTP" : "ยังไม่ได้ตั้ง RESEND_API_KEY หรือ SMTP_* — ไม่ส่งอีเมลเชิญ (ต้องคัดลอกลิงก์เอง)" },
       envCheck("EMAIL_FROM", false, "ใช้ผู้ส่งทดสอบของ Resend (ส่งได้เฉพาะถึงเจ้าของบัญชี Resend)"),
       { name: "Web Push (VAPID)", status: env("NEXT_PUBLIC_VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY") ? "ok" : "warn",
         detail: env("NEXT_PUBLIC_VAPID_PUBLIC_KEY") && env("VAPID_PRIVATE_KEY") ? "ตั้งแล้ว" : "ยังไม่ได้ตั้ง NEXT_PUBLIC_VAPID_PUBLIC_KEY / VAPID_PRIVATE_KEY — แจ้งเตือนเด้งบนมือถือใช้ไม่ได้ (กระดิ่งในแอปใช้ได้ปกติ)" },
@@ -155,8 +156,10 @@ export async function runHealth(admin: SupabaseClient): Promise<HealthReport> {
     } else {
       ext.push({ name: "อีเมล (Resend)", status: "fail", detail: `คีย์ไม่ถูกต้อง (HTTP ${r.v!.status})`, ms: r.ms });
     }
+  } else if (env("SMTP_HOST") && env("SMTP_USER") && env("SMTP_PASS")) {
+    ext.push({ name: "อีเมล (SMTP)", status: "ok", detail: `ส่งผ่าน ${process.env.SMTP_HOST} ในนาม ${process.env.SMTP_USER} — ตรวจด้วยการเชิญสมาชิกทดสอบ${/gmail/i.test(process.env.SMTP_HOST || "") ? " · Gmail ส่งได้ราว 500 ผู้รับ/วัน" : ""}` });
   } else {
-    ext.push({ name: "อีเมล (Resend)", status: "off", detail: "ไม่ได้ตั้ง RESEND_API_KEY" });
+    ext.push({ name: "อีเมล", status: "off", detail: "ไม่ได้ตั้ง RESEND_API_KEY หรือ SMTP_HOST/SMTP_USER/SMTP_PASS — อีเมลเชิญไม่ถูกส่ง (คัดลอกลิงก์เอง)" });
   }
   ext.push(gatewayConfig()
     ? { name: "Payment Gateway", status: process.env.PAYMENTS_LIVE === "1" ? "ok" : "warn", detail: process.env.PAYMENTS_LIVE === "1" ? "ตั้งค่าครบ · เปิดขายจริง" : "ตั้งค่าครบ แต่ยังไม่เปิดขายจริง (PAYMENTS_LIVE ไม่ใช่ 1)" }

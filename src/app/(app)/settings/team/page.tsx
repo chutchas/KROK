@@ -2,6 +2,7 @@ import { Suspense } from "react";
 import QuotaHint from "@/components/QuotaHint";
 import { enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
+import { getAdminClient } from "@/lib/supabase/admin";
 import TeamClient, { type Member, type Invite, type Team } from "./TeamClient";
 
 export const dynamic = "force-dynamic";
@@ -40,6 +41,15 @@ export default async function TeamPage() {
       .order("sort", { ascending: true }),
   ]);
 
+  // อีเมลที่เชิญมีบัญชี KROK แล้วไหม (สมัคร/เข้า Google แล้วจะมี workspace ของตัวเองเสมอ) — อ่านข้าม workspace ด้วย service role
+  const inviteRows = (invites || []) as Invite[];
+  const known = new Set<string>();
+  const admin = getAdminClient();
+  if (admin && inviteRows.length) {
+    const { data: acc } = await admin.from("memberships").select("email").in("email", inviteRows.map((i) => i.email.toLowerCase())).limit(500);
+    for (const r of (acc || []) as { email: string | null }[]) if (r.email) known.add(r.email.toLowerCase());
+  }
+
   const tm = (teamMembers || []) as { team_id: string; user_id: string }[];
   const teamRows: Team[] = ((teams || []) as { id: string; name: string }[]).map((t) => ({
     id: t.id,
@@ -60,7 +70,7 @@ export default async function TeamPage() {
       myRole={session.role}
       tenantName={session.tenantName}
       members={(members || []) as Member[]}
-      invites={(invites || []) as Invite[]}
+      invites={inviteRows.map((i) => ({ ...i, hasAccount: known.has(i.email.toLowerCase()) }))}
       teams={teamRows}
       roleOptions={roleOptions}
     />

@@ -1,11 +1,17 @@
 import { describe, it, expect, vi, afterEach } from "vitest";
-import { sendEmail, inviteEmail } from "@/lib/email";
+
+const sendMail = vi.fn();
+const createTransport = vi.fn(() => ({ sendMail }));
+vi.mock("nodemailer", () => ({ default: { createTransport: (...a: unknown[]) => (createTransport as (...x: unknown[]) => unknown)(...a) } }));
+
+import { sendEmail, inviteEmail, emailProvider } from "@/lib/email";
 
 afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
 
 describe("sendEmail (Resend)", () => {
   it("ไม่ตั้ง RESEND_API_KEY = ไม่ยิง และบอกว่ายังไม่ตั้งค่า", async () => {
     vi.stubEnv("RESEND_API_KEY", "");
+    vi.stubEnv("SMTP_HOST", "");
     const f = vi.fn(); vi.stubGlobal("fetch", f);
     const r = await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" });
     expect(r).toMatchObject({ ok: false, notConfigured: true });
@@ -45,6 +51,38 @@ describe("sendEmail (Resend)", () => {
     vi.stubEnv("RESEND_API_KEY", "re_test");
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new Error("network down")));
     expect(await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" })).toEqual({ ok: false, error: "network down" });
+  });
+});
+
+describe("sendEmail (SMTP เช่น Gmail)", () => {
+  const smtp = () => {
+    vi.stubEnv("RESEND_API_KEY", "");
+    vi.stubEnv("SMTP_HOST", "smtp.gmail.com");
+    vi.stubEnv("SMTP_USER", "me@gmail.com");
+    vi.stubEnv("SMTP_PASS", "abcd efgh ijkl mnop");
+    vi.stubEnv("SMTP_PORT", "");
+    vi.stubEnv("EMAIL_FROM", "");
+  };
+  it("ไม่มี Resend แต่มี SMTP → ส่งผ่าน SMTP (465 SSL, ตัดช่องว่างใน App Password)", async () => {
+    smtp();
+    sendMail.mockResolvedValueOnce({ messageId: "<m1>" });
+    expect(emailProvider()).toBe("smtp");
+    const r = await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" });
+    expect(r).toEqual({ ok: true, id: "<m1>" });
+    expect(createTransport).toHaveBeenLastCalledWith(expect.objectContaining({ host: "smtp.gmail.com", port: 465, secure: true, auth: { user: "me@gmail.com", pass: "abcdefghijklmnop" } }));
+    expect(sendMail).toHaveBeenLastCalledWith(expect.objectContaining({ from: "KROK <me@gmail.com>", to: "a@b.com" }));
+  });
+  it("ล็อกอินไม่ผ่าน → บอกให้ใช้ App Password", async () => {
+    smtp();
+    sendMail.mockRejectedValueOnce(new Error("Invalid login: 535-5.7.8 Username and Password not accepted"));
+    const r = await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" });
+    expect(r.ok).toBe(false);
+    expect(!r.ok && r.error).toContain("App Password");
+  });
+  it("มี Resend ด้วย → ใช้ Resend ก่อน", () => {
+    smtp();
+    vi.stubEnv("RESEND_API_KEY", "re_x");
+    expect(emailProvider()).toBe("resend");
   });
 });
 
