@@ -959,7 +959,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </small>
               </div>
               <div className="krok-row-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {/* เรียงตามการใช้งาน: แก้ไข → แชร์ → QR → เผยแพร่/ยกเลิก → ลบ */}
+                {/* เรียงตามการใช้งาน: แก้ไข → แชร์ → QR → ประวัติเวอร์ชัน → เผยแพร่/ยกเลิก → ลบ */}
                 <AsyncButton onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></AsyncButton>
                 <Button onClick={() => setShareForm(f)} title={t("share.title")}>
                   <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
@@ -970,6 +970,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                     <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-btn-label"> QR</span>
                   </Button>
                 )}
+                <Button onClick={() => router.push(`/studio/history/${f.id}`)} title={t("ver.history")}>
+                  <Icon icon={History} className="h-4 w-4" /><span className="krok-btn-label"> {t("ver.short")}</span>
+                </Button>
                 {f.status === "published" ? (
                   <AsyncButton onClick={() => changeStatus(f.id, "archived")} title={t("studio.cancelForm")}><Icon icon={Archive} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.cancelForm")}</span></AsyncButton>
                 ) : (

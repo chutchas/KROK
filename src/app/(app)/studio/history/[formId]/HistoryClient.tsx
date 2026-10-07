@@ -70,7 +70,7 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
   const toggle = (v: number) => setOpen((s) => { const n = new Set(s); if (n.has(v)) n.delete(v); else n.add(v); return n; });
 
   return (
-    <div style={{ maxWidth: 820, margin: "0 auto" }}>
+    <div style={{ minWidth: 0 }}>
       <Link href={`/studio?edit=${formId}`} style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
         <Icon icon={ArrowLeft} className="h-4 w-4" /> {t("ver.back")}
       </Link>

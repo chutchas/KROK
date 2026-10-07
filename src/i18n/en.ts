@@ -942,6 +942,7 @@ export const en: Record<MessageKey, string> = {
   "login.linkExpired": "This link has expired — request a new one from this page.",
   "ver.newer": "Newer",
   "ver.older": "Older",
+  "ver.short": "History",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",
