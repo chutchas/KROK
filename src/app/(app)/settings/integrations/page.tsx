@@ -6,6 +6,8 @@ import IntegrationsClient, { type WebhookItem, type FormOption, type NotifySetti
 import type { IntakeConfig } from "./IntakePanel";
 import { T } from "@/i18n/T";
 import { getTenantPlan, getTenantPool } from "@/lib/quota";
+import { getEffectivePlans } from "@/lib/plans-server";
+import { cheapestWith } from "@/lib/plans";
 
 export const dynamic = "force-dynamic";
 
@@ -21,9 +23,10 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
   const none = Promise.resolve({ data: null });
   const intakeCols = "form_id, enabled, field_keys, assignee, key_prefix, key_created_at, last_used_at";
   // ทุก query ยิงพร้อมกันรอบเดียว (เดิม 3 รอบต่อกัน)
-  const [plan, pool, { data: whData }, { data: formData }, { data: nData }, { data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
+  const [plan, pool, catalog, { data: whData }, { data: formData }, { data: nData }, { data: teamRows }, { data: memberRows }, intakeFirst] = await Promise.all([
     getTenantPlan(session.tenantId),
     getTenantPool(session.tenantId),
+    getEffectivePlans(),
     admin ? admin
       .from("webhooks")
       .select("id, name, url, events, secret, active, last_status, last_at, form_id, fields")
@@ -119,12 +122,20 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
     pooled.intake = i.count ?? pooled.intake;
   }
 
+  // แพ็กเกจแรกที่เปิดฟีเจอร์ให้ (การ์ด "มีในแพ็กเกจ X ขึ้นไป")
+  const nm = (p: { name: string; nameEn: string } | null) => (p ? { name: p.name, nameEn: p.nameEn } : null);
+  const unlock = {
+    notify: nm(cheapestWith(catalog, (p) => p.notify)),
+    webhook: nm(cheapestWith(catalog, (p) => p.maxWebhooks > 0)),
+    intake: nm(cheapestWith(catalog, (p) => p.maxIntakeForms > 0)),
+  };
+
   return (<>
     {!admin && <Notice kind="error"><T k="intg.noServiceKey" /></Notice>}
     <IntegrationsClient
       plan={{
         name: plan.name, nameEn: plan.nameEn, notify: plan.notify, maxWebhooks: plan.maxWebhooks, maxIntakeForms: plan.maxIntakeForms,
-        usedWebhooks: pooled.webhooks, usedIntake: pooled.intake, workspaces: pool.tenantIds.length,
+        usedWebhooks: pooled.webhooks, usedIntake: pooled.intake, workspaces: pool.tenantIds.length, unlock,
       }}
       webhooks={webhooks} forms={forms} notify={notify} intake={intake} teams={teams} members={members}
       initialTab={tab === "webhooks" || tab === "intake" ? tab : "notify"}

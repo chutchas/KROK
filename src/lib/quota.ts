@@ -290,3 +290,11 @@ export async function gateIntakeEnable(tenantId: string, formId: string): Gate {
   const used = await countIn("form_intake", (await getTenantPool(tenantId)).tenantIds, (q) => q.eq("enabled", true).neq("form_id", formId), "form_id");
   return used < plan.maxIntakeForms ? null : quotaError(`แพ็กเกจ ${plan.name} เปิด API รับข้อมูลได้สูงสุด ${fmtLimit(plan.maxIntakeForms)} ฟอร์ม`);
 }
+
+/** ฟีเจอร์ที่แพ็กเกจไม่รวมเลย: แก้ไข/ทดสอบ/เปิดใหม่ไม่ได้ (ของที่ตั้งไว้ก่อนลดแพ็กเกจ ปิดหรือลบได้อย่างเดียว) */
+export async function gateLocked(tenantId: string, feature: "notify" | "webhook" | "intake"): Gate {
+  const plan = await getTenantPlan(tenantId);
+  if (feature === "notify") return plan.notify ? null : quotaError(`แพ็กเกจ ${plan.name} ยังใช้การแจ้งเตือน LINE / อีเมลไม่ได้`);
+  if (feature === "webhook") return plan.maxWebhooks > 0 ? null : quotaError(`แพ็กเกจ ${plan.name} ยังใช้ Webhook ไม่ได้`);
+  return plan.maxIntakeForms > 0 ? null : quotaError(`แพ็กเกจ ${plan.name} ยังใช้ API รับข้อมูลไม่ได้`);
+}

@@ -8,7 +8,7 @@ import { getSession, canManage } from "@/lib/session";
 import { sanitizeSchema } from "@/lib/form-schema";
 import { validateFieldKeys } from "@/lib/intake";
 import { newIntakeKey } from "@/lib/intake-server";
-import { gateIntakeEnable } from "@/lib/quota";
+import { gateIntakeEnable, gateLocked } from "@/lib/quota";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
@@ -68,6 +68,8 @@ export async function saveIntake(
   }
 
   if (input.enabled) {
+    const locked = await gateLocked(session.tenantId, "intake"); // แพ็กเกจไม่รวม: แก้ค่าของที่เปิดค้างไว้ไม่ได้ ปิดได้อย่างเดียว
+    if (locked) return { error: locked };
     const { data: prev } = await supabase.from("form_intake").select("enabled").eq("form_id", formId).maybeSingle();
     if (!prev?.enabled) {
       const gate = await gateIntakeEnable(session.tenantId, formId);
@@ -94,6 +96,8 @@ export async function rotateIntakeKey(formId: string, days: number | null = 90):
   const g = await guard(formId);
   if ("error" in g) return { error: g.error! };
   const { session, supabase } = g;
+  const locked = await gateLocked(session.tenantId, "intake");
+  if (locked) return { error: locked };
   const expires = expiryFrom(days);
   if (expires === undefined) return { error: await sm("อายุ key ไม่ถูกต้อง") };
   const k = newIntakeKey();
@@ -113,6 +117,17 @@ export async function rotateIntakeKey(formId: string, days: number | null = 90):
   });
   revalidatePath("/settings/integrations");
   return { key: k.key, prefix: k.prefix };
+}
+
+/** ปิด API รับข้อมูลของฟอร์มนี้ (ใช้ได้ทุกแพ็กเกจ) — ค่าที่ตั้งไว้ยังเก็บอยู่ */
+export async function disableIntake(formId: string): Promise<{ ok: true } | { error: string }> {
+  const g = await guard(formId);
+  if ("error" in g) return { error: g.error! };
+  const { session, supabase } = g;
+  const { error } = await supabase.from("form_intake").update({ enabled: false, updated_by: session.userId, updated_at: new Date().toISOString() }).eq("form_id", formId);
+  if (error) return { error: migrationMsg(error.message) };
+  revalidatePath("/settings/integrations");
+  return { ok: true };
 }
 
 export async function revokeIntakeKey(formId: string): Promise<{ ok: true } | { error: string }> {
@@ -135,6 +150,8 @@ export async function setIntakeKeyExpiry(formId: string, days: number | null): P
   const g = await guard(formId);
   if ("error" in g) return { error: g.error! };
   const { session, supabase } = g;
+  const locked = await gateLocked(session.tenantId, "intake");
+  if (locked) return { error: locked };
   const expires = expiryFrom(days);
   if (expires === undefined) return { error: await sm("อายุ key ไม่ถูกต้อง") };
   const { data, error } = await supabase.from("form_intake")

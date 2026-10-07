@@ -249,3 +249,8 @@ export type PlanOverrides = Record<string, PlanOverride>;
 export function effectivePlans(ov: PlanOverrides = {}): Record<PlanKey, Plan> {
   return catalogRecord(normalizeCatalog(ov));
 }
+
+/** แพ็กเกจที่ถูกที่สุด (ที่ลูกค้าเลือกเองได้) ซึ่งมีฟีเจอร์นี้ — ใช้บอก "มีในแพ็กเกจ X ขึ้นไป" */
+export function cheapestWith(plans: Record<PlanKey, Plan>, has: (p: Plan) => boolean): Plan | null {
+  return Object.values(plans).filter((p) => p.visible && has(p)).sort((a, b) => a.priceThb - b.priceThb || a.sort - b.sort)[0] ?? null;
+}

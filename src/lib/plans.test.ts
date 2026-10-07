@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { effectivePlans, PLANS, UNLIMITED } from "./plans";
+import { effectivePlans, PLANS, UNLIMITED, cheapestWith } from "./plans";
 
 describe("effectivePlans", () => {
   it("คืนค่า default เมื่อไม่มี override", () => {
@@ -83,5 +83,13 @@ describe("plan catalog v2", () => {
     expect(free.at(-1)!.text).toBe("ซัพพอร์ตทางอีเมล");
     const pro = planFeatures(DEFAULT_PLANS[1], true);
     expect(pro.find((f) => f.text.includes("webhook"))!.off).toBeFalsy();
+  });
+});
+
+describe("cheapestWith", () => {
+  it("แพ็กเกจถูกสุดที่มีฟีเจอร์ (ข้ามที่ซ่อน)", () => {
+    expect(cheapestWith(PLANS, (p) => p.notify)?.key).toBe("pro");
+    expect(cheapestWith({ ...PLANS, pro: { ...PLANS.pro, visible: false } }, (p) => p.notify)?.key).toBe("business");
+    expect(cheapestWith(PLANS, () => false)).toBeNull();
   });
 });

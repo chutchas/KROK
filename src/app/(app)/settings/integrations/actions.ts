@@ -8,7 +8,7 @@ import { testWebhook, type WebhookEvent } from "@/lib/webhooks";
 import { sendLine, sendEmail } from "@/lib/notify";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { smtpHostShapeOk, smtpPortAllowed, SMTP_PORTS } from "@/lib/notify-utils";
-import { gateWebhookAdd, gateNotify } from "@/lib/quota";
+import { gateWebhookAdd, gateNotify, gateLocked } from "@/lib/quota";
 
 // ความลับ (LINE token / SMTP password / webhook secret) อ่าน-เขียนผ่าน service role เท่านั้น (migration 0043 ปิด REST)
 // ทุก action ตรวจ session + สิทธิ์ผู้จัดการ และผูก tenant_id เองก่อนเสมอ
@@ -86,6 +86,7 @@ export async function toggleWebhook(id: string, active: boolean): Promise<{ ok: 
   if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
+  if (active) { const gate = await gateLocked(session.tenantId, "webhook"); if (gate) return { error: gate }; }
   const { data, error } = await admin.from("webhooks").update({ active }).eq("id", id).eq("tenant_id", session.tenantId).select("id");
   if (!error && !data?.length) return { error: await sm("ไม่พบ webhook") };
   if (error) return { error: await sm(dbError(error)) };
@@ -112,6 +113,8 @@ export async function updateWebhook(
   const session = await getSession();
   if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
   if (!validUrl(input.url.trim())) return { error: await sm("URL ไม่ถูกต้อง (ต้องขึ้นต้น http:// หรือ https://)") };
+  const locked = await gateLocked(session.tenantId, "webhook");
+  if (locked) return { error: locked };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
   const supabase = await createClient();
@@ -155,6 +158,8 @@ export async function listDeliveries(webhookId: string): Promise<{ rows: Deliver
 export async function testWebhookById(id: string): Promise<{ ok: boolean; status: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { ok: false, status: "unauthorized" };
+  const locked = await gateLocked(session.tenantId, "webhook");
+  if (locked) return { ok: false, status: locked };
   const admin = getAdminClient();
   if (!admin) return { ok: false, status: NO_ADMIN };
   const { data } = await admin
@@ -198,6 +203,8 @@ export interface NotifyInput {
 export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { error: "unauthorized" };
+  const locked = await gateLocked(session.tenantId, "notify"); // แพ็กเกจไม่รวม: ปิดได้อย่างเดียว (disableNotify)
+  if (locked) return { error: locked };
   const admin = getAdminClient();
   if (!admin) return { error: NO_ADMIN };
 
@@ -269,10 +276,24 @@ export async function saveNotify(input: NotifyInput): Promise<{ ok: true } | { e
   return { ok: true };
 }
 
+/** ปิดแจ้งเตือนทุกช่องทาง (ใช้ได้ทุกแพ็กเกจ — ไว้ปิดของที่ตั้งไว้ก่อนลดแพ็กเกจ) · ค่าที่ตั้งไว้ยังเก็บอยู่ */
+export async function disableNotify(): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session || !canManage(session.role)) return { error: await sm("ไม่มีสิทธิ์") };
+  const admin = getAdminClient();
+  if (!admin) return { error: NO_ADMIN };
+  const { error } = await admin.from("tenant_notify").update({ line_enabled: false, email_enabled: false, updated_at: new Date().toISOString() }).eq("tenant_id", session.tenantId);
+  if (error) return { error: await sm(dbError(error)) };
+  revalidatePath("/settings/integrations");
+  return { ok: true };
+}
+
 // ทดสอบส่งจริงจาก config ที่บันทึกไว้ (บันทึกก่อนแล้วค่อยกดทดสอบ)
 export async function testNotify(channel: "line" | "email"): Promise<{ ok: boolean; status: string }> {
   const session = await getSession();
   if (!session || !canManage(session.role)) return { ok: false, status: "unauthorized" };
+  const locked = await gateLocked(session.tenantId, "notify");
+  if (locked) return { ok: false, status: locked };
   const admin = getAdminClient();
   if (!admin) return { ok: false, status: NO_ADMIN };
   const { data } = await admin

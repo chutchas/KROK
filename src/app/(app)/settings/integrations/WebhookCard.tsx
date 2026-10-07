@@ -17,8 +17,10 @@ import type { FormOption, WebhookItem } from "./IntegrationsClient";
 
 const noopSub = () => () => {};
 
-export default function WebhookCard({ w, forms, onMsg }: {
+export default function WebhookCard({ w, forms, onMsg, locked = false }: {
   w: WebhookItem;
+  /** แพ็กเกจไม่รวม webhook (ตั้งไว้ก่อนลดแพ็กเกจ): ปิด/ดูประวัติ/ลบได้ · ทดสอบ/แก้ไข/เปิดใหม่ไม่ได้ */
+  locked?: boolean;
   forms: FormOption[];
   onMsg: (m: { t: string; err?: boolean }) => void;
 }) {
@@ -100,21 +102,21 @@ export default function WebhookCard({ w, forms, onMsg }: {
         </div>
       )}
       <div style={{ display: "flex", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
-        <Button disabled={!!busy} onClick={async () => {
+        {!locked && <Button disabled={!!busy} onClick={async () => {
           const r = await run("test", () => testWebhookById(w.id));
           onMsg({ t: `${w.name}: ${r.status}`, err: !r.ok });
           router.refresh();
         }}>
           {busy === "test" ? "…" : <><Icon icon={Zap} className="h-4 w-4" /> {t("intg.test")}</>}
-        </Button>
-        <Button disabled={!!busy} onClick={() => setEditing(true)}><Icon icon={Pencil} className="h-4 w-4" /> {t("intg.edit")}</Button>
-        <Button disabled={!!busy} onClick={async () => {
+        </Button>}
+        {!locked && <Button disabled={!!busy} onClick={() => setEditing(true)}><Icon icon={Pencil} className="h-4 w-4" /> {t("intg.edit")}</Button>}
+        {(!locked || w.active) && <Button disabled={!!busy} onClick={async () => {
           const r = await run("toggle", () => toggleWebhook(w.id, !w.active));
           if ("error" in r) onMsg({ t: r.error, err: true });
           router.refresh();
         }}>
           {busy === "toggle" ? "…" : w.active ? t("intg.disable") : t("intg.enable")}
-        </Button>
+        </Button>}
         <Button onClick={loadHistory} aria-expanded={histOpen}><Icon icon={History} className="h-4 w-4" /> {t("intg.history")}</Button>
         <Button variant="danger" disabled={!!busy} onClick={async () => {
           if (!(await confirmDialog({ message: t("intg.deleteConfirm"), danger: true }))) return;
