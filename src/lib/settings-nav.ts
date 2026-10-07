@@ -35,6 +35,7 @@ export const SETTINGS_HUBS: SettingsHub[] = [
     labelKey: "hub.workspace",
     items: [
       { href: "/settings/workspace", tabKey: "hub.tab.general", gate: "wsadmin" },
+      { href: "/settings/workspace/media", tabKey: "hub.tab.media", gate: "wsadmin" },
       { href: "/settings/devices", tabKey: "nav.devices", gate: "wsadmin" },
       { href: "/settings/audit", tabKey: "nav.audit", gate: "wsadmin" },
     ],

@@ -4,11 +4,11 @@
 // - เข้าหน้าที่มีทัวร์และยังไม่เคยดู → รอให้หน้าพร้อม แล้วเริ่มเอง
 // - ปุ่ม ถัดไป / ย้อนกลับ / ข้ามทัวร์ · Esc = ข้าม · ← → = เลื่อนขั้น
 // - ดูจบหรือข้าม = จำว่าดูแล้ว (บัญชีผู้ใช้ + เครื่องนี้) ไม่พาซ้ำ
-// - เมนูโปรไฟล์ "แนะนำการใช้งานหน้านี้" → ส่ง event TOUR_START_EVENT เพื่อดูซ้ำ
+// - ปุ่ม ? ในแถบบน (TourHelpButton · ขึ้นเฉพาะหน้าที่มีทัวร์) → ส่ง event TOUR_START_EVENT เพื่อดูซ้ำ
 // ============================================================
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { X } from "lucide-react";
+import { X, CircleHelp } from "lucide-react";
 import Icon from "@/components/Icon";
 import BodyPortal from "@/components/BodyPortal";
 import { createClient } from "@/lib/supabase/client";
@@ -214,3 +214,25 @@ const ghost: React.CSSProperties = {
   border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)", borderRadius: 8, padding: "7px 12px",
   cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem", whiteSpace: "nowrap",
 };
+
+
+/** ปุ่ม ? ในแถบบน — แสดงเฉพาะหน้าที่มีทัวร์ให้ดู (ตรวจซ้ำเป็นระยะ: บางหน้า element ขึ้นทีหลัง เช่น เปิด editor) */
+export function TourHelpButton() {
+  const path = usePathname();
+  const { t } = useT();
+  const [has, setHas] = useState(false);
+  useEffect(() => {
+    const check = () => setHas(!!tourFor(path, visible));
+    const first = setTimeout(check, 400);
+    const iv = setInterval(check, 2000);
+    return () => { clearTimeout(first); clearInterval(iv); setHas(false); };
+  }, [path]);
+  if (!has) return null;
+  return (
+    <button type="button" onClick={() => window.dispatchEvent(new Event(TOUR_START_EVENT))} aria-label={t("tour.replay")} title={t("tour.replay")}
+      className="inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm"
+      style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer" }}>
+      <Icon icon={CircleHelp} className="h-4 w-4" />
+    </button>
+  );
+}
