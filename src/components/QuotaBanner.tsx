@@ -35,7 +35,7 @@ export default function QuotaBanner({ warnings, canUpgrade }: { warnings: QuotaW
         </div>
       </div>
       {canUpgrade ? (
-        <Link href="/settings/billing" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "7px 14px", fontSize: ".85rem", fontWeight: 600, textDecoration: "none" }}>{t("quota.seePlans")}</Link>
+        <Link href="/settings/billing/plans" style={{ background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "7px 14px", fontSize: ".85rem", fontWeight: 600, textDecoration: "none" }}>{t("quota.seePlans")}</Link>
       ) : (
         <span style={{ fontSize: ".8rem", color: "var(--ink-3)" }}>{t("quota.askOwner")}</span>
       )}

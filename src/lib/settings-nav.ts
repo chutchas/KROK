@@ -49,6 +49,7 @@ export const SETTINGS_HUBS: SettingsHub[] = [
     labelKey: "hub.billing",
     items: [
       { href: "/settings/billing", tabKey: "hub.tab.plan", menu: "billing" },
+      { href: "/settings/billing/plans", tabKey: "hub.tab.plans", menu: "billing" },
       { href: "/settings/billing/history", tabKey: "nav.billingHistory", gate: "wsadmin" },
     ],
   },

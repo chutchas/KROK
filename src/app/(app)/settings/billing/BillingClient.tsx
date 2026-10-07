@@ -1,9 +1,10 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Check, Lock, CreditCard, Minus } from "lucide-react";
+import { Check, Lock, CreditCard, Minus, Sparkles } from "lucide-react";
 import { usePayT as useT } from "@/i18n/ns/pay";
 import { DEFAULT_PLANS, UNLIMITED, planFeatures, type PlanKey, type Plan } from "@/lib/plans";
 import { AI_PURPOSES, PURPOSE_LABELS, PURPOSE_LABELS_EN, type AiPurpose } from "@/lib/ai-purpose";
@@ -13,6 +14,7 @@ import SubscriptionCard, { type SubscriptionInfo } from "./SubscriptionCard";
 import { useEffect, useSyncExternalStore } from "react";
 
 export default function BillingClient({
+  view = "quota",
   isOwner,
   ownerName,
   workspaces = 1,
@@ -29,6 +31,8 @@ export default function BillingClient({
   subscription = null,
   cardReturn = false,
 }: {
+  /** แท็บ: แผนปัจจุบัน/โควตา · แพ็กเกจ (เลือกซื้อ) */
+  view?: "quota" | "plans";
   /** สถานะต่ออายุอัตโนมัติ (0047) */
   subscription?: SubscriptionInfo | null;
   /** กลับมาจากหน้าบันทึกบัตรของ Gateway */
@@ -65,8 +69,6 @@ export default function BillingClient({
 
   const plan = current ?? plans.find((p) => p.key === currentPlan) ?? plans[0];
   const en = lang === "en";
-  const opt = (n: number | undefined, max: number, label: string, unit?: string) =>
-    n === undefined || max <= 0 ? null : <UsageBar key={label} label={label} used={n} max={max} unit={unit} />;
 
   // แพ็กเกจเสียเงิน → เปิดหน้ายืนยัน (ยอด + ความยินยอมต่ออายุอัตโนมัติ) ก่อนไปหน้าชำระ
   const [buying, setBuying] = useState<Plan | null>(null);
@@ -80,7 +82,7 @@ export default function BillingClient({
     setBusy(p);
     setMsg(null);
     const res = await setPlan(p, { autoRenew });
-    if ("checkoutUrl" in res) { window.location.href = res.checkoutUrl; return; } // ไปหน้าชำระของ Gateway
+    if ("checkoutUrl" in res) { window.location.assign(res.checkoutUrl); return; } // ไปหน้าชำระของ Gateway
     setBusy(null);
     if ("error" in res) setMsg({ t: res.error, err: true });
     else {
@@ -113,10 +115,26 @@ export default function BillingClient({
   const now = mounted ? loadedAt : 0;
   const daysLeft = expiresAt && now ? Math.ceil((new Date(expiresAt).getTime() - now) / 86400_000) : null;
 
-  return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("plan.title")}</h1>
+  // โควตา: ที่มีเพดาน = แถบ (กริด) · ไม่จำกัด = รวมบรรทัดเดียว · แพ็กเกจไม่รวม (0) = ไม่แสดง
+  type Row = { label: string; used: number; max: number; unit?: string };
+  const rows: Row[] = [
+    { label: t("plan.forms"), used: usage.forms, max: plan.maxForms },
+    { label: t("plan.members"), used: usage.members, max: plan.maxMembers },
+    { label: t("plan.submissions"), used: usage.submissions ?? -1, max: plan.maxSubmissionsMonth },
+    { label: t("plan.storage"), used: usage.storageMb ?? -1, max: plan.storageMb, unit: "MB" },
+    { label: t("plan.datasets"), used: usage.datasets ?? -1, max: plan.maxDatasets },
+    { label: "Webhook", used: usage.webhooks ?? -1, max: plan.maxWebhooks },
+    { label: t("plan.intake"), used: usage.intakeForms ?? -1, max: plan.maxIntakeForms },
+    { label: t("plan.devices"), used: usage.devices ?? -1, max: plan.maxDevices },
+  ].filter((r) => r.used >= 0 && r.max > 0);
+  const aiRows: Row[] = AI_PURPOSES.map((p) => ({ label: en ? PURPOSE_LABELS_EN[p] : PURPOSE_LABELS[p], used: usage.ai[p] ?? 0, max: plan.aiCredits[p] ?? 0 })).filter((r) => r.max > 0);
+  const limited = (list: Row[]) => list.filter((r) => r.max < UNLIMITED);
+  const unlimited = [...rows, ...aiRows].filter((r) => r.max >= UNLIMITED);
+
+  const head = (title: string) => (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
+      <div style={{ flex: 1, minWidth: 220 }}>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{title}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent-text)" }}>{en ? plan.nameEn : plan.name}</b>
         </p>
@@ -124,20 +142,35 @@ export default function BillingClient({
           {isOwner ? tt("plan.accountOwn", { n: workspaces }) : tt("plan.accountOther", { name: ownerName || t("plan.ownerFallback"), n: workspaces })}
         </p>
       </div>
+      {view === "quota" && (
+        <Link href="/settings/billing/plans" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "9px 16px", fontSize: ".88rem", fontWeight: 600, textDecoration: "none" }}>
+          <Icon icon={Sparkles} className="h-4 w-4" /> {t("plan.seePlans")}
+        </Link>
+      )}
+    </div>
+  );
 
-      {payState && (
-        <Notice kind={payState === "failed" ? "error" : "info"}>
-          {payState === "waiting" ? t("pay.waiting") : payState === "paid" ? t("pay.paid") : payState === "failed" ? t("pay.failed") : t("pay.timeout")}
-        </Notice>
-      )}
-      {pendingInvoice && !payState && isOwner && (
-        <Notice>
-          <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-            {tt("pay.pending", { plan: plans.find((p) => p.key === pendingInvoice.plan)?.name ?? pendingInvoice.plan, amount: pendingInvoice.amount.toLocaleString() })}
-            <a href={pendingInvoice.url} style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("pay.continue")}</a>
-          </span>
-        </Notice>
-      )}
+  const notices = (<>
+    {payState && (
+      <Notice kind={payState === "failed" ? "error" : "info"}>
+        {payState === "waiting" ? t("pay.waiting") : payState === "paid" ? t("pay.paid") : payState === "failed" ? t("pay.failed") : t("pay.timeout")}
+      </Notice>
+    )}
+    {pendingInvoice && !payState && isOwner && (
+      <Notice>
+        <span style={{ display: "inline-flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+          {tt("pay.pending", { plan: plans.find((p) => p.key === pendingInvoice.plan)?.name ?? pendingInvoice.plan, amount: pendingInvoice.amount.toLocaleString() })}
+          <a href={pendingInvoice.url} style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("pay.continue")}</a>
+        </span>
+      </Notice>
+    )}
+    {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
+  </>);
+
+  if (view === "quota") return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {head(t("plan.titleQuota"))}
+      {notices}
       {cardReturn && <Notice>{t("sub.cardReturn")}</Notice>}
       {daysLeft !== null && expiresAt && plan.priceThb > 0 && (
         <SubscriptionCard plan={plan} expiresAt={expiresAt} daysLeft={daysLeft} sub={subscription} isOwner={isOwner} payable={payable}
@@ -147,43 +180,48 @@ export default function BillingClient({
         <PurchaseDialog plan={buying} renewing={buying.key === plan.key} busy={busy === buying.key}
           onClose={() => setBuying(null)} onConfirm={(auto) => void doChoose(buying.key, auto)} />
       )}
-
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 2 }}>{t("plan.usage")}</h2>
-        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", marginTop: 0 }}>{t("plan.period")}: {usage.period}</p>
-        <div style={{ display: "grid", gap: 14, marginTop: 8 }}>
-          <UsageBar label={t("plan.forms")} used={usage.forms} max={plan.maxForms} />
-          <UsageBar label={t("plan.members")} used={usage.members} max={plan.maxMembers} />
-          {opt(usage.submissions, plan.maxSubmissionsMonth, t("plan.submissions"))}
-          {opt(usage.storageMb, plan.storageMb, t("plan.storage"), "MB")}
-          {opt(usage.datasets, plan.maxDatasets, t("plan.datasets"))}
-          {opt(usage.webhooks, plan.maxWebhooks, "Webhook")}
-          {opt(usage.intakeForms, plan.maxIntakeForms, t("plan.intake"))}
-          {opt(usage.devices, plan.maxDevices, t("plan.devices"))}
+        <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+          <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("plan.usage")}</h2>
+          <span style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.period")}: {usage.period}</span>
         </div>
-
-        <div style={{ marginTop: 18, paddingTop: 14, borderTop: "1px solid var(--line)" }}>
-          <div style={{ fontWeight: 600, fontSize: ".95rem" }}>{t("plan.aiCredits")}</div>
-          <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "2px 0 12px" }}>
+        <div className="krok-usage-grid">
+          {limited(rows).map((r) => <UsageBar key={r.label} {...r} />)}
+        </div>
+        {limited(aiRows).length > 0 && (<>
+          <div style={{ fontWeight: 600, fontSize: ".92rem", marginTop: 18 }}>{t("plan.aiCredits")}</div>
+          <p style={{ color: "var(--ink-3)", fontSize: ".76rem", margin: "2px 0 0" }}>
             {en
-              ? "Each task has its own monthly allowance — running out on one does not block the others. Barcode / QR scanning is free and uses no credits."
+              ? "Each task has its own monthly allowance — running out on one does not block the others. Barcode / QR scanning is free."
               : "แต่ละงานมีโควตาของตัวเอง — หมดถังหนึ่งไม่กระทบอีกถัง · การสแกนบาร์โค้ด/QR ไม่ใช้เครดิต"}
           </p>
-          <div style={{ display: "grid", gap: 14 }}>
-            {AI_PURPOSES.map((p) => (
-              <UsageBar
-                key={p}
-                label={en ? PURPOSE_LABELS_EN[p] : PURPOSE_LABELS[p]}
-                used={usage.ai[p] ?? 0}
-                max={plan.aiCredits[p] ?? 0}
-              />
-            ))}
+          <div className="krok-usage-grid">
+            {limited(aiRows).map((r) => <UsageBar key={r.label} {...r} />)}
           </div>
-        </div>
+        </>)}
+        {unlimited.length > 0 && (
+          <p style={{ margin: "16px 0 0", paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: ".84rem", color: "var(--ink-2)", lineHeight: 1.7 }}>
+            <b>{t("plan.unlimited")}:</b>{" "}
+            {unlimited.map((r, i) => <span key={r.label} style={{ whiteSpace: "nowrap" }}>{i > 0 && " · "}{r.label} <span className="tabnum" style={{ color: "var(--ink-3)" }}>({r.used.toLocaleString("en-US")}{r.unit ? ` ${r.unit}` : ""})</span></span>)}
+          </p>
+        )}
       </Card>
+      <style>{`
+        .krok-usage-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px 24px;margin-top:12px}
+        @media(max-width:900px){.krok-usage-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+        @media(max-width:560px){.krok-usage-grid{grid-template-columns:minmax(0,1fr)}}
+      `}</style>
+    </div>
+  );
 
-      {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
-
+  return (
+    <div style={{ display: "grid", gap: 16 }}>
+      {head(t("plan.titlePlans"))}
+      {notices}
+      {buying && (
+        <PurchaseDialog plan={buying} renewing={buying.key === plan.key} busy={busy === buying.key}
+          onClose={() => setBuying(null)} onConfirm={(auto) => void doChoose(buying.key, auto)} />
+      )}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(230px, 1fr))", gap: 12 }}>
         {plans.map((p) => {
           const key = p.key;
@@ -241,41 +279,30 @@ export default function BillingClient({
         })}
       </div>
 
-      {/* ช่องทางชำระเงินที่รองรับ (มาจากที่แพลตฟอร์มเปิดใช้งาน) */}
-      <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
-          {payMethods.length === 0 && (
-            <span style={{ fontSize: ".68rem", fontWeight: 700, color: "var(--amber)", border: "1px solid var(--line)", borderRadius: 20, padding: "2px 8px" }}>{t("pay.soon")}</span>
-          )}
-        </h2>
-        {payMethods.length > 0 ? (
-          <>
-            <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.available")}</p>
-            <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-              {payMethods.map((m) => (
-                <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", background: "var(--surface)" }}>
-                  <Icon icon={Check} className="h-4 w-4" />
-                  <span style={{ flex: 1 }}>
-                    <b style={{ fontSize: ".9rem" }}>{m.name}</b>
-                    <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{m.hint}</small>
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        ) : (
-          <>
-            <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.sub")}</p>
-            <Notice><span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}><Icon icon={Lock} className="h-4 w-4" /> {t("pay.disabledNote")}</span></Notice>
-          </>
-        )}
-      </Card>
-
-      {payMethods.length === 0 && (
-        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", textAlign: "center" }}>{t("plan.noPayment")}</p>
+      {/* ช่องทางชำระเงิน: เปิดแล้ว = การ์ดรายการ · ยังไม่เปิด = บรรทัดเดียว */}
+      {payMethods.length > 0 ? (
+        <Card>
+          <h2 style={{ fontSize: "1.05rem", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
+          </h2>
+          <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.available")}</p>
+          <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+            {payMethods.map((m) => (
+              <div key={m.id} style={{ display: "flex", alignItems: "center", gap: 10, border: "1px solid var(--line)", borderRadius: 10, padding: "10px 12px", background: "var(--surface)" }}>
+                <Icon icon={Check} className="h-4 w-4" />
+                <span style={{ flex: 1 }}>
+                  <b style={{ fontSize: ".9rem" }}>{m.name}</b>
+                  <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{m.hint}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+        </Card>
+      ) : (
+        <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: 0, display: "flex", alignItems: "center", gap: 6, justifyContent: "center", flexWrap: "wrap", textAlign: "center" }}>
+          <Icon icon={Lock} className="h-3.5 w-3.5" /> {t("pay.disabledNote")}
+        </p>
       )}
-
     </div>
   );
 }

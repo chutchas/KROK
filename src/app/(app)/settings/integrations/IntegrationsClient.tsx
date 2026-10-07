@@ -244,7 +244,7 @@ function FeatureLock({ icon, title, bullets, current, unlock, children }: {
               </li>
             ))}
           </ul>
-          <Link href="/settings/billing" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 14, background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "9px 16px", fontSize: ".88rem", fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/settings/billing/plans" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 14, background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "9px 16px", fontSize: ".88rem", fontWeight: 600, textDecoration: "none" }}>
             <Icon icon={Sparkles} className="h-4 w-4" /> {t("intg.upgrade")}
           </Link>
           {children}
@@ -274,7 +274,7 @@ function Usage({ text, full }: { text: string; full: boolean }) {
   return (
     <div style={{ fontSize: ".84rem", color: full ? "var(--fail)" : "var(--ink-3)", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
       <span>{text}</span>
-      {full && <Link href="/settings/billing" style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("intg.upgrade")}</Link>}
+      {full && <Link href="/settings/billing/plans" style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("intg.upgrade")}</Link>}
     </div>
   );
 }
