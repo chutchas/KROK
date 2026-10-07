@@ -36,6 +36,14 @@ export function emailConfigured(): boolean {
 
 type Msg = { to: string; subject: string; html: string; text: string; replyTo?: string };
 
+/** ผู้ส่งของ SMTP: EMAIL_FROM มีอีเมล = ใช้ตามนั้น · ใส่แค่ชื่อ (เช่น "KROK") = ชื่อ + SMTP_USER · ไม่ใส่ = KROK <SMTP_USER> */
+export function smtpFrom(user: string): string {
+  const f = process.env.EMAIL_FROM?.trim();
+  if (!f) return `KROK <${user}>`;
+  if (f.includes("@")) return f;
+  return `${f.replace(/[<>"]/g, "")} <${user}>`;
+}
+
 async function sendSmtp(msg: Msg, cfg: NonNullable<ReturnType<typeof smtpEnv>>): Promise<SendResult> {
   try {
     const t = nodemailer.createTransport({
@@ -43,7 +51,7 @@ async function sendSmtp(msg: Msg, cfg: NonNullable<ReturnType<typeof smtpEnv>>):
       connectionTimeout: 10_000, greetingTimeout: 8_000, socketTimeout: 15_000,
     });
     const info = await t.sendMail({
-      from: process.env.EMAIL_FROM || `KROK <${cfg.user}>`, to: msg.to, subject: msg.subject, html: msg.html, text: msg.text,
+      from: smtpFrom(cfg.user), to: msg.to, subject: msg.subject, html: msg.html, text: msg.text,
       ...(msg.replyTo ? { replyTo: msg.replyTo } : {}),
     });
     return { ok: true, id: String(info.messageId || "smtp") };

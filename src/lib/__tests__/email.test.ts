@@ -79,6 +79,13 @@ describe("sendEmail (SMTP เช่น Gmail)", () => {
     expect(r.ok).toBe(false);
     expect(!r.ok && r.error).toContain("App Password");
   });
+  it("EMAIL_FROM ใส่แค่ชื่อ → ชื่อ + SMTP_USER", async () => {
+    smtp();
+    vi.stubEnv("EMAIL_FROM", "KROK");
+    sendMail.mockResolvedValueOnce({ messageId: "<m2>" });
+    await sendEmail({ to: "a@b.com", subject: "s", html: "h", text: "t" });
+    expect(sendMail).toHaveBeenLastCalledWith(expect.objectContaining({ from: "KROK <me@gmail.com>" }));
+  });
   it("มี Resend ด้วย → ใช้ Resend ก่อน", () => {
     smtp();
     vi.stubEnv("RESEND_API_KEY", "re_x");
