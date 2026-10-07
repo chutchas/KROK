@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Card, Field, Notice } from "@/components/ui";
@@ -13,17 +13,27 @@ export default function ResetPasswordForm() {
   const [pw2, setPw2] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
+  // บัญชีที่กำลังตั้งรหัส (ให้เห็นชัดว่าเป็นของใคร)
+  const [who, setWho] = useState("");
+  useEffect(() => {
+    createClient().auth.getUser().then(({ data }) => setWho(data.user?.email || "")).catch(() => {});
+  }, []);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (pw !== pw2) { setMsg({ t: t("reset.mismatch"), err: true }); return; }
     setBusy(true);
     setMsg(null);
-    const { error } = await createClient().auth.updateUser({ password: pw });
-    setBusy(false);
-    if (error) { setMsg({ t: error.message, err: true }); return; }
+    const sb = createClient();
+    const { error } = await sb.auth.updateUser({ password: pw });
+    if (error) { setBusy(false); setMsg({ t: error.message, err: true }); return; }
     setMsg({ t: t("reset.done") });
-    setTimeout(() => { router.push("/dashboard"); router.refresh(); }, 900);
+    // ตั้งรหัสใหม่แล้ว → ออกจากระบบทุกเครื่องของบัญชีนี้ แล้วให้เข้าสู่ระบบด้วยรหัสใหม่
+    await sb.auth.signOut({ scope: "global" }).catch(() => sb.auth.signOut({ scope: "local" }));
+    const q = new URLSearchParams({ pwreset: "1" });
+    if (who) q.set("email", who);
+    router.replace(`/login?${q.toString()}`);
+    router.refresh();
   }
 
   return (
@@ -35,6 +45,7 @@ export default function ResetPasswordForm() {
       <Card>
         <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>{t("reset.title")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>{t("reset.hint")}</p>
+        {who && <p style={{ fontSize: ".88rem", margin: "0 0 6px" }}>{t("reset.account")} <b>{who}</b></p>}
         <form onSubmit={submit} style={{ display: "grid", gap: 12, marginTop: 10 }}>
           <Field type="password" placeholder={t("reset.new")} value={pw} onChange={(e) => setPw(e.target.value)} required minLength={6} autoComplete="new-password" autoFocus />
           <Field type="password" placeholder={t("reset.confirm")} value={pw2} onChange={(e) => setPw2(e.target.value)} required minLength={6} autoComplete="new-password" />

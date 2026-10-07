@@ -20,7 +20,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   // ยืนยันตัวตน 2 ขั้น: factor TOTP ที่ต้องกรอกรหัส
   const [factorId, setFactorId] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [email, setEmail] = useState(invited);
+  const [email, setEmail] = useState(invited || (sp.get("pwreset") ? (sp.get("email") || "").trim().slice(0, 200) : ""));
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
   const [name, setName] = useState("");
@@ -28,6 +28,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(() => {
     if (sp.get("confirmed")) return { t: t("login.confirmedOk") };
+    if (sp.get("pwreset")) return { t: t("login.pwResetOk") };
     if (sp.get("deleted")) return { t: t("login.accountDeleted") };
     const e = sp.get("auth_error");
     if (e === "reset") return { t: t("login.resetLinkFail"), err: true };

@@ -848,6 +848,8 @@ export const en: Record<MessageKey, string> = {
   "push.g.form": "New forms",
   "bell.pushLink": "Enable push on this device",
   "team.inviteRoleHasAccount": "Role {role} · has an account, waiting to accept",
+  "reset.account": "Account:",
+  "login.pwResetOk": "Password updated — sign in with your new password (this account was signed out on all devices)",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",
@@ -1644,14 +1646,14 @@ export const en: Record<MessageKey, string> = {
   "login.doReset": "Send reset link",
   "login.backToSignin": "Back to sign in",
   "login.resetSent": "If {email} has an account, we've sent a reset link — open it in this browser (check spam if you don't see it).",
-  "login.resetLinkFail": "This reset link is invalid or expired — it must be opened in the same browser you requested it from. Try “Forgot password?” again.",
+  "login.resetLinkFail": "This reset link is invalid, already used, or expired — tap “Forgot password?” to get a new one.",
   "reset.title": "Set a new password",
   "reset.hint": "Choose a new password for your account (at least 6 characters).",
   "reset.new": "New password",
   "reset.confirm": "Confirm new password",
   "reset.save": "Save new password",
   "reset.mismatch": "Passwords don't match",
-  "reset.done": "Password updated — taking you to the app…",
+  "reset.done": "Password updated — taking you to sign in…",
 };
 
 export default en;

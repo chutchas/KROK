@@ -38,6 +38,9 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     ok = !error;
   } else if (tokenHash && type && OTP_TYPES.includes(type)) {
+    // ลิงก์รีเซ็ตรหัสผ่าน: ออกจากบัญชีที่ค้างอยู่ในเบราว์เซอร์นี้ก่อน (อาจเป็นคนละคนกับเจ้าของลิงก์)
+    // กันตั้งรหัสผิดบัญชี / ลิงก์ใช้ไม่ได้แล้วเด้งเข้าแอปด้วยบัญชีเดิม
+    if (type === "recovery") await supabase.auth.signOut({ scope: "local" }).catch(() => {});
     const { error } = await supabase.auth.verifyOtp({ token_hash: tokenHash, type });
     ok = !error;
   }

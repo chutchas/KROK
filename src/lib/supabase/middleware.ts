@@ -67,7 +67,8 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
   // ค้างขั้นกรอกรหัส 2FA (/login?mfa=1) → อยู่หน้า login ได้ ไม่เด้งเข้าแดชบอร์ด (กันวนรอบ)
-  if (user && path === "/login" && !request.nextUrl.searchParams.has("mfa")) {
+  // มีข้อความจากลิงก์อีเมล (?auth_error=) → แสดงหน้า login ให้เห็นข้อความ ไม่เด้งเข้าแอปด้วยบัญชีที่ค้างอยู่
+  if (user && path === "/login" && !request.nextUrl.searchParams.has("mfa") && !request.nextUrl.searchParams.has("auth_error")) {
     const url = request.nextUrl.clone();
     url.pathname = "/dashboard";
     url.search = "";
