@@ -123,7 +123,7 @@ export default function FormsListClient({
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
       {/* จอแคบ: แท็บไม่ตัดบรรทัด เลื่อนซ้าย-ขวาได้แทน */}
-      <div role="tablist" data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", margin: "12px 0 4px", overflowX: "auto", scrollbarWidth: "none" }}>
+      <div role="tablist" data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "12px 0 4px", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
         {([
           { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
           ...(today && (today.length > 0 || tab === "today") ? [{ k: "today" as const, label: t("today.tab"), n: today.filter(actionable).length }] : []),
@@ -133,7 +133,7 @@ export default function FormsListClient({
           const on = tab === x.k;
           return (
             <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}

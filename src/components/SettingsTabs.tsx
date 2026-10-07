@@ -14,12 +14,12 @@ export default function SettingsTabs({ hubs }: { hubs: { key: string; items: { h
   if (!cur || items.length < 2) return null;
   return (
     <nav aria-label={t(cur.hub.labelKey)} className="krok-tabscroll no-print"
-      style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", marginBottom: 18, overflowX: "auto", scrollbarWidth: "none" }}>
+      style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 18, overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
       {items.map((it) => {
         const on = it.href === cur.item.href;
         return (
           <Link key={it.href} href={it.href} aria-current={on ? "page" : undefined}
-            style={{ padding: "9px 14px", marginBottom: -1, borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, color: on ? "var(--accent)" : "var(--ink-2)",
+            style={{ padding: "9px 14px", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, color: on ? "var(--accent)" : "var(--ink-2)",
               fontWeight: on ? 600 : 500, fontSize: ".92rem", textDecoration: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}>
             {t(it.tabKey)}
           </Link>

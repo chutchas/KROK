@@ -98,7 +98,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
       </div>
 
       {/* แท็บ: แจ้งเตือน | Webhook ขาออก | API รับข้อมูลเข้า */}
-      <div role="tablist" style={{ display: "flex", gap: 4, borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
+      <div role="tablist" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
         {([
           { k: "notify" as const, label: t("intg.tabNotify"), icon: Bell, locked: notifyLocked },
           { k: "webhooks" as const, label: t("intg.tabWebhooks"), icon: Webhook, locked: webhookLocked },
@@ -107,7 +107,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
           const on = tab === x.k;
           return (
             <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", marginBottom: -1, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", whiteSpace: "nowrap" }}>
               <Icon icon={x.icon} className="h-4 w-4" /> {x.label}
               {x.locked && <span title={t("intg.lockedTab")} style={{ display: "inline-flex", color: "var(--ink-3)" }}><Icon icon={Lock} className="h-3.5 w-3.5" /></span>}
             </button>

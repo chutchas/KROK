@@ -47,7 +47,7 @@ export default function SystemSettingsClient({
       </div>
 
       {/* แท็บ */}
-      <div style={{ display: "flex", gap: 6, borderBottom: "1px solid var(--line)", overflowX: "auto" }}>
+      <div style={{ display: "flex", gap: 6, boxShadow: "inset 0 -1px 0 var(--line)", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
         {TABS.map((tb) => {
           const on = tab === tb.id;
           return (
@@ -58,7 +58,7 @@ export default function SystemSettingsClient({
                 display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", cursor: "pointer",
                 fontFamily: "inherit", fontSize: ".92rem", fontWeight: on ? 700 : 500, whiteSpace: "nowrap",
                 color: on ? "var(--accent)" : "var(--ink-2)", background: "transparent", border: "none",
-                borderBottom: on ? "2px solid var(--accent)" : "2px solid transparent", marginBottom: -1,
+                borderBottom: on ? "2px solid var(--accent)" : "2px solid transparent",
               }}
             >
               <Icon icon={tb.icon} className="h-4 w-4" /> {tb.label}
