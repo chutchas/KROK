@@ -29,8 +29,9 @@ export interface VersionItem {
   diff: FormDiff | null;
 }
 
-export default function HistoryClient({ formId, formTitle, formIcon, deleted, items, missing, focus }: {
+export default function HistoryClient({ formId, formTitle, formIcon, deleted, items, missing, focus, page = 1, pages = 1 }: {
   formId: string; formTitle: string; formIcon: string; deleted: boolean; items: VersionItem[]; missing: boolean; focus: number | null;
+  page?: number; pages?: number;
 }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
@@ -144,6 +145,13 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
           );
         })}
       </div>
+      {pages > 1 && (
+        <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 12, marginTop: 14, fontSize: ".88rem" }}>
+          {page > 1 ? <Link href={`/studio/history/${formId}?p=${page - 1}`}>← {t("ver.newer")}</Link> : <span style={{ color: "var(--ink-3)" }}>← {t("ver.newer")}</span>}
+          <span style={{ color: "var(--ink-3)" }}>{page} / {pages}</span>
+          {page < pages ? <Link href={`/studio/history/${formId}?p=${page + 1}`}>{t("ver.older")} →</Link> : <span style={{ color: "var(--ink-3)" }}>{t("ver.older")} →</span>}
+        </div>
+      )}
 
       {preview && (
         <BodyPortal>

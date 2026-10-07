@@ -35,7 +35,7 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
       .order("created_at", { ascending: true }) : none,
     supabase
       .from("forms")
-      .select("id, title, icon, schema")
+      .select("id, title, icon, steps:schema->steps") // ต้องการแค่รายชื่อฟิลด์ — ไม่ดึงโครงฟอร์มทั้งก้อน (กระดาษ/รูปพื้นหลัง ฯลฯ)
       .eq("tenant_id", session.tenantId)
       .is("deleted_at", null)
       .order("title"),
@@ -89,9 +89,9 @@ export default async function IntegrationsPage({ searchParams }: { searchParams:
 
   // ฟอร์ม + รายการฟิลด์ (id/label) จาก schema สำหรับตัวเลือก payload
   const forms: FormOption[] = ((formData || []) as Record<string, unknown>[]).map((f) => {
-    const schema = (f.schema ?? {}) as { steps?: { fields?: { id?: string; label?: string; type?: string; required?: boolean }[] }[] };
+    const steps = (Array.isArray(f.steps) ? f.steps : []) as { fields?: { id?: string; label?: string; type?: string; required?: boolean }[] }[];
     const fields: { id: string; label: string; type: string; required?: boolean }[] = [];
-    for (const s of schema.steps || [])
+    for (const s of steps)
       for (const fld of s.fields || [])
         if (fld?.id) fields.push({ id: fld.id, label: fld.label || fld.id, type: fld.type || "text", required: !!fld.required });
     return { id: f.id as string, title: (f.title as string) || "ฟอร์ม", icon: (f.icon as string) || "📋", fields };

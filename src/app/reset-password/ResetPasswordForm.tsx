@@ -47,9 +47,9 @@ export default function ResetPasswordForm() {
     setMsg({ t: t("reset.done") });
     // ตั้งรหัสใหม่แล้ว → ออกจากระบบทุกเครื่องของบัญชีนี้ แล้วให้เข้าสู่ระบบด้วยรหัสใหม่
     await sb.auth.signOut({ scope: "global" }).catch(() => sb.auth.signOut({ scope: "local" }));
-    const q = new URLSearchParams({ pwreset: "1" });
-    if (who) q.set("email", who);
-    router.replace(`/login?${q.toString()}`);
+    // อีเมลส่งต่อทาง sessionStorage (ไม่ใส่ใน URL → ไม่ติดประวัติเบราว์เซอร์/log)
+    try { if (who) sessionStorage.setItem("krok_pwreset_email", who); } catch { /* ไม่มี storage */ }
+    router.replace("/login?pwreset=1");
     router.refresh();
   }
 

@@ -40,23 +40,17 @@ async function authenticate(req: Request, formId: string, admin: Admin) {
   const auth = req.headers.get("authorization") || "";
   const key = auth.replace(/^Bearer\s+/i, "").trim() || req.headers.get("x-api-key") || "";
   if (!INTAKE_API_KEY_RE.test(key) || !UUID.test(formId)) return null;
-  const { data: cfg } = await admin
-    .from("form_intake")
-    .select("*")
-    .eq("form_id", formId)
-    .eq("key_hash", hashIntakeKey(key))
-    .maybeSingle();
+  // key + ฟอร์ม ยิงพร้อมกัน (ทั้งคู่อ้างด้วย formId)
+  const [{ data: cfg }, { data: f }] = await Promise.all([
+    admin.from("form_intake").select("*").eq("form_id", formId).eq("key_hash", hashIntakeKey(key)).maybeSingle(),
+    admin.from("forms").select("id, tenant_id, title, icon, version, schema, requires_approval, approval_chain, status, deleted_at").eq("id", formId).maybeSingle(),
+  ]);
   if (!cfg) return null;
   // key ถูกต้องแต่ผู้ดูแลปิด API ไว้ → บอกให้ชัด (ผู้ถือ key ถูกต้องแล้ว จึงไม่เผยข้อมูลเพิ่ม)
   if (!cfg.enabled) return "disabled" as const;
   // key หมดอายุ (null/ไม่มีคอลัมน์ = ไม่หมดอายุ)
   const exp = (cfg as { key_expires_at?: string | null }).key_expires_at;
   if (exp && new Date(exp).getTime() <= Date.now()) return "expired" as const;
-  const { data: f } = await admin
-    .from("forms")
-    .select("id, tenant_id, title, icon, version, schema, requires_approval, approval_chain, status, deleted_at")
-    .eq("id", formId)
-    .maybeSingle();
   if (!f || f.tenant_id !== cfg.tenant_id || f.deleted_at) return null;
   // แพ็กเกจปัจจุบันไม่รวม (เช่น ลดแพ็กเกจแล้วหมดรอบ) → ปฏิเสธพร้อมบอกเหตุผล
   if (!(await intakeAllowed(f.tenant_id as string, formId).catch(() => true))) return "plan" as const;

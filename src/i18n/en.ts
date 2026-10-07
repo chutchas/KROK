@@ -940,6 +940,8 @@ export const en: Record<MessageKey, string> = {
   "nav.short.workspace": "Workspace",
   "nav.short.people": "Team",
   "login.linkExpired": "This link has expired — request a new one from this page.",
+  "ver.newer": "Newer",
+  "ver.older": "Older",
   "print.photos.title": "Photos",
   "print.photos.section": "Printing photos",
   "print.photos.hint": "Applies to the whole form — paper view, printing and submission pages",

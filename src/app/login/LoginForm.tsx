@@ -23,7 +23,17 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
   // ยืนยันตัวตน 2 ขั้น: factor TOTP ที่ต้องกรอกรหัส
   const [factorId, setFactorId] = useState<string | null>(null);
   const [code, setCode] = useState("");
-  const [email, setEmail] = useState(invited || (sp.get("pwreset") ? (sp.get("email") || "").trim().slice(0, 200) : ""));
+  const [email, setEmail] = useState(invited || "");
+  // หลังตั้งรหัสใหม่: เติมอีเมลบัญชีที่เพิ่งรีเซ็ต (ส่งมาทาง sessionStorage ไม่ใช่ URL) แล้วลบทิ้ง
+  useEffect(() => {
+    if (!sp.get("pwreset") || invited) return;
+    try {
+      const e = sessionStorage.getItem("krok_pwreset_email");
+      sessionStorage.removeItem("krok_pwreset_email");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (e) setEmail(e.trim().slice(0, 200));
+    } catch { /* ไม่มี storage */ }
+  }, [sp, invited]);
   const [password, setPassword] = useState("");
   const [org, setOrg] = useState("");
   const [name, setName] = useState("");

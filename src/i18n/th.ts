@@ -945,6 +945,8 @@ export const th = {
   "nav.short.workspace": "Workspace",
   "nav.short.people": "ทีม",
   "login.linkExpired": "ลิงก์หมดอายุแล้ว — ขอลิงก์ใหม่ได้จากหน้านี้",
+  "ver.newer": "ใหม่กว่า",
+  "ver.older": "เก่ากว่า",
   "print.photos.title": "ภาพประกอบ",
   "print.photos.section": "การพิมพ์รูปถ่าย",
   "print.photos.hint": "ตั้งครั้งเดียวใช้ทั้งฟอร์ม — มีผลกับมุมมองกระดาษ การพิมพ์ และหน้าผลการกรอก",
