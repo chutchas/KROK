@@ -1,4 +1,5 @@
-import { canManage, enforceMenu } from "@/lib/session";
+import { canManage, enforceMenu, hasMenu } from "@/lib/session";
+import { loadAttention, type AttentionData } from "@/lib/dashboard-attention";
 import { createClient } from "@/lib/supabase/server";
 import { getQuotaSnapshot } from "@/lib/quota";
 import { quotaWarnings } from "@/lib/quota-warn";
@@ -12,6 +13,29 @@ export default async function DashboardPage() {
   const session = await enforceMenu("dashboard");
   const supabase = await createClient();
 
+  // ฟอร์มที่ผู้ใช้เห็น (RLS 0054 กรองตามสิทธิ์ให้แล้ว) — ตัวเลือกใน widget + กรองรอบตรวจของแถบ "ต้องดูตอนนี้"
+  // ห่อด้วย Promise.resolve ให้ยิง query ครั้งเดียวแม้ใช้หลายที่
+  const formsP = Promise.resolve(
+    supabase.from("forms").select("id, title, icon").eq("tenant_id", session.tenantId).is("deleted_at", null).order("title")
+  );
+  // มีรอบตรวจตามตารางไหม (ไม่มี = ไม่โหลดการ์ด compliance/รอบเลยกำหนดเลย) · ยังไม่รัน 0064 = error → ไม่มี
+  const schedP = Promise.resolve(
+    supabase.from("form_schedules").select("form_id", { count: "exact", head: true }).eq("tenant_id", session.tenantId).eq("enabled", true)
+  );
+  // แถบ "ต้องดูตอนนี้" — ไม่ await: ส่ง promise ไปให้ client แสดงตามมา (ไม่ถ่วงทั้งหน้า) · พลาด = ไม่แสดงแถบ
+  const attention: Promise<AttentionData> = (async () => {
+    const [canApprove, sched] = await Promise.all([hasMenu(session, "approvals"), schedP]);
+    return loadAttention(supabase, {
+      tenantId: session.tenantId,
+      userId: session.userId,
+      role: session.role,
+      manager: canManage(session.role),
+      canApprove,
+      hasSchedules: !sched.error && (sched.count ?? 0) > 0,
+      visibleFormIds: formsP.then((r) => new Set(((r.data || []) as { id: string }[]).map((f) => f.id))),
+    });
+  })().catch(() => ({ failedToday: null, overdueRounds: null, approvals: null }));
+
   const [snap, recentRes, formsRes, layoutRes, schedRes, wsRes, areasRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
@@ -21,13 +45,7 @@ export default async function DashboardPage() {
       .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่
       .order("submitted_at", { ascending: false })
       .limit(100),
-    // ฟอร์มทั้งหมด (สำหรับตัวเลือกใน widget)
-    supabase
-      .from("forms")
-      .select("id, title, icon")
-      .eq("tenant_id", session.tenantId)
-      .is("deleted_at", null)
-      .order("title"),
+    formsP,
     // layout ที่บันทึกไว้
     supabase
       .from("dashboard_layouts")
@@ -35,8 +53,7 @@ export default async function DashboardPage() {
       .eq("user_id", session.userId)
       .eq("tenant_id", session.tenantId)
       .maybeSingle(),
-    // มีรอบตรวจตามตารางไหม (ไม่มี = ไม่โหลดการ์ด compliance เลย) · ยังไม่รัน 0064 = error → ไม่มี
-    supabase.from("form_schedules").select("form_id", { count: "exact", head: true }).eq("tenant_id", session.tenantId).eq("enabled", true),
+    schedP,
     // dashboard ของ workspace (0073) · ยังไม่รัน = error → ว่าง
     supabase.from("workspace_dashboards").select("widgets").eq("tenant_id", session.tenantId).maybeSingle(),
     // พื้นที่ (ตัวเลือกของ widget "ตามพื้นที่") · ยังไม่รัน 0072 = error → ไม่มีพื้นที่
@@ -74,6 +91,7 @@ export default async function DashboardPage() {
       workspaceReady={!wsRes.error}
       isWsAdmin={isWsAdmin}
       seesAllForms={canManage(session.role)}
+      attention={attention}
     />
   </>);
 }

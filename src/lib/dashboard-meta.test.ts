@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { calcMetric, trendDays, metricLabel, rangeLabel, type MetricRow } from "./dashboard-meta";
+import { calcMetric, trendDays, metricLabel, rangeLabel, cleanSections, DEFAULT_DASH_SECTIONS, type MetricRow } from "./dashboard-meta";
 
 const rows: MetricRow[] = [
   { result: "pass", approval_status: "approved", duration_s: 10, user_name: "a" },
@@ -34,5 +34,16 @@ describe("labels", () => {
     expect(metricLabel("usage", true)).toBeTruthy();
     expect(rangeLabel("7d")).toBeTruthy();
     expect(rangeLabel("7d", true)).toBeTruthy();
+  });
+});
+
+describe("cleanSections", () => {
+  it("ค่าว่าง/เพี้ยน = ลำดับตั้งต้น (ต้องดูตอนนี้อยู่บนสุด โควตาล่างสุด)", () => {
+    expect(cleanSections(undefined)).toEqual(DEFAULT_DASH_SECTIONS);
+    expect(DEFAULT_DASH_SECTIONS[0]).toBe("attention");
+    expect(DEFAULT_DASH_SECTIONS[DEFAULT_DASH_SECTIONS.length - 1]).toBe("usage");
+  });
+  it("คงลำดับที่จัดไว้ ตัดคีย์แปลก/ซ้ำ และต่อท้ายส่วนที่ขาด", () => {
+    expect(cleanSections(["usage", "x", "usage", "latest"])).toEqual(["usage", "latest", "attention", "compliance", "widgets"]);
   });
 });

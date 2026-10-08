@@ -4,7 +4,9 @@ import ComplianceCard from "./ComplianceCard";
 import StoredText from "@/i18n/StoredText";
 import { backdropClose } from "@/lib/backdrop";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
-import { useEffect, useMemo, useState } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import AttentionStrip, { AttentionSkeleton } from "./AttentionStrip";
+import type { AttentionData } from "@/lib/dashboard-attention";
 import { createClient } from "@/lib/supabase/client";
 import { Card, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -19,8 +21,8 @@ import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import {
   WIDGET_FORMATS, WIDGET_METRICS, RANGES_BY_FORMAT,
-  formatLabel, formatHint, metricLabel, rangeLabel, metricUnit,
-  type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
+  formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS,
+  type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
 
@@ -84,6 +86,7 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 export default function DashboardClient({
   tenantId, initial, forms, summary, initialWidgets, hasSchedules = false, areas = [],
   workspaceWidgets = [], workspaceReady = false, isWsAdmin = false, seesAllForms = false,
+  attention, sections = DEFAULT_DASH_SECTIONS,
 }: {
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
   /** พื้นที่ที่เปิดใช้ (widget "ตามพื้นที่") */
@@ -97,6 +100,10 @@ export default function DashboardClient({
   seesAllForms?: boolean;
   /** มีรอบตรวจตามตาราง — ไม่มี = ไม่แสดง/ไม่โหลดการ์ด compliance */
   hasSchedules?: boolean;
+  /** แถบ "ต้องดูตอนนี้" (server คำนวณ ส่ง promise มา — แสดงตามมาโดยไม่ถ่วงหน้า) */
+  attention?: Promise<AttentionData>;
+  /** ลำดับส่วนของหน้า (ไม่ส่ง = ลำดับตั้งต้น) — เผื่อให้จัดเองภายหลัง */
+  sections?: readonly DashSectionKey[];
 }) {
   const { t, tt, lang } = useT();
   const en = lang === "en";
@@ -179,6 +186,76 @@ export default function DashboardClient({
     return () => { supabase.removeChannel(ch); };
   }, [tenantId]);
 
+  // ---- ส่วนของหน้า (เรียงตาม sections · ภายหลังให้ workspace จัดลำดับเองได้โดยส่ง sections มา) ----
+  function renderSection(key: DashSectionKey): ReactNode {
+    switch (key) {
+      case "attention":
+        // ต้องดูตอนนี้: ใบไม่ผ่านวันนี้ · รอบตรวจเลยกำหนด · รออนุมัติ (คำนวณฝั่ง server)
+        return attention ? <Suspense key={key} fallback={<AttentionSkeleton />}><AttentionStrip data={attention} /></Suspense> : null;
+      case "compliance":
+        // รอบตรวจตามตาราง — ความครบถ้วน (มีตารางเท่านั้น)
+        return hasSchedules ? <ComplianceCard key={key} /> : null;
+      case "widgets":
+        return (
+          <Fragment key={key}>
+            {/* Workspace (owner/admin จัด) / ของฉัน */}
+            <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 14, overflowX: "auto" }}>
+              {(["ws", "mine"] as const).map((k) => (
+                <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); }}
+                  style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
+                    color: tab === k ? "var(--accent)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
+                </button>
+              ))}
+            </div>
+            {!seesAllForms && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "-6px 0 12px" }}>{t("dash.scopeNote")}</p>}
+            {tab === "ws" && isWsAdmin && !workspaceReady && <p style={{ color: "var(--amber)", fontSize: ".82rem", margin: "0 0 12px" }}>{t("dash.wsNotReady")}</p>}
+            {saveErr && <p role="alert" style={{ color: "var(--fail)", fontSize: ".82rem", margin: "0 0 12px" }}><StoredErr text={saveErr} /></p>}
+
+            {/* โซน widget ปรับเองได้ */}
+            {shown.length === 0 && (
+              <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: "0 0 18px" }}>
+                {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
+              </p>
+            )}
+            {shown.length > 0 && (
+              <>
+                <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
+                  {shown.map((w, i) => (
+                    <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={canEdit} onDragStart={() => canEdit && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => canEdit && onDrop(w.id)}>
+                      <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t}
+                        onEdit={canEdit ? () => setBuilder(w) : undefined} onRemove={canEdit ? () => removeWidget(w.id) : undefined}
+                        onUp={canEdit && i > 0 ? () => move(w.id, -1) : undefined}
+                        onDown={canEdit && i < shown.length - 1 ? () => move(w.id, 1) : undefined} />
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </Fragment>
+        );
+      case "usage":
+        // โควตาแพ็กเกจของ workspace (ตายตัว 3 การ์ด) — ไว้ล่างสุด เห็นเฉพาะ owner/admin
+        return isWsAdmin ? (
+          <section key={key} aria-labelledby="dash-usage-h" style={{ marginTop: 18 }}>
+            <h2 id="dash-usage-h" style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.usageTitle")}</h2>
+            <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }} className="krok-sumcards">
+              <SummaryCard icon={FileText} label={t("dash.sumForms")} used={summary.forms.used} max={summary.forms.max} />
+              <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
+              <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={summary.period} />
+            </div>
+          </section>
+        ) : null;
+      case "latest":
+        return null; // ยังเขียน inline ด้านล่าง (ตำแหน่งคงที่ระหว่างส่วนก่อน/หลัง)
+    }
+  }
+  // "รายการล่าสุด" ยังเป็น JSX inline — แบ่งส่วนอื่นเป็นก่อน/หลังมัน
+  const latestAt = sections.indexOf("latest");
+  const before = latestAt < 0 ? sections : sections.slice(0, latestAt);
+  const after = latestAt < 0 ? [] : sections.slice(latestAt + 1);
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
@@ -190,51 +267,7 @@ export default function DashboardClient({
         </button>}
       </div>
 
-      {/* Workspace (owner/admin จัด) / ของฉัน */}
-      <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 14, overflowX: "auto" }}>
-        {(["ws", "mine"] as const).map((k) => (
-          <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); }}
-            style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
-              color: tab === k ? "var(--accent)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
-            {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
-          </button>
-        ))}
-      </div>
-      {!seesAllForms && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "-6px 0 12px" }}>{t("dash.scopeNote")}</p>}
-      {tab === "ws" && isWsAdmin && !workspaceReady && <p style={{ color: "var(--amber)", fontSize: ".82rem", margin: "0 0 12px" }}>{t("dash.wsNotReady")}</p>}
-      {saveErr && <p role="alert" style={{ color: "var(--fail)", fontSize: ".82rem", margin: "0 0 12px" }}><StoredErr text={saveErr} /></p>}
-
-      {/* แถวสรุป workspace (ตายตัว 3 การ์ด) */}
-      {isWsAdmin && <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="krok-sumcards">
-        <SummaryCard icon={FileText} label={t("dash.sumForms")} used={summary.forms.used} max={summary.forms.max} />
-        <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
-        <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={summary.period} />
-      </div>}
-
-      {/* รอบตรวจตามตาราง — ความครบถ้วน (มีตารางเท่านั้น) */}
-      {hasSchedules && <ComplianceCard />}
-
-      {/* โซน widget ปรับเองได้ */}
-      {shown.length === 0 && (
-        <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: "0 0 18px" }}>
-          {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
-        </p>
-      )}
-      {shown.length > 0 && (
-        <>
-          <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
-            {shown.map((w, i) => (
-              <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={canEdit} onDragStart={() => canEdit && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => canEdit && onDrop(w.id)}>
-                <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t}
-                  onEdit={canEdit ? () => setBuilder(w) : undefined} onRemove={canEdit ? () => removeWidget(w.id) : undefined}
-                  onUp={canEdit && i > 0 ? () => move(w.id, -1) : undefined}
-                  onDown={canEdit && i < shown.length - 1 ? () => move(w.id, 1) : undefined} />
-              </div>
-            ))}
-          </div>
-        </>
-      )}
+      {before.map(renderSection)}
 
       {/* รายการล่าสุด (คงเดิม) */}
       <Card>
@@ -263,6 +296,8 @@ export default function DashboardClient({
           ))}
         </div>
       </Card>
+
+      {after.map(renderSection)}
 
       {open && <DetailModal sub={open} tenantId={tenantId} onClose={() => setOpen(null)} />}
       {builder && (
