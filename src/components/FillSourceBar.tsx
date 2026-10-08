@@ -337,7 +337,7 @@ function ReviewModal({
         style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 18, width: "min(560px, 100%)", maxHeight: "88vh", overflowY: "auto", boxShadow: "var(--shadow)" }}
       >
         <h3 style={{ fontSize: "1.05rem", margin: "0 0 3px", display: "flex", alignItems: "center", gap: 7 }}>
-          <Icon icon={Sparkles} className="h-4 w-4 text-[var(--accent)]" /> {t("fs.reviewTitle")}
+          <Icon icon={Sparkles} className="h-4 w-4 text-[var(--accent-text)]" /> {t("fs.reviewTitle")}
         </h3>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "0 0 12px" }}>
           {tt("fs.reviewSub", { src: src.label })}

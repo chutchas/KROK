@@ -284,4 +284,4 @@ function IconBtn({ label, onClick, disabled, danger, children }: { label: string
 const grid = (min: number): React.CSSProperties => ({ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: 12 });
 const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: ".82rem", display: "block", marginBottom: 4, color: "var(--ink-2)" };
 const ta: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", resize: "vertical" };
-const sel: React.CSSProperties = { padding: "9px 11px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
+const sel: React.CSSProperties = { padding: "9px 11px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };

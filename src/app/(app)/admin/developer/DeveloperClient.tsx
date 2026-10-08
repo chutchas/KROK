@@ -87,7 +87,7 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
               {API_ROUTES.map((r) => (
                 <tr key={r.path} style={{ borderTop: "1px solid var(--line)" }}>
                   <td style={{ padding: "8px", width: 56 }}>
-                    <span style={{ fontSize: ".7rem", fontWeight: 700, color: r.method === "GET" ? "var(--pass)" : "var(--accent)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 6px" }}>{r.method}</span>
+                    <span style={{ fontSize: ".7rem", fontWeight: 700, color: r.method === "GET" ? "var(--pass)" : "var(--accent-text)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 6px" }}>{r.method}</span>
                   </td>
                   <td style={{ padding: "8px", fontFamily: "monospace", fontSize: ".8rem" }}>{r.path}</td>
                   <td style={{ padding: "8px", color: "var(--ink-3)" }}>{r.note}</td>

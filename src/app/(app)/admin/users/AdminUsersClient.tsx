@@ -58,7 +58,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
   }
 
   const sel: React.CSSProperties = {
-    padding: "7px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
+    padding: "7px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)",
     color: "var(--ink)", fontFamily: "inherit", fontSize: ".85rem",
   };
 

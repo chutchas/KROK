@@ -45,7 +45,7 @@ export default function TermsGate({ version, firstTime }: { version: string; fir
           <a href="/terms" target="_blank" rel="noopener" style={link}>{t("legal.terms")}</a>
           <a href="/privacy" target="_blank" rel="noopener" style={link}>{t("legal.privacy")}</a>
         </div>
-        {err && <p style={{ color: "var(--fail)", fontSize: ".84rem", margin: "0 0 10px" }}>{t("legal.gateFail")}</p>}
+        {err && <p role="alert" style={{ color: "var(--fail)", fontSize: ".84rem", margin: "0 0 10px" }}>{t("legal.gateFail")}</p>}
         <Button variant="primary" onClick={accept} loading={busy} style={{ width: "100%", padding: 12 }}>{t("legal.gateAccept")}</Button>
       </div>
     </div>

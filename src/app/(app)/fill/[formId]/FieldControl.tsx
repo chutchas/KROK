@@ -179,7 +179,7 @@ export function FieldControl({
     ? { width: "100%", padding: "5px 8px", border: "1px solid #b9bec4", borderRadius: 5, background: "#fff", color: "#111", fontFamily: "inherit", fontSize: ".82rem" }
     : paper
     ? { width: "100%", padding: "8px 11px", border: "1px solid #b9bec4", borderRadius: 6, background: "#fff", color: "#111", fontFamily: "inherit", fontSize: ".95rem" }
-    : { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
+    : { width: "100%", padding: "11px 12px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
   const [numValue, setNumValue] = useState(String(initial.value ?? ""));
   const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
   const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) && typeof initial.value[0] === "string" ? (initial.value as string[]) : []);
@@ -221,6 +221,7 @@ export function FieldControl({
     inputMode: f.text_format === "email" ? ("email" as const) : f.text_format === "phone" ? ("tel" as const) : undefined,
     autoComplete: f.text_format === "email" ? "email" : f.text_format === "phone" ? "tel" : "off",
     enterKeyHint: "next" as const,
+    "aria-label": f.label,
   };
   const textPh = f.example ? tt("fw.examplePh", { ex: f.example }) : f.text_format === "email" ? "name@example.com" : f.text_format === "phone" ? "08x-xxx-xxxx" : t("fw.answerPh");
 
@@ -231,7 +232,7 @@ export function FieldControl({
   const scanBox = (small: boolean) => (
     <>
       <div style={{ display: "flex", gap: small ? 4 : 8, alignItems: "center" }}>
-        <input type="text" enterKeyHint="next" autoComplete="off" style={small ? { ...paperInputStyle, flex: 1 } : { ...input, flex: 1, minWidth: 0 }} value={scanValue}
+        <input type="text" enterKeyHint="next" autoComplete="off" aria-label={f.label} style={small ? { ...paperInputStyle, flex: 1 } : { ...input, flex: 1, minWidth: 0 }} value={scanValue}
           placeholder={small ? "" : f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.codePh")}
           onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
         {small ? (
@@ -321,7 +322,7 @@ export function FieldControl({
         {f.type === "text" && inlineScan && scanBox(true)}
         {f.type === "number" && (
           <div style={{ display: "flex", gap: 4 }}>
-            <input type="number" inputMode="decimal" style={{ ...paperInputStyle, flex: 1, minWidth: 0, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? tt("fw.rangeTitle", { min: f.min ?? "–", max: f.max ?? "–" }) : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+            <input type="number" inputMode="decimal" aria-label={f.label} style={{ ...paperInputStyle, flex: 1, minWidth: 0, ...(numOut(f, numValue) ? { borderColor: "#dc2626", color: "#dc2626" } : {}) }} value={numValue} placeholder={f.example || ""} title={f.min != null || f.max != null ? tt("fw.rangeTitle", { min: f.min ?? "–", max: f.max ?? "–" }) : undefined} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
             {allowNeg && (
               <button type="button" onClick={toggleSign} aria-label={t("fw.num.sign")} title={t("fw.num.sign")}
                 style={{ height: CONTROL_H, width: 30, flexShrink: 0, border: "1px solid #b9bec4", borderRadius: 4, background: "#fff", color: "#333", fontWeight: 700, cursor: "pointer", padding: 0 }}>±</button>
@@ -329,7 +330,7 @@ export function FieldControl({
           </div>
         )}
         {f.type === "datetime" && (
-          <input type={dtInputType} style={paperInputStyle} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
+          <input type={dtInputType} aria-label={f.label} style={paperInputStyle} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
         )}
         {(f.type === "select" || f.type === "checkbox") && (
           dsBound ? (
@@ -342,7 +343,7 @@ export function FieldControl({
                 onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } else { setSelVal(v); onPatch({ value: v || undefined }); } }} />
             ) : f.type === "select" ? (
               // รายการยาว + เลือกข้อเดียว: dropdown บรรทัดเดียวพอดีกล่อง
-              <select style={paperInputStyle} value={selVal} onChange={(e) => { setSelVal(e.target.value); onPatch({ value: e.target.value || undefined }); }}>
+              <select aria-label={f.label} style={paperInputStyle} value={selVal} onChange={(e) => { setSelVal(e.target.value); onPatch({ value: e.target.value || undefined }); }}>
                 <option value="">{t("fw.selectPh")}</option>
                 {dsOptions.map((o) => { const l = optLabels.get(o); return <option key={o} value={o}>{l ? `${l} · ${o}` : o}</option>; })}
               </select>
@@ -359,7 +360,7 @@ export function FieldControl({
           <>
             <PaperPassFail value={pf} passLabel={passText} failLabel={failText} allowNa={!!f.allow_na} onChange={(v) => { setPf(v); onPatch({ value: v }, true); }} />
             {pf === "fail" && (
-              <textarea style={{ ...paperInputStyle, height: 44, padding: "4px 8px", marginTop: 4, resize: "vertical" }} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
+              <textarea style={{ ...paperInputStyle, height: 44, padding: "4px 8px", marginTop: 4, resize: "vertical" }} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} aria-label={`${f.label} — ${t("fw.failNotePh")}`} onChange={(e) => onPatch({ note: e.target.value })} />
             )}
           </>
         )}
@@ -378,7 +379,7 @@ export function FieldControl({
         {f.type === "signature" && (
           <>
             <PaperSignature url={sigUrl} onOpen={() => setSigOpen(true)} />
-            {f.sign_name && <input type="text" style={{ ...paperInputStyle, marginTop: 3 }} defaultValue={String(initial.value ?? "")} placeholder={t("fw.sig.namePh")} onChange={(e) => onPatch({ value: e.target.value })} />}
+            {f.sign_name && <input type="text" style={{ ...paperInputStyle, marginTop: 3 }} defaultValue={String(initial.value ?? "")} placeholder={t("fw.sig.namePh")} aria-label={`${f.label} — ${t("fw.sig.namePh")}`} onChange={(e) => onPatch({ value: e.target.value })} />}
             {sigOpen && <SignatureModal label={f.label} initialUrl={sigUrl} onClose={() => setSigOpen(false)} onSave={(d) => { setSig(d); setSigOpen(false); }} />}
           </>
         )}
@@ -423,13 +424,13 @@ export function FieldControl({
         {f.type === "text" && inlineScan && scanBox(false)}
         {f.type === "text" && !inlineScan && (
           f.long_text && !compact
-            ? <textarea style={{ ...input, minHeight: 72, resize: "vertical" }} rows={3} defaultValue={String(initial.value ?? "")} placeholder={textPh} onChange={(e) => onPatch({ value: e.target.value })} />
+            ? <textarea aria-label={f.label} style={{ ...input, minHeight: 72, resize: "vertical" }} rows={3} defaultValue={String(initial.value ?? "")} placeholder={textPh} onChange={(e) => onPatch({ value: e.target.value })} />
             : <input {...textInputProps} style={input} defaultValue={String(initial.value ?? "")} placeholder={textPh} onChange={(e) => onPatch({ value: e.target.value })} />
         )}
         {f.type === "number" && (
           <>
             <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
-              <input type="number" inputMode="decimal" enterKeyHint="next" style={{ ...input, flex: 1, minWidth: 0 }} value={numValue} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.numPh")} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <input type="number" inputMode="decimal" enterKeyHint="next" aria-label={f.label} style={{ ...input, flex: 1, minWidth: 0 }} value={numValue} placeholder={f.example ? tt("fw.examplePh", { ex: f.example }) : t("fw.numPh")} onChange={(e) => { setNumValue(e.target.value); onPatch({ value: e.target.value }); }} />
               {allowNeg && (
                 <button type="button" onClick={toggleSign} aria-label={t("fw.num.sign")} title={t("fw.num.sign")}
                   style={{ width: 48, height: 48, flexShrink: 0, border: "1px solid var(--line)", borderRadius: 10, background: "var(--surface)", color: "var(--ink)", fontSize: "1.15rem", fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
@@ -444,7 +445,7 @@ export function FieldControl({
         {f.type === "datetime" && (
           <>
             <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type={dtInputType} style={{ ...input, flex: 1 }} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <input type={dtInputType} aria-label={f.label} style={{ ...input, flex: 1 }} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
               <Button onClick={() => { const v = dtNowValue(dtMode); setDtValue(v); onPatch({ value: v }); }} style={{ whiteSpace: "nowrap" }}>{dtMode === "date" ? t("fw.dt.today") : t("fw.dt.now")}</Button>
             </div>
             {dtValue && <div style={{ fontSize: ".8rem", color: paper ? "#666" : "var(--ink-3)", marginTop: 4 }}>{formatDtThai(dtValue, dtMode, lang === "en" ? "en" : "th")}</div>}
@@ -494,7 +495,7 @@ export function FieldControl({
           <div style={{ fontSize: ".74rem", color: paper ? "#888" : "var(--ink-3)", margin: "4px 0" }}>{t("fw.truncated")}</div>
         )}
         {f.options_error && (f.type === "select" || f.type === "checkbox") && (
-          <div style={{ fontSize: ".76rem", color: "var(--amber)", margin: "4px 0" }}>⚠ {f.options_error}</div>
+          <div style={{ fontSize: ".76rem", color: "var(--warn)", margin: "4px 0" }}>⚠ {f.options_error}</div>
         )}
         {f.type === "select" && !dsBound && (f.options || []).length > MANY_OPTIONS && (
           <OptionPicker name={"r_" + f.id} options={f.options || []} multiple={false} value={selVal} paper={paper} compact={compact}
@@ -544,7 +545,7 @@ export function FieldControl({
               )}
             </div>
             {pf === "fail" && (
-              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
+              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} aria-label={`${f.label} — ${t("fw.failNotePh")}`} onChange={(e) => onPatch({ note: e.target.value })} />
             )}
           </>
         )}
@@ -568,7 +569,7 @@ export function FieldControl({
         {f.type === "barcode" && (
           <>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input type="text" style={{ ...input, flex: 1, minWidth: 140 }} value={scanValue} placeholder={t("fw.codePh")} onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
+              <input type="text" aria-label={f.label} style={{ ...input, flex: 1, minWidth: 140 }} value={scanValue} placeholder={t("fw.codePh")} onChange={(e) => { setScanValue(e.target.value); onPatch({ value: e.target.value }); }} />
               <Button variant="primary" onClick={() => setLiveOpen(true)}><Icon icon={ScanLine} className="h-4 w-4" /> {t("scan.live")}</Button>
               <Button onClick={() => scanRef.current?.click()}><Icon icon={Camera} className="h-4 w-4" /> {t("scan.fromImage")}</Button>
             </div>
@@ -586,7 +587,7 @@ export function FieldControl({
           <>
             <SignaturePad hasSig={hasSig} initialUrl={sigUrl} onSave={setSig} paper={paper} compact={compact} />
             {f.sign_name && (
-              <input type="text" style={{ ...input, marginTop: 8 }} defaultValue={String(initial.value ?? "")} placeholder={t("fw.sig.namePh")} onChange={(e) => onPatch({ value: e.target.value })} />
+              <input type="text" style={{ ...input, marginTop: 8 }} defaultValue={String(initial.value ?? "")} placeholder={t("fw.sig.namePh")} aria-label={`${f.label} — ${t("fw.sig.namePh")}`} onChange={(e) => onPatch({ value: e.target.value })} />
             )}
           </>
         )}
@@ -625,9 +626,9 @@ export function NumHint({ field: f, value }: { field: FormField; value?: string 
 
 export function PfBtn({ active, kind, onClick, children, paper = false }: { active: boolean; kind: "pass" | "fail" | "na"; onClick: () => void; children: React.ReactNode; paper?: boolean }) {
   const on = kind === "pass"
-    ? { background: "var(--pass-soft)", border: "1px solid var(--pass)", color: "var(--pass)" }
+    ? { background: "var(--pass-soft)", border: "1px solid var(--pass)", color: "var(--pass-text)" }
     : kind === "fail"
-    ? { background: "var(--fail-soft)", border: "1px solid var(--fail)", color: "var(--fail)" }
+    ? { background: "var(--fail-soft)", border: "1px solid var(--fail)", color: "var(--fail-text)" }
     : { background: paper ? "#eef0f2" : "var(--code-bg)", border: `1px solid ${paper ? "#666" : "var(--ink-3)"}`, color: paper ? "#333" : "var(--ink-2)" };
   const base = paper
     ? { border: "1px solid #b9bec4", background: "#fff", color: "#111" }

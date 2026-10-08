@@ -199,7 +199,8 @@ export function PaperPassFail({ value, onChange, disabled = false, passLabel, fa
   const { t } = useT();
   const btn = (kind: "pass" | "fail" | "na") => {
     const on = value === kind;
-    const color = kind === "pass" ? "#15803d" : kind === "fail" ? "#dc2626" : "#444";
+    // ตัวอักษรตอนเลือกบนพื้นอ่อน (#e7f6ec / #fdeaea) ต้อง ≥ 4.5:1
+    const color = kind === "pass" ? "#166534" : kind === "fail" ? "#b91c1c" : "#444";
     return (
       <button
         type="button"

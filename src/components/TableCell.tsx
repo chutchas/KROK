@@ -12,7 +12,8 @@ import type { TableColumn } from "@/lib/form-schema";
 
 export type CellLook = "normal" | "small" | "paper";
 
-export const PASS_C = "#16a34a";
+// สีโหมดกระดาษ (พื้นขาวเสมอ) — เขียวเข้มพอให้ตัวขาวบนพื้นเขียว/ตัวเขียวบนขาว ≥ 4.5:1
+export const PASS_C = "#15803d";
 export const FAIL_C = "#dc2626";
 
 export default function TableCell({
@@ -77,13 +78,15 @@ export default function TableCell({
   if (col.type === "pass_fail") {
     const btn = (k: "pass" | "fail") => {
       const on = value === k;
-      const c = k === "pass" ? PASS_C : FAIL_C;
+      // กระดาษ = สีคงที่ · หน้าจอปกติ = token ตามธีม (ตัวอักษรบนพื้นผิว / พื้นทึบ+ตัวขาวตอนเลือก)
+      const c = paper ? (k === "pass" ? PASS_C : FAIL_C) : k === "pass" ? "var(--pass)" : "var(--fail)";
+      const solid = paper ? c : k === "pass" ? "var(--pass-solid)" : "var(--fail-solid)";
       return (
         <button type="button" aria-pressed={on} data-print-keep={on || !value ? "" : undefined} onClick={() => onChange(on ? "" : k)} aria-label={k === "pass" ? t("fw.pass") : t("fw.fail")}
           style={{ flex: 1, minWidth: 0, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 3, cursor: "pointer", fontFamily: "inherit",
             fontSize: paper ? ".68rem" : look === "small" ? ".76rem" : ".84rem", fontWeight: 600, padding: paper ? 0 : "4px 6px",
-            borderRadius: paper ? 3 : 6, border: `1px solid ${on ? c : paper ? "#c3c8ce" : "var(--line)"}`,
-            background: on ? c : paper ? "#fff" : "var(--surface)", color: on ? "#fff" : c }}>
+            borderRadius: paper ? 3 : 6, border: `1px solid ${on ? solid : paper ? "#c3c8ce" : "var(--line-strong)"}`,
+            background: on ? solid : paper ? "#fff" : "var(--surface)", color: on ? "#fff" : c }}>
           <Icon icon={k === "pass" ? Check : XIcon} className="h-3.5 w-3.5" />
           {!paper && !iconOnly && <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{k === "pass" ? t("fw.pass") : t("fw.fail")}</span>}
         </button>

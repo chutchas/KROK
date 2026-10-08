@@ -112,7 +112,7 @@ export default function OfflineSync() {
   const blocked = online && !syncing && pending > 0 && !!quotaMsg;
 
   let text = "";
-  let color = "var(--amber)";
+  let color = "var(--warn)";
   let icon = CloudOff;
   if (!online) { text = pending > 0 ? tt("sync.offlinePending", { n: pending }) : t("sync.offline"); }
   else if (syncing) { text = tt("sync.syncing", { n: pending }); icon = RefreshCw; }

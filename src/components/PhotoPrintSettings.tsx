@@ -29,7 +29,7 @@ export default function PhotoPrintSettings({ schema, onChange, bare = false }: {
   };
 
   const sizeOn = pp.mode === "grid" || pp.mode === "appendix";
-  const input: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
+  const input: React.CSSProperties = { width: "100%", padding: "8px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
 
   return (
     <div style={bare ? undefined : { marginTop: 16, paddingTop: 12, borderTop: "1px solid var(--line)" }}>

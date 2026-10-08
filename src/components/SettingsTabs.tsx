@@ -19,7 +19,7 @@ export default function SettingsTabs({ hubs }: { hubs: { key: string; items: { h
         const on = it.href === cur.item.href;
         return (
           <Link key={it.href} href={it.href} aria-current={on ? "page" : undefined}
-            style={{ padding: "9px 14px", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, color: on ? "var(--accent)" : "var(--ink-2)",
+            style={{ padding: "9px 14px", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, color: on ? "var(--accent-text)" : "var(--ink-2)",
               fontWeight: on ? 600 : 500, fontSize: ".92rem", textDecoration: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}>
             {t(it.tabKey)}
           </Link>

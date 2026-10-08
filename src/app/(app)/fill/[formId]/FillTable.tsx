@@ -122,7 +122,7 @@ export function TableInput({
   // สีกระดาษ (ขาว/ดำ) เฉพาะมุมมองกระดาษ — มุมมองปกติใช้สีตามธีม (โหมดมืดไม่ขาวโพลน)
   const ink = small
     ? { field: "#fff", text: "#111", border: "#c3c8ce", card: "#fafbfc", cardBorder: "#d5d9de", muted: "#555", head: "#444", rule: "#ccc" }
-    : { field: "var(--surface)", text: "var(--ink)", border: "var(--line)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
+    : { field: "var(--surface)", text: "var(--ink)", border: "var(--line-strong)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
 
   const { setCell, addRow: addRowRaw, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf } = useTableRows(cols, rows, setRows, onChange, fieldId, media);
   const canAdd = !childOnly && (!maxRows || rows.length < maxRows);

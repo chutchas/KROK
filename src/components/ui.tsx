@@ -46,9 +46,7 @@ function BtnSpinner() {
         border: "2px solid currentColor", borderTopColor: "transparent",
         opacity: 0.9, display: "inline-block", animation: "krok-sp 0.7s linear infinite",
       }}
-    >
-      <style>{`@keyframes krok-sp{to{transform:rotate(360deg)}}`}</style>
-    </span>
+    />
   );
 }
 
@@ -108,14 +106,20 @@ export function EmptyState({
   );
 }
 
+// ชื่อสำหรับ screen reader เมื่อช่องไม่มี label ผูกไว้ (ไม่มี id/aria-*) — ใช้ placeholder แทน
+function fallbackLabel(p: { id?: string; placeholder?: string; "aria-label"?: string; "aria-labelledby"?: string }) {
+  return p["aria-label"] ?? (p.id || p["aria-labelledby"] ? undefined : p.placeholder || undefined);
+}
+
 export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
+      aria-label={fallbackLabel(props)}
       style={{
         width: "100%",
         padding: "11px 12px",
-        border: "1px solid var(--line)",
+        border: "1px solid var(--line-strong)",
         borderRadius: 8,
         background: "var(--surface)",
         color: "var(--ink)",
@@ -131,10 +135,11 @@ export function TextArea(props: React.ComponentProps<"textarea">) {
   return (
     <textarea
       {...props}
+      aria-label={fallbackLabel(props)}
       style={{
         width: "100%",
         padding: "11px 12px",
-        border: "1px solid var(--line)",
+        border: "1px solid var(--line-strong)",
         borderRadius: 8,
         background: "var(--surface)",
         color: "var(--ink)",
@@ -150,8 +155,8 @@ export function TextArea(props: React.ComponentProps<"textarea">) {
 
 export function Pill({ kind, children }: { kind: "pass" | "fail" | "na"; children: React.ReactNode }) {
   const c = {
-    pass: { background: "var(--pass-soft)", color: "var(--pass)" },
-    fail: { background: "var(--fail-soft)", color: "var(--fail)" },
+    pass: { background: "var(--pass-soft)", color: "var(--pass-text)" },
+    fail: { background: "var(--fail-soft)", color: "var(--fail-text)" },
     na: { background: "var(--code-bg)", color: "var(--ink-2)" },
   }[kind];
   return (
@@ -183,9 +188,7 @@ export function Spinner() {
         animation: "krok-sp 1s linear infinite",
         verticalAlign: "-3px",
       }}
-    >
-      <style>{`@keyframes krok-sp{to{transform:rotate(360deg)}}`}</style>
-    </span>
+    />
   );
 }
 
@@ -196,8 +199,11 @@ export function Notice({
   kind?: "info" | "error";
   children: React.ReactNode;
 }) {
+  // error = alert (อ่านทันที) · info = status (สุภาพ รออ่านหลังสิ่งที่กำลังพูด)
   return (
     <div
+      role={kind === "error" ? "alert" : "status"}
+      aria-live={kind === "error" ? undefined : "polite"}
       style={{
         borderLeft: `3px solid ${kind === "error" ? "var(--fail)" : "var(--amber)"}`,
         background: kind === "error" ? "var(--fail-soft)" : "var(--accent-soft)",

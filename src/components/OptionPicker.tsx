@@ -127,6 +127,7 @@ export default function OptionPicker({
           onChange={(e) => { setQ(e.target.value); setOpen(true); }}
           onFocus={() => setOpen(true)}
           placeholder={tt(multiple || !selected.length ? "fw.opt.searchPh" : "fw.opt.changePh", { n: options.length.toLocaleString() })}
+          aria-label={tt(multiple || !selected.length ? "fw.opt.searchPh" : "fw.opt.changePh", { n: options.length.toLocaleString() })}
           style={{ width: "100%", padding: compact ? "5px 8px 5px 32px" : "11px 12px 11px 34px", border: `1px solid ${line}`, borderRadius: compact ? 5 : 8, background: bg, color: ink, fontFamily: "inherit", fontSize: fs }}
         />
       </div>

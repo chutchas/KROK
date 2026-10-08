@@ -28,7 +28,7 @@ export default function AreaOpenNotice({ areaId, excludeId, preload }: {
 
   if (!data || data.items.length === 0) return null;
   return (
-    <div role="status" style={{ margin: "8px 0 0", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--amber)", background: "var(--accent-soft)", fontSize: ".82rem" }}>
+    <div role="status" style={{ margin: "8px 0 0", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--warn)", background: "var(--warn-soft)", fontSize: ".82rem" }}>
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open}
         style={{ display: "flex", alignItems: "center", gap: 6, width: "100%", border: "none", background: "none", padding: 0, color: "var(--ink)", fontFamily: "inherit", fontSize: "inherit", cursor: "pointer", textAlign: "left" }}>
         <Icon icon={MapPin} className="h-4 w-4" />
