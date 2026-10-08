@@ -303,7 +303,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
               onClick={bulkApprove}
               disabled={!picked.length || picked.length > BULK_APPROVE_MAX || !!busy}
               loading={bulkBusy}
-              style={{ minHeight: TAP, background: "var(--pass-solid)", borderColor: "var(--pass-solid)" }}
+              style={{ minHeight: TAP, background: "var(--pass-solid)", borderColor: "var(--pass-solid)", opacity: !picked.length ? 0.45 : 1 }}
             >
               <Icon icon={Check} className="h-4 w-4" /> {tt("appr.bulkApprove", { n: picked.length })}
             </Button>

@@ -48,3 +48,4 @@ Claude outputs/
 /test-results/
 /playwright-report/
 .claude/skills/impeccable/scripts/bin/
+.claude/worktrees/
