@@ -62,7 +62,8 @@ export default function OfflineApp() {
   }, []);
 
   const header = (
-    <header style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px var(--krok-gutter)", borderBottom: "1px solid var(--line)", background: "var(--surface)", position: "sticky", top: 0, zIndex: 20 }}>
+    // หน้ากรอก = โหมดเต็มจอ (แถบบนของหน้ากรอกแทน) — ซ่อนด้วย display ให้ OfflineSync ยังทำงานเบื้องหลัง
+    <header style={{ display: view.kind === "fill" ? "none" : "flex", alignItems: "center", gap: 10, padding: "10px var(--krok-gutter)", borderBottom: "1px solid var(--line)", background: "var(--surface)", position: "sticky", top: 0, zIndex: 20 }}>
       <a href="/forms" style={{ fontWeight: 800, fontSize: "1.1rem", color: "var(--ink)", textDecoration: "none" }}>KROK</a>
       {"bundle" in view && <span style={{ fontSize: ".85rem", color: "var(--ink-3)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}>{view.bundle.tenantName}</span>}
       <span style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}><OfflineSync /></span>
@@ -126,7 +127,9 @@ export default function OfflineApp() {
   return (
     <>
       {header}
-      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "16px var(--krok-gutter) 90px" }}>{body}</main>
+      <main style={view.kind === "fill"
+        ? { margin: "0 auto", padding: "0 var(--krok-gutter) 24px" }
+        : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "16px var(--krok-gutter) 90px" }}>{body}</main>
     </>
   );
 }
