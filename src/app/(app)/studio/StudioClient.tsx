@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, MousePointerClick, History, MapPin } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -41,6 +41,8 @@ interface Team { id: string; name: string }
 type VisMode = "public" | "all" | "teams" | "users";
 type ViewMode = "mobile" | "paper";
 
+type FormTab = "access" | "approval" | "fill" | "schedule";
+
 export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null, initialEditId = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null; initialEditId?: string | null }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
@@ -57,6 +59,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [visUsers, setVisUsers] = useState<string[]>([]);
   const [view, setView] = useState<ViewMode>("mobile");
   const [selKey, setSelKey] = useState<string | null>(null);
+  // ตั้งค่าระดับฟอร์ม: แท็บที่เปิดอยู่ · จอแคบ = เปิดเป็นแผงลอยด้วยปุ่ม "ตั้งค่าฟอร์ม"
+  const [formTab, setFormTab] = useState<FormTab>("access");
+  const [formPanel, setFormPanel] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -411,6 +416,223 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     else router.refresh();
   }
 
+  // ===== ตั้งค่าระดับฟอร์ม (แผงขวา · แบ่งแท็บ) — ทุกแท็บ mount ค้างไว้ (ซ่อนด้วย display) ค่าที่กรอกค้างในแผงย่อยจึงไม่หายตอนสลับแท็บ
+  const formTabs: { k: FormTab; label: string; on: boolean }[] = [
+    { k: "access", label: t("fs.tab.access"), on: visMode !== "all" || requireDevice },
+    { k: "approval", label: t("fs.tab.approval"), on: requiresApproval },
+    { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark },
+    { k: "schedule", label: t("fs.tab.schedule"), on: false },
+  ];
+  const formSettings = draft && (
+    <div className="krok-fs">
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <Icon icon={Settings2} className="h-4 w-4" />
+        <b style={{ fontFamily: "var(--font-anuphan)", flex: 1 }}>{t("fs.title")}</b>
+        {formPanel && (
+          <button type="button" className="krok-fs-close" onClick={() => setFormPanel(false)} aria-label={t("common.close")}
+            style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex", padding: 4 }}><Icon icon={X} className="h-5 w-5" /></button>
+        )}
+      </div>
+      <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "0 0 10px" }}>{t("fs.hint")}</p>
+      <div role="tablist" aria-label={t("fs.title")} style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 2, border: "1px solid var(--line)", borderRadius: 10, padding: 3, background: "var(--surface-2)" }}>
+        {formTabs.map((x) => {
+          const on = formTab === x.k;
+          return (
+            <button key={x.k} type="button" role="tab" aria-selected={on} onClick={() => setFormTab(x.k)}
+              style={{ position: "relative", padding: "7px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
+                background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500, boxShadow: on ? "0 1px 3px rgba(10,14,18,.12)" : "none" }}>
+              {x.label}
+              {x.on && <span aria-label={t("fs.tabOn")} style={{ position: "absolute", top: 5, right: 6, width: 6, height: 6, borderRadius: 3, background: "var(--accent)" }} />}
+            </button>
+          );
+        })}
+      </div>
+
+      <div role="tabpanel" style={{ display: formTab === "access" ? "block" : "none" }}>
+          <div className="krok-fs-sec">
+            <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
+            <p style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("studio.visSub")}</p>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+              {(["public", "all", "teams", "users"] as VisMode[]).map((m) => {
+                const on = visMode === m;
+                const label = m === "public" ? t("share.public") : m === "all" ? t("studio.visAll") : m === "teams" ? t("studio.visTeams") : t("studio.visUsers");
+                return (
+                  <button
+                    key={m}
+                    onClick={() => setVisMode(m)}
+                    style={{
+                      padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit",
+                      border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
+                      background: on ? "var(--accent-soft)" : "var(--surface)",
+                      color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
+                    }}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+            </div>
+
+            {visMode === "teams" && (
+              teams.length === 0 ? (
+                <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: 0 }}>{t("studio.visNoTeams")}</p>
+              ) : (
+                <div style={{ display: "grid", gap: 6 }}>
+                  {teams.map((tm) => {
+                    const on = visTeams.includes(tm.id);
+                    return (
+                      <label key={tm.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
+                        <input type="checkbox" checked={on} onChange={(e) => setVisTeams((ids) => (e.target.checked ? [...ids, tm.id] : ids.filter((x) => x !== tm.id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                        <Icon icon={Tag} className="h-4 w-4" /> {tm.name}
+                      </label>
+                    );
+                  })}
+                </div>
+              )
+            )}
+
+            {visMode === "users" && (
+              <div style={{ display: "grid", gap: 6 }}>
+                {members.map((m) => {
+                  const on = visUsers.includes(m.user_id);
+                  return (
+                    <label key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
+                      <input type="checkbox" checked={on} onChange={(e) => setVisUsers((ids) => (e.target.checked ? [...ids, m.user_id] : ids.filter((x) => x !== m.user_id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                      <Icon icon={HardHat} className="h-4 w-4" /> {m.name}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          {/* ล็อคให้กรอกได้เฉพาะเครื่องที่อนุมัติแล้ว */}
+          <div className="krok-fs-sec">
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: visMode === "public" ? "not-allowed" : "pointer", opacity: visMode === "public" ? 0.55 : 1 }}>
+              <input
+                type="checkbox"
+                checked={requireDevice && visMode !== "public"}
+                disabled={visMode === "public"}
+                onChange={(e) => setRequireDevice(e.target.checked)}
+                style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }}
+              />
+              <span>
+                <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+                  <Icon icon={TabletSmartphone} className="h-4 w-4" /> {t("studio.devLock")}
+                </b>
+                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
+                  {visMode === "public"
+                    ? t("studio.devLockPublic")
+                    : t("studio.devLockHint")}
+                </span>
+              </span>
+            </label>
+
+            {requireDevice && visMode !== "public" && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                <div style={{ display: "grid", gap: 6 }}>
+                  {([
+                    { v: "any" as const, label: t("studio.devAny"), sub: t("studio.devAnySub") },
+                    { v: "selected" as const, label: t("studio.devSelected"), sub: t("studio.devSelectedSub") },
+                  ]).map((o) => (
+                    <label key={o.v} style={{ display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer", padding: "8px 10px", borderRadius: 8, border: `1px solid ${deviceScope === o.v ? "var(--accent)" : "var(--line)"}`, background: deviceScope === o.v ? "var(--accent-soft)" : "var(--surface)" }}>
+                      <input type="checkbox" checked={deviceScope === o.v} onChange={() => setDeviceScope(o.v)} style={{ width: 17, height: 17, marginTop: 2, accentColor: "var(--accent)" }} />
+                      <span>
+                        <b style={{ fontSize: ".88rem", fontFamily: "var(--font-anuphan)" }}>{o.label}</b>
+                        <span style={{ display: "block", fontSize: ".78rem", color: "var(--ink-3)" }}>{o.sub}</span>
+                      </span>
+                    </label>
+                  ))}
+                </div>
+
+                {deviceScope === "selected" && <FormDevicePicker formId={editingId} />}
+              </div>
+            )}
+          </div>
+      </div>
+
+      <div role="tabpanel" style={{ display: formTab === "approval" ? "block" : "none" }}>
+          <div className="krok-fs-sec">
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+              <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
+              <span>
+                <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.approvalTitle")}</b>
+                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
+                  {t("studio.approvalSub")}
+                </span>
+              </span>
+            </label>
+
+            {requiresApproval && (
+              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                <div style={{ fontSize: ".88rem", fontWeight: 600, marginBottom: 4 }}>{t("studio.approverOrder")}</div>
+                <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "0 0 8px" }}>
+                  {chain.length === 0 ? t("studio.approverHintEmpty") : t("studio.approverHintSet")}
+                </p>
+                {chain.map((s, i) => (
+                  <div key={i} className="krok-appr-row" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
+                    <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px" }}>{t("editor.step")} {i + 1}</span>
+                    <select
+                      className="krok-appr-select"
+                      value={s.user_id}
+                      onChange={(e) => {
+                        const m = members.find((x) => x.user_id === e.target.value);
+                        setChain((c) => c.map((x, xi) => (xi === i ? { ...x, user_id: e.target.value, name: m?.name || "" } : x)));
+                      }}
+                      style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", flex: 1, minWidth: 140 }}
+                    >
+                      <option value="">{t("studio.pickApprover")}</option>
+                      {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
+                    </select>
+                    <div className="krok-appr-roleline" style={{ display: "flex", gap: 8, alignItems: "center", flex: "0 0 auto" }}>
+                      <Field className="krok-appr-role" value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder={t("studio.rolePlaceholder")} style={{ width: 120, flex: "0 0 auto" }} />
+                      <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px", flex: "0 0 auto" }}>{t("common.delete")}</Button>
+                    </div>
+                  </div>
+                ))}
+                {chain.length < 6 && (
+                  <Button onClick={() => setChain((c) => [...c, { user_id: "", name: "", label: "" }])} style={{ padding: "8px 14px", fontSize: ".88rem" }}>+ {t("studio.addApprovalStep")}</Button>
+                )}
+              </div>
+            )}
+          </div>
+      </div>
+
+      <div role="tabpanel" style={{ display: formTab === "fill" ? "block" : "none" }}>
+            <div className="krok-fs-sec">
+              <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={MapPin} className="h-4 w-4" /> {t("geo.title")}</b>
+              <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("geo.sub")}</p>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="radiogroup" aria-label={t("geo.title")}>
+                {([["off", t("geo.mode.off")], ["optional", t("geo.mode.optional")], ["required", t("geo.mode.required")]] as const).map(([m, label]) => {
+                  const on = (draft.geo ?? "off") === m;
+                  return (
+                    <button key={m} type="button" role="radio" aria-checked={on}
+                      onClick={() => setDraft((d) => { if (!d) return d; const n = { ...d }; if (m === "off") delete n.geo; else n.geo = m; return n; })}
+                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+              {draft.geo === "required" && <small style={{ display: "block", color: "var(--amber)", fontSize: ".78rem", marginTop: 6 }}>{t("geo.requiredHint")}</small>}
+              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginTop: 12 }}>
+                <input type="checkbox" checked={!!draft.watermark}
+                  onChange={(e) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (e.target.checked) n.watermark = true; else delete n.watermark; return n; })}
+                  style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
+                <span>
+                  <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".92rem" }}>{t("geo.watermark")}</b>
+                  <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".82rem" }}>{draft.geo ? t("geo.watermarkSubGeo") : t("geo.watermarkSub")}</span>
+                </span>
+              </label>
+            </div>
+          <div className="krok-fs-sec krok-fs-nest"><AttachmentsPanel formId={editingId} tenantId={tenantId} /></div>
+      </div>
+
+      <div role="tabpanel" style={{ display: formTab === "schedule" ? "block" : "none" }}>
+          <div className="krok-fs-sec krok-fs-nest"><FormSchedulePanel key={editingId || "new"} formId={editingId} teams={teams} members={members} /></div>
+      </div>
+    </div>
+  );
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {toast && (
@@ -609,6 +831,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </p>
             </div>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <button type="button" data-krok-keep onClick={() => { setSelKey(null); setFormPanel(true); }}
+                className="inline-flex items-center gap-1.5"
+                style={{ padding: "7px 13px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
+                <Icon icon={Settings2} className="h-4 w-4" /> {t("fs.title")}
+              </button>
               <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
                 {([
                   { m: "mobile" as ViewMode, icon: Smartphone, label: t("studio.viewMobile") },
@@ -657,6 +884,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
           </div>
 
+          {/* ปรับแก้ทั้งฟอร์มด้วย AI — อยู่เหนือฟอร์ม (สั่งแก้ทั้งฟอร์ม ไม่ใช่ตั้งค่า) */}
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".85rem", fontWeight: 600, color: "var(--accent-text)" }} title={t("studio.refineSub")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.refineTitle")}</span>
+            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} style={{ flex: 1, minWidth: 200 }} />
+            <AsyncButton onClick={refineDraft} disabled={!!busy || !refine.trim()}>{t("studio.refineBtn")}</AsyncButton>
+          </div>
+
           <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
@@ -676,196 +910,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {/* เอกสารสำหรับพิมพ์ (ซ่อนบนจอ แสดงเฉพาะตอนพิมพ์) */}
           <div className="krok-print-root"><FormPaperView schema={draft} theme={resolveTheme(branding, draft.theme)} /></div>
 
-          <AttachmentsPanel formId={editingId} tenantId={tenantId} />
-
-          {/* ล็อคให้กรอกได้เฉพาะเครื่องที่อนุมัติแล้ว */}
-          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
-            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: visMode === "public" ? "not-allowed" : "pointer", opacity: visMode === "public" ? 0.55 : 1 }}>
-              <input
-                type="checkbox"
-                checked={requireDevice && visMode !== "public"}
-                disabled={visMode === "public"}
-                onChange={(e) => setRequireDevice(e.target.checked)}
-                style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }}
-              />
-              <span>
-                <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon icon={TabletSmartphone} className="h-4 w-4" /> {t("studio.devLock")}
-                </b>
-                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
-                  {visMode === "public"
-                    ? t("studio.devLockPublic")
-                    : t("studio.devLockHint")}
-                </span>
-              </span>
-            </label>
-
-            {requireDevice && visMode !== "public" && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
-                <div style={{ display: "grid", gap: 6 }}>
-                  {([
-                    { v: "any" as const, label: t("studio.devAny"), sub: t("studio.devAnySub") },
-                    { v: "selected" as const, label: t("studio.devSelected"), sub: t("studio.devSelectedSub") },
-                  ]).map((o) => (
-                    <label key={o.v} style={{ display: "flex", gap: 9, alignItems: "flex-start", cursor: "pointer", padding: "8px 10px", borderRadius: 8, border: `1px solid ${deviceScope === o.v ? "var(--accent)" : "var(--line)"}`, background: deviceScope === o.v ? "var(--accent-soft)" : "var(--surface)" }}>
-                      <input type="checkbox" checked={deviceScope === o.v} onChange={() => setDeviceScope(o.v)} style={{ width: 17, height: 17, marginTop: 2, accentColor: "var(--accent)" }} />
-                      <span>
-                        <b style={{ fontSize: ".88rem", fontFamily: "var(--font-anuphan)" }}>{o.label}</b>
-                        <span style={{ display: "block", fontSize: ".78rem", color: "var(--ink-3)" }}>{o.sub}</span>
-                      </span>
-                    </label>
-                  ))}
-                </div>
-
-                {deviceScope === "selected" && <FormDevicePicker formId={editingId} />}
-              </div>
-            )}
-          </div>
-
-          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 14, marginTop: 14 }}>
-            <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.refineTitle")}</b>
-            <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 8px" }}>
-              {t("studio.refineSub")}
-            </p>
-            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-              <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} style={{ flex: 1, minWidth: 200 }} />
-              <AsyncButton onClick={refineDraft} disabled={!!busy}>{t("studio.refineBtn")}</AsyncButton>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10 }}>
-            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
-              <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
-              <span>
-                <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.approvalTitle")}</b>
-                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem" }}>
-                  {t("studio.approvalSub")}
-                </span>
-              </span>
-            </label>
-
-            {requiresApproval && (
-              <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
-                <div style={{ fontSize: ".88rem", fontWeight: 600, marginBottom: 4 }}>{t("studio.approverOrder")}</div>
-                <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "0 0 8px" }}>
-                  {chain.length === 0 ? t("studio.approverHintEmpty") : t("studio.approverHintSet")}
-                </p>
-                {chain.map((s, i) => (
-                  <div key={i} className="krok-appr-row" style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8, flexWrap: "wrap" }}>
-                    <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "3px 8px" }}>{t("editor.step")} {i + 1}</span>
-                    <select
-                      className="krok-appr-select"
-                      value={s.user_id}
-                      onChange={(e) => {
-                        const m = members.find((x) => x.user_id === e.target.value);
-                        setChain((c) => c.map((x, xi) => (xi === i ? { ...x, user_id: e.target.value, name: m?.name || "" } : x)));
-                      }}
-                      style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", flex: 1, minWidth: 140 }}
-                    >
-                      <option value="">{t("studio.pickApprover")}</option>
-                      {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
-                    </select>
-                    <div className="krok-appr-roleline" style={{ display: "flex", gap: 8, alignItems: "center", flex: "0 0 auto" }}>
-                      <Field className="krok-appr-role" value={s.label} onChange={(e) => setChain((c) => c.map((x, xi) => (xi === i ? { ...x, label: e.target.value } : x)))} placeholder={t("studio.rolePlaceholder")} style={{ width: 120, flex: "0 0 auto" }} />
-                      <Button variant="danger" onClick={() => setChain((c) => c.filter((_, xi) => xi !== i))} style={{ padding: "8px 12px", flex: "0 0 auto" }}>{t("common.delete")}</Button>
-                    </div>
-                  </div>
-                ))}
-                {chain.length < 6 && (
-                  <Button onClick={() => setChain((c) => [...c, { user_id: "", name: "", label: "" }])} style={{ padding: "8px 14px", fontSize: ".88rem" }}>+ {t("studio.addApprovalStep")}</Button>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10 }}>
-            <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
-            <p style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("studio.visSub")}</p>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-              {(["public", "all", "teams", "users"] as VisMode[]).map((m) => {
-                const on = visMode === m;
-                const label = m === "public" ? t("share.public") : m === "all" ? t("studio.visAll") : m === "teams" ? t("studio.visTeams") : t("studio.visUsers");
-                return (
-                  <button
-                    key={m}
-                    onClick={() => setVisMode(m)}
-                    style={{
-                      padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit",
-                      border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
-                      background: on ? "var(--accent-soft)" : "var(--surface)",
-                      color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
-                    }}
-                  >
-                    {label}
-                  </button>
-                );
-              })}
-            </div>
-
-            {visMode === "teams" && (
-              teams.length === 0 ? (
-                <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: 0 }}>{t("studio.visNoTeams")}</p>
-              ) : (
-                <div style={{ display: "grid", gap: 6 }}>
-                  {teams.map((tm) => {
-                    const on = visTeams.includes(tm.id);
-                    return (
-                      <label key={tm.id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
-                        <input type="checkbox" checked={on} onChange={(e) => setVisTeams((ids) => (e.target.checked ? [...ids, tm.id] : ids.filter((x) => x !== tm.id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
-                        <Icon icon={Tag} className="h-4 w-4" /> {tm.name}
-                      </label>
-                    );
-                  })}
-                </div>
-              )
-            )}
-
-            {visMode === "users" && (
-              <div style={{ display: "grid", gap: 6 }}>
-                {members.map((m) => {
-                  const on = visUsers.includes(m.user_id);
-                  return (
-                    <label key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", fontSize: ".9rem" }}>
-                      <input type="checkbox" checked={on} onChange={(e) => setVisUsers((ids) => (e.target.checked ? [...ids, m.user_id] : ids.filter((x) => x !== m.user_id)))} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
-                      <Icon icon={HardHat} className="h-4 w-4" /> {m.name}
-                    </label>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {draft && (
-            <div style={{ marginTop: 16, padding: 12, border: "1px solid var(--line)", borderRadius: 10 }}>
-              <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={MapPin} className="h-4 w-4" /> {t("geo.title")}</b>
-              <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("geo.sub")}</p>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }} role="radiogroup" aria-label={t("geo.title")}>
-                {([["off", t("geo.mode.off")], ["optional", t("geo.mode.optional")], ["required", t("geo.mode.required")]] as const).map(([m, label]) => {
-                  const on = (draft.geo ?? "off") === m;
-                  return (
-                    <button key={m} type="button" role="radio" aria-checked={on}
-                      onClick={() => setDraft((d) => { if (!d) return d; const n = { ...d }; if (m === "off") delete n.geo; else n.geo = m; return n; })}
-                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              {draft.geo === "required" && <small style={{ display: "block", color: "var(--amber)", fontSize: ".78rem", marginTop: 6 }}>{t("geo.requiredHint")}</small>}
-              <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginTop: 12 }}>
-                <input type="checkbox" checked={!!draft.watermark}
-                  onChange={(e) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (e.target.checked) n.watermark = true; else delete n.watermark; return n; })}
-                  style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
-                <span>
-                  <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".92rem" }}>{t("geo.watermark")}</b>
-                  <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".82rem" }}>{draft.geo ? t("geo.watermarkSubGeo") : t("geo.watermarkSub")}</span>
-                </span>
-              </label>
-            </div>
-          )}
-
-          <FormSchedulePanel key={editingId || "new"} formId={editingId} teams={teams} members={members} />
-
           {editingId && (
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
               <Field value={versionNote} maxLength={300} onChange={(e) => setVersionNote(e.target.value)} placeholder={t("ver.notePh")} aria-label={t("ver.notePh")} style={{ flex: "1 1 240px", minWidth: 0 }} />
@@ -881,17 +925,19 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
         </Card>
-        {selKey && <div className="krok-settings-backdrop" onClick={() => setSelKey(null)} />}
-        <aside data-tour="studio-aside" className={selKey ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={t("editor.fieldSettings")}>
+        {(selKey || formPanel) && <div className="krok-settings-backdrop" onClick={() => { setSelKey(null); setFormPanel(false); }} />}
+        <aside data-tour="studio-aside" className={selKey || formPanel ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={selKey ? t("editor.fieldSettings") : t("fs.title")}>
           {selKey ? (
-            <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} branding={branding} />
-          ) : (
-            <div style={{ border: "1px dashed var(--line)", borderRadius: 12, padding: "22px 18px", textAlign: "center", color: "var(--ink-3)", background: "var(--surface)" }}>
-              <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={MousePointerClick} className="h-7 w-7" /></span>
-              <b style={{ display: "block", color: "var(--ink)", margin: "8px 0 4px", fontSize: ".95rem" }}>{t("editor.fieldSettings")}</b>
-              <p style={{ fontSize: ".85rem", margin: 0, lineHeight: 1.55 }}>{t("editor.asideHint")}</p>
-            </div>
-          )}
+            <>
+              <button type="button" onClick={() => { setSelKey(null); setFormPanel(true); }}
+                style={{ display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem", padding: "2px 0 8px" }}>
+                <Icon icon={ChevronLeft} className="h-4 w-4" /> {t("fs.title")}
+              </button>
+              <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} branding={branding} />
+            </>
+          ) : null}
+          {/* ซ่อนไว้ (ไม่ unmount) ตอนเลือกฟิลด์ — ค่าที่กรอกค้างในแผงย่อยไม่หาย */}
+          <div style={{ display: selKey ? "none" : "block" }}>{formSettings}</div>
         </aside>
         </div>
         </div>
@@ -1014,6 +1060,18 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
            แผงตรึงตอนเลื่อนหน้า, ไม่ได้เลือกฟิลด์ = แสดงคำแนะนำ · ฟอร์มไม่ยืด-หดตอนเลือก/ปิด */
         .krok-editgrid{ display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
         .krok-settings-backdrop{ display:none; }
+        /* ตั้งค่าฟอร์ม (แผงขวา): หัวข้อย่อยในแท็บ คั่นด้วยเส้น ไม่ใช่กล่องซ้อนกล่อง */
+        .krok-fs{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; }
+        .krok-fs-sec{ padding:14px 0; border-bottom:1px solid var(--line); }
+        .krok-fs-sec:last-child{ border-bottom:none; }
+        .krok-fs [role=tabpanel] > :first-child{ margin-top:4px; }
+        .krok-fs-close{ display:none !important; }
+        /* ลำดับผู้อนุมัติในแผงแคบ: [ขั้น n][ผู้อนุมัติ] / [บทบาท............][ลบ] */
+        .krok-fs .krok-appr-select{ min-width:0 !important; }
+        .krok-fs .krok-appr-roleline{ flex:1 1 100% !important; width:100%; }
+        .krok-fs .krok-appr-roleline .krok-appr-role{ flex:1 1 auto !important; width:auto !important; }
+        /* แผงย่อยที่มีกรอบของตัวเอง (เอกสาร / ตารางเวลา): ถอดกรอบเมื่ออยู่ในแท็บ */
+        .krok-fs-nest > div{ border:none !important; padding:0 !important; margin-top:0 !important; border-radius:0 !important; }
         @media(min-width:1100px){
           .krok-editgrid{ grid-template-columns:minmax(0,1fr) 380px; }
           .krok-aside{ position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto; border-radius:12px; }
@@ -1021,7 +1079,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         /* จอกลาง: ไม่มีคอลัมน์ขวา → แผงลอยด้านขวาเฉพาะตอนเลือกฟิลด์ */
         @media(max-width:1099px){
           .krok-aside{ display:none; }
-          .krok-aside.krok-aside-sel{ display:block; position:fixed; top:74px; right:16px; width:360px; max-width:calc(100vw - 24px);
+          .krok-fs-close{ display:flex !important; }
+          .krok-aside.krok-aside-sel{ display:block; position:fixed; top:74px; right:16px; width:380px; max-width:calc(100vw - 24px);
             max-height:calc(100vh - 96px); overflow:auto; z-index:50; border-radius:14px; background:var(--surface);
             box-shadow:0 14px 44px rgba(10,14,18,.28); }
         }
