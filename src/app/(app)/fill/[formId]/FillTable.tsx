@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import Icon from "@/components/Icon";
-import { ScanLine, Plus, Trash2 } from "lucide-react";
+import { ScanLine, Plus, Trash2, Link2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { type FormField, type TableColumn } from "@/lib/form-schema";
 import { PaperAddRow, PaperLabel, PaperTable } from "@/components/paper/PaperParts";
@@ -37,12 +37,15 @@ export function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: Rea
   // แถวล่าสุด (สแกนต่อเนื่องเรียกถี่กว่ารอบ render) — แถวเปลี่ยนผ่าน commit เท่านั้น จึงตรงกับ state เสมอ
   const live = useRef(rows);
   const commit = (next: TableRow[]) => { live.current = next; setRows(next); onChange(next); };
-  const setCell = (ri: number, cid: string, v: string) =>
+  // แถวจากฟอร์มลูก (0074) แก้/ลบไม่ได้ — ระบบเขียนให้ และ server ทับคืนอยู่ดี
+  const setCell = (ri: number, cid: string, v: string) => {
+    if (isChildRow(live.current[ri])) return;
     commit(live.current.map((r, i) => (i === ri ? computeRow(cols, { ...r, [cid]: v }) : r)));
+  };
   const addRow = () => commit([...live.current, {}]);
   const photoCols = cols.filter((c) => c.type === "photo");
   const dropRowPhotos = (r: TableRow | undefined) => { if (r && media) for (const c of photoCols) { const k = cellPhotoKey(r, c.id); if (k) media.set(k, null); } };
-  const delRow = (ri: number) => { dropRowPhotos(live.current[ri]); commit(live.current.length > 1 ? live.current.filter((_, i) => i !== ri) : [{}]); };
+  const delRow = (ri: number) => { if (isChildRow(live.current[ri])) return; dropRowPhotos(live.current[ri]); commit(live.current.length > 1 ? live.current.filter((_, i) => i !== ri) : [{}]); };
   /** รูปของช่อง: ย่อรูป → เก็บด้วย key ของช่อง (มีอยู่แล้วใช้ key เดิม = ถ่ายทับ) */
   const onPhoto = async (ri: number, cid: string, file: File | null) => {
     if (!media) return;
@@ -66,6 +69,9 @@ export function useTableRows(cols: TableColumn[], rows: TableRow[], setRows: Rea
   return { commit, setCell, addRow, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf };
 }
 
+/** แถวที่ระบบเขียนกลับจากฟอร์มลูก */
+export const isChildRow = (r: TableRow | null | undefined): boolean => !!r && typeof r === "object" && "_child" in r && !!r._child;
+
 // ตารางกรอกข้อมูล — desktop = ตาราง, มือถือ = การ์ดต่อแถว
 /** แถวมีค่าอย่างน้อย 1 ช่อง (แถวว่างล้วนไม่ตรวจ) */
 export function rowHasValue(r: TableRow | null | undefined): boolean {
@@ -86,8 +92,10 @@ export function firstBadRow(columns: TableColumn[], rows: TableRow[]): { row: nu
 }
 
 export function TableInput({
-  columns, minRows, maxRows, initial, onChange, variant, fieldId, media, error,
+  columns, minRows, maxRows, initial, onChange, variant, fieldId, media, error, childOnly = false,
 }: {
+  /** ตารางรับแถวจากฟอร์มลูกเท่านั้น — เพิ่ม/แก้แถวเองไม่ได้ */
+  childOnly?: boolean;
   /** ข้อความผิดพลาดของฟิลด์ — มีขึ้นมาใหม่ = กางแถวที่ผิดแล้วเลื่อนไปให้เห็น */
   error?: string;
   fieldId: string;
@@ -104,6 +112,7 @@ export function TableInput({
   const cols = columns.length ? columns : [{ id: "c0", label: t("fw.colItem"), type: "text" as const }];
   const [rows, setRows] = useState<TableRow[]>(() => {
     const base = initial.length ? initial.map((r) => computeRow(cols, { ...r })) : [];
+    if (childOnly) return base.filter(isChildRow);
     while (base.length < Math.max(1, minRows)) base.push({});
     return base;
   });
@@ -116,7 +125,7 @@ export function TableInput({
     : { field: "var(--surface)", text: "var(--ink)", border: "var(--line)", card: "var(--code-bg)", cardBorder: "var(--line)", muted: "var(--ink-2)", head: "var(--ink-2)", rule: "var(--line)" };
 
   const { setCell, addRow: addRowRaw, delRow, scanCol, scanOpen, setScanOpen, onScanned, onPhoto, photoOf } = useTableRows(cols, rows, setRows, onChange, fieldId, media);
-  const canAdd = !maxRows || rows.length < maxRows;
+  const canAdd = !childOnly && (!maxRows || rows.length < maxRows);
   // มือถือ: เปิดแก้ทีละแถว แถวอื่นพับเป็นบรรทัดสรุป (ตารางหลายคอลัมน์ไม่ยาวเป็นหน้า ๆ)
   const [openRow, setOpenRow] = useState(() => {
     const firstEmpty = rows.findIndex((r) => !Object.values(r).some((v) => String(v ?? "").trim()));
@@ -146,13 +155,24 @@ export function TableInput({
     .filter(Boolean).slice(0, 4).join(" · ");
 
   const cellInput = (ri: number, c: TableColumn) => {
+    if (isChildRow(rows[ri])) {
+      const v = String(rows[ri]?.[c.id] ?? "");
+      return <span style={{ display: "block", padding: small ? "5px 2px" : "8px 2px", fontSize: small ? ".82rem" : ".95rem", color: ink.text, overflowWrap: "anywhere" }}>{c.type === "pass_fail" ? (v === "pass" ? "✓" : v === "fail" ? "✗" : v) : v || "—"}</span>;
+    }
     const st: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
     return <TableCell col={c} value={rows[ri]?.[c.id] ?? ""} onChange={(v) => setCell(ri, c.id, v)} look={small ? "small" : "normal"} style={st} iconOnly={!cards}
       photoUrl={c.type === "photo" ? photoOf(rows[ri] ? cellPhotoKey(rows[ri], c.id) : undefined) : undefined} onPhoto={(f) => void onPhoto(ri, c.id, f)} />;
   };
 
   const btnSt: React.CSSProperties = { marginTop: 8, display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 };
-  const addBtn = (
+  const childBadge = (r: TableRow) => isChildRow(r) ? (
+    <span title={String(r._at ?? "")} style={{ fontSize: ".7rem", padding: "1px 7px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)", whiteSpace: "nowrap" }}>
+      {tt("child.rowFrom", { form: String(r._src ?? "") })}
+    </span>
+  ) : null;
+  const addBtn = childOnly ? (
+    rows.length === 0 ? <span style={{ display: "block", marginTop: 6, fontSize: ".8rem", color: ink.muted }}>{t("child.tableWaiting")}</span> : null
+  ) : (
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
       {canAdd ? (
         <button type="button" onClick={addRow} style={btnSt}>
@@ -179,14 +199,15 @@ export function TableInput({
             <button key={ri} type="button" onClick={() => setOpenRow(ri)} ref={(el) => { rowEls.current[ri] = el; }}
               style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", border: `1px solid ${ri === badRow ? "var(--fail)" : ink.cardBorder}`, borderRadius: 10, padding: "10px 12px", background: ink.card, color: ink.text, fontFamily: "inherit", cursor: "pointer" }}>
               <b style={{ fontSize: ".78rem", color: ink.muted, whiteSpace: "nowrap" }}>{tt("fw.rowN", { n: ri + 1 })}</b>
+              {childBadge(r)}
               <span style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: ".86rem", color: rowSummary(r) ? ink.text : ink.muted }}>{rowSummary(r) || t("fw.rowEmpty")}</span>
               <span style={{ fontSize: ".78rem", color: "var(--accent-text)", whiteSpace: "nowrap" }}>{t("fw.rowEdit")}</span>
             </button>
           ) : (
             <div key={ri} ref={(el) => { rowEls.current[ri] = el; }} style={{ border: `${ri === badRow ? 2 : 1}px solid ${ri === badRow ? "var(--fail)" : variant !== "compact" ? "var(--accent)" : ink.cardBorder}`, borderRadius: 10, padding: 10, background: ink.card }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-                <b style={{ fontSize: ".78rem", color: ink.muted }}>{tt("fw.rowN", { n: ri + 1 })}</b>
-                <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                <b style={{ fontSize: ".78rem", color: ink.muted }}>{tt("fw.rowN", { n: ri + 1 })} {childBadge(r)}</b>
+                {!isChildRow(r) && <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>}
               </div>
               <div style={{ display: "grid", gap: 7 }}>
                 {cols.map((c) => (
@@ -224,7 +245,7 @@ export function TableInput({
               <tr key={ri} ref={(el) => { rowEls.current[ri] = el; }} style={ri === badRow ? { outline: "2px solid var(--fail)", outlineOffset: -2 } : undefined}>
                 {cols.map((c) => <td key={c.id} style={{ padding: "3px 5px", verticalAlign: "top" }}>{cellInput(ri, c)}</td>)}
                 <td style={{ padding: "3px 2px", textAlign: "center", verticalAlign: "middle" }}>
-                  <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>
+                  {isChildRow(rows[ri]) ? <span title={tt("child.rowFrom", { form: String(rows[ri]._src ?? "") })} aria-label={tt("child.rowFrom", { form: String(rows[ri]._src ?? "") })} style={{ color: "var(--accent-text)", display: "inline-flex" }}><Icon icon={Link2} className="h-4 w-4" /></span> : <button type="button" onClick={() => delRow(ri)} aria-label={t("fw.deleteRow")} style={{ border: "none", background: "transparent", color: "var(--fail)", cursor: "pointer", minWidth: 36, minHeight: 36, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={Trash2} className="h-4 w-4" /></button>}
                 </td>
               </tr>
             ))}
@@ -255,7 +276,7 @@ export function PaperTableField({ field: f, initial, onChange, media }: { field:
               <Icon icon={ScanLine} className="h-3 w-3" /> {t("ctype.scan")}
             </button>
           )}
-          {(!f.max_rows || rows.length < f.max_rows) && <PaperAddRow onClick={addRow} />}
+          {!f.child_only && (!f.max_rows || rows.length < f.max_rows) && <PaperAddRow onClick={addRow} />}
         </span>
       } />
       <PaperTable

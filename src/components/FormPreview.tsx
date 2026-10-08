@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import type { ResolvedTheme } from "@/lib/theme";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
-import { Camera, Check, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
+import { Camera, Check, FilePlus2, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import FormIcon from "@/components/FormIcon";
 import { useT } from "@/i18n/LanguageProvider";
@@ -79,6 +79,8 @@ function MockControl({ f, scan }: { f: FormField; scan: boolean }) {
           {f.sign_name && <div style={box}>{t("fw.sig.namePh")}</div>}
         </div>
       );
+    case "child_form":
+      return <div style={{ ...box, justifyContent: "flex-start", background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 600, width: "fit-content" }}><Icon icon={FilePlus2} className="h-4 w-4" /> {f.child_form?.form_title ? tt("child.open", { form: f.child_form.form_title }) : t("child.notConfigured")}</div>;
     case "table": {
       const cols = f.columns || [];
       return (
@@ -138,7 +140,7 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
             whiteSpace: "nowrap",
           }}
         >
-          {t(`ftype.${f.type}`)}
+          {t(f.area ? "ftype.area" : `ftype.${f.type}`)}
         </span>
       </div>
       {f.tooltip && (
