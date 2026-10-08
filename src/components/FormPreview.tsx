@@ -1,8 +1,9 @@
 "use client";
 import { useRef, useState } from "react";
+import { stepAssigned } from "@/lib/case-flow";
 import type { ResolvedTheme } from "@/lib/theme";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
-import { Camera, Check, FilePlus2, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
+import { Camera, Check, CheckCircle2, FilePlus2, Send, Users, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import FormIcon from "@/components/FormIcon";
 import { useT } from "@/i18n/LanguageProvider";
@@ -182,6 +183,8 @@ export default function FormPreview({
   onAddStep,
   onMoveField,
   theme,
+  paged = false,
+  stepLabel,
 }: {
   schema: FormSchema;
   selectedKey?: string | null;
@@ -192,6 +195,10 @@ export default function FormPreview({
   onMoveField?: (fieldId: string, toStep: number, toIndex: number) => void;
   /** ธีมของฟอร์ม — แสดงแถบหัว/โลโก้/สีปุ่มเหมือนหน้ากรอกจริง */
   theme?: ResolvedTheme;
+  /** ทีละขั้น: แสดงเหมือนหน้ากรอกจริง (แถบความคืบหน้า · ปุ่มถัดไป / ส่งต่อให้ … / ส่งข้อมูล) */
+  paged?: boolean;
+  /** ชื่อผู้รับผิดชอบขั้น i (ทีม/คน) — ใช้บนปุ่มส่งต่อ */
+  stepLabel?: (i: number) => string | null;
 }) {
   const { t, tt } = useT();
   // ---- ลากเรียงลำดับฟิลด์ (เมาส์/นิ้ว ผ่านที่จับด้านซ้ายของการ์ด) ----
@@ -247,6 +254,24 @@ export default function FormPreview({
     fontSize: ".84rem", fontWeight: 600,
   };
   const branded = !!theme && hasBrand(theme);
+
+  // ---- ทีละขั้น ----
+  const nSteps = schema.steps.length;
+  const [cur, setCur] = useState(0);
+  const curIdx = Math.min(cur, Math.max(0, nSteps - 1));
+  // เลือกฟิลด์/ขั้นที่อยู่ขั้นอื่น (จาก sidebar หรือสลับโหมด) → เปิดขั้นนั้น (ปรับ state ระหว่าง render ตามแนวทาง React)
+  const selSig = `${paged ? 1 : 0}|${selectedKey ?? ""}`;
+  const [seenSig, setSeenSig] = useState(selSig);
+  if (seenSig !== selSig) {
+    setSeenSig(selSig);
+    const i = paged && selectedKey ? schema.steps.findIndex((st) => `s:${st.id}` === selectedKey || st.fields.some((f) => f.id === selectedKey)) : -1;
+    if (i >= 0) setCur(i);
+  }
+  const go = (i: number) => setCur(Math.max(0, Math.min(nSteps - 1, i)));
+  const isLast = curIdx >= nSteps - 1;
+  const handoff = !isLast && stepAssigned(schema, curIdx + 1);
+  const handoffWho = handoff ? stepLabel?.(curIdx + 1) ?? null : null;
+  const curWho = paged && stepAssigned(schema, curIdx) ? stepLabel?.(curIdx) ?? null : null;
   return (
     <div className="krok-th-preview">
       {theme && <ThemeStyle scope="krok-th-preview" theme={theme} />}
@@ -263,7 +288,15 @@ export default function FormPreview({
           </div>
         </div>
       )}
+      {paged && nSteps > 0 && (
+        <div style={{ display: "flex", gap: 6, margin: "12px 0 4px" }} aria-hidden>
+          {schema.steps.map((s, i) => (
+            <span key={s.id} style={{ flex: 1, height: 6, borderRadius: 3, background: i === curIdx ? "var(--accent)" : i < curIdx ? "var(--pass)" : "var(--line)" }} />
+          ))}
+        </div>
+      )}
       {schema.steps.map((s, i) => {
+        if (paged && i !== curIdx) return null;
         const stepKey = `s:${s.id}`;
         const stepSel = selectedKey === stepKey;
         return (
@@ -283,6 +316,11 @@ export default function FormPreview({
               </span>
               <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent)" : "var(--ink)" }}>{s.title}</h3>
             </div>
+            {curWho && (
+              <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".76rem", color: "var(--ink-2)", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 999, padding: "2px 9px", margin: "-2px 0 8px" }}>
+                <Icon icon={Users} className="h-3.5 w-3.5" /> {curWho}
+              </div>
+            )}
             {s.fields.map((f, fi) => (
               <div key={f.id}>
                 {drag && drag.step === i && drag.index === fi && dropLine}
@@ -300,6 +338,22 @@ export default function FormPreview({
           </div>
         );
       })}
+      {paged && nSteps > 0 && (
+        <div data-krok-keep="" style={{ display: "flex", gap: 8, marginTop: 16 }}>
+          {curIdx > 0 && (
+            <button type="button" onClick={(e) => { e.stopPropagation(); go(curIdx - 1); }}
+              style={{ padding: "11px 14px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", cursor: "pointer" }}>
+              {t("fill.prev")}
+            </button>
+          )}
+          <button type="button" onClick={(e) => { e.stopPropagation(); if (!isLast) go(curIdx + 1); }}
+            style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "11px 14px", borderRadius: 10, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", fontFamily: "inherit", fontWeight: 600, fontSize: ".92rem", cursor: isLast ? "default" : "pointer" }}>
+            {isLast ? <><Icon icon={CheckCircle2} className="h-4 w-4" /> {t("fill.submit")}</>
+              : handoff ? <><Icon icon={Send} className="h-4 w-4" /> {handoffWho ? tt("wf.handoffTo", { team: handoffWho }) : t("wf.handoff")}</>
+              : t("fill.next")}
+          </button>
+        </div>
+      )}
       {editable && onAddStep && (
         <button data-krok-keep="" onClick={(e) => { e.stopPropagation(); onAddStep(); }} style={{ ...addBtn, marginTop: 14, borderStyle: "solid" }}>
           <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
