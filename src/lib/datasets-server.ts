@@ -163,7 +163,7 @@ function uniqRows(rows: OptRow[]): OptRow[] {
 function applyToField(f: FormField, rows: OptRow[] | null, dsName: string | undefined, cascading: boolean, labeled: boolean) {
   if (!rows) {
     // dataset ถูกลบ/ไม่มีสิทธิ์/ยังไม่รัน migration → ใช้ตัวเลือกที่พิมพ์ไว้ (ถ้ามี) และเตือน
-    f.options_error = dsName ? "ดึงตัวเลือกจากถังข้อมูลไม่ได้" : "ไม่พบถังข้อมูลที่ฟิลด์นี้ใช้";
+    f.options_error = dsName ? "ดึงตัวเลือกจากชุดข้อมูลไม่ได้" : "ไม่พบชุดข้อมูลที่ฟิลด์นี้ใช้";
     delete f.options_source?.parent;
     return;
   }
@@ -237,10 +237,10 @@ function friendly(msg: string): string {
   if (msg.includes("changed during import")) return "มีการนำเข้าอื่นเสร็จก่อนระหว่างนี้ — ลองใหม่อีกครั้ง";
   if (msg.includes("row limit exceeded")) {
     const m = msg.match(/max (\d+)/);
-    return `จำนวนแถวเกินที่แพ็กเกจรองรับ${m ? ` (สูงสุด ${Number(m[1]).toLocaleString()} แถวต่อถัง)` : ""} — อัปเกรดแพ็กเกจเพื่อเพิ่มโควตา`;
+    return `จำนวนแถวเกินที่แพ็กเกจรองรับ${m ? ` (สูงสุด ${Number(m[1]).toLocaleString()} แถวต่อชุด)` : ""} — อัปเกรดแพ็กเกจเพื่อเพิ่มโควตา`;
   }
   if (msg.includes("[quota:")) return msg.replace(/\s*\[quota:[a-z_]+\]\s*$/, "");
-  if (msg.includes("forbidden")) return "ไม่มีสิทธิ์แก้ไขถังข้อมูลนี้";
+  if (msg.includes("forbidden")) return "ไม่มีสิทธิ์แก้ไขชุดข้อมูลนี้";
   return msg;
 }
 
