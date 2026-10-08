@@ -28,10 +28,10 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    title: "ถังข้อมูล",
+    title: "ชุดข้อมูล",
     nums: [
-      { key: "maxDatasets", label: "จำนวนถังข้อมูล" },
-      { key: "maxDatasetRows", label: "แถวต่อถัง", hint: "เพดานระบบ 200,000" },
+      { key: "maxDatasets", label: "จำนวนชุดข้อมูล" },
+      { key: "maxDatasetRows", label: "แถวต่อชุด", hint: "เพดานระบบ 200,000" },
     ],
   },
   {
@@ -40,7 +40,7 @@ const GROUPS: Group[] = [
     nums: [
       { key: "maxWebhooks", label: "Webhook (เส้น)", hint: "0 = ใช้ไม่ได้" },
       { key: "maxIntakeForms", label: "API รับข้อมูล (ฟอร์ม)", hint: "0 = ใช้ไม่ได้" },
-      { key: "maxDatasetApi", label: "ถังข้อมูลแบบ API", hint: "0 = ใช้ไม่ได้" },
+      { key: "maxDatasetApi", label: "ชุดข้อมูลแบบ API", hint: "0 = ใช้ไม่ได้" },
     ],
   },
   {

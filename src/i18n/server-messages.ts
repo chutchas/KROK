@@ -159,7 +159,8 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ไม่พบคอลัมน์ key ที่เลือก": "The selected key column wasn't found",
   "ไม่พบคำเชิญนี้ หรือมีคนรับไปแล้ว": "Invite not found, or it was already accepted",
   "ไม่พบงาน": "Task not found",
-  "ไม่พบถังข้อมูล": "Dataset not found",
+  "ไม่พบชุดข้อมูล": "Dataset not found",
+  "ไม่พบถังข้อมูล": "Dataset not found", // ชื่อเดิม (ข้อความที่บันทึกไว้ก่อนเปลี่ยนชื่อ)
   "ไม่พบทีม": "Team not found",
   "ไม่พบทีมนี้": "Team not found",
   "ไม่พบฟอร์ม": "Form not found",
@@ -177,7 +178,8 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ไม่มี rows หรือ delete_keys": "No rows or delete_keys",
   "ไม่มีคอลัมน์ในไฟล์ที่ตรงกับข้อมูลเดิม": "No columns in the file match the existing data",
   "ไม่มีสิทธิ์": "Permission denied",
-  "ไม่มีสิทธิ์จัดการถังข้อมูล": "You don't have permission to manage datasets",
+  "ไม่มีสิทธิ์จัดการชุดข้อมูล": "You don't have permission to manage datasets",
+  "ไม่มีสิทธิ์จัดการถังข้อมูล": "You don't have permission to manage datasets", // ชื่อเดิม
   "ไม่มีสิทธิ์สร้างฟอร์ม": "You don't have permission to create forms",
   "ไม่มีสิทธิ์อนุมัติ": "You don't have permission to approve",
   "ไม่มีสิทธิ์เปลี่ยนชื่อ workspace": "You don't have permission to rename the workspace",
