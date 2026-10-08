@@ -13,7 +13,8 @@ export interface AreaRow {
 /** แถวจาก RPC area_open_items */
 export interface OpenItem {
   kind: "case" | "approval";
-  id: string;
+  /** null = งาน/เอกสารที่ผู้ดูไม่ได้เกี่ยวข้อง (0075: เห็นแค่ว่ามีอยู่ ไม่เห็นเลขและผู้ถือ) */
+  id: string | null;
   form_id: string | null;
   form_title: string;
   form_icon: string;

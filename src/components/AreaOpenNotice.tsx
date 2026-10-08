@@ -37,7 +37,7 @@ export default function AreaOpenNotice({ areaId, excludeId, preload }: {
       </button>
       {open && (
         <ul style={{ listStyle: "none", margin: "8px 0 0", padding: 0, display: "grid", gap: 4 }}>
-          {data.items.map((it) => <OpenRow key={`${it.kind}:${it.id}`} it={it} />)}
+          {data.items.map((it, i) => <OpenRow key={`${it.kind}:${it.id ?? i}`} it={it} />)}
         </ul>
       )}
     </div>

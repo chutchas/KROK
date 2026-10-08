@@ -9,7 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
-import { mergeChildRows } from "@/lib/child-rows";
+import { childRowsFromCase } from "@/lib/child-rows";
 import { rateLimited } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
 import { sanitizeChain } from "@/lib/approval";
@@ -174,10 +174,9 @@ export async function POST(req: Request) {
     const { data: gateErr } = await admin.rpc("child_gate_error", { p_case: caseId, p_from: caseRow.step_idx, p_to: schema.steps.length - 1 });
     if (typeof gateErr === "string" && gateErr) return fail(409, await sm(gateErr));
   }
-  // แถวจากฟอร์มลูก: แทนด้วยของฐานข้อมูลก่อนกรอง (ไม่ใช่งาน = ตัดคีย์ระบบทิ้งตอนกรอง)
-  const rawAnswers = caseRow ? mergeChildRows(schema, body.answers, caseRow.answers || {}) : body.answers;
   // ไม่เชื่อผลจากเบราว์เซอร์: กรองคำตอบตาม schema + คำนวณ ผ่าน/ไม่ผ่าน ใหม่
-  const { answers, fails, result } = sanitizePublicAnswers(schema, rawAnswers, uploaded, { keepChildRows: !!caseRow });
+  // แถวจากฟอร์มลูก = ของฐานข้อมูลเท่านั้น (ไม่ใช่งาน = ตาราง source_only ว่าง)
+  const { answers, fails, result } = sanitizePublicAnswers(schema, body.answers, uploaded, caseRow ? { childRows: childRowsFromCase(caseRow.answers) } : {});
   let dur = Math.round(Number(body.dur) || 0);
   if (dur < 0) dur = 0;
   if (dur > 30 * 86400) dur = 30 * 86400;

@@ -30,11 +30,12 @@ const STATUS_LABEL: Record<string, { k: MessageKey; c: string }> = {
   rejected: { k: "dash.rejected", c: "var(--fail)" },
 };
 
-// ฟอร์มหลัก/ฟอร์มลูก (0074) — อ้างอิงสองทาง · อ่านด้วย service role (ขอบเขต tenant) เหมือนข้อมูลงาน
-// ลิงก์ที่กดเข้าไปยังตรวจสิทธิ์ตาม RLS ปกติ
-interface RelatedDoc { title: string; caseId: string; subId: string | null; status: "pending" | "done" | "cancelled"; reason: string | null }
+// ฟอร์มหลัก/ฟอร์มลูก (0074) — อ้างอิงสองทาง
+// อ่านลิงก์ด้วย service role (ขอบเขต tenant) แต่รายละเอียดอีกฝั่ง (เลข / ลิงก์ / เหตุผลยกเลิก) แสดงเฉพาะที่
+// ผู้ดูมองเห็นเองอยู่แล้ว (ตรวจด้วย client ของผู้ดู = RLS) — มองไม่เห็น = รู้แค่ว่ามีฟอร์มนั้นและสถานะ
+interface RelatedDoc { title: string; caseId: string | null; subId: string | null; status: "pending" | "done" | "cancelled"; reason: string | null }
 type Db = NonNullable<ReturnType<typeof getAdminClient>> | Awaited<ReturnType<typeof createClient>>;
-async function loadRelated(db: Db, caseId: string | null, tenantId: string): Promise<{ parent: RelatedDoc | null; children: RelatedDoc[] }> {
+async function loadRelated(db: Db, viewer: Db, caseId: string | null, tenantId: string): Promise<{ parent: RelatedDoc | null; children: RelatedDoc[] }> {
   const none = { parent: null, children: [] as RelatedDoc[] };
   if (!caseId) return none;
   const { data, error } = await db
@@ -47,28 +48,53 @@ async function loadRelated(db: Db, caseId: string | null, tenantId: string): Pro
   if (error || !data) return none; // ยังไม่ได้รัน 0074
   type L = { parent_case_id: string; child_case_id: string | null; child_submission_id: string | null; child_form_title: string; status: RelatedDoc["status"]; cancel_reason: string | null };
   const rows = data as L[];
-  const children = rows.filter((l) => l.parent_case_id === caseId && l.child_case_id)
-    .map((l) => ({ title: l.child_form_title, caseId: l.child_case_id!, subId: l.child_submission_id, status: l.status, reason: l.cancel_reason }));
   const up = rows.find((l) => l.child_case_id === caseId);
-  let parent: RelatedDoc | null = null;
+  const kids = rows.filter((l) => l.parent_case_id === caseId && l.child_case_id);
+
+  let parentSub: string | null = null;
+  type PC = { form_title?: string; status?: string };
+  let parentCase: PC | null = null;
   if (up) {
     const [{ data: pc }, { data: ps }] = await Promise.all([
       db.from("form_cases").select("form_title, status").eq("id", up.parent_case_id).eq("tenant_id", tenantId).maybeSingle(),
       db.from("submissions").select("id").eq("case_id", up.parent_case_id).eq("tenant_id", tenantId).limit(1).maybeSingle(),
     ]);
-    const pcs = (pc as { form_title?: string; status?: string } | null);
-    parent = { title: pcs?.form_title || "—", caseId: up.parent_case_id, subId: (ps as { id?: string } | null)?.id ?? null,
-      status: pcs?.status === "done" ? "done" : pcs?.status === "cancelled" ? "cancelled" : "pending", reason: null };
+    parentCase = (pc as PC | null) ?? null;
+    parentSub = (ps as { id?: string } | null)?.id ?? null;
   }
+
+  // ผู้ดูเห็นอะไรได้บ้าง (RLS)
+  const caseIds = [...(up ? [up.parent_case_id] : []), ...kids.map((l) => l.child_case_id!)];
+  const subIds = [...(parentSub ? [parentSub] : []), ...kids.map((l) => l.child_submission_id).filter((x): x is string => !!x)];
+  const [{ data: vc }, { data: vs }] = await Promise.all([
+    caseIds.length ? viewer.from("form_cases").select("id").in("id", caseIds) : Promise.resolve({ data: [] }),
+    subIds.length ? viewer.from("submissions").select("id").in("id", subIds) : Promise.resolve({ data: [] }),
+  ]);
+  const seeCase = new Set(((vc || []) as { id: string }[]).map((r) => r.id));
+  const seeSub = new Set(((vs || []) as { id: string }[]).map((r) => r.id));
+  const doc = (title: string, cid: string, sid: string | null, status: RelatedDoc["status"], reason: string | null): RelatedDoc => {
+    const sub = sid && seeSub.has(sid) ? sid : null;
+    const visible = !!sub || seeCase.has(cid);
+    return { title, caseId: visible ? cid : null, subId: sub, status, reason: visible ? reason : null };
+  };
+
+  const children = kids.map((l) => doc(l.child_form_title, l.child_case_id!, l.child_submission_id, l.status, l.cancel_reason));
+  const parent = up
+    ? (() => {
+        const pcx: PC = parentCase ?? {};
+        return doc(pcx.form_title || "—", up.parent_case_id, parentSub,
+          pcx.status === "done" ? "done" : pcx.status === "cancelled" ? "cancelled" : "pending", null);
+      })()
+    : null;
   return { parent, children };
 }
 
 function RelatedRef({ r }: { r: RelatedDoc }) {
-  const no = r.caseId.slice(0, 8).toUpperCase();
+  const no = r.caseId ? ` #${r.caseId.slice(0, 8).toUpperCase()}` : "";
   const k: MessageKey = r.status === "done" ? "child.st.done" : r.status === "cancelled" ? "child.st.cancelled" : "child.st.pending";
   return (
     <span>
-      {r.subId ? <a href={`/submission/${r.subId}`}>{r.title} #{no}</a> : <span>{r.title} #{no}</span>}
+      {r.subId ? <a href={`/submission/${r.subId}`}>{r.title}{no}</a> : <span>{r.title}{no}</span>}
       <span style={{ color: r.status === "done" ? "var(--pass)" : r.status === "cancelled" ? "var(--ink-3)" : "var(--amber)", marginLeft: 6, fontSize: ".78rem" }}>· <T k={k} /></span>
       {r.reason && <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{r.reason}</span>}
     </span>
@@ -104,7 +130,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
       .eq("submission_id", id)
       .order("created_at", { ascending: true }),
     getWorkspaceBranding(supabase, sub.tenant_id as string),
-    loadRelated(caseDb, sub.case_id as string | null, sub.tenant_id as string),
+    loadRelated(caseDb, supabase, sub.case_id as string | null, sub.tenant_id as string),
   ]);
   // ธีมของฟอร์ม (ปัจจุบัน) + workspace: โลโก้/เส้นใต้หัว/ข้อความท้าย
   const theme = resolveTheme(wsBrand, formTheme);

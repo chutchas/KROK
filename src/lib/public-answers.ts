@@ -25,6 +25,8 @@ function cleanRows(f: FormField, raw: unknown, keepChild = false): Record<string
   const out: Record<string, string>[] = [];
   for (const r of raw.slice(0, 500)) {
     if (!r || typeof r !== "object" || Array.isArray(r)) continue;
+    // แถวที่อ้างว่ามาจากฟอร์มลูกแต่มาจากเบราว์เซอร์: ทิ้งทั้งแถว (แถวจริงมาจากฐานข้อมูลผ่าน childRows — ไม่งั้นซ้ำ)
+    if (!keepChild && "_child" in r) continue;
     const row: Record<string, string> = {};
     for (const [k, v] of Object.entries(r as Record<string, unknown>)) {
       if (!allowed.has(k)) continue;
@@ -41,10 +43,20 @@ export function sanitizePublicAnswers(
   raw: unknown,
   /** field id ที่มีไฟล์รูป/ลายเซ็นแนบมาจริงในคำขอนี้ */
   uploaded: Set<string>,
-  /** เก็บคีย์ระบบของแถวจากฟอร์มลูกไว้ (ผู้เรียกต้องแทนที่แถวพวกนั้นด้วยข้อมูลจากฐานข้อมูลเอง) */
-  opts: { keepChildRows?: boolean } = {}
+  /**
+   * แถวจากฟอร์มลูกที่อยู่ในฐานข้อมูลของงาน (ตาราง id → แถว) — ส่งเฉพาะใบที่มาจากงาน
+   * ตารางที่รับผลจากฟอร์มลูกใช้แถวชุดนี้เสมอ ไม่ว่าเบราว์เซอร์จะส่งอะไรมา (ไม่มีรายการ / id ผิดชนิด / แถวล้น)
+   * ไม่ส่ง = ไม่ใช่งาน → ตาราง source_only ว่างเสมอ
+   */
+  opts: { childRows?: Record<string, unknown[]> } = {}
 ): { answers: Record<string, unknown>[]; fails: string[]; result: "pass" | "fail" } {
   const list = Array.isArray(raw) ? raw.slice(0, 500) : [];
+  // ตารางที่รับผลจากฟอร์มลูก → source_only
+  const childTargets = new Map<string, boolean>();
+  for (const st of schema.steps)
+    for (const x of st.fields)
+      if (x.type === "child_form" && x.child_form?.table_id)
+        childTargets.set(x.child_form.table_id, (childTargets.get(x.child_form.table_id) ?? false) || x.child_form.source_only);
   // ปุ่มฟอร์มลูกไม่มีคำตอบของตัวเอง (หน้ากรอกก็ไม่ส่งมา)
   const fields = schema.steps.flatMap((s) => s.fields).filter((f) => !isUiOnlyField(f));
   const used = new Set<number>();
@@ -100,7 +112,14 @@ export function sanitizePublicAnswers(
       item.display = "—";
     } else if (f.type === "table") {
       // คอลัมน์สูตร/ผ่าน-ไม่ผ่าน คำนวณใหม่จากค่าที่กรอก · แถวที่ไม่ผ่าน = เอกสารไม่ผ่าน
-      const fin = finalizeTableRows(f, cleanRows(f, a.rows, !!opts.keepChildRows), (k) => uploaded.has(k));
+      let rows = cleanRows(f, a.rows);
+      if (childTargets.has(f.id)) {
+        // แถวจากฟอร์มลูก: ของฐานข้อมูลเท่านั้น และกันที่ไว้ก่อนตัดที่ 500 แถว
+        const db = cleanRows(f, opts.childRows?.[f.id] ?? [], true).filter((r) => !!r._child);
+        const manual = childTargets.get(f.id) ? [] : rows;
+        rows = [...manual.slice(0, Math.max(0, 500 - db.length)), ...db];
+      }
+      const fin = finalizeTableRows(f, rows, (k) => uploaded.has(k));
       item.rows = fin.rows;
       item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
       item.display = `${fin.rows.length} แถว`;

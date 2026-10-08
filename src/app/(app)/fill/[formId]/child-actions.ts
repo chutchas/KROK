@@ -5,6 +5,7 @@ import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
 import { createClient } from "@/lib/supabase/server";
 import { getSession } from "@/lib/session";
+import { rateLimited } from "@/lib/rate-limit";
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const missing = (m: string) => /child_form_open|form_child_links|child_buttons/.test(m) && /does not exist|not find|schema cache/i.test(m);
@@ -29,6 +30,7 @@ export async function openChildForm(parentCaseId: string, fieldId: string): Prom
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   if (!UUID.test(parentCaseId) || !/^[\w-]{1,40}$/.test(fieldId)) return { error: "bad request" };
+  if (await rateLimited(`child-open:${session.userId}`, 20, 60)) return { error: await sm("กดถี่เกินไป — รอสักครู่แล้วลองใหม่") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("child_form_open", { p_parent: parentCaseId, p_field: fieldId });
   if (error) return { error: missing(error.message || "") ? await sm("ยังไม่ได้รัน migration 0074") : await sm(dbError(error)) };

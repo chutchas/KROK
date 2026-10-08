@@ -53,7 +53,7 @@ export function AreaView({ items, grouped }: { items: OpenItem[]; grouped: boole
             </div>
           )}
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
-            {g.items.map((it) => <OpenRow key={`${it.kind}:${it.id}`} it={it} />)}
+            {g.items.map((it, i) => <OpenRow key={`${it.kind}:${it.id ?? i}`} it={it} />)}
           </ul>
         </div>
       ))}
