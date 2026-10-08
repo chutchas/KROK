@@ -28,7 +28,6 @@ export default function Loading() {
           }}
         />
       </div>
-      <style>{`@keyframes krok-spin{to{transform:rotate(360deg)}}`}</style>
     </div>
   );
 }

@@ -1081,7 +1081,7 @@ export default function FillWizard(props: Props) {
 
     return focusShell(
       <div style={box}>
-        <div style={{ display: "flex", justifyContent: "center", color: device.status === "pending" || device.status === "notlinked" ? "var(--amber)" : "var(--fail)" }}>
+        <div style={{ display: "flex", justifyContent: "center", color: device.status === "pending" || device.status === "notlinked" ? "var(--warn)" : "var(--fail)" }}>
           <Icon icon={ShieldAlert} className="h-11 w-11" strokeWidth={1.5} />
         </div>
         <h2 style={{ margin: "10px 0 4px", fontSize: "1.08rem" }}>{title}</h2>
@@ -1130,7 +1130,7 @@ export default function FillWizard(props: Props) {
   if (done && (done.handoff || done.returned)) {
     return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "center", color: done.returned ? "#d97706" : "var(--pass)" }}>
+        <div style={{ display: "flex", justifyContent: "center", color: done.returned ? "var(--warn)" : "var(--pass)" }}>
           <Icon icon={done.returned ? CornerUpLeft : Send} className="h-12 w-12" strokeWidth={1.6} />
         </div>
         <h2 style={{ margin: "10px 0 4px" }}>{done.returned ? t("wf.doneReturned") : t("wf.doneHandoff")}</h2>
@@ -1150,7 +1150,7 @@ export default function FillWizard(props: Props) {
   if (done) {
     return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--amber)" : done.pending ? "var(--amber)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
+        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--warn)" : done.pending ? "var(--warn)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
         <h2 style={{ margin: "10px 0 4px" }}>
           {done.offline
             ? t("fill.doneOffline")
@@ -1166,7 +1166,7 @@ export default function FillWizard(props: Props) {
             : tt("fw.doneSub", { title: props.title, sec: done.dur, next: done.pending ? t("fw.doneNotifyAppr") : t("fw.doneOnDash") })}
         </p>
         {done.caseWarn && (
-          <p style={{ color: "#d97706", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
+          <p style={{ color: "var(--warn)", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
         )}
         {done.fails.length > 0 && (
           <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>
@@ -1294,7 +1294,7 @@ export default function FillWizard(props: Props) {
       {!savedInBar && savedStatus}
       {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}
       {mediaLoading && <span>{t("draft.loadingMedia")}</span>}
-      {versionChanged && <span style={{ color: "var(--amber)" }}>⚠ {t("draft.versionChanged")}</span>}
+      {versionChanged && <span style={{ color: "var(--warn)" }}>⚠ {t("draft.versionChanged")}</span>}
     </div>
   ) : null;
 

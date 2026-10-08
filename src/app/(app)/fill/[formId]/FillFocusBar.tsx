@@ -162,7 +162,7 @@ function OverflowMenu({ items }: { items: FocusMenuItem[] }) {
                 style={{
                   width: "100%", minHeight: 44, display: "flex", alignItems: "center", gap: 10, padding: "0 12px",
                   border: "none", borderRadius: 8, background: it.checked ? "var(--accent-soft)" : "transparent",
-                  color: it.checked ? "var(--accent)" : "var(--ink)", fontWeight: it.checked ? 600 : 400,
+                  color: it.checked ? "var(--accent-text)" : "var(--ink)", fontWeight: it.checked ? 600 : 400,
                   fontFamily: "inherit", fontSize: ".92rem", textAlign: "left",
                   cursor: it.disabled ? "default" : "pointer", opacity: it.disabled ? 0.5 : 1,
                 }}

@@ -175,6 +175,7 @@ body {
   background-clip: padding-box;
 }
 /* สปินเนอร์ของ Button/Spinner ใน ui.tsx — ประกาศครั้งเดียวที่นี่ (เดิมฉีด <style> ทุกครั้งที่ render) */
+@keyframes krok-spin { to { transform: rotate(360deg); } }
 @keyframes krok-sp {
   to {
     transform: rotate(360deg);

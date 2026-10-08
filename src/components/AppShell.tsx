@@ -315,7 +315,7 @@ export default function AppShell({
                     whiteSpace: "nowrap",
                     flex: "0 0 auto",
                     textDecoration: "none",
-                    color: on ? "var(--accent)" : "var(--ink-2)",
+                    color: on ? "var(--accent-text)" : "var(--ink-2)",
                     background: on ? "var(--accent-soft)" : "transparent",
                   }}
                 >
@@ -485,7 +485,7 @@ export default function AppShell({
                             fontSize: ".95rem",
                             textDecoration: "none",
                             fontWeight: on ? 600 : 500,
-                            color: on ? "var(--accent)" : "var(--ink)",
+                            color: on ? "var(--accent-text)" : "var(--ink)",
                             background: on ? "var(--accent-soft)" : "transparent",
                           }}
                         >

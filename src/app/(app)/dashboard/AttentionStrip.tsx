@@ -46,7 +46,7 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
           </Tile>
         )}
         {rounds && (
-          <Tile icon={CalendarClock} tone="var(--amber)" label={t("dash.attnOverdue")} count={rounds.count} none={t("dash.attnNone")}
+          <Tile icon={CalendarClock} tone="var(--warn)" label={t("dash.attnOverdue")} count={rounds.count} none={t("dash.attnNone")}
             footer={rounds.count > 0 ? { href: "/forms?tab=today", text: t("comp.todayLink") } : undefined}>
             {rounds.items.map((r, i) => (
               <Row key={`${r.formId}:${r.time}:${i}`} href={`/fill/${r.formId}`} icon={r.icon} title={r.title}

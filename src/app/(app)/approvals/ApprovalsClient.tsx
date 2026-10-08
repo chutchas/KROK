@@ -361,7 +361,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
                       <span style={{
                         fontSize: ".76rem", padding: "3px 10px", borderRadius: 20,
                         background: done ? "var(--pass-soft)" : current ? "var(--accent-soft)" : "var(--code-bg)",
-                        color: done ? "var(--pass)" : current ? "var(--accent)" : "var(--ink-3)",
+                        color: done ? "var(--pass)" : current ? "var(--accent-text)" : "var(--ink-3)",
                         fontWeight: current ? 700 : 500, border: current ? "1px solid var(--accent)" : "1px solid var(--line)",
                         display: "inline-flex", alignItems: "center", gap: 4,
                       }}>

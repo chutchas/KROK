@@ -209,7 +209,7 @@ export default function DashboardClient({
               ))}
             </div>
             {!seesAllForms && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "-6px 0 12px" }}>{t("dash.scopeNote")}</p>}
-            {tab === "ws" && isWsAdmin && !workspaceReady && <p style={{ color: "var(--amber)", fontSize: ".82rem", margin: "0 0 12px" }}>{t("dash.wsNotReady")}</p>}
+            {tab === "ws" && isWsAdmin && !workspaceReady && <p style={{ color: "var(--warn)", fontSize: ".82rem", margin: "0 0 12px" }}>{t("dash.wsNotReady")}</p>}
             {saveErr && <p role="alert" style={{ color: "var(--fail)", fontSize: ".82rem", margin: "0 0 12px" }}><StoredErr text={saveErr} /></p>}
 
             {/* โซน widget ปรับเองได้ */}
@@ -566,7 +566,7 @@ function chip(on: boolean): React.CSSProperties {
     padding: "7px 12px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit",
     border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
     background: on ? "var(--accent-soft)" : "var(--surface)",
-    color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
+    color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
   };
 }
 
