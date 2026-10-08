@@ -72,7 +72,7 @@ export default function IconPicker({ value, onChange, size = 44 }: { value: stri
               {([{ k: "task" as const, icon: Layers, l: t("icon.byTask") }, { k: "industry" as const, icon: Factory, l: t("icon.byIndustry") }]).map((x, i) => (
                 <button key={x.k} type="button" onClick={() => setKind(x.k)} aria-pressed={kind === x.k}
                   style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "7px 8px", border: "none", borderLeft: i ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem",
-                    background: kind === x.k ? "var(--accent-soft)" : "var(--surface)", color: kind === x.k ? "var(--accent)" : "var(--ink-2)", fontWeight: kind === x.k ? 600 : 400 }}>
+                    background: kind === x.k ? "var(--accent-soft)" : "var(--surface)", color: kind === x.k ? "var(--accent-text)" : "var(--ink-2)", fontWeight: kind === x.k ? 600 : 400 }}>
                   <Icon icon={x.icon} className="h-3.5 w-3.5" /> {x.l}
                 </button>
               ))}

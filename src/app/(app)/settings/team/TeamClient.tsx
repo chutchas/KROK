@@ -135,7 +135,7 @@ export default function TeamClient({
                   <button key={tm.id} type="button" aria-pressed={on}
                     onClick={() => setInviteTeams((cur) => (on ? cur.filter((x) => x !== tm.id) : [...cur, tm.id]))}
                     style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "6px 12px", borderRadius: 999, cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem",
-                      border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
+                      border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
                     {on ? <Icon icon={Check} className="h-3.5 w-3.5" /> : <Icon icon={Tag} className="h-3.5 w-3.5" />} {tm.name}
                   </button>
                 );

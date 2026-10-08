@@ -133,12 +133,12 @@ export default function FormsListClient({
           const on = tab === x.k;
           return (
             <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}
               {x.label}
-              <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent)" : "var(--ink-3)" }}>{x.n}</span>
+              <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent-text)" : "var(--ink-3)" }}>{x.n}</span>
             </button>
           );
         })}
@@ -303,7 +303,7 @@ function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; bus
                   {tt("draft.progress", { n: d.filled, total: d.total })} · {tt("draft.step", { n: Math.min(d.stepIdx + 1, d.steps), total: d.steps })}
                 </small>
               </div>
-              <small style={{ display: "flex", alignItems: "center", gap: 4, color: days <= 3 ? "#d97706" : "var(--ink-3)", fontSize: ".72rem", marginTop: 4 }}>
+              <small style={{ display: "flex", alignItems: "center", gap: 4, color: days <= 3 ? "var(--warn)" : "var(--ink-3)", fontSize: ".72rem", marginTop: 4 }}>
                 <Icon icon={Clock} className="h-3 w-3" /> {tt("draft.updated", { t: fmtWhen(d.updatedAt, lang) })} · {tt("draft.expires", { d: days })}
               </small>
               {!d.available && <small style={{ display: "block", color: "var(--fail)", fontSize: ".74rem" }}>{t("draft.formGone")}</small>}

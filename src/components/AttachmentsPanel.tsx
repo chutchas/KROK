@@ -213,7 +213,7 @@ export default function AttachmentsPanel({
         {tt("att.limits", { mb: MAX_ATTACH_MB, n: MAX_ATTACH_PER_SLOT })}
       </p>
 
-      {err && <p style={{ fontSize: ".8rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}
+      {err && <p role="alert" style={{ fontSize: ".8rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}
     </div>
   );
 }

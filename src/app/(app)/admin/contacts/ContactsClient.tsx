@@ -22,7 +22,7 @@ const fmt = (iso: string) => new Date(iso).toLocaleString("th-TH", { dateStyle: 
 export default function ContactsClient({ rows, missing, need0069, showAll }: { rows: ContactRow[]; missing: boolean; need0069: boolean; showAll: boolean }) {
   const router = useRouter();
   const tab = (href: string, on: boolean, label: string) => (
-    <Link href={href} style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", textDecoration: "none", fontSize: ".85rem", fontWeight: on ? 600 : 500 }}>{label}</Link>
+    <Link href={href} style={{ padding: "6px 12px", borderRadius: 20, border: `1px solid ${on ? "var(--accent)" : "var(--line)"}`, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", textDecoration: "none", fontSize: ".85rem", fontWeight: on ? 600 : 500 }}>{label}</Link>
   );
   return (
     <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
@@ -68,7 +68,7 @@ export default function ContactsClient({ rows, missing, need0069, showAll }: { r
           </div>
           <p style={{ whiteSpace: "pre-wrap", margin: "10px 0 0", fontSize: ".9rem", lineHeight: 1.7, overflowWrap: "anywhere" }}>{r.message}</p>
           {!r.emailed && (
-            <div style={{ marginTop: 8, fontSize: ".78rem", color: "var(--amber)", display: "flex", gap: 5, alignItems: "center" }}>
+            <div style={{ marginTop: 8, fontSize: ".78rem", color: "var(--warn)", display: "flex", gap: 5, alignItems: "center" }}>
               <Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> อีเมลแจ้งทีมส่งไม่สำเร็จ{r.email_error ? `: ${r.email_error}` : ""}
             </div>
           )}

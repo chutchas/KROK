@@ -314,7 +314,7 @@ export default function FormPreview({
               <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
                 {tt("fw.stepOf", { n: i + 1, total: schema.steps.length })}
               </span>
-              <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent)" : "var(--ink)" }}>{s.title}</h3>
+              <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent-text)" : "var(--ink)" }}>{s.title}</h3>
             </div>
             {curWho && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".76rem", color: "var(--ink-2)", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 999, padding: "2px 9px", margin: "-2px 0 8px" }}>

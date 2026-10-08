@@ -161,7 +161,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   }
 
   const box: React.CSSProperties = { border: "1px solid var(--line)", borderRadius: 10, padding: 12, minWidth: 0, boxSizing: "border-box" };
-  const sel: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
+  const sel: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "9px 12px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
   const pre: React.CSSProperties = { margin: 0, padding: 12, borderRadius: 8, background: "var(--code-bg)", border: "1px solid var(--line)", fontSize: ".76rem", overflowX: "auto", whiteSpace: "pre" };
   const dirty = !!edits[formId];
 
@@ -229,7 +229,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
                   if (!saved.keyExpiresAt) return <span>{t("intake.expiresNever")}</span>;
                   if (!mounted) return <span>…</span>;
                   const left = Math.ceil((new Date(saved.keyExpiresAt).getTime() - now) / 86400_000);
-                  const color = left <= 0 ? "var(--fail)" : left <= 14 ? "var(--amber)" : undefined;
+                  const color = left <= 0 ? "var(--fail)" : left <= 14 ? "var(--warn)" : undefined;
                   return (
                     <span style={{ color, fontWeight: color ? 600 : undefined }}>
                       {left <= 0 ? t("intake.expired") : `${t("intake.expiresAt")} ${fmt(saved.keyExpiresAt, lang)}${left <= 14 ? ` (${t("intake.daysLeft").replace("{n}", String(left))})` : ""}`}

@@ -57,7 +57,7 @@ export default function SystemSettingsClient({
               style={{
                 display: "inline-flex", alignItems: "center", gap: 6, padding: "10px 16px", cursor: "pointer",
                 fontFamily: "inherit", fontSize: ".92rem", fontWeight: on ? 700 : 500, whiteSpace: "nowrap",
-                color: on ? "var(--accent)" : "var(--ink-2)", background: "transparent", border: "none",
+                color: on ? "var(--accent-text)" : "var(--ink-2)", background: "transparent", border: "none",
                 borderBottom: on ? "2px solid var(--accent)" : "2px solid transparent",
               }}
             >

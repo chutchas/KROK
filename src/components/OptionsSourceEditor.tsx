@@ -31,7 +31,7 @@ export function useDatasetPicks() {
 }
 
 const sel: React.CSSProperties = {
-  padding: "7px 9px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
+  padding: "7px 9px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)",
   color: "var(--ink)", fontFamily: "inherit", fontSize: ".85rem", width: "100%", minWidth: 0,
 };
 const hint: React.CSSProperties = { fontSize: ".76rem", color: "var(--ink-3)", margin: "4px 0 0" };
@@ -41,7 +41,7 @@ function ModeToggle({ fromDataset, onChange }: { fromDataset: boolean; onChange:
   const { t } = useT();
   const b = (on: boolean): React.CSSProperties => ({
     padding: "5px 11px", border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem",
-    fontWeight: on ? 600 : 400, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)",
+    fontWeight: on ? 600 : 400, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)",
     display: "inline-flex", alignItems: "center", gap: 5,
   });
   return (

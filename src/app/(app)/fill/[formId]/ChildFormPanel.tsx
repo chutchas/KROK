@@ -51,7 +51,7 @@ export default function ChildFormPanel({ field: f, caseId, caseOpen, readOnly, l
   const statusText = (l: ChildLink) =>
     l.status === "done" ? (l.writeback_status === "failed" ? `${t("child.st.done")} · ${t("child.wbFailed")}` : t("child.st.done"))
     : l.status === "cancelled" ? t("child.st.cancelled") : t("child.st.pending");
-  const statusColor = (l: ChildLink) => (l.status === "done" ? "var(--pass)" : l.status === "cancelled" ? "var(--ink-3)" : "var(--amber)");
+  const statusColor = (l: ChildLink) => (l.status === "done" ? "var(--pass)" : l.status === "cancelled" ? "var(--ink-3)" : "var(--warn)");
 
   return (
     <div className="krok-child-form" style={{ border: `1px dashed ${paper ? "#b9bec4" : "var(--line)"}`, borderRadius: 10, padding: paper ? 6 : 12, background: paper ? "#fff" : "var(--surface)" }}>

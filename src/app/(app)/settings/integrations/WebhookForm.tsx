@@ -26,7 +26,7 @@ const chip = (on: boolean): React.CSSProperties => ({
   padding: "7px 12px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit",
   border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
   background: on ? "var(--accent-soft)" : "var(--surface)",
-  color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
+  color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
 });
 const small: React.CSSProperties = { fontSize: ".76rem", padding: "3px 10px", borderRadius: 16, cursor: "pointer", fontFamily: "inherit", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)" };
 

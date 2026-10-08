@@ -95,11 +95,11 @@ export default function FormDevicePicker({ formId }: { formId: string | null }) 
       </div>
 
       {count === 0 && rows.length > 0 && (
-        <p style={{ fontSize: ".8rem", color: "var(--amber)", margin: "8px 0 0" }}>
+        <p style={{ fontSize: ".8rem", color: "var(--warn)", margin: "8px 0 0" }}>
           {t("fw.devPick.noneSelected")}
         </p>
       )}
-      {err && <p style={{ fontSize: ".8rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}
+      {err && <p role="alert" style={{ fontSize: ".8rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}
     </div>
   );
 }

@@ -26,10 +26,10 @@ export interface TodayRoundItem {
 
 const STYLE: Record<RoundStatus, { color: string; bg: string; icon: typeof Clock }> = {
   overdue: { color: "var(--fail)", bg: "var(--fail-soft)", icon: AlertTriangle },
-  open: { color: "var(--amber)", bg: "var(--accent-soft)", icon: Clock },
+  open: { color: "var(--warn)", bg: "var(--warn-soft)", icon: Clock },
   upcoming: { color: "var(--ink-3)", bg: "var(--code-bg)", icon: CircleDashed },
   done: { color: "var(--pass)", bg: "var(--pass-soft)", icon: CheckCircle2 },
-  late: { color: "var(--amber)", bg: "var(--code-bg)", icon: CheckCircle2 },
+  late: { color: "var(--warn)", bg: "var(--code-bg)", icon: CheckCircle2 },
   missed: { color: "var(--fail)", bg: "var(--code-bg)", icon: XCircle },
 };
 
@@ -45,7 +45,7 @@ export default function TodayRounds({ rounds, manager }: { rounds: TodayRoundIte
 
   const count = (s: RoundStatus[]) => rounds.filter((r) => s.includes(r.status)).length;
   const summary: { k: string; n: number; color: string }[] = [
-    { k: t("today.sumOpen"), n: count(["open"]), color: "var(--amber)" },
+    { k: t("today.sumOpen"), n: count(["open"]), color: "var(--warn)" },
     { k: t("today.sumOverdue"), n: count(["overdue"]), color: "var(--fail)" },
     { k: t("today.sumDone"), n: count(["done", "late"]), color: "var(--pass)" },
     { k: t("today.sumUpcoming"), n: count(["upcoming"]), color: "var(--ink-3)" },

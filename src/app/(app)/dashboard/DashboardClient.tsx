@@ -246,7 +246,9 @@ export default function DashboardClient({
         <div>
           {subs.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("dash.empty")}</span>}
           {subs.map((s) => (
-            <div key={s.id} onClick={() => setOpen(s)}
+            // เปิดรายละเอียดใน popup — role=button + Enter/Space ให้ใช้คีย์บอร์ดได้
+            <div key={s.id} role="button" tabIndex={0} onClick={() => setOpen(s)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(s); } }}
               style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
               <FormIcon value={s.form_icon} size={34} />
               <div style={{ flex: 1, minWidth: 0 }}>

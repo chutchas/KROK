@@ -448,7 +448,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           return (
             <button key={x.k} type="button" role="tab" aria-selected={on} onClick={() => setFormTab(x.k)}
               style={{ position: "relative", padding: "7px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
-                background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500, boxShadow: on ? "0 1px 3px rgba(10,14,18,.12)" : "none" }}>
+                background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500, boxShadow: on ? "0 1px 3px rgba(10,14,18,.12)" : "none" }}>
               {x.label}
               {x.on && <span aria-label={t("fs.tabOn")} style={{ position: "absolute", top: 5, right: 6, width: 6, height: 6, borderRadius: 3, background: "var(--accent)" }} />}
             </button>
@@ -472,7 +472,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                       padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit",
                       border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
                       background: on ? "var(--accent-soft)" : "var(--surface)",
-                      color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
+                      color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
                     }}
                   >
                     {label}
@@ -615,13 +615,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   return (
                     <button key={m} type="button" role="radio" aria-checked={on}
                       onClick={() => setDraft((d) => { if (!d) return d; const n = { ...d }; if (m === "off") delete n.geo; else n.geo = m; return n; })}
-                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                      style={{ padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                       {label}
                     </button>
                   );
                 })}
               </div>
-              {draft.geo === "required" && <small style={{ display: "block", color: "var(--amber)", fontSize: ".78rem", marginTop: 6 }}>{t("geo.requiredHint")}</small>}
+              {draft.geo === "required" && <small style={{ display: "block", color: "var(--warn)", fontSize: ".78rem", marginTop: 6 }}>{t("geo.requiredHint")}</small>}
               <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer", marginTop: 12 }}>
                 <input type="checkbox" checked={!!draft.watermark}
                   onChange={(e) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (e.target.checked) n.watermark = true; else delete n.watermark; return n; })}
@@ -666,7 +666,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               key={tb.k}
               onClick={() => setTab(tb.k)}
               className="inline-flex items-center justify-center gap-1.5"
-              style={{ flex: 1, minWidth: 120, padding: "10px 14px", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: ".92rem", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
+              style={{ flex: 1, minWidth: 120, padding: "10px 14px", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: ".92rem", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
             >
               <Icon icon={tb.icon} className="h-4 w-4" /> {tb.label}
             </button>
@@ -696,7 +696,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 onClick={() => setCreateMode(m)}
                 aria-pressed={on}
                 className="inline-flex items-center gap-1.5 krok-seg-btn"
-                style={{ padding: "9px 16px", border: "none", borderLeft: i > 0 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}
+                style={{ padding: "9px 16px", border: "none", borderLeft: i > 0 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}
               >
                 <Icon icon={icon} className="h-4 w-4" /> {label}
               </button>
@@ -782,7 +782,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 const on = promptGroupBy === g.k;
                 return (
                   <button key={g.k} onClick={() => setPromptGroupBy(g.k)} className="inline-flex items-center gap-1.5 krok-seg-btn"
-                    style={{ padding: "8px 14px", border: "none", borderLeft: i === 1 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}>
+                    style={{ padding: "8px 14px", border: "none", borderLeft: i === 1 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
                     <Icon icon={g.icon} className="h-4 w-4" /> {g.label}
                   </button>
                 );
@@ -841,7 +841,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button type="button" data-krok-keep onClick={() => { setSelKey(null); setFormPanel(true); }}
                 className="inline-flex items-center gap-1.5"
-                style={{ padding: "7px 13px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
+                style={{ padding: "7px 13px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent-text)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
                 <Icon icon={Settings2} className="h-4 w-4" /> {t("fs.title")}
               </button>
               <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
@@ -855,7 +855,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                       key={v.m}
                       onClick={() => setView(v.m)}
                       className="inline-flex items-center gap-1.5"
-                      style={{ padding: "7px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
+                      style={{ padding: "7px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
                     >
                       <Icon icon={v.icon} className="h-4 w-4" /> {v.label}
                     </button>
@@ -911,7 +911,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                     const on = previewPaged === v;
                     return (
                       <button key={label} type="button" role="radio" aria-checked={on} data-krok-keep="" onClick={() => setPreviewPaged(v)}
-                        style={{ padding: "6px 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
+                        style={{ padding: "6px 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
                         {label}
                       </button>
                     );
@@ -999,7 +999,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             const label = k === "all" ? t("studio.stAll") : k === "published" ? t("studio.stPublished") : k === "draft" ? t("studio.stDraft") : t("studio.stArchived");
             return (
               <button key={k} onClick={() => setListFilter(k)}
-                style={{ padding: "6px 13px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                style={{ padding: "6px 13px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                 {label} ({n})
               </button>
             );

@@ -2,7 +2,8 @@
 // Studio › ตั้งค่าปุ่มเปิดฟอร์มลูก (0074)
 // เลือกฟอร์มลูก → จับคู่ "ส่งไป" (ขั้นแรกของฟอร์มลูก ← ช่องของใบนี้/ค่าคงที่) → "รับกลับ" (คอลัมน์ตารางในขั้นเดียวกัน ← ช่องของฟอร์มลูก)
 // จับคู่ด้วยรหัสฟิลด์ (เปลี่ยนชื่อช่องได้ไม่พัง) · ชนิดที่รับได้: ข้อความ ตัวเลข วันเวลา เลือก 1 ข้อ
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import { Settings2, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import BodyPortal from "@/components/BodyPortal";
@@ -32,8 +33,8 @@ export default function ChildFormSettings({ schema, stepIndex, field, onPatch }:
       <p style={{ fontSize: ".8rem", color: "var(--ink-2)", margin: 0 }}>
         {cfg ? tt("child.cfgSummary", { form: cfg.form_title || "—", send: cfg.send.length, map: cfg.map.length }) : t("child.notConfigured")}
       </p>
-      {cfg && !cfg.table_id && <p style={{ fontSize: ".76rem", color: "var(--amber)", margin: 0 }}>{t("child.cfgPickTable")}</p>}
-      {inFirstSegment && <p style={{ fontSize: ".76rem", color: "var(--amber)", margin: 0 }}>{t("child.cfgFirstSeg")}</p>}
+      {cfg && !cfg.table_id && <p style={{ fontSize: ".76rem", color: "var(--warn)", margin: 0 }}>{t("child.cfgPickTable")}</p>}
+      {inFirstSegment && <p style={{ fontSize: ".76rem", color: "var(--warn)", margin: 0 }}>{t("child.cfgFirstSeg")}</p>}
       <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: 0 }}>{t("child.cfgWhoHint")}</p>
       <button type="button" onClick={() => setOpen(true)}
         style={{ justifySelf: "start", display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 12px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", fontFamily: "inherit", fontWeight: 600, cursor: "pointer" }}>
@@ -64,10 +65,11 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
   useEffect(() => {
     let alive = true;
     listChildFormCandidates().then((r) => { if (!alive) return; if ("error" in r) { setErr(r.error); setForms([]); } else setForms(r.forms); });
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => { alive = false; document.removeEventListener("keydown", onKey); };
-  }, [onClose]);
+    return () => { alive = false; };
+  }, []);
+  const boxRef = useRef<HTMLDivElement>(null);
+  // Esc ปิด · Tab วนในกล่อง · คืนโฟกัส
+  useDialogA11y(boxRef, onClose);
 
   const child = forms?.find((f) => f.id === formId) ?? null;
   // ช่องของใบนี้ที่ส่งได้: ขั้นนี้และก่อนหน้า ชนิดที่รองรับ
@@ -106,7 +108,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
     });
   }
 
-  const sel: React.CSSProperties = { width: "100%", padding: "7px 9px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".86rem" };
+  const sel: React.CSSProperties = { width: "100%", padding: "7px 9px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".86rem" };
   const h: React.CSSProperties = { fontSize: ".92rem", margin: "16px 0 6px" };
   const row: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 8, alignItems: "center", fontSize: ".84rem" };
   const chk: React.CSSProperties = { display: "flex", gap: 8, alignItems: "flex-start", fontSize: ".84rem", marginTop: 6 };
@@ -115,7 +117,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
     <BodyPortal>
       <div {...backdropClose(onClose)} role="dialog" aria-modal="true" aria-label={t("child.cfgTitle")}
         style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-        <div style={{ background: "var(--surface)", borderRadius: 14, maxWidth: 620, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 20 }}>
+        <div ref={boxRef} style={{ background: "var(--surface)", borderRadius: 14, maxWidth: 620, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <h2 style={{ fontSize: "1.1rem", margin: 0, flex: 1 }}>{t("child.cfgTitle")}</h2>
             <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>
@@ -142,7 +144,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
             </p>
           )}
           {skippedRequired.length > 0 && (
-            <p style={{ fontSize: ".78rem", color: "var(--amber)", margin: "4px 0 0" }}>{tt("child.cfgSkipRequired", { fields: skippedRequired.map((f) => f.label).join(", ") })}</p>
+            <p style={{ fontSize: ".78rem", color: "var(--warn)", margin: "4px 0 0" }}>{tt("child.cfgSkipRequired", { fields: skippedRequired.map((f) => f.label).join(", ") })}</p>
           )}
           {child && !noAssignee && (
             <>
@@ -164,7 +166,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
                         </select>
                         {v === CONST && <input value={cur?.value ?? ""} placeholder={t("child.cfgConstPh")} maxLength={500}
                           onChange={(e) => setSendFor(cf.id, { value: e.target.value })} style={sel} />}
-                        {cur?.from && !parentFields.some((p) => p.id === cur.from) && <span style={{ fontSize: ".74rem", color: "var(--amber)" }}>{t("child.cfgMissing")}</span>}
+                        {cur?.from && !parentFields.some((p) => p.id === cur.from) && <span style={{ fontSize: ".74rem", color: "var(--warn)" }}>{t("child.cfgMissing")}</span>}
                       </div>
                     </div>
                   );
@@ -172,7 +174,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
               </div>
 
               <h3 style={h}>{t("child.cfgReturn")}</h3>
-              {tables.length === 0 ? <p style={{ fontSize: ".82rem", color: "var(--amber)" }}>{t("child.cfgNoTable")}</p> : (
+              {tables.length === 0 ? <p style={{ fontSize: ".82rem", color: "var(--warn)" }}>{t("child.cfgNoTable")}</p> : (
                 <>
                   <label style={{ display: "block", fontSize: ".8rem", color: "var(--ink-2)", marginBottom: 4 }}>{t("child.cfgTable")}</label>
                   <select value={tableId} onChange={(e) => { setTableId(e.target.value); setMap([]); }} style={sel}>
@@ -194,7 +196,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
                           </select>
                         </div>
                       ))}
-                      {missingMap.length > 0 && <p style={{ fontSize: ".76rem", color: "var(--amber)", margin: 0 }}>{t("child.cfgMissing")}</p>}
+                      {missingMap.length > 0 && <p style={{ fontSize: ".76rem", color: "var(--warn)", margin: 0 }}>{t("child.cfgMissing")}</p>}
                     </div>
                   )}
                 </>

@@ -10,7 +10,8 @@
 // เหตุผล: กล่องของ browser บล็อกทั้งหน้า, หน้าตาไม่เข้ากับแอป, บนมือถือบางเครื่องดูเหมือนหน้าเว็บค้าง
 // ============================================================
 import { backdropClose } from "@/lib/backdrop";
-import { useEffect, useId, useRef, useSyncExternalStore } from "react";
+import { useId, useRef, useSyncExternalStore } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -80,28 +81,22 @@ function DialogView({ req }: { req: Req }) {
   const isAlert = req.kind === "alert";
   const { opts } = req;
 
-  useEffect(() => {
-    // การลบ/การกระทำอันตราย: โฟกัสที่ "ยกเลิก" ก่อน (กด Enter โดยไม่ตั้งใจจะไม่ลบ)
-    (req.opts.danger && req.kind !== "alert" ? cancelRef : okRef).current?.focus();
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { e.preventDefault(); settle(req.id, isAlert); }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [req.id, isAlert]);
+  const boxRef = useRef<HTMLDivElement>(null);
+  // การลบ/การกระทำอันตราย: โฟกัสที่ "ยกเลิก" ก่อน (กด Enter โดยไม่ตั้งใจจะไม่ลบ) · Esc = ยกเลิก · Tab วนในกล่อง
+  useDialogA11y(boxRef, () => settle(req.id, isAlert), { initialFocus: opts.danger && !isAlert ? cancelRef : okRef });
 
   return (
     <div role={isAlert ? "alertdialog" : "dialog"} aria-modal="true" aria-labelledby={opts.title ? titleId : undefined} aria-describedby={`${titleId}-m`}
       {...backdropClose(() => settle(req.id, isAlert))}
       style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(6,10,14,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()}
+      <div ref={boxRef} onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 420, background: "var(--surface)", color: "var(--ink)", borderRadius: 12, padding: 18, boxShadow: "var(--shadow)", paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}>
         {opts.title && <h3 id={titleId} style={{ margin: "0 0 8px", fontSize: "1.02rem" }}>{opts.title}</h3>}
         <p id={`${titleId}-m`} style={{ margin: 0, fontSize: ".92rem", color: "var(--ink-2)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{opts.message}</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, flexWrap: "wrap" }}>
           {!isAlert && <Button ref={cancelRef} onClick={() => settle(req.id, false)}>{opts.cancelLabel || t("common.cancel")}</Button>}
           <Button ref={okRef} variant={opts.danger ? "danger" : "primary"} onClick={() => settle(req.id, true)}
-            style={opts.danger ? { background: "var(--fail)", borderColor: "var(--fail)", color: "#fff", fontWeight: 600 } : undefined}>
+            style={opts.danger ? { background: "var(--fail-solid)", borderColor: "var(--fail-solid)", color: "#fff", fontWeight: 600 } : undefined}>
             {opts.confirmLabel || (isAlert ? t("common.ok") : opts.danger ? t("common.delete") : t("common.confirm"))}
           </Button>
         </div>

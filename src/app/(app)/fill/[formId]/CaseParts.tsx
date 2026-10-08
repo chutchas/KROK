@@ -3,7 +3,8 @@
 import AreaOpenNotice from "@/components/AreaOpenNotice";
 import { formatDtThai } from "@/lib/dt-format";
 import { backdropClose } from "@/lib/backdrop";
-import { useEffect, useId, useState } from "react";
+import { useId, useRef, useState } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import Link from "next/link";
 import Icon from "@/components/Icon";
 import { Button } from "@/components/ui";
@@ -177,7 +178,7 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
         {kase && (
           <span style={{ marginLeft: "auto", fontSize: ".74rem", padding: "2px 8px", borderRadius: 999,
             background: kase.status === "done" ? "var(--pass-soft, #e7f7ee)" : kase.status === "cancelled" ? "var(--code-bg)" : "var(--accent-soft)",
-            color: kase.status === "done" ? "var(--pass)" : kase.status === "cancelled" ? "var(--ink-3)" : "var(--accent)" }}>
+            color: kase.status === "done" ? "var(--pass)" : kase.status === "cancelled" ? "var(--ink-3)" : "var(--accent-text)" }}>
             {kase.status === "done" ? t("wf.stDone") : kase.status === "cancelled" ? t("wf.stCancelled") : t("wf.stOpen")}
           </span>
         )}
@@ -188,7 +189,7 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
       <ol style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "grid", gap: 4 }}>
         {rows.map((r) => (
           <li key={r.i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".82rem", color: r.state === "todo" ? "var(--ink-3)" : "var(--ink)" }}>
-            <span style={{ color: r.state === "done" ? "var(--pass)" : r.state === "current" ? "var(--accent)" : "var(--ink-3)", display: "inline-flex" }}>
+            <span style={{ color: r.state === "done" ? "var(--pass)" : r.state === "current" ? "var(--accent-text)" : "var(--ink-3)", display: "inline-flex" }}>
               <Icon icon={r.state === "done" ? CheckCircle2 : r.state === "current" ? CircleDot : Circle} className="h-4 w-4" />
             </span>
             <span style={{ fontWeight: r.state === "current" ? 600 : 400 }}>{r.i + 1}. {r.title}</span>
@@ -204,7 +205,7 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
       )}
 
       {ret && (
-        <div style={{ marginTop: 8, borderLeft: "3px solid #d97706", background: "rgba(217,119,6,.1)", borderRadius: "0 8px 8px 0", padding: "8px 12px", fontSize: ".85rem" }}>
+        <div style={{ marginTop: 8, borderLeft: "3px solid var(--warn)", background: "var(--warn-soft)", borderRadius: "0 8px 8px 0", padding: "8px 12px", fontSize: ".85rem" }}>
           <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             <Icon icon={CornerUpLeft} className="h-4 w-4" /> {t("wf.returnedBy").replace("{name}", ret.name)}
           </div>
@@ -344,15 +345,13 @@ function Modal({ title, onClose, children, busy = false, keepOnBackdrop = false 
 }) {
   const { t } = useT();
   const titleId = useId();
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !busy) onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [busy, onClose]);
+  const boxRef = useRef<HTMLDivElement>(null);
+  // Esc ปิด (ยกเว้นกำลังส่ง) · Tab วนในกล่อง · ปิดแล้วคืนโฟกัส
+  useDialogA11y(boxRef, () => { if (!busy) onClose(); });
   return (
     <div role="dialog" aria-modal="true" aria-labelledby={titleId} {...backdropClose(() => { if (!busy && !keepOnBackdrop) onClose(); })}
       style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(0,0,0,.4)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()}
+      <div ref={boxRef} onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 440, background: "var(--surface)", color: "var(--ink)", borderRadius: 12, padding: 18, boxShadow: "var(--shadow)", paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
           <h3 id={titleId} style={{ margin: 0, fontSize: "1.02rem" }}>{title}</h3>
@@ -392,14 +391,14 @@ export function CaseConfirmModal({ title, body, confirmLabel, danger = false, wi
         <>
           <label htmlFor={noteId} style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.noteOptional2")}</label>
           <textarea id={noteId} value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} rows={3}
-            style={{ width: "100%", marginTop: 4, padding: 10, border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", resize: "vertical" }} />
+            style={{ width: "100%", marginTop: 4, padding: 10, border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", resize: "vertical" }} />
         </>
       )}
       {error && <div style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 6 }}>{error}</div>}
       <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 12 }}>
         <Button onClick={onCancel} disabled={busy}>{t("common.cancel")}</Button>
         <Button variant="primary" onClick={() => onConfirm(note.trim())} loading={busy}
-          style={danger ? { background: "var(--fail)", borderColor: "var(--fail)" } : undefined}>
+          style={danger ? { background: "var(--fail-solid)", borderColor: "var(--fail-solid)", color: "#fff" } : undefined}>
           {confirmLabel}
         </Button>
       </div>
