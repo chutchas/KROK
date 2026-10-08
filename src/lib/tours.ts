@@ -68,8 +68,8 @@ export const TOURS: TourDef[] = [
     match: (p) => p.startsWith("/fill/"),
     requires: "fill-submit",
     steps: [
-      { id: "mode", target: "fill-mode" },
-      { id: "draft", target: "fill-draft" },
+      // มุมมอง/บันทึกร่างอยู่ในเมนู ⋯ บนแถบบน (หน้ากรอกแบบเต็มจอ)
+      { id: "more", target: "fill-more" },
       { id: "submit", target: "fill-submit" },
     ],
   },
