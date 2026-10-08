@@ -22,7 +22,7 @@ import {
   formatLabel, formatHint, metricLabel, rangeLabel, metricUnit,
   type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
-import { saveDashboardLayout, computeWidgets, type WidgetResult } from "./actions";
+import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
 
 // รวมคำขอของทุก widget ที่ขอพร้อมกันเป็นการเรียก server ครั้งเดียว
 let widgetQueue: { w: DashWidget; resolve: (r: WidgetResult) => void }[] = [];
@@ -83,10 +83,18 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 
 export default function DashboardClient({
   tenantId, initial, forms, summary, initialWidgets, hasSchedules = false, areas = [],
+  workspaceWidgets = [], workspaceReady = false, isWsAdmin = false, seesAllForms = false,
 }: {
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
   /** พื้นที่ที่เปิดใช้ (widget "ตามพื้นที่") */
   areas?: AreaOpt[];
+  /** dashboard ของ workspace (0073) — owner/admin จัด สมาชิกทุกคนเห็น */
+  workspaceWidgets?: DashWidget[];
+  /** รัน 0073 แล้ว (ยังไม่รัน = แท็บ Workspace แก้ไม่ได้) */
+  workspaceReady?: boolean;
+  isWsAdmin?: boolean;
+  /** เห็นทุกฟอร์มของ workspace (ผู้จัดการ) — ไม่ใช่ = ตัวเลขนับเฉพาะฟอร์มที่ตัวเองมีสิทธิ์ */
+  seesAllForms?: boolean;
   /** มีรอบตรวจตามตาราง — ไม่มี = ไม่แสดง/ไม่โหลดการ์ด compliance */
   hasSchedules?: boolean;
 }) {
@@ -94,7 +102,19 @@ export default function DashboardClient({
   const en = lang === "en";
   const [subs, setSubs] = useState<SubRow[]>(initial);
   const [open, setOpen] = useState<SubRow | null>(null);
-  const [widgets, setWidgets] = useState<DashWidget[]>(initialWidgets);
+  const [mine, setMine] = useState<DashWidget[]>(initialWidgets);
+  const [ws, setWs] = useState<DashWidget[]>(workspaceWidgets);
+  // เปิดที่ dashboard ของ workspace เป็นหลัก · ยังไม่มีอะไรเลยแต่มีของตัวเอง = เปิดของฉัน
+  const [tab, setTab] = useState<"ws" | "mine">(workspaceWidgets.length || !initialWidgets.length ? "ws" : "mine");
+  const [saveErr, setSaveErr] = useState("");
+  const widgets = tab === "ws" ? ws : mine;
+  const canEdit = tab === "mine" || (isWsAdmin && workspaceReady);
+  // widget ที่ผูกกับฟอร์มที่ผู้ใช้มองไม่เห็น → ซ่อน (ไม่เผยแม้แต่ชื่อฟอร์ม) · ผู้จัดการเห็นครบ
+  const formIds = useMemo(() => new Set(forms.map((f) => f.id)), [forms]);
+  const shown = useMemo(
+    () => (seesAllForms ? widgets : widgets.filter((w) => w.format === "area" || w.format === "ranking" || !w.formId || w.formId === "all" || formIds.has(w.formId))),
+    [widgets, seesAllForms, formIds]
+  );
   const [builder, setBuilder] = useState<DashWidget | null>(null); // widget กำลังสร้าง/แก้
   const [dragId, setDragId] = useState<string | null>(null);
 
@@ -108,8 +128,15 @@ export default function DashboardClient({
   }, [areas]);
 
   function persist(next: DashWidget[]) {
-    setWidgets(next);
-    saveDashboardLayout(next); // best-effort เก็บลง DB
+    setSaveErr("");
+    if (tab === "ws") {
+      if (!canEdit) return;
+      setWs(next);
+      saveWorkspaceDashboard(next).then((r) => { if ("error" in r) setSaveErr(r.error); });
+    } else {
+      setMine(next);
+      saveDashboardLayout(next); // best-effort เก็บลง DB
+    }
   }
   function upsertWidget(w: DashWidget) {
     const exists = widgets.some((x) => x.id === w.id);
@@ -119,9 +146,12 @@ export default function DashboardClient({
   function removeWidget(id: string) { persist(widgets.filter((x) => x.id !== id)); }
   /** ปุ่มเลื่อนขึ้น/ลง — ทางเลือกของการลาก (มือถือ/จอสัมผัส/คีย์บอร์ดลากไม่ได้) */
   function move(id: string, dir: -1 | 1) {
+    // สลับกับ widget ข้าง ๆ ที่ "มองเห็น" (บางตัวถูกซ่อนเพราะผูกฟอร์มที่ไม่มีสิทธิ์)
+    const k = shown.findIndex((x) => x.id === id);
+    const other = shown[k + dir];
+    if (k < 0 || !other) return;
     const i = widgets.findIndex((x) => x.id === id);
-    const j = i + dir;
-    if (i < 0 || j < 0 || j >= widgets.length) return;
+    const j = widgets.findIndex((x) => x.id === other.id);
     const next = [...widgets];
     [next[i], next[j]] = [next[j], next[i]];
     persist(next);
@@ -153,34 +183,53 @@ export default function DashboardClient({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        <button data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
+        {canEdit && <button data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
           className="inline-flex items-center gap-1.5"
           style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600 }}>
           <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
-        </button>
+        </button>}
       </div>
 
+      {/* Workspace (owner/admin จัด) / ของฉัน */}
+      <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 14, overflowX: "auto" }}>
+        {(["ws", "mine"] as const).map((k) => (
+          <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); }}
+            style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
+              color: tab === k ? "var(--accent)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+            {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
+          </button>
+        ))}
+      </div>
+      {!seesAllForms && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "-6px 0 12px" }}>{t("dash.scopeNote")}</p>}
+      {tab === "ws" && isWsAdmin && !workspaceReady && <p style={{ color: "var(--amber)", fontSize: ".82rem", margin: "0 0 12px" }}>{t("dash.wsNotReady")}</p>}
+      {saveErr && <p role="alert" style={{ color: "var(--fail)", fontSize: ".82rem", margin: "0 0 12px" }}><StoredErr text={saveErr} /></p>}
+
       {/* แถวสรุป workspace (ตายตัว 3 การ์ด) */}
-      <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="krok-sumcards">
+      {isWsAdmin && <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12, marginBottom: 18 }} className="krok-sumcards">
         <SummaryCard icon={FileText} label={t("dash.sumForms")} used={summary.forms.used} max={summary.forms.max} />
         <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
         <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={summary.period} />
-      </div>
+      </div>}
 
       {/* รอบตรวจตามตาราง — ความครบถ้วน (มีตารางเท่านั้น) */}
       {hasSchedules && <ComplianceCard />}
 
       {/* โซน widget ปรับเองได้ */}
-      {widgets.length > 0 && (
+      {shown.length === 0 && (
+        <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: "0 0 18px" }}>
+          {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
+        </p>
+      )}
+      {shown.length > 0 && (
         <>
           <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
-            {widgets.map((w, i) => (
-              <div key={w.id} style={{ minWidth: 0 }} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
-                <WidgetCard w={w} formName={formName} areaName={areaName} en={en}
-                  onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t}
-                  onUp={i > 0 ? () => move(w.id, -1) : undefined}
-                  onDown={i < widgets.length - 1 ? () => move(w.id, 1) : undefined} />
+            {shown.map((w, i) => (
+              <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={canEdit} onDragStart={() => canEdit && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => canEdit && onDrop(w.id)}>
+                <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t}
+                  onEdit={canEdit ? () => setBuilder(w) : undefined} onRemove={canEdit ? () => removeWidget(w.id) : undefined}
+                  onUp={canEdit && i > 0 ? () => move(w.id, -1) : undefined}
+                  onDown={canEdit && i < shown.length - 1 ? () => move(w.id, 1) : undefined} />
               </div>
             ))}
           </div>
@@ -251,7 +300,8 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
 type TFn = (k: never) => string;
 function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown, t }: {
   w: DashWidget; formName: (id: string) => string; areaName: (id: string) => string | null; en: boolean;
-  onEdit: () => void; onRemove: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
+  /** ไม่มี = ดูอย่างเดียว (dashboard ของ workspace สำหรับสมาชิก) */
+  onEdit?: () => void; onRemove?: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
 }) {
   const [res, setRes] = useState<WidgetResult | null>(null);
   const key = `${w.format}|${w.formId}|${w.metric}|${w.range}`;
@@ -270,7 +320,7 @@ function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown,
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, height: "100%", display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-        <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>
+        {onEdit && <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600 }}>
             <Icon icon={fIcon} className="h-4 w-4" /> {isArea ? <AreaWidgetTitle /> : metricLabel(w.metric, en)}
@@ -283,8 +333,8 @@ function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown,
             <button onClick={onDown} disabled={!onDown} title={t("dash.moveDown" as never)} aria-label={t("dash.moveDown" as never)} style={{ ...iconBtn, opacity: onDown ? 1 : 0.35, cursor: onDown ? "pointer" : "default" }}><Icon icon={ChevronDown} className="h-3.5 w-3.5" /></button>
           </span>
         )}
-        <button onClick={onEdit} title={t("common.edit" as never)} aria-label={t("common.edit" as never)} style={iconBtn}><Icon icon={Pencil} className="h-3.5 w-3.5" /></button>
-        <button onClick={onRemove} title={t("common.delete" as never)} aria-label={t("common.delete" as never)} style={iconBtn}><Icon icon={Trash2} className="h-3.5 w-3.5" /></button>
+        {onEdit && <button onClick={onEdit} title={t("common.edit" as never)} aria-label={t("common.edit" as never)} style={iconBtn}><Icon icon={Pencil} className="h-3.5 w-3.5" /></button>}
+        {onRemove && <button onClick={onRemove} title={t("common.delete" as never)} aria-label={t("common.delete" as never)} style={iconBtn}><Icon icon={Trash2} className="h-3.5 w-3.5" /></button>}
       </div>
 
       <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>

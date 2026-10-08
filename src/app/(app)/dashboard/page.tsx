@@ -1,4 +1,4 @@
-import { enforceMenu } from "@/lib/session";
+import { canManage, enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getQuotaSnapshot } from "@/lib/quota";
 import { quotaWarnings } from "@/lib/quota-warn";
@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const session = await enforceMenu("dashboard");
   const supabase = await createClient();
 
-  const [snap, recentRes, formsRes, layoutRes, schedRes, areasRes] = await Promise.all([
+  const [snap, recentRes, formsRes, layoutRes, schedRes, wsRes, areasRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
     supabase
@@ -37,6 +37,8 @@ export default async function DashboardPage() {
       .maybeSingle(),
     // มีรอบตรวจตามตารางไหม (ไม่มี = ไม่โหลดการ์ด compliance เลย) · ยังไม่รัน 0064 = error → ไม่มี
     supabase.from("form_schedules").select("form_id", { count: "exact", head: true }).eq("tenant_id", session.tenantId).eq("enabled", true),
+    // dashboard ของ workspace (0073) · ยังไม่รัน = error → ว่าง
+    supabase.from("workspace_dashboards").select("widgets").eq("tenant_id", session.tenantId).maybeSingle(),
     // พื้นที่ (ตัวเลือกของ widget "ตามพื้นที่") · ยังไม่รัน 0072 = error → ไม่มีพื้นที่
     supabase.from("workspace_areas").select("id, code, name").eq("tenant_id", session.tenantId).eq("active", true).order("sort").order("name"),
   ]);
@@ -55,6 +57,8 @@ export default async function DashboardPage() {
   }));
 
   const initialWidgets = (layoutRes.data?.widgets as DashWidget[]) ?? [];
+  const wsWidgets = wsRes.error ? [] : ((wsRes.data?.widgets as DashWidget[] | undefined) ?? []);
+  const isWsAdmin = session.role === "owner" || session.role === "admin";
 
   return (<>
     <QuotaBanner warnings={quotaWarnings(snap)} canUpgrade={snap.ownerId ? snap.ownerId === session.userId : session.role === "owner"} />
@@ -66,6 +70,10 @@ export default async function DashboardPage() {
       hasSchedules={!schedRes.error && (schedRes.count ?? 0) > 0}
       initialWidgets={initialWidgets}
       areas={areasRes.error ? [] : ((areasRes.data || []) as AreaOpt[])}
+      workspaceWidgets={wsWidgets}
+      workspaceReady={!wsRes.error}
+      isWsAdmin={isWsAdmin}
+      seesAllForms={canManage(session.role)}
     />
   </>);
 }

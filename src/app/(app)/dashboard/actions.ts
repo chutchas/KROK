@@ -64,6 +64,23 @@ export async function saveDashboardLayout(widgets: unknown): Promise<{ ok: true 
   return { ok: true };
 }
 
+/** Dashboard ของ workspace — owner/admin เท่านั้น (RLS ตรวจซ้ำ · 0073) */
+export async function saveWorkspaceDashboard(widgets: unknown): Promise<{ ok: true } | { error: string }> {
+  const session = await getSession();
+  if (!session) return { error: "unauthorized" };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะ owner/admin เท่านั้น") };
+  const supabase = await createClient();
+  const { error } = await supabase
+    .from("workspace_dashboards")
+    .upsert({ tenant_id: session.tenantId, widgets: clean(widgets) }, { onConflict: "tenant_id" });
+  if (error) {
+    const m = error.message || "";
+    if (/workspace_dashboards/.test(m) && /does not exist|schema cache|not find/i.test(m)) return { error: await sm("ยังไม่ได้รัน migration 0073") };
+    return { error: await sm(dbError(error)) };
+  }
+  return { ok: true };
+}
+
 // ================= คำนวณ widget ฝั่ง server (สเกลได้ ไม่จำกัด 90 วัน) =================
 const CAP = 50000; // เพดานแถวต่อการคำนวณหนึ่ง widget
 
