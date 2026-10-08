@@ -8,8 +8,8 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
-import { CHILD_ROW_KEYS, sanitizePublicAnswers } from "@/lib/public-answers";
-import { applyChildRows } from "@/lib/child-rows";
+import { sanitizePublicAnswers } from "@/lib/public-answers";
+import { mergeChildRows } from "@/lib/child-rows";
 import { rateLimited } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
 import { sanitizeChain } from "@/lib/approval";
@@ -169,18 +169,15 @@ export async function POST(req: Request) {
   if (!names) return fail(503, await sm("อ่านไฟล์แนบไม่สำเร็จ โปรดลองใหม่"));
   const uploaded = photoKeysOf(names);
 
-  // ไม่เชื่อผลจากเบราว์เซอร์: กรองคำตอบตาม schema + คำนวณ ผ่าน/ไม่ผ่าน ใหม่
-  const { answers, fails, result } = sanitizePublicAnswers(schema, body.answers, uploaded, { keepChildRows: !!caseRow });
-  if (caseRow && caseId) {
-    // ฟอร์มลูก (0074): ยังมีค้าง / ยังไม่มีผลที่บังคับ → ส่งขั้นสุดท้ายไม่ได้ (เช็คก่อนบันทึก ไม่ให้เกิดเอกสารค้าง)
-    if (schema.steps.some((st) => st.fields.some((x) => x.type === "child_form"))) {
-      const { data: gateErr } = await admin.rpc("child_gate_error", { p_case: caseId, p_from: caseRow.step_idx, p_to: schema.steps.length - 1 });
-      if (typeof gateErr === "string" && gateErr) return fail(409, await sm(gateErr));
-    }
-    applyChildRows(schema, answers, caseRow.answers || {});
-  } else {
-    for (const a of answers) if (Array.isArray(a.rows)) for (const r of a.rows as Record<string, string>[]) for (const k of CHILD_ROW_KEYS) delete r[k];
+  // ฟอร์มลูก (0074): ยังมีค้าง / ยังไม่มีผลที่บังคับ → ส่งขั้นสุดท้ายไม่ได้ (เช็คก่อนบันทึก ไม่ให้เกิดเอกสารค้าง)
+  if (caseRow && caseId && schema.steps.some((st) => st.fields.some((x) => x.type === "child_form"))) {
+    const { data: gateErr } = await admin.rpc("child_gate_error", { p_case: caseId, p_from: caseRow.step_idx, p_to: schema.steps.length - 1 });
+    if (typeof gateErr === "string" && gateErr) return fail(409, await sm(gateErr));
   }
+  // แถวจากฟอร์มลูก: แทนด้วยของฐานข้อมูลก่อนกรอง (ไม่ใช่งาน = ตัดคีย์ระบบทิ้งตอนกรอง)
+  const rawAnswers = caseRow ? mergeChildRows(schema, body.answers, caseRow.answers || {}) : body.answers;
+  // ไม่เชื่อผลจากเบราว์เซอร์: กรองคำตอบตาม schema + คำนวณ ผ่าน/ไม่ผ่าน ใหม่
+  const { answers, fails, result } = sanitizePublicAnswers(schema, rawAnswers, uploaded, { keepChildRows: !!caseRow });
   let dur = Math.round(Number(body.dur) || 0);
   if (dur < 0) dur = 0;
   if (dur > 30 * 86400) dur = 30 * 86400;

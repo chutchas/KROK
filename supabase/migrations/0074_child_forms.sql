@@ -2,8 +2,9 @@
 -- KROK · 0074_child_forms
 -- ฟอร์มลูก: ปุ่มในใบงานหลัก (ฟิลด์ชนิด child_form) เปิดงานของอีกฟอร์ม แล้วรับผลกลับเป็นแถวใหม่ในตาราง
 --   · schema ของปุ่ม: { id, type:'child_form', label, child_form: { form_id, send[], table_id, map[], multiple, gate, source_only } }
---   · ใครกดได้: ผู้ถือใบหลัก / ผู้ดูแล / คนที่ขั้นแรกของฟอร์มลูกกำหนดให้ทำ (ต้องมองเห็นใบหลักอยู่แล้ว — ไม่ขยายสิทธิ์)
---   · คนทำฟอร์มลูก = ผู้รับผิดชอบขั้นแรกของฟอร์มลูก (ไม่ได้ตั้ง = คนที่กด)
+--   · ใครกดได้: ผู้ถือใบหลัก / ผู้ดูแล / ผู้รับผิดชอบฟอร์มลูก (ต้องมองเห็นใบหลักอยู่แล้ว — ไม่ขยายสิทธิ์)
+--   · คนทำฟอร์มลูก = ตามที่ฟอร์มลูกกำหนดเอง ไม่เกี่ยวกับคนกด · งานเริ่มที่ขั้นแรกที่ตั้งผู้รับผิดชอบไว้
+--     (ขั้นก่อนหน้า = ขั้นรับข้อมูลจากใบหลัก ถือว่าเสร็จตอนกดปุ่ม) · ฟอร์มลูกต้องตั้งผู้รับผิดชอบอย่างน้อย 1 ขั้น
 --   · ฟอร์มลูกส่งเสร็จ → เขียนแถวกลับเข้าตารางของใบหลัก (สิทธิ์ระบบ) · แถวนั้นแก้/ลบไม่ได้
 --   · ออกจากขั้นที่มีปุ่ม: gate = ห้ามถ้ายังมีฟอร์มลูกค้าง · source_only = ต้องมีผลจากฟอร์มลูกอย่างน้อย 1 ใบ
 --     (source_only = ตารางรับข้อมูลจากฟอร์มลูกเท่านั้น คนถือขั้นคีย์เองไม่ได้)
@@ -181,6 +182,7 @@ language plpgsql security definer set search_path = public as $$
 declare
   l public.form_child_links; p public.form_cases; b record;
   sub jsonb; row jsonb; m jsonb; it jsonb; tbl text; cur jsonb;
+  ctypes jsonb; ct text;
 begin
   if old.status <> 'open' or new.status = 'open' then return new; end if;
   select * into l from public.form_child_links where child_case_id = new.id and status = 'pending' for update;
@@ -210,12 +212,29 @@ begin
   select answers into sub from public.submissions where id = new.submission_id;
   row := jsonb_build_object('_child', l.id::text, '_src', coalesce(nullif(l.child_form_title, ''), 'ฟอร์มลูก'),
                             '_sub', coalesce(new.submission_id::text, ''), '_at', to_char(now() at time zone 'Asia/Bangkok', 'YYYY-MM-DD HH24:MI'));
+  -- ชนิดคอลัมน์ของตารางที่รับผล
+  select coalesce(jsonb_object_agg(c->>'id', c->>'type'), '{}'::jsonb) into ctypes
+    from jsonb_array_elements(coalesce(p.schema->'steps', '[]'::jsonb)) st,
+         jsonb_array_elements(coalesce(st->'fields', '[]'::jsonb)) fl,
+         jsonb_array_elements(case when jsonb_typeof(fl->'columns') = 'array' then fl->'columns' else '[]'::jsonb end) c
+   where fl->>'id' = tbl;
+  -- ค่าในแถวเก็บแบบเดียวกับที่คนกรอกในตาราง (ผ่าน/ไม่ผ่าน = pass|fail · ติ๊ก = 1) → ตอนส่งใบหลัก
+  -- ระบบแปลงเป็นข้อความ + นับ "ไม่ผ่าน" เป็นข้อบกพร่องของใบหลักเหมือนแถวที่คีย์เอง
   for m in select * from jsonb_array_elements(case when jsonb_typeof(b.cfg->'map') = 'array' then b.cfg->'map' else '[]'::jsonb end) loop
     select x into it from jsonb_array_elements(case when jsonb_typeof(sub) = 'array' then sub else '[]'::jsonb end) x
      where x->>'id' = m->>'from' limit 1;
+    ct := ctypes->>(m->>'col');
     if it is not null and coalesce(it->>'display', '') not in ('', '—') then
-      row := row || jsonb_build_object(m->>'col', left(it->>'display', 1000));
-      if coalesce(it->>'code', '') <> '' then row := row || jsonb_build_object((m->>'col') || '#code', left(it->>'code', 1000)); end if;
+      if ct = 'pass_fail' then
+        if it->>'type' = 'pass_fail' and (it->>'fail' = 'true' or it->>'display' <> 'ไม่เกี่ยวข้อง') then
+          row := row || jsonb_build_object(m->>'col', case when it->>'fail' = 'true' then 'fail' else 'pass' end);
+        end if;
+      elsif ct = 'checkbox' then
+        if it->>'type' = 'checkbox' then row := row || jsonb_build_object(m->>'col', '1'); end if;
+      elsif ct is not null then
+        row := row || jsonb_build_object(m->>'col', left(it->>'display', 1000));
+        if coalesce(it->>'code', '') <> '' then row := row || jsonb_build_object((m->>'col') || '#code', left(it->>'code', 1000)); end if;
+      end if;
     end if;
     it := null;
   end loop;
@@ -248,6 +267,7 @@ declare
   uid uuid := auth.uid();
   p public.form_cases; b record; f record; seg_end int;
   t0 uuid; u0 uuid; holder uuid; nm text; ans jsonb := '{}'::jsonb; s jsonb; cf jsonb; v jsonb;
+  k int; nsteps int; meta jsonb := '{}'::jsonb;
   cid uuid; lid uuid; allowed_types text[] := array['text', 'number', 'datetime', 'select'];
 begin
   if uid is null then raise exception 'unauthorized'; end if;
@@ -274,12 +294,18 @@ begin
   if f.id = p.form_id then raise exception 'ฟอร์มลูกต้องไม่ใช่ฟอร์มเดียวกับใบหลัก'; end if;
   if exists (select 1 from public.child_buttons(f.schema)) then raise exception 'ฟอร์มลูกมีปุ่มเปิดฟอร์มลูกซ้อนอยู่ — ไม่รองรับ'; end if;
 
-  t0 := public.case_step_team(f.schema, 0);
-  u0 := public.case_step_user(f.schema, 0);
+  -- คนทำฟอร์มลูก = ตามที่ฟอร์มลูกกำหนดเอง (ไม่เกี่ยวกับคนกด)
+  -- งานเริ่มที่ขั้นแรกที่ตั้งผู้รับผิดชอบไว้ · ขั้นก่อนหน้านั้น (ไม่มีคนทำ) = ขั้นรับข้อมูล ถือว่าเสร็จตอนกดปุ่ม
+  nsteps := coalesce(jsonb_array_length(f.schema->'steps'), 0);
+  k := (select min(i) from generate_series(0, nsteps - 1) i where public.case_step_assigned(f.schema, i));
+  if k is null then raise exception 'ฟอร์มลูกยังไม่ได้กำหนดผู้รับผิดชอบ — ตั้งผู้รับผิดชอบในฟอร์มลูกก่อน'; end if;
+  t0 := public.case_step_team(f.schema, k);
+  u0 := public.case_step_user(f.schema, k);
   if t0 is not null and not exists (select 1 from public.teams where id = t0 and tenant_id = p.tenant_id) then t0 := null; end if;
   if u0 is not null and not public.case_is_member(p.tenant_id, u0) then u0 := null; end if;
+  if t0 is null and u0 is null then raise exception 'ผู้รับผิดชอบของฟอร์มลูกไม่มีอยู่แล้ว — แก้ผู้รับผิดชอบในฟอร์มลูกก่อน'; end if;
 
-  -- ใครกดได้: ผู้ถือใบหลัก · ผู้ดูแล · คนที่ขั้นแรกของฟอร์มลูกกำหนดให้ทำ (มองเห็นใบหลักอยู่แล้วถึงจะเห็นปุ่ม)
+  -- ใครกดได้: ผู้ถือใบหลัก · ผู้ดูแล · ผู้รับผิดชอบฟอร์มลูก (มองเห็นใบหลักอยู่แล้วถึงจะเห็นปุ่ม)
   -- coalesce: ค่า null (ไม่มีผู้ถือ/ไม่ได้ตั้งคน) ต้องนับเป็น "ไม่ใช่" ไม่ใช่ null ที่หลุดผ่าน if
   if not coalesce(p.claimed_by = uid or public.can_manage(p.tenant_id)
           or (t0 is not null and t0 in (select public.my_team_ids())) or u0 = uid, false) then
@@ -304,21 +330,26 @@ begin
   end loop;
 
   nm := public.case_member_name(p.tenant_id, uid);
-  holder := coalesce(u0, case when t0 is null then uid end);
+  holder := u0;  -- ไม่ได้ตั้งเป็นรายคน = เข้ากองงานของทีม
+  -- ขั้นรับข้อมูลที่ข้ามไป: บันทึกว่ามาจากการกดปุ่ม (ส่งกลับไปขั้นนั้น = กลับไปหาคนกด ผู้ส่งข้อมูลมา)
+  for i in 0 .. k - 1 loop
+    meta := meta || jsonb_build_object(i::text, jsonb_build_object('by', uid, 'name', nm, 'at', now()));
+  end loop;
   cid := gen_random_uuid();
   insert into public.form_cases (
     id, tenant_id, form_id, form_version, form_title, form_icon, schema, title,
     step_idx, assignee_team, claimed_by, claimed_name, claimed_at,
-    answers, participants, created_by, created_name, history
+    answers, participants, created_by, created_name, history, step_meta
   ) values (
     cid, p.tenant_id, f.id, coalesce(f.version, 1), coalesce(f.title, ''), coalesce(f.icon, '📋'), f.schema,
     left(p.form_title || ' #' || upper(left(p.id::text, 8)), 120),
-    0, case when holder is null then t0 end, holder,
+    k, case when holder is null then t0 end, holder,
     case when holder is null then null else public.case_member_name(p.tenant_id, holder) end,
     case when holder is null then null else now() end,
     ans, case when holder is null then '{}'::uuid[] else array[holder] end, uid, nm,
-    jsonb_build_array(jsonb_build_object('action', 'start', 'step', 0, 'by', uid, 'name', nm, 'at', now(),
-      'note', 'เปิดจากใบงาน ' || p.form_title || ' #' || upper(left(p.id::text, 8))))
+    jsonb_build_array(jsonb_build_object('action', 'start', 'step', k, 'by', uid, 'name', nm, 'at', now(),
+      'note', 'เปิดจากใบงาน ' || p.form_title || ' #' || upper(left(p.id::text, 8)))),
+    meta
   );
 
   insert into public.form_child_links (tenant_id, parent_case_id, parent_step_idx, parent_field_id,

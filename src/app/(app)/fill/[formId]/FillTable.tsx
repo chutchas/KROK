@@ -157,7 +157,7 @@ export function TableInput({
   const cellInput = (ri: number, c: TableColumn) => {
     if (isChildRow(rows[ri])) {
       const v = String(rows[ri]?.[c.id] ?? "");
-      return <span style={{ display: "block", padding: small ? "5px 2px" : "8px 2px", fontSize: small ? ".82rem" : ".95rem", color: ink.text, overflowWrap: "anywhere" }}>{c.type === "pass_fail" ? (v === "pass" ? "✓" : v === "fail" ? "✗" : v) : v || "—"}</span>;
+      return <span style={{ display: "block", padding: small ? "5px 2px" : "8px 2px", fontSize: small ? ".82rem" : ".95rem", color: ink.text, overflowWrap: "anywhere" }}>{c.type === "pass_fail" ? (v === "pass" ? "✓" : v === "fail" ? <span style={{ color: "var(--fail)", fontWeight: 700 }}>✗</span> : v || "—") : c.type === "checkbox" ? (v ? "✓" : "—") : v || "—"}</span>;
     }
     const st: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: small ? "5px 7px" : "8px 9px", border: `1px solid ${ink.border}`, borderRadius: 6, background: ink.field, color: ink.text, fontFamily: "inherit", fontSize: small ? ".82rem" : ".95rem" };
     return <TableCell col={c} value={rows[ri]?.[c.id] ?? ""} onChange={(v) => setCell(ri, c.id, v)} look={small ? "small" : "normal"} style={st} iconOnly={!cards}

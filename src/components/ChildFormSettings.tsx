@@ -8,11 +8,11 @@ import Icon from "@/components/Icon";
 import BodyPortal from "@/components/BodyPortal";
 import { backdropClose } from "@/lib/backdrop";
 import { useT } from "@/i18n/LanguageProvider";
-import { CHILD_MAP_TYPES, type ChildFormConfig, type FormField, type FormSchema } from "@/lib/form-schema";
+import { CHILD_MAP_TYPES, childSourceTypesFor, type ChildFormConfig, type FormField, type FormSchema } from "@/lib/form-schema";
 import { segmentEnd } from "@/lib/case-flow";
 import { listChildFormCandidates, type ChildCandidate } from "@/app/(app)/studio/child-form-actions";
 
-const COL_TYPES = ["text", "number", "select", "datetime"];
+const RETURN_TYPES = [...CHILD_MAP_TYPES, "pass_fail", "checkbox"];
 const CONST = "__const__";
 
 export default function ChildFormSettings({ schema, stepIndex, field, onPatch }: {
@@ -49,7 +49,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
   schema: FormSchema; stepIndex: number; field: FormField;
   onClose: () => void; onSave: (c: ChildFormConfig) => void;
 }) {
-  const { t } = useT();
+  const { t, tt } = useT();
   const [forms, setForms] = useState<ChildCandidate[] | null>(null);
   const [err, setErr] = useState("");
   const init = field.child_form;
@@ -75,7 +75,13 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
   const tables = schema.steps[stepIndex]?.fields.filter((f) => f.type === "table") ?? [];
   const table = tables.find((x) => x.id === tableId);
   const childFirst = child?.steps[0]?.fields.filter((f) => CHILD_MAP_TYPES.includes(f.type)) ?? [];
-  const childAll = child?.steps.flatMap((s) => s.fields).filter((f) => CHILD_MAP_TYPES.includes(f.type)) ?? [];
+  const childAll = child?.steps.flatMap((s) => s.fields).filter((f) => RETURN_TYPES.includes(f.type)) ?? [];
+  // งานของฟอร์มลูกเริ่มที่ขั้นแรกที่ตั้งผู้รับผิดชอบไว้ · ขั้นก่อนหน้า = ขั้นรับข้อมูลจากปุ่ม (ไม่มีใครกรอก)
+  const startIdx = child ? child.steps.findIndex((st) => st.assigned) : -1;
+  const noAssignee = !!child && startIdx < 0;
+  const skippedRequired = child && startIdx > 0
+    ? child.steps.slice(0, startIdx).flatMap((st, si) => st.fields.filter((f) => f.required && !(si === 0 && send.some((x) => x.to === f.id && (x.from || x.value?.trim())))))
+    : [];
   const childIds = new Set(childAll.map((f) => f.id));
   const missingMap = map.filter((m) => !childIds.has(m.from));
 
@@ -90,7 +96,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
   }
 
   function save() {
-    if (!child) return;
+    if (!child || noAssignee) return;
     onSave({
       form_id: child.id, form_title: child.title,
       send: send.filter((s) => childFirst.some((f) => f.id === s.to)),
@@ -122,11 +128,23 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
             : (
               <select value={formId} onChange={(e) => pickForm(e.target.value)} style={sel} aria-label={t("child.cfgForm")}>
                 <option value="">{t("child.cfgPickForm")}</option>
-                {forms.map((f) => <option key={f.id} value={f.id} disabled={f.nested}>{f.title}</option>)}
+                {forms.map((f) => {
+                  const unassigned = !f.steps.some((st) => st.assigned);
+                  return <option key={f.id} value={f.id} disabled={f.nested || (unassigned && f.id !== formId)}>{f.title}{unassigned ? ` ${t("child.cfgNoAssigneeOpt")}` : ""}</option>;
+                })}
               </select>
             )}
 
-          {child && (
+          {noAssignee && <p role="alert" style={{ fontSize: ".82rem", color: "var(--fail)", margin: "6px 0 0" }}>{t("child.cfgNoAssignee")}</p>}
+          {child && startIdx > 0 && (
+            <p style={{ fontSize: ".78rem", color: "var(--ink-2)", margin: "6px 0 0" }}>
+              {tt("child.cfgSkipInfo", { n: startIdx, to: startIdx + 1, who: t(child.steps[startIdx].assigned === "user" ? "child.cfgStartUser" : "child.cfgStartTeam") })}
+            </p>
+          )}
+          {skippedRequired.length > 0 && (
+            <p style={{ fontSize: ".78rem", color: "var(--amber)", margin: "4px 0 0" }}>{tt("child.cfgSkipRequired", { fields: skippedRequired.map((f) => f.label).join(", ") })}</p>
+          )}
+          {child && !noAssignee && (
             <>
               <h3 style={h}>{t("child.cfgSend")}</h3>
               <p style={{ fontSize: ".76rem", color: "var(--ink-3)", margin: "0 0 8px" }}>{t("child.cfgSendHint")}</p>
@@ -163,14 +181,14 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
                   </select>
                   {table && (
                     <div style={{ display: "grid", gap: 6, marginTop: 8 }}>
-                      {(table.columns || []).filter((c) => COL_TYPES.includes(c.type)).map((c) => (
+                      {(table.columns || []).filter((c) => childSourceTypesFor(c.type).length > 0).map((c) => (
                         <div key={c.id} style={row}>
                           <span style={{ overflowWrap: "anywhere" }}>{c.label}</span>
                           <select value={map.find((m) => m.col === c.id)?.from ?? ""} onChange={(e) => setMapFor(c.id, e.target.value)} style={sel} aria-label={c.label}>
                             <option value="">{t("child.cfgFromNone")}</option>
                             {child.steps.map((st, si) => (
                               <optgroup key={si} label={`${si + 1}. ${st.title}`}>
-                                {st.fields.filter((f) => CHILD_MAP_TYPES.includes(f.type)).map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
+                                {st.fields.filter((f) => childSourceTypesFor(c.type).includes(f.type)).map((f) => <option key={f.id} value={f.id}>{f.label}</option>)}
                               </optgroup>
                             ))}
                           </select>
@@ -189,8 +207,8 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
           )}
 
           <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-            <button type="button" onClick={save} disabled={!child}
-              style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", fontFamily: "inherit", fontWeight: 600, cursor: child ? "pointer" : "not-allowed", opacity: child ? 1 : 0.5 }}>
+            <button type="button" onClick={save} disabled={!child || noAssignee}
+              style={{ padding: "9px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", fontFamily: "inherit", fontWeight: 600, cursor: child && !noAssignee ? "pointer" : "not-allowed", opacity: child && !noAssignee ? 1 : 0.5 }}>
               {t("child.cfgDone")}
             </button>
             <button type="button" onClick={onClose}

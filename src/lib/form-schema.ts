@@ -147,6 +147,16 @@ export interface FormField {
 // ============================================================
 /** ชนิดฟิลด์ที่ส่งค่าไป/รับค่ากลับได้ (เหมือนแหล่งเติมข้อมูล) */
 export const CHILD_MAP_TYPES: FieldType[] = ["text", "number", "datetime", "select"];
+/**
+ * ฟิลด์ของฟอร์มลูกที่ส่งกลับเข้าคอลัมน์ชนิดนี้ได้ ([] = คอลัมน์นี้รับค่าจากฟอร์มลูกไม่ได้)
+ * ผ่าน/ไม่ผ่าน และ ติ๊ก ต้องคู่กับชนิดเดียวกัน — "ไม่ผ่าน" นับเป็นข้อบกพร่องของใบหลัก
+ */
+export function childSourceTypesFor(colType: TableColType): FieldType[] {
+  if (colType === "pass_fail") return ["pass_fail"];
+  if (colType === "checkbox") return ["checkbox"];
+  if (colType === "text" || colType === "number" || colType === "select" || colType === "datetime") return CHILD_MAP_TYPES;
+  return [];
+}
 
 export interface ChildFormConfig {
   form_id: string;
@@ -668,7 +678,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
         const tbl = s.fields.find((x) => x.id === f.child_form!.table_id && x.type === "table");
         if (!tbl) { f.child_form.table_id = ""; f.child_form.map = []; }
         else {
-          const okCols = new Set((tbl.columns || []).filter((c) => c.type === "text" || c.type === "number" || c.type === "select" || c.type === "datetime").map((c) => c.id));
+          const okCols = new Set((tbl.columns || []).filter((c) => childSourceTypesFor(c.type).length > 0).map((c) => c.id));
           f.child_form.map = f.child_form.map.filter((m) => okCols.has(m.col));
         }
       }
