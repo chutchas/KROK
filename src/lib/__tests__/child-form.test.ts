@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { sanitizeChildForm, sanitizeSchema, isUiOnlyField } from "@/lib/form-schema";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
-import { mergeChildRows } from "@/lib/child-rows";
+import { childRowsFromCase } from "@/lib/child-rows";
 import { buildAnswerList, intakeFields } from "@/lib/intake";
 
 const FID = "11111111-2222-3333-4444-555555555555";
@@ -69,39 +69,60 @@ describe("child_form in schema", () => {
 describe("child rows on final submit", () => {
   const dbRow = { _child: "L1", _src: "ตรวจเซฟตี้", _sub: "S1", _at: "2026-10-08 10:00", o2: "20.9", ok: "pass" };
   const failRow = { _child: "L2", _src: "ตรวจเซฟตี้", _sub: "S2", _at: "2026-10-08 11:00", ok: "fail" };
-  const caseAnswers = { gas: { value: [{ o2: "1" }, dbRow, failRow] } };
-  const submit = (cfg: Record<string, unknown>, raw: unknown) => {
-    const s = schema(cfg);
-    return sanitizePublicAnswers(s, mergeChildRows(s, raw, caseAnswers), new Set(), { keepChildRows: true });
-  };
+  const caseAnswers = { gas: { value: [{ o2: "1" }, dbRow, failRow] }, loc: { value: "x" } };
+  const submit = (cfg: Record<string, unknown>, raw: unknown) =>
+    sanitizePublicAnswers(schema(cfg), raw, new Set(), { childRows: childRowsFromCase(caseAnswers) });
+  const gasRows = (r: ReturnType<typeof submit>) => r.answers.find((a) => a.id === "gas")!.rows as Record<string, string>[];
 
-  it("strips forged child keys when not a case", () => {
-    const raw = [{ id: "gas", type: "table", rows: [{ o2: "5", _child: "fake" }] }];
-    expect((sanitizePublicAnswers(schema(), raw, new Set()).answers[1].rows as object[])[0]).toEqual({ o2: "5" });
+  it("childRowsFromCase keeps only _child rows", () => {
+    expect(childRowsFromCase(caseAnswers)).toEqual({ gas: [dbRow, failRow] });
+  });
+
+  it("drops forged child rows when not a case", () => {
+    const raw = [{ id: "gas", type: "table", rows: [{ o2: "5", _child: "fake" }, { o2: "6" }] }];
+    expect(gasRows(sanitizePublicAnswers(schema(), raw, new Set()))).toEqual([{ o2: "6" }]);
   });
 
   it("DB child rows replace forged ones, manual rows kept, pass/fail converted and counted", () => {
     const r = submit({}, [{ id: "gas", type: "table", rows: [{ o2: "5" }, { o2: "99", _child: "L1" }] }]);
-    const rows = r.answers[1].rows as Record<string, string>[];
+    const rows = gasRows(r);
+    // แถว L1 ที่หน้ากรอกส่งกลับมา (o2=99) ถูกทิ้ง → ไม่ซ้ำ และใช้ค่าจริงจากฐานข้อมูล
     expect(rows.map((x) => x.o2 ?? null)).toEqual(["5", "20.9", null]);
-    expect(rows[1]).toMatchObject({ _child: "L1", ok: "ผ่าน" });
-    expect(rows[2]).toMatchObject({ _child: "L2", ok: "ไม่ผ่าน" });
+    expect(rows.filter((x) => x._child).map((x) => x.ok)).toEqual(["ผ่าน", "ไม่ผ่าน"]);
     expect(r.result).toBe("fail");
   });
 
-  it("source_only: only DB child rows survive", () => {
-    const rows = submit({ source_only: true }, [{ id: "gas", type: "table", rows: [{ o2: "5" }] }]).answers[1].rows as Record<string, string>[];
-    expect(rows.map((x) => x._child)).toEqual(["L1", "L2"]);
+  it("attack: table item without rows → DB rows still there, still fails", () => {
+    const r = submit({}, [{ id: "gas", type: "table", label: "ผลวัด" }]);
+    expect(gasRows(r).map((x) => x._child)).toEqual(["L1", "L2"]);
+    expect(r.result).toBe("fail");
   });
 
-  it("table missing from the page still gets child rows", () => {
-    const rows = submit({}, []).answers[1].rows as Record<string, string>[];
-    expect(rows.map((x) => x._child)).toEqual(["L1", "L2"]);
+  it("attack: id on wrong type + table matched by label → DB rows still there", () => {
+    const r = submit({ source_only: true }, [{ id: "gas", type: "text", rows: [] }, { id: "x", label: "ผลวัด", type: "table", rows: [{ ok: "pass" }] }]);
+    expect(gasRows(r).map((x) => x._child)).toEqual(["L1", "L2"]);
+    expect(r.result).toBe("fail");
+  });
+
+  it("attack: 500 manual rows cannot push DB rows out", () => {
+    const many = Array.from({ length: 500 }, (_, i) => ({ o2: String(i) }));
+    const rows = gasRows(submit({}, [{ id: "gas", type: "table", rows: many }]));
+    expect(rows.length).toBe(500);
+    expect(rows.slice(-2).map((x) => x._child)).toEqual(["L1", "L2"]);
+  });
+
+  it("source_only: only DB child rows survive", () => {
+    expect(gasRows(submit({ source_only: true }, [{ id: "gas", type: "table", rows: [{ o2: "5" }] }])).map((x) => x._child)).toEqual(["L1", "L2"]);
+  });
+
+  it("source_only without a case (e.g. direct/intake) → table empty", () => {
+    const r = sanitizePublicAnswers(schema({ source_only: true }), [{ id: "gas", type: "table", rows: [{ o2: "5", ok: "pass" }] }], new Set());
+    expect(gasRows(r)).toEqual([]);
   });
 
   it("tables without a button ignore child rows", () => {
     const s = sanitizeSchema({ title: "x", steps: [{ id: "a", title: "a", fields: [{ id: "t", type: "table", label: "t", columns: [{ id: "c", label: "c", type: "text" }] }] }] });
-    const out = mergeChildRows(s, [{ id: "t", type: "table", rows: [{ c: "1", _child: "x" }, { c: "2" }] }], { t: { value: [{ c: "9", _child: "y" }] } });
-    expect((out[0] as { rows: unknown[] }).rows).toEqual([{ c: "2" }]);
+    const r = sanitizePublicAnswers(s, [{ id: "t", type: "table", rows: [{ c: "2", _child: "x" }, { c: "3" }] }], new Set(), { childRows: { t: [{ c: "9", _child: "y" }] } });
+    expect(r.answers[0].rows).toEqual([{ c: "3" }]);
   });
 });

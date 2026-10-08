@@ -37,7 +37,7 @@ export default async function ApprovalsPage() {
     const { data: open, error: areaErr } = await supabase.rpc("area_open_items", { p_tenant: session.tenantId, p_area: null });
     if (!areaErr)
       for (const it of (open || []) as OpenItem[]) {
-        if (it.kind === "approval") areaOf.set(it.id, { id: it.area_id, name: it.area_name });
+        if (it.kind === "approval" && it.id) areaOf.set(it.id, { id: it.area_id, name: it.area_name });
         byArea.set(it.area_id, [...(byArea.get(it.area_id) || []), it]);
       }
   }
