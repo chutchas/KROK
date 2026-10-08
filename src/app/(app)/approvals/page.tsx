@@ -4,6 +4,7 @@ import { sanitizeChain } from "@/lib/approval";
 import ApprovalsClient from "./ApprovalsClient";
 import type { PendingSub } from "./ApprovalsClient";
 import type { OpenItem } from "@/lib/areas";
+import { buildEvidence } from "@/lib/approval-queue";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ export default async function ApprovalsPage() {
   const supabase = await createClient();
   const { data } = await supabase
     .from("submissions")
-    .select("id, form_title, form_icon, user_name, result, fails, answers, submitted_at, approval_step, approval_chain")
+    .select("id, form_id, form_title, form_icon, user_name, result, fails, answers, submitted_at, approval_step, approval_chain")
     .eq("approval_status", "pending")
     .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่ (อนุมัติได้เฉพาะที่นี่อยู่แล้ว)
     .order("submitted_at", { ascending: true })
@@ -43,8 +44,11 @@ export default async function ApprovalsPage() {
   }
 
   // ส่งไป client เฉพาะที่หน้านี้ใช้ (ตัดค่าดิบ/แถวตาราง/ข้อความยาว) — คิว 500 รายการไม่ทำให้หน้าบวม
+  // หลักฐาน (ข้อไม่ผ่าน + key รูปที่ควรดู) คำนวณที่ server จาก answers ฉบับเต็ม — ส่ง key ไป ไม่ส่งแถวตาราง
+  // URL รูปขอทีหลังเป็นชุด (loadEvidencePhotos) เฉพาะใบที่กำลังแสดงและมีข้อไม่ผ่าน
   const slim: PendingSub[] = mine.map((s) => ({
     ...s,
+    evidence: buildEvidence(Array.isArray(s.answers) ? s.answers : []),
     ...(areaOf.has(s.id) ? (() => {
       const a = areaOf.get(s.id)!;
       return { area: { ...a, others: (byArea.get(a.id) || []).filter((x) => x.id !== s.id).slice(0, 50) } };
