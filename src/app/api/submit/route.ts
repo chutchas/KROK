@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { sanitizePublicAnswers } from "@/lib/public-answers";
+import { mergeChildRows } from "@/lib/child-rows";
 import { rateLimited } from "@/lib/rate-limit";
 import { writeAudit } from "@/lib/audit";
 import { sanitizeChain } from "@/lib/approval";
@@ -114,18 +115,20 @@ export async function POST(req: Request) {
   if (!f || f.tenant_id !== tenantId) return fail(404, await sm("ไม่พบฟอร์ม หรือไม่มีสิทธิ์กรอกฟอร์มนี้"));
 
   let schemaRaw: unknown = f.schema;
+  let caseRow: { step_idx: number; answers: Record<string, { value?: unknown }> | null } | null = null;
   let version = (f.version as number) ?? 1;
   if (caseId) {
     // ขั้นสุดท้ายของงาน: ต้องเป็นผู้ถืองานอยู่ · ใช้ schema ณ ตอนเริ่มงาน
     const { data: c } = await admin
       .from("form_cases")
-      .select("id, tenant_id, form_id, status, claimed_by, schema, form_version")
+      .select("id, tenant_id, form_id, status, claimed_by, schema, form_version, step_idx, answers")
       .eq("id", caseId)
       .maybeSingle();
     if (!c || c.tenant_id !== tenantId || c.form_id !== formId) return fail(404, await sm("ไม่พบงาน"));
     if (c.status !== "open" || c.claimed_by !== session.userId) return fail(409, await sm("งานนี้ไม่ได้อยู่กับคุณแล้ว"));
     schemaRaw = c.schema;
     version = (c.form_version as number) ?? version;
+    caseRow = c as { step_idx: number; answers: Record<string, { value?: unknown }> | null };
   } else if (f.deleted_at || f.status !== "published") {
     return fail(409, await sm("ฟอร์มนี้ปิดรับข้อมูลแล้ว"));
   }
@@ -166,8 +169,15 @@ export async function POST(req: Request) {
   if (!names) return fail(503, await sm("อ่านไฟล์แนบไม่สำเร็จ โปรดลองใหม่"));
   const uploaded = photoKeysOf(names);
 
+  // ฟอร์มลูก (0074): ยังมีค้าง / ยังไม่มีผลที่บังคับ → ส่งขั้นสุดท้ายไม่ได้ (เช็คก่อนบันทึก ไม่ให้เกิดเอกสารค้าง)
+  if (caseRow && caseId && schema.steps.some((st) => st.fields.some((x) => x.type === "child_form"))) {
+    const { data: gateErr } = await admin.rpc("child_gate_error", { p_case: caseId, p_from: caseRow.step_idx, p_to: schema.steps.length - 1 });
+    if (typeof gateErr === "string" && gateErr) return fail(409, await sm(gateErr));
+  }
+  // แถวจากฟอร์มลูก: แทนด้วยของฐานข้อมูลก่อนกรอง (ไม่ใช่งาน = ตัดคีย์ระบบทิ้งตอนกรอง)
+  const rawAnswers = caseRow ? mergeChildRows(schema, body.answers, caseRow.answers || {}) : body.answers;
   // ไม่เชื่อผลจากเบราว์เซอร์: กรองคำตอบตาม schema + คำนวณ ผ่าน/ไม่ผ่าน ใหม่
-  const { answers, fails, result } = sanitizePublicAnswers(schema, body.answers, uploaded);
+  const { answers, fails, result } = sanitizePublicAnswers(schema, rawAnswers, uploaded, { keepChildRows: !!caseRow });
   let dur = Math.round(Number(body.dur) || 0);
   if (dur < 0) dur = 0;
   if (dur > 30 * 86400) dur = 30 * 86400;

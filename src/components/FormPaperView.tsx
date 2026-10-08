@@ -10,6 +10,8 @@ import { useT } from "@/i18n/LanguageProvider";
 // มุมมอง "กระดาษจริง" — ฟอร์มเปล่าแบบเอกสาร A4 สำหรับพิมพ์/ตรวจทาน
 function Blank({ f }: { f: FormField }) {
   const { t } = useT();
+  // ปุ่มฟอร์มลูกเป็น UI ของเว็บ — ไม่พิมพ์ (เว้นช่องไว้ ไม่ขยับ layout)
+  if (f.type === "child_form") return <span style={{ display: "block", minHeight: 18 }} />;
   if (f.type === "pass_fail") {
     return (
       <span style={{ display: "inline-flex", gap: 14, fontSize: ".82rem" }}>
@@ -124,6 +126,11 @@ export default function FormPaperView({ schema, theme }: { schema: FormSchema; t
                           items={allPhotoSlotKeys(f).map((k, i, all) => ({ key: k, label: photoCaption(f, i, all.length, (n) => tt("print.photos.slotN", { n })) }))} />
                       </td>
                     </tr>
+                  ) : f.type === "child_form" ? (
+                    // ปุ่มฟอร์มลูก = UI ของเว็บ ไม่พิมพ์ (มาตรฐาน platform) — เว้นช่องไว้ไม่ขยับ layout
+                    <tr key={f.id} aria-hidden style={{ visibility: "hidden" }}>
+                      <td colSpan={2} style={{ padding: "8px 0" }}><Blank f={f} /></td>
+                    </tr>
                   ) : f.type === "table" ? (
                     <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
                       <td colSpan={2} style={{ padding: "8px 0" }}>
@@ -135,7 +142,7 @@ export default function FormPaperView({ schema, theme }: { schema: FormSchema; t
                     <tr key={f.id} style={{ borderBottom: "1px solid #e5e5e5" }}>
                       <td style={{ width: "42%", verticalAlign: "top", padding: "8px 8px 8px 0", color: "#222" }}>
                         {f.label}{f.required && <span style={{ color: "#c00" }}> *</span>}
-                        <span style={{ display: "block", fontSize: ".68rem", color: "#888" }}>{t(`ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}</span>
+                        <span style={{ display: "block", fontSize: ".68rem", color: "#888" }}>{t(f.area ? "ftype.area" : `ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}</span>
                       </td>
                       <td style={{ verticalAlign: "middle", padding: "8px 0" }}>
                         <Blank f={f} />

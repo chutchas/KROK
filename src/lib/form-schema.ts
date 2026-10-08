@@ -17,6 +17,7 @@ export const FIELD_TYPES = [
   "datetime",
   "table",
   "formula",
+  "child_form",
 ] as const;
 
 export type FieldType = (typeof FIELD_TYPES)[number];
@@ -100,6 +101,10 @@ export interface FormField {
   area?: true;
   /** ฟิลด์พื้นที่: รหัสพื้นที่ที่เลือกไว้ให้ก่อน (ฟอร์มที่ใช้ที่เดียวตายตัว) */
   area_default?: string;
+  /** child_form — ปุ่มเปิดฟอร์มลูก (ไม่มีคำตอบของตัวเอง · ไม่พิมพ์ลงกระดาษ) */
+  child_form?: ChildFormConfig;
+  /** runtime เท่านั้น: ตารางนี้รับแถวจากฟอร์มลูกเท่านั้น (คนถือขั้นเพิ่ม/แก้แถวเองไม่ได้) */
+  child_only?: true;
   // ความกว้างในหน้ากระดาษ: full = เต็มแถว, half = ครึ่งแถว (default ปฏิบัติเหมือน half)
   width?: "full" | "half";
   // photo
@@ -136,6 +141,77 @@ export interface FormField {
   /** จำนวนแถวสูงสุดที่เพิ่มได้ (ไม่ระบุ = ไม่จำกัด) */
   max_rows?: number;
 }
+
+// ============================================================
+// ฟอร์มลูก (0074): ปุ่มในใบงานหลักเปิดงานของอีกฟอร์ม แล้วรับผลกลับเป็นแถวใหม่ในตาราง
+// ============================================================
+/** ชนิดฟิลด์ที่ส่งค่าไป/รับค่ากลับได้ (เหมือนแหล่งเติมข้อมูล) */
+export const CHILD_MAP_TYPES: FieldType[] = ["text", "number", "datetime", "select"];
+/**
+ * ฟิลด์ของฟอร์มลูกที่ส่งกลับเข้าคอลัมน์ชนิดนี้ได้ ([] = คอลัมน์นี้รับค่าจากฟอร์มลูกไม่ได้)
+ * ผ่าน/ไม่ผ่าน และ ติ๊ก ต้องคู่กับชนิดเดียวกัน — "ไม่ผ่าน" นับเป็นข้อบกพร่องของใบหลัก
+ */
+export function childSourceTypesFor(colType: TableColType): FieldType[] {
+  if (colType === "pass_fail") return ["pass_fail"];
+  if (colType === "checkbox") return ["checkbox"];
+  if (colType === "text" || colType === "number" || colType === "select" || colType === "datetime") return CHILD_MAP_TYPES;
+  return [];
+}
+
+export interface ChildFormConfig {
+  form_id: string;
+  /** ชื่อฟอร์มลูก ณ ตอนตั้งค่า (ใช้แสดงเมื่ออ่านฟอร์มลูกไม่ได้) */
+  form_title?: string;
+  /** ส่งไป: ช่องในขั้นแรกของฟอร์มลูก ← ช่องของใบหลัก (from) หรือค่าคงที่ (value) */
+  send: { to: string; from?: string; value?: string }[];
+  /** ตารางในขั้นเดียวกับปุ่มที่รับผลกลับ */
+  table_id: string;
+  /** รับกลับ: คอลัมน์ของตาราง ← ช่องของฟอร์มลูก */
+  map: { col: string; from: string }[];
+  /** เปิดได้หลายครั้ง (default true) */
+  multiple: boolean;
+  /** ห้ามไปขั้นถัดไปถ้ายังมีฟอร์มลูกค้าง (default true) */
+  gate: boolean;
+  /** ตารางรับข้อมูลจากฟอร์มลูกเท่านั้น — ต้องมีผลอย่างน้อย 1 ใบก่อนไปต่อ (default false = คนถือขั้นคีย์เองได้) */
+  source_only: boolean;
+}
+
+const ID_RE = /^[\w-]{1,40}$/;
+export function sanitizeChildForm(raw: unknown): ChildFormConfig | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const o = raw as Record<string, unknown>;
+  const form_id = String(o.form_id ?? "");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(form_id)) return undefined;
+  const send: ChildFormConfig["send"] = [];
+  for (const x of Array.isArray(o.send) ? o.send.slice(0, 60) : []) {
+    const e = (x ?? {}) as Record<string, unknown>;
+    const to = String(e.to ?? "");
+    if (!ID_RE.test(to) || send.some((y) => y.to === to)) continue;
+    const from = String(e.from ?? "");
+    if (ID_RE.test(from)) send.push({ to, from });
+    else if (typeof e.value === "string" && e.value.trim()) send.push({ to, value: e.value.slice(0, 500) });
+  }
+  const map: ChildFormConfig["map"] = [];
+  for (const x of Array.isArray(o.map) ? o.map.slice(0, 60) : []) {
+    const e = (x ?? {}) as Record<string, unknown>;
+    const col = String(e.col ?? ""), from = String(e.from ?? "");
+    if (ID_RE.test(col) && ID_RE.test(from) && !map.some((y) => y.col === col)) map.push({ col, from });
+  }
+  const table_id = String(o.table_id ?? "");
+  return {
+    form_id,
+    ...(typeof o.form_title === "string" && o.form_title.trim() ? { form_title: o.form_title.slice(0, 200) } : {}),
+    send,
+    table_id: ID_RE.test(table_id) ? table_id : "",
+    map,
+    multiple: o.multiple !== false,
+    gate: o.gate !== false,
+    source_only: o.source_only === true,
+  };
+}
+
+/** ฟิลด์ที่ไม่มีคำตอบของตัวเอง (UI ของเว็บเท่านั้น) */
+export const isUiOnlyField = (f: Pick<FormField, "type">) => f.type === "child_form";
 
 // ============================================================
 // แหล่งเติมข้อมูล (fill source)
@@ -287,6 +363,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   datetime: "วันเวลา",
   table: "ตาราง",
   formula: "สูตรคำนวณ",
+  child_form: "ปุ่มเปิดฟอร์มลูก",
 };
 
 /** รหัสพื้นที่ — ตรงกับ check ใน workspace_areas (0072): ห้ามช่องว่าง/จุลภาค ยาวไม่เกิน 20 */
@@ -480,6 +557,11 @@ export function sanitizeSchema(raw: unknown): FormSchema {
             const os = sanitizeOptionsSource(fo.options_source, true);
             if (os) o.options_source = os;
           }
+          if (type === "child_form") {
+            o.required = false; // ปุ่ม ไม่มีคำตอบ
+            const cf = sanitizeChildForm(fo.child_form);
+            if (cf) o.child_form = cf;
+          }
           if (type === "photo" && fo.photo_hint) o.photo_hint = str(fo.photo_hint, 200);
           if (type === "photo") {
             const mx = num(fo.max_photos);
@@ -590,6 +672,15 @@ export function sanitizeSchema(raw: unknown): FormSchema {
       if (f.area) {
         if (areaSeen) { delete f.area; delete f.area_default; f.options = []; }
         areaSeen = true;
+      }
+      // ปุ่มฟอร์มลูก: ตารางที่รับผลต้องอยู่ขั้นเดียวกัน · คอลัมน์ที่จับคู่ต้องมีจริงและเป็นชนิดที่รับค่าได้
+      if (f.child_form) {
+        const tbl = s.fields.find((x) => x.id === f.child_form!.table_id && x.type === "table");
+        if (!tbl) { f.child_form.table_id = ""; f.child_form.map = []; }
+        else {
+          const okCols = new Set((tbl.columns || []).filter((c) => childSourceTypesFor(c.type).length > 0).map((c) => c.id));
+          f.child_form.map = f.child_form.map.filter((m) => okCols.has(m.col));
+        }
       }
       const p = f.options_source?.parent;
       if (p && !seenChoice.has(p.field_id)) delete f.options_source!.parent;

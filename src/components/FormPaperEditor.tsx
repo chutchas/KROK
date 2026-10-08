@@ -27,7 +27,7 @@ const newFieldId = () => `f_${Date.now().toString(36)}${(idc++).toString(36)}`;
 // จึงเห็นขนาด/ระยะตรงกับตอนกรอกจริง
 function FieldPreview({ f }: { f: FormField }) {
   const { t, tt } = useT();
-  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{t(`ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}{maxPhotosOf(f) > 1 ? ` · ≤${maxPhotosOf(f)}` : ""}</span>;
+  const badge = <span style={{ fontSize: ".62rem", color: "#999", fontWeight: 400 }}>{t(f.area ? "ftype.area" : `ftype.${f.type}`)}{f.unit ? ` (${f.unit})` : ""}{maxPhotosOf(f) > 1 ? ` · ≤${maxPhotosOf(f)}` : ""}</span>;
   const label = <PaperLabel label={f.label || t("fw.noName")} required={f.required} right={badge} />;
   const inputLike = (text = "") => <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#aaa" }}>{text}</div>;
   if (f.type === "table") {
@@ -41,6 +41,7 @@ function FieldPreview({ f }: { f: FormField }) {
   else if ((f.type === "select" || f.type === "checkbox") && (f.options_source || f.area)) body = inputLike(f.area ? t("ftype.area") : t("fw.dsOptionsPh"));
   else if (f.type === "select" || f.type === "checkbox") body = <PaperChoices name={`p_${f.id}`} options={f.options || []} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? [] : ""} disabled />;
   else if (f.type === "datetime") body = inputLike(f.dt_mode === "date" ? "วว/ดด/ปปปป" : f.dt_mode === "time" ? "--:--" : t("fw.datePh"));
+  else if (f.type === "child_form") body = <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", color: "#2f6fe0", borderStyle: "dashed" }}>{f.child_form?.form_title ? tt("child.open", { form: f.child_form.form_title }) : t("child.notConfigured")}</div>;
   else if (f.type === "formula") body = <div style={{ ...paperInputStyle, display: "flex", alignItems: "center", justifyContent: "space-between", color: "#999", background: "#f4f6f8" }}><span>ƒ</span><span>{t("formula.auto")}</span></div>;
   else body = inputLike(f.example ? tt("fw.examplePh", { ex: f.example }) : "");
   return <>{label}{body}</>;

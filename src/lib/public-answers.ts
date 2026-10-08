@@ -5,7 +5,7 @@
 // → ไม่เชื่อ payload ตรง ๆ: จับคู่กับช่องใน schema ตามลำดับ, เก็บเฉพาะ property ที่รู้จัก, ตัดความยาว,
 //   และคำนวณ "ไม่ผ่าน" + ผลรวมใหม่จาก schema (client ส่ง result/fails มาก็ไม่ใช้)
 // ============================================================
-import type { FormField, FormSchema } from "@/lib/form-schema";
+import { isUiOnlyField, type FormField, type FormSchema } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, rowPhotoKeyOf } from "@/lib/table-rows";
@@ -15,9 +15,12 @@ import { pfCodeOf, pfDisplay } from "@/lib/field-display";
 const SRC = new Set(["scan", "ai", "ai_edited"]);
 const str = (v: unknown, max: number): string | undefined => (typeof v === "string" ? v.slice(0, max) : undefined);
 
-function cleanRows(f: FormField, raw: unknown): Record<string, string>[] {
+/** คีย์ระบบของแถวที่มาจากฟอร์มลูก (0074) — เชื่อได้เฉพาะเมื่อ server แทนที่ด้วยข้อมูลจากฐานข้อมูลเอง */
+export const CHILD_ROW_KEYS = ["_child", "_src", "_sub", "_at"] as const;
+
+function cleanRows(f: FormField, raw: unknown, keepChild = false): Record<string, string>[] {
   if (!Array.isArray(raw)) return [];
-  const allowed = new Set<string>();
+  const allowed = new Set<string>(keepChild ? CHILD_ROW_KEYS : []);
   for (const c of f.columns || []) { allowed.add(c.id); allowed.add(tableCodeKey(c.id)); if (c.type === "photo") allowed.add(rowPhotoKeyOf(c.id)); }
   const out: Record<string, string>[] = [];
   for (const r of raw.slice(0, 500)) {
@@ -37,10 +40,13 @@ export function sanitizePublicAnswers(
   schema: FormSchema,
   raw: unknown,
   /** field id ที่มีไฟล์รูป/ลายเซ็นแนบมาจริงในคำขอนี้ */
-  uploaded: Set<string>
+  uploaded: Set<string>,
+  /** เก็บคีย์ระบบของแถวจากฟอร์มลูกไว้ (ผู้เรียกต้องแทนที่แถวพวกนั้นด้วยข้อมูลจากฐานข้อมูลเอง) */
+  opts: { keepChildRows?: boolean } = {}
 ): { answers: Record<string, unknown>[]; fails: string[]; result: "pass" | "fail" } {
   const list = Array.isArray(raw) ? raw.slice(0, 500) : [];
-  const fields = schema.steps.flatMap((s) => s.fields);
+  // ปุ่มฟอร์มลูกไม่มีคำตอบของตัวเอง (หน้ากรอกก็ไม่ส่งมา)
+  const fields = schema.steps.flatMap((s) => s.fields).filter((f) => !isUiOnlyField(f));
   const used = new Set<number>();
   const pick = (f: FormField, i: number): Record<string, unknown> | null => {
     // id ของฟิลด์ตรงกัน = ช่องเดียวกันแน่นอน (แม้ชื่อช่องถูกแก้ระหว่างที่คิวออฟไลน์ค้าง) — ชนิดต้องยังเหมือนเดิม
@@ -94,7 +100,7 @@ export function sanitizePublicAnswers(
       item.display = "—";
     } else if (f.type === "table") {
       // คอลัมน์สูตร/ผ่าน-ไม่ผ่าน คำนวณใหม่จากค่าที่กรอก · แถวที่ไม่ผ่าน = เอกสารไม่ผ่าน
-      const fin = finalizeTableRows(f, cleanRows(f, a.rows), (k) => uploaded.has(k));
+      const fin = finalizeTableRows(f, cleanRows(f, a.rows, !!opts.keepChildRows), (k) => uploaded.has(k));
       item.rows = fin.rows;
       item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
       item.display = `${fin.rows.length} แถว`;

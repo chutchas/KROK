@@ -5,7 +5,7 @@
 //   key = ชื่อที่ตั้งต่อช่องในแท็บ API (field_keys) ถ้าไม่ได้ตั้งใช้รหัสช่อง (field id)
 // แล้วตัดสินว่า "ครบ" (ส่งเป็นเอกสารได้เลย) หรือ "ยังไม่ครบ" (เปิดงานให้คนกรอกต่อ)
 // ============================================================
-import { labelMap, type FormField, type FormSchema, type TableColumn } from "@/lib/form-schema";
+import { labelMap, type FormField, type FormSchema, type TableColumn, isUiOnlyField } from "@/lib/form-schema";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { checkCode, finalizeTableRows, passFailCode } from "@/lib/table-rows";
 
@@ -34,6 +34,7 @@ export function intakeFields(schema: FormSchema, fieldKeys: Record<string, strin
   const out: IntakeFieldInfo[] = [];
   schema.steps.forEach((st, si) => {
     for (const f of st.fields) {
+      if (isUiOnlyField(f)) continue; // ปุ่มฟอร์มลูก — ไม่มีคำตอบ
       const info: IntakeFieldInfo = {
         field_id: f.id,
         key: fieldKeys[f.id] || f.id,
@@ -262,6 +263,7 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
   });
   for (const s of schema.steps)
     for (const f of s.fields) {
+      if (isUiOnlyField(f)) continue; // ปุ่มฟอร์มลูก — ไม่มีคำตอบ
       const a = answers[f.id] || {};
       const item: Record<string, unknown> = { id: f.id, label: f.label, type: f.type };
       if (a.src) item.src = a.src;

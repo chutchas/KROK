@@ -8,6 +8,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
 import AreaFieldSettings from "@/components/AreaFieldSettings";
+import ChildFormSettings from "@/components/ChildFormSettings";
 import FormulaInput from "@/components/FormulaInput";
 import PhotoPrintSettings from "@/components/PhotoPrintSettings";
 import {
@@ -293,12 +294,14 @@ export default function FieldSettingsPanel({
         if (nt === "table" && !(field.columns && field.columns.length))
           patchField({ ...clr, type: nt, columns: [{ id: newId("c"), label: "รายการ", type: "text", width: 3 }, { id: newId("c"), label: "จำนวน", type: "number" }], min_rows: field.min_rows ?? 1 });
         else if (nt === "formula") patchField({ ...clr, type: nt, required: false, decimals: field.decimals ?? 2 });
+        else if (nt === "child_form") patchField({ ...clr, type: nt, required: false });
         else patchField({ ...clr, type: nt });
       }} style={sel}>
         {FIELD_TYPES.map((ft) => <option key={ft} value={ft}>{t(`ftype.${ft}`)}</option>)}
         <option value="area" disabled={!field.area && schema.steps.some((st) => st.fields.some((x) => x.area && x.id !== field.id))}>{t("ftype.area")}</option>
       </select>
       {field.area && <AreaFieldSettings field={field} onPatch={patchField} />}
+      {field.type === "child_form" && <ChildFormSettings schema={schema} stepIndex={si} field={field} onPatch={patchField} />}
       {field.type === "text" && (
         <>
           <label style={lbl}>{t("editor.textKind")}</label>
@@ -316,7 +319,7 @@ export default function FieldSettingsPanel({
         </>
       )}
 
-      {field.type !== "formula" && (
+      {field.type !== "formula" && field.type !== "child_form" && (
       <label style={{ display: "flex", alignItems: "center", gap: 7, fontSize: ".88rem", color: "var(--ink-2)", cursor: "pointer", marginTop: 10 }}>
         <input type="checkbox" checked={field.required} onChange={(e) => patchField({ required: e.target.checked })} style={{ width: 17, height: 17, accentColor: "var(--accent)" }} />
         {t("editor.required")}

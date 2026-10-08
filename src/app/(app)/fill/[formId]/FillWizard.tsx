@@ -8,7 +8,7 @@ import Icon from "@/components/Icon";
 import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
-import { labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
+import { isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import { PhotoFrame } from "@/components/paper/PaperPhotoGrid";
 import { mmToPx } from "@/lib/paper-layout";
@@ -37,8 +37,10 @@ import dynamic from "next/dynamic";
 import { printWhenReady } from "@/lib/print";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
-import { Answer, DocRec, MediaPhotos, asRows, dataUrlToBlob, shrinkImage } from "./fill-types";
-import { firstBadRow, rowHasValue } from "./FillTable";
+import { Answer, DocRec, MediaPhotos, TableRow, asRows, dataUrlToBlob, shrinkImage } from "./fill-types";
+import { firstBadRow, isChildRow, rowHasValue } from "./FillTable";
+import ChildFormPanel from "./ChildFormPanel";
+import { listChildLinks, type ChildLink } from "./child-actions";
 import { FieldControl, toCode } from "./FieldControl";
 import { PhotoStampProvider } from "./photo-stamp";
 import { useGeo } from "./useGeo";
@@ -330,6 +332,7 @@ export default function FillWizard(props: Props) {
     let title = "";
     for (const st of schema.steps)
       for (const fl of st.fields) {
+        if (isUiOnlyField(fl)) continue;
         total++;
         const v = answers.current[fl.id]?.value;
         const has = fl.type === "photo" ? !!ph[fl.id] : fl.type === "signature" ? !!sg[fl.id]
@@ -480,6 +483,58 @@ export default function FillWizard(props: Props) {
 
   // เวอร์ชันของฟิลด์แม่ — เพิ่มทุกครั้งที่ค่าเปลี่ยน ใช้เป็น key ให้ฟิลด์ลูก mount ใหม่
   const [depVer, setDepVer] = useState<Record<string, number>>({});
+
+  // ================= ฟอร์มลูก (0074) =================
+  // ตารางที่รับผลจากปุ่มฟอร์มลูก → (รับจากฟอร์มลูกเท่านั้นไหม)
+  const childTables = useMemo(() => {
+    const m = new Map<string, boolean>();
+    for (const st of schema.steps)
+      for (const fl of st.fields)
+        if (fl.type === "child_form" && fl.child_form?.table_id)
+          m.set(fl.child_form.table_id, (m.get(fl.child_form.table_id) ?? false) || fl.child_form.source_only);
+    return m;
+  }, [schema]);
+  const [childLinks, setChildLinks] = useState<ChildLink[]>([]);
+  // เวอร์ชันของตารางที่รับผล — แถวใหม่จากฟอร์มลูกเข้ามา → mount ตารางใหม่จาก answers.current (ค่าที่พิมพ์ค้างอยู่ในนั้นแล้ว)
+  const [childVer, setChildVer] = useState<Record<string, number>>({});
+  const caseIdForChild = kase?.id ?? null;
+  const refreshChild = useCallback(async () => {
+    if (!caseIdForChild || childTables.size === 0) return;
+    const [links, row] = await Promise.all([
+      listChildLinks(caseIdForChild),
+      supabase.from("form_cases").select("answers").eq("id", caseIdForChild).maybeSingle(),
+    ]);
+    setChildLinks(links);
+    const dbAnswers = (row.data?.answers as Record<string, Answer> | undefined) ?? null;
+    if (!dbAnswers) return;
+    const bumped: string[] = [];
+    for (const tid of childTables.keys()) {
+      const dbRows = (Array.isArray(dbAnswers[tid]?.value) ? (dbAnswers[tid].value as TableRow[]) : []).filter(isChildRow);
+      const cur = Array.isArray(answers.current[tid]?.value) ? (answers.current[tid].value as TableRow[]) : [];
+      const have = cur.filter(isChildRow).map((r) => r._child).join("|");
+      if (have === dbRows.map((r) => r._child).join("|")) continue;
+      answers.current[tid] = { ...(answers.current[tid] || {}), value: [...cur.filter((r) => !isChildRow(r)), ...dbRows] };
+      bumped.push(tid);
+    }
+    if (bumped.length) setChildVer((v) => { const n = { ...v }; for (const id of bumped) n[id] = (n[id] ?? 0) + 1; return n; });
+  }, [caseIdForChild, childTables, supabase]);
+  useEffect(() => {
+    if (!caseIdForChild || childTables.size === 0) return;
+    void refreshChild();
+    // ผลจากฟอร์มลูกเข้ามา = งานนี้ถูกแก้ → ดึงใหม่ (Realtime) · พับจอ/เน็ตหลุดแล้วกลับมา → ดึงใหม่
+    const ch = supabase
+      .channel(`krok-case-${caseIdForChild}`)
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "form_cases", filter: `id=eq.${caseIdForChild}` }, () => { void refreshChild(); })
+      .subscribe();
+    const onBack = () => { if (document.visibilityState === "visible") void refreshChild(); };
+    document.addEventListener("visibilitychange", onBack);
+    window.addEventListener("online", onBack);
+    return () => {
+      supabase.removeChannel(ch);
+      document.removeEventListener("visibilitychange", onBack);
+      window.removeEventListener("online", onBack);
+    };
+  }, [caseIdForChild, childTables, refreshChild, supabase]);
 
   /**
    * ค่าฟิลด์แม่เปลี่ยน → ตัดคำตอบของฟิลด์ลูก (และหลาน) ที่ไม่อยู่ในตัวเลือกใหม่ทิ้ง
@@ -673,6 +728,7 @@ export default function FillWizard(props: Props) {
 
       for (const s of schema.steps)
         for (const f of s.fields) {
+          if (isUiOnlyField(f)) continue; // ปุ่มฟอร์มลูก — ไม่มีคำตอบ
           const a = answers.current[f.id] || {};
           const item: Record<string, unknown> = { id: f.id, label: f.label, type: f.type };
           if (a.src) item.src = a.src; // ที่มาของค่า: scan | ai | ai_edited (ไม่มี = คนกรอกเอง)
@@ -871,6 +927,7 @@ export default function FillWizard(props: Props) {
     let filled = 0, total = 0, title = "";
     for (const st of schema.steps)
       for (const fl of st.fields) {
+        if (isUiOnlyField(fl)) continue;
         total++;
         const v = answers.current[fl.id]?.value;
         const has = fl.type === "photo" ? !!ph[fl.id] : fl.type === "signature" ? !!sg[fl.id] : Array.isArray(v) ? v.length > 0 : v != null && v !== "";
@@ -1098,8 +1155,19 @@ export default function FillWizard(props: Props) {
   }
 
   /** photoSlot: แสดงเฉพาะช่องรูปที่ photoSlot ของฟิลด์ (กล่องภาพประกอบ) */
-  const renderField = (f: FormField, paper = false, compact = false, photoSlot?: number) => {
-    const fStep = stepOfField.get(f.id) ?? 0;
+  const renderField = (fRaw: FormField, paper = false, compact = false, photoSlot?: number) => {
+    const fStep = stepOfField.get(fRaw.id) ?? 0;
+    if (fRaw.type === "child_form") {
+      return (
+        <div id={"fld-" + fRaw.id} key={fRaw.id}>
+          <ChildFormPanel field={fRaw} caseId={kase?.id ?? null} caseOpen={!kase || kase.status === "open"}
+            readOnly={!!kase && (!caseMine || (wf && lockedStep(fStep)))} links={childLinks} paper={paper}
+            beforeOpen={() => (dirty.current !== savedAt.current ? persistSegment() : Promise.resolve())}
+            onOpened={() => { void refreshChild(); }} />
+        </div>
+      );
+    }
+    const f: FormField = childTables.get(fRaw.id) ? { ...fRaw, child_only: true } : fRaw;
     const photoCell = photoSlot !== undefined;
     if (photoCell && wf && lockedStep(fStep)) {
       return <PhotoFrame url={photos[photoSlotKey(f.id, photoSlot)]} height={photoCellH} alt={f.label} />;
@@ -1114,7 +1182,7 @@ export default function FillWizard(props: Props) {
     }
     const parentId = f.options_parents ? f.options_source?.parent?.field_id : undefined;
     // key ผูกกับเวอร์ชันของฟิลด์แม่ → แม่เปลี่ยน ฟิลด์ลูก mount ใหม่และอ่านคำตอบที่ถูกตัดแล้ว
-    const k = parentId ? `${f.id}|${depVer[parentId] ?? 0}` : f.id;
+    const k = (parentId ? `${f.id}|${depVer[parentId] ?? 0}` : f.id) + (childTables.has(f.id) ? `|c${childVer[f.id] ?? 0}` : "");
     return (
     <div id={"fld-" + f.id} key={k}>
       <FieldControl

@@ -30,6 +30,51 @@ const STATUS_LABEL: Record<string, { k: MessageKey; c: string }> = {
   rejected: { k: "dash.rejected", c: "var(--fail)" },
 };
 
+// ฟอร์มหลัก/ฟอร์มลูก (0074) — อ้างอิงสองทาง · อ่านด้วย service role (ขอบเขต tenant) เหมือนข้อมูลงาน
+// ลิงก์ที่กดเข้าไปยังตรวจสิทธิ์ตาม RLS ปกติ
+interface RelatedDoc { title: string; caseId: string; subId: string | null; status: "pending" | "done" | "cancelled"; reason: string | null }
+type Db = NonNullable<ReturnType<typeof getAdminClient>> | Awaited<ReturnType<typeof createClient>>;
+async function loadRelated(db: Db, caseId: string | null, tenantId: string): Promise<{ parent: RelatedDoc | null; children: RelatedDoc[] }> {
+  const none = { parent: null, children: [] as RelatedDoc[] };
+  if (!caseId) return none;
+  const { data, error } = await db
+    .from("form_child_links")
+    .select("parent_case_id, child_case_id, child_submission_id, child_form_title, status, cancel_reason, created_at")
+    .eq("tenant_id", tenantId)
+    .or(`parent_case_id.eq.${caseId},child_case_id.eq.${caseId}`)
+    .order("created_at", { ascending: true })
+    .limit(200);
+  if (error || !data) return none; // ยังไม่ได้รัน 0074
+  type L = { parent_case_id: string; child_case_id: string | null; child_submission_id: string | null; child_form_title: string; status: RelatedDoc["status"]; cancel_reason: string | null };
+  const rows = data as L[];
+  const children = rows.filter((l) => l.parent_case_id === caseId && l.child_case_id)
+    .map((l) => ({ title: l.child_form_title, caseId: l.child_case_id!, subId: l.child_submission_id, status: l.status, reason: l.cancel_reason }));
+  const up = rows.find((l) => l.child_case_id === caseId);
+  let parent: RelatedDoc | null = null;
+  if (up) {
+    const [{ data: pc }, { data: ps }] = await Promise.all([
+      db.from("form_cases").select("form_title, status").eq("id", up.parent_case_id).eq("tenant_id", tenantId).maybeSingle(),
+      db.from("submissions").select("id").eq("case_id", up.parent_case_id).eq("tenant_id", tenantId).limit(1).maybeSingle(),
+    ]);
+    const pcs = (pc as { form_title?: string; status?: string } | null);
+    parent = { title: pcs?.form_title || "—", caseId: up.parent_case_id, subId: (ps as { id?: string } | null)?.id ?? null,
+      status: pcs?.status === "done" ? "done" : pcs?.status === "cancelled" ? "cancelled" : "pending", reason: null };
+  }
+  return { parent, children };
+}
+
+function RelatedRef({ r }: { r: RelatedDoc }) {
+  const no = r.caseId.slice(0, 8).toUpperCase();
+  const k: MessageKey = r.status === "done" ? "child.st.done" : r.status === "cancelled" ? "child.st.cancelled" : "child.st.pending";
+  return (
+    <span>
+      {r.subId ? <a href={`/submission/${r.subId}`}>{r.title} #{no}</a> : <span>{r.title} #{no}</span>}
+      <span style={{ color: r.status === "done" ? "var(--pass)" : r.status === "cancelled" ? "var(--ink-3)" : "var(--amber)", marginLeft: 6, fontSize: ".78rem" }}>· <T k={k} /></span>
+      {r.reason && <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{r.reason}</span>}
+    </span>
+  );
+}
+
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
@@ -46,7 +91,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   // งาน (ผู้กรอกแต่ละขั้น) + รูป + หลักฐาน AI อ่านเอกสาร — ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
   // งาน: อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
   const caseDb = getAdminClient() ?? supabase;
-  const [{ pp, theme: formTheme }, caseRes, { data: photoRows }, { data: extractRows }, wsBrand] = await Promise.all([
+  const [{ pp, theme: formTheme }, caseRes, { data: photoRows }, { data: extractRows }, wsBrand, related] = await Promise.all([
     getFormPrintInfo(supabase, sub.form_id as string | null),
     sub.case_id
       ? caseDb.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle()
@@ -59,6 +104,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
       .eq("submission_id", id)
       .order("created_at", { ascending: true }),
     getWorkspaceBranding(supabase, sub.tenant_id as string),
+    loadRelated(caseDb, sub.case_id as string | null, sub.tenant_id as string),
   ]);
   // ธีมของฟอร์ม (ปัจจุบัน) + workspace: โลโก้/เส้นใต้หัว/ข้อความท้าย
   const theme = resolveTheme(wsBrand, formTheme);
@@ -171,6 +217,25 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                 {c.at && <span style={{ color: "var(--ink-3)" }}><LocalDate iso={c.at} /></span>}
               </div>
             ))}
+          </div>
+        )}
+
+        {(related.parent || related.children.length > 0) && (
+          <div style={{ fontSize: ".84rem", margin: "4px 0 8px", padding: "8px 12px", border: "1px solid var(--line)", borderRadius: 8 }}>
+            {related.parent && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                <span style={{ color: "var(--ink-3)", minWidth: 140 }}><T k="child.parent" /></span>
+                <RelatedRef r={related.parent} />
+              </div>
+            )}
+            {related.children.length > 0 && (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start", marginTop: related.parent ? 4 : 0 }}>
+                <span style={{ color: "var(--ink-3)", minWidth: 140 }}><T k="child.children" /></span>
+                <div style={{ display: "grid", gap: 2 }}>
+                  {related.children.map((r, i) => <RelatedRef key={i} r={r} />)}
+                </div>
+              </div>
+            )}
           </div>
         )}
 

@@ -601,6 +601,7 @@ export function FieldControl({
             onChange={(rows) => onPatch({ value: rows }, false)}
             variant={compact ? "compact" : paper ? "paper" : "normal"}
             error={error}
+            childOnly={!!f.child_only}
           />
         )}
       </div>
