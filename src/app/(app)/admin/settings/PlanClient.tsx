@@ -28,10 +28,10 @@ const GROUPS: Group[] = [
     ],
   },
   {
-    title: "ถังข้อมูล",
+    title: "ชุดข้อมูล",
     nums: [
-      { key: "maxDatasets", label: "จำนวนถังข้อมูล" },
-      { key: "maxDatasetRows", label: "แถวต่อถัง", hint: "เพดานระบบ 200,000" },
+      { key: "maxDatasets", label: "จำนวนชุดข้อมูล" },
+      { key: "maxDatasetRows", label: "แถวต่อชุด", hint: "เพดานระบบ 200,000" },
     ],
   },
   {
@@ -40,7 +40,7 @@ const GROUPS: Group[] = [
     nums: [
       { key: "maxWebhooks", label: "Webhook (เส้น)", hint: "0 = ใช้ไม่ได้" },
       { key: "maxIntakeForms", label: "API รับข้อมูล (ฟอร์ม)", hint: "0 = ใช้ไม่ได้" },
-      { key: "maxDatasetApi", label: "ถังข้อมูลแบบ API", hint: "0 = ใช้ไม่ได้" },
+      { key: "maxDatasetApi", label: "ชุดข้อมูลแบบ API", hint: "0 = ใช้ไม่ได้" },
     ],
   },
   {
@@ -284,4 +284,4 @@ function IconBtn({ label, onClick, disabled, danger, children }: { label: string
 const grid = (min: number): React.CSSProperties => ({ display: "grid", gridTemplateColumns: `repeat(auto-fit, minmax(${min}px, 1fr))`, gap: 12 });
 const labelStyle: React.CSSProperties = { fontWeight: 600, fontSize: ".82rem", display: "block", marginBottom: 4, color: "var(--ink-2)" };
 const ta: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "8px 10px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", resize: "vertical" };
-const sel: React.CSSProperties = { padding: "9px 11px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
+const sel: React.CSSProperties = { padding: "9px 11px", borderRadius: 10, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };

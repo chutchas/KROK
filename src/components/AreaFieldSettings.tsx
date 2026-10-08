@@ -36,8 +36,8 @@ export default function AreaFieldSettings({ field, onPatch }: { field: FormField
           <option value={field.area_default}>{field.area_default} ({t("area.inactive")})</option>
         )}
       </select>
-      {areas && areas.length === 0 && !err && <p style={{ fontSize: ".76rem", color: "var(--amber)", margin: "6px 0 0" }}>{t("area.noneYet")}</p>}
-      {err && <p style={{ fontSize: ".76rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}
+      {areas && areas.length === 0 && !err && <p style={{ fontSize: ".76rem", color: "var(--warn)", margin: "6px 0 0" }}>{t("area.noneYet")}</p>}
+      {err && <p role="alert" style={{ fontSize: ".76rem", color: "var(--fail)", margin: "6px 0 0" }}>{err}</p>}
     </div>
   );
 }

@@ -21,7 +21,7 @@ const box: React.CSSProperties = {
   border: "1px solid var(--line)", borderRadius: 9, background: "var(--surface)", padding: 11,
 };
 const sel: React.CSSProperties = {
-  padding: "7px 9px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)",
+  padding: "7px 9px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)",
   color: "var(--ink)", fontFamily: "inherit", fontSize: ".85rem",
 };
 const smallBtn: React.CSSProperties = {
@@ -74,7 +74,7 @@ export default function FillSourcesPanel({
   return (
     <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
-        <Icon icon={ScanLine} className="h-4 w-4 text-[var(--accent)]" />
+        <Icon icon={ScanLine} className="h-4 w-4 text-[var(--accent-text)]" />
         <b style={{ fontSize: ".9rem" }}>{t("fs.panelTitle")}</b>
       </div>
       <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "0 0 10px" }}>
@@ -156,7 +156,7 @@ function SourceCard({
             display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".74rem", fontWeight: 700,
             padding: "3px 9px", borderRadius: 999, whiteSpace: "nowrap",
             background: isScan ? "var(--surface-2, var(--surface))" : "var(--accent-soft)",
-            border: "1px solid var(--line)", color: isScan ? "var(--ink-2)" : "var(--accent)",
+            border: "1px solid var(--line)", color: isScan ? "var(--ink-2)" : "var(--accent-text)",
           }}
         >
           <Icon icon={isScan ? ScanLine : FileText} className="h-3.5 w-3.5" />

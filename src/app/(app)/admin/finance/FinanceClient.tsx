@@ -18,7 +18,7 @@ const th: React.CSSProperties = { textAlign: "left", fontWeight: 600, color: "va
 const td: React.CSSProperties = { padding: "7px 8px", borderBottom: "1px solid var(--line)", fontSize: ".86rem", verticalAlign: "top" };
 const num: React.CSSProperties = { ...td, textAlign: "right", fontVariantNumeric: "tabular-nums", whiteSpace: "nowrap" };
 const numTh: React.CSSProperties = { ...th, textAlign: "right" };
-const inputStyle: React.CSSProperties = { fontFamily: "inherit", fontSize: ".9rem", padding: "7px 9px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink)", width: "100%" };
+const inputStyle: React.CSSProperties = { fontFamily: "inherit", fontSize: ".9rem", padding: "7px 9px", border: "1px solid var(--line-strong)", borderRadius: 7, background: "var(--surface)", color: "var(--ink)", width: "100%" };
 
 function Kpi({ label, value, sub, tone }: { label: string; value: string; sub?: string; tone?: "pass" | "fail" }) {
   return (

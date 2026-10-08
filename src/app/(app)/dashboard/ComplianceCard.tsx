@@ -35,13 +35,13 @@ export default function ComplianceCard() {
 
   const total = data.forms.reduce((a, r) => ({ due: a.due + r.due, onTime: a.onTime + r.onTime, late: a.late + r.late, missed: a.missed + r.missed }), { due: 0, onTime: 0, late: 0, missed: 0 });
   const rate = total.due ? Math.round((total.onTime / total.due) * 1000) / 10 : null;
-  const color = (r: number | null) => (r == null ? "var(--ink-3)" : r >= 90 ? "var(--pass)" : r >= 70 ? "var(--amber)" : "var(--fail)");
+  const color = (r: number | null) => (r == null ? "var(--ink-3)" : r >= 90 ? "var(--pass)" : r >= 70 ? "var(--warn)" : "var(--fail)");
   const bar = (r: { due: number; onTime: number; late: number; missed: number }) => {
     const w = (n: number) => `${r.due ? (n / r.due) * 100 : 0}%`;
     return (
       <div style={{ display: "flex", height: 7, borderRadius: 6, overflow: "hidden", background: "var(--surface-2)", marginTop: 5 }} aria-hidden>
         <div style={{ width: w(r.onTime), background: "var(--pass)" }} />
-        <div style={{ width: w(r.late), background: "var(--amber)" }} />
+        <div style={{ width: w(r.late), background: "var(--warn)" }} />
         <div style={{ width: w(r.missed), background: "var(--fail)" }} />
       </div>
     );
@@ -50,7 +50,7 @@ export default function ComplianceCard() {
     tt("comp.counts", { on: r.onTime, late: r.late, missed: r.missed, due: r.due });
   const tab = (k: "forms" | "teams", label: string) => (
     <button type="button" role="tab" aria-selected={view === k} onClick={() => setView(k)}
-      style={{ padding: "6px 12px", minHeight: 34, borderRadius: 20, border: `1px solid ${view === k ? "var(--accent)" : "var(--line)"}`, background: view === k ? "var(--accent-soft)" : "var(--surface)", color: view === k ? "var(--accent)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer", fontWeight: view === k ? 600 : 500 }}>
+      style={{ padding: "6px 12px", minHeight: 34, borderRadius: 20, border: `1px solid ${view === k ? "var(--accent)" : "var(--line)"}`, background: view === k ? "var(--accent-soft)" : "var(--surface)", color: view === k ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer", fontWeight: view === k ? 600 : 500 }}>
       {label}
     </button>
   );
@@ -80,7 +80,7 @@ export default function ComplianceCard() {
       {bar(total)}
       <div style={{ display: "flex", gap: 14, flexWrap: "wrap", fontSize: ".74rem", color: "var(--ink-3)", marginTop: 6 }}>
         <span><i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "var(--pass)", marginRight: 4 }} />{t("comp.onTime")}</span>
-        <span><i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "var(--amber)", marginRight: 4 }} />{t("comp.late")}</span>
+        <span><i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "var(--warn)", marginRight: 4 }} />{t("comp.late")}</span>
         <span><i style={{ display: "inline-block", width: 9, height: 9, borderRadius: 2, background: "var(--fail)", marginRight: 4 }} />{t("comp.missed")}</span>
       </div>
 

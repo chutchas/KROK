@@ -229,7 +229,7 @@ export function planFeatures(p: Plan, en: boolean): FeatureLine[] {
     L(`ส่งฟอร์ม ${n(p.maxSubmissionsMonth)} ครั้ง/เดือน`, `${n(p.maxSubmissionsMonth)} submissions / month`),
     L(`พื้นที่ไฟล์ ${gb(p.storageMb)}`, `${gb(p.storageMb)} file storage`),
     L(`AI ${n(p.aiCreditsPerMonth)} ครั้ง/เดือน`, `${n(p.aiCreditsPerMonth)} AI credits / month`),
-    L(`ถังข้อมูล ${n(p.maxDatasets)} ชุด (ชุดละ ${n(p.maxDatasetRows)} แถว)`, `${n(p.maxDatasets)} datasets (${n(p.maxDatasetRows)} rows each)`),
+    L(`ชุดข้อมูล ${n(p.maxDatasets)} ชุด (ชุดละ ${n(p.maxDatasetRows)} แถว)`, `${n(p.maxDatasets)} datasets (${n(p.maxDatasetRows)} rows each)`),
     L(`ขั้นอนุมัติ ${n(p.maxApprovalSteps)} ขั้น`, `${n(p.maxApprovalSteps)} approval step${p.maxApprovalSteps === 1 ? "" : "s"}`),
     L("ฟอร์มกรอกหลายคน (ส่งต่องาน)", "Multi-person workflow", !p.workflow),
     L("แจ้งเตือน LINE / อีเมล", "LINE / email notifications", !p.notify),

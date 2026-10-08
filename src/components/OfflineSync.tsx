@@ -112,7 +112,7 @@ export default function OfflineSync() {
   const blocked = online && !syncing && pending > 0 && !!quotaMsg;
 
   let text = "";
-  let color = "var(--amber)";
+  let color = "var(--warn)";
   let icon = CloudOff;
   if (!online) { text = pending > 0 ? tt("sync.offlinePending", { n: pending }) : t("sync.offline"); }
   else if (syncing) { text = tt("sync.syncing", { n: pending }); icon = RefreshCw; }
@@ -133,7 +133,6 @@ export default function OfflineSync() {
         <Icon icon={icon} className="h-3.5 w-3.5" />
       </span>
       {text}
-      <style>{`@keyframes krok-spin{to{transform:rotate(360deg)}}`}</style>
     </button>
     {blocked && showMsg && (
       <span role="status" style={{ position: "absolute", top: "calc(100% + 6px)", right: 0, width: 280, zIndex: 60, background: "var(--surface)", color: "var(--ink)", border: "1px solid var(--line)", borderRadius: 10, boxShadow: "0 10px 30px rgba(0,0,0,.18)", padding: 12, fontSize: ".8rem", lineHeight: 1.55, whiteSpace: "normal" }}>

@@ -5,11 +5,15 @@ import Icon from "@/components/Icon";
 import { Check, X, PenLine } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import BodyPortal from "@/components/BodyPortal";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 
 export function SignaturePad({ hasSig, initialUrl, onSave, paper = false, compact = false }: { hasSig: boolean; initialUrl?: string; onSave: (d: string | null) => void; paper?: boolean; compact?: boolean }) {
   const { t } = useT();
   const ref = useRef<HTMLCanvasElement>(null);
   const drawing = useRef(false);
+  // มีเส้นใหม่ในจังหวะลากนี้ไหม — บันทึก (toDataURL + onSave) ครั้งเดียวตอนยกนิ้ว ไม่ใช่ทุก pointermove
+  // (เดิม onSave ทุก move → re-render ทั้งตัวกรอกฟอร์มหลายสิบครั้งต่อวินาที เส้นสะดุดบนมือถือ)
+  const dirty = useRef(false);
   const last = useRef<[number, number]>([0, 0]);
   const h = compact ? 60 : 140;
 
@@ -36,6 +40,13 @@ export function SignaturePad({ hasSig, initialUrl, onSave, paper = false, compac
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [setup]);
 
+  const endStroke = () => {
+    drawing.current = false;
+    if (!dirty.current || !ref.current) return;
+    dirty.current = false;
+    onSave(ref.current.toDataURL("image/png"));
+  };
+
   const pos = (e: React.PointerEvent) => {
     const r = ref.current!.getBoundingClientRect();
     return [e.clientX - r.left, e.clientY - r.top] as [number, number];
@@ -58,10 +69,11 @@ export function SignaturePad({ hasSig, initialUrl, onSave, paper = false, compac
           ctx.lineTo(p[0], p[1]);
           ctx.stroke();
           last.current = p;
-          onSave(ref.current!.toDataURL("image/png"));
+          dirty.current = true;
         }}
-        onPointerUp={() => { drawing.current = false; }}
-        onPointerCancel={() => { drawing.current = false; }}
+        onPointerUp={endStroke}
+        onPointerCancel={endStroke}
+        onLostPointerCapture={endStroke}
       />
       {/* เส้นเซ็น + คำแนะนำ (หายเมื่อเซ็นแล้ว) */}
       <div aria-hidden style={{ position: "absolute", left: 16, right: 16, bottom: compact ? 12 : 26, borderBottom: "1px solid #c3c8ce", pointerEvents: "none", zIndex: 1 }} />
@@ -72,7 +84,7 @@ export function SignaturePad({ hasSig, initialUrl, onSave, paper = false, compac
       )}
       </div>
       <div style={{ marginTop: 6 }}>
-        <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); onSave(null); }}>{t("fw.sig.clear")}</Button>
+        <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); drawing.current = false; dirty.current = false; onSave(null); }}>{t("fw.sig.clear")}</Button>
         {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={Check} className="h-3.5 w-3.5" /> {t("fw.sig.signed")}</span>}
       </div>
     </>
@@ -84,10 +96,12 @@ export function SignatureModal({ label, initialUrl, onSave, onClose }: { label: 
   const { t, tt } = useT();
   const [temp, setTemp] = useState<string | null>(null);
   const [cleared, setCleared] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(boxRef, onClose);
   return (
     <BodyPortal>
     <div role="dialog" aria-modal="true" aria-label={tt("fw.sig.aria", { label })} style={{ position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)", display: "flex", padding: 16, overflowY: "auto", overscrollBehavior: "contain" }}>
-      <div style={{ width: "min(640px, 100%)", margin: "auto", background: "#fff", color: "#111", borderRadius: 12, padding: 16, boxShadow: "0 10px 40px rgba(0,0,0,.3)" }}>
+      <div ref={boxRef} style={{ width: "min(640px, 100%)", margin: "auto", background: "#fff", color: "#111", borderRadius: 12, padding: 16, boxShadow: "0 10px 40px rgba(0,0,0,.3)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
           <b style={{ fontSize: "1rem" }}>{tt("fw.sig.title", { label })}</b>
           <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "none", cursor: "pointer", color: "#666", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>

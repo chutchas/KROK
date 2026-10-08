@@ -1,7 +1,8 @@
 "use client";
 import { backdropClose } from "@/lib/backdrop";
 import BodyPortal from "@/components/BodyPortal";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import Icon from "@/components/Icon";
 import { X, ScanLine } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
@@ -25,6 +26,9 @@ export default function LiveScanner({ onResult, onClose, continuous = false }: {
   const [count, setCount] = useState(0);
   const [lastCode, setLastCode] = useState("");
   const last = useRef<{ code: string; at: number }>({ code: "", at: 0 });
+  const boxRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogA11y(boxRef, onClose);
 
   useEffect(() => {
     stopped.current = false;
@@ -123,18 +127,18 @@ export default function LiveScanner({ onResult, onClose, continuous = false }: {
       {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.82)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
     >
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "var(--surface)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)" }}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 460, background: "var(--surface)", borderRadius: 16, overflow: "hidden", border: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid var(--line)" }}>
-          <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <b id={titleId} style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Icon icon={ScanLine} className="h-5 w-5" /> {t("scan.title")}
           </b>
-          <button onClick={onClose} aria-label={t("common.close")} className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
+          <button type="button" onClick={onClose} aria-label={t("common.close")} className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
             <Icon icon={X} className="h-5 w-5" />
           </button>
         </div>
         <div style={{ position: "relative", background: "#000", aspectRatio: "4 / 3", display: "flex", alignItems: "center", justifyContent: "center" }}>
           {err ? (
-            <div style={{ color: "#fff", textAlign: "center", padding: 24, fontSize: ".9rem" }}>{err}</div>
+            <div role="alert" style={{ color: "#fff", textAlign: "center", padding: 24, fontSize: ".9rem" }}>{err}</div>
           ) : (
             <>
               <video ref={videoRef} playsInline muted style={{ width: "100%", height: "100%", objectFit: "cover" }} />

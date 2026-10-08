@@ -28,9 +28,10 @@ export const TOURS: TourDef[] = [
       { id: "welcome" },
       { id: "nav", target: "nav" },
       { id: "ws", target: "ws" },
-      { id: "summary", target: "dash-summary" },
+      { id: "attention", target: "dash-attention" },
       { id: "widget", target: "dash-add" },
       { id: "latest", target: "dash-latest" },
+      { id: "summary", target: "dash-summary" },
       { id: "menu", target: "menu" },
       { id: "profile", target: "profile" },
     ],
@@ -68,8 +69,8 @@ export const TOURS: TourDef[] = [
     match: (p) => p.startsWith("/fill/"),
     requires: "fill-submit",
     steps: [
-      { id: "mode", target: "fill-mode" },
-      { id: "draft", target: "fill-draft" },
+      // มุมมอง/บันทึกร่างอยู่ในเมนู ⋯ บนแถบบน (หน้ากรอกแบบเต็มจอ)
+      { id: "more", target: "fill-more" },
       { id: "submit", target: "fill-submit" },
     ],
   },

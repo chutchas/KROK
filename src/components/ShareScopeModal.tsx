@@ -1,6 +1,7 @@
 "use client";
 import { backdropClose } from "@/lib/backdrop";
-import { useState } from "react";
+import { useId, useRef, useState } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import { Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { X, Globe, Building2, Tag, HardHat } from "lucide-react";
@@ -38,6 +39,9 @@ export default function ShareScopeModal({
   const [userIds, setUserIds] = useState<string[]>(initial.userIds);
   const [notice, setNotice] = useState(privacyNotice ?? "");
   const [busy, setBusy] = useState(false);
+  const boxRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  useDialogA11y(boxRef, () => { if (!busy) onClose(); });
   const [err, setErr] = useState<string | null>(null);
 
   const MODES: { m: VisMode; icon: typeof Globe; label: string; sub: string }[] = [
@@ -62,10 +66,10 @@ export default function ShareScopeModal({
 
   return (
     <div {...backdropClose(onClose)} style={{ position: "fixed", inset: 0, zIndex: 60, background: "rgba(6,10,14,.6)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
-      <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", background: "var(--surface)", borderRadius: 16, border: "1px solid var(--line)" }}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby={titleId} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 440, maxHeight: "88vh", overflowY: "auto", background: "var(--surface)", borderRadius: 16, border: "1px solid var(--line)" }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--surface)" }}>
-          <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("share.title")}</b>
-          <button onClick={onClose} aria-label={t("common.close")} className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
+          <b id={titleId} style={{ fontFamily: "var(--font-anuphan)" }}>{t("share.title")}</b>
+          <button type="button" onClick={onClose} aria-label={t("common.close")} className="inline-flex h-8 w-8 items-center justify-center rounded-lg" style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
             <Icon icon={X} className="h-5 w-5" />
           </button>
         </div>
@@ -81,9 +85,9 @@ export default function ShareScopeModal({
                   onClick={() => setMode(o.m)}
                   style={{ display: "flex", alignItems: "flex-start", gap: 10, textAlign: "left", padding: "11px 12px", borderRadius: 10, cursor: "pointer", fontFamily: "inherit", border: on ? "1.5px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)" }}
                 >
-                  <span style={{ color: on ? "var(--accent)" : "var(--ink-3)", marginTop: 1 }}><Icon icon={o.icon} className="h-5 w-5" /></span>
+                  <span style={{ color: on ? "var(--accent-text)" : "var(--ink-3)", marginTop: 1 }}><Icon icon={o.icon} className="h-5 w-5" /></span>
                   <span>
-                    <b style={{ fontSize: ".92rem", color: on ? "var(--accent)" : "var(--ink)" }}>{o.label}</b>
+                    <b style={{ fontSize: ".92rem", color: on ? "var(--accent-text)" : "var(--ink)" }}>{o.label}</b>
                     <span style={{ display: "block", fontSize: ".78rem", color: "var(--ink-3)" }}>{o.sub}</span>
                   </span>
                 </button>

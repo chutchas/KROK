@@ -25,7 +25,7 @@ export const dynamic = "force-dynamic";
 
 const STATUS_LABEL: Record<string, { k: MessageKey; c: string }> = {
   none: { k: "dash.submitted", c: "var(--ink-2)" },
-  pending: { k: "dash.pending", c: "var(--amber)" },
+  pending: { k: "dash.pending", c: "var(--warn)" },
   approved: { k: "dash.approved", c: "var(--pass)" },
   rejected: { k: "dash.rejected", c: "var(--fail)" },
 };
@@ -95,7 +95,7 @@ function RelatedRef({ r }: { r: RelatedDoc }) {
   return (
     <span>
       {r.subId ? <a href={`/submission/${r.subId}`}>{r.title}{no}</a> : <span>{r.title}{no}</span>}
-      <span style={{ color: r.status === "done" ? "var(--pass)" : r.status === "cancelled" ? "var(--ink-3)" : "var(--amber)", marginLeft: 6, fontSize: ".78rem" }}>· <T k={k} /></span>
+      <span style={{ color: r.status === "done" ? "var(--pass)" : r.status === "cancelled" ? "var(--ink-3)" : "var(--warn)", marginLeft: 6, fontSize: ".78rem" }}>· <T k={k} /></span>
       {r.reason && <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{r.reason}</span>}
     </span>
   );
@@ -223,7 +223,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
           {subGeo && (
             <div><span style={{ color: "var(--ink-3)" }}><T k="sub.location" /> </span>
               <a href={mapUrl(subGeo)} target="_blank" rel="noopener noreferrer">{fmtCoords(subGeo)}</a>
-              {subGeo.acc > 0 && <span style={{ color: subGeo.acc > 100 ? "var(--amber)" : "var(--ink-3)", fontSize: ".78rem" }}> ±{subGeo.acc}m</span>}
+              {subGeo.acc > 0 && <span style={{ color: subGeo.acc > 100 ? "var(--warn)" : "var(--ink-3)", fontSize: ".78rem" }}> ±{subGeo.acc}m</span>}
             </div>
           )}
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.duration" /> </span><T k="sub.seconds" vars={{ s: sub.duration_s ?? "—" }} /></div>
@@ -322,7 +322,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
                         verticalAlign: "middle", whiteSpace: "nowrap",
                         border: "1px solid var(--line)",
                         background: a.src === "scan" || a.src === "api" ? "var(--code-bg)" : "var(--accent-soft)",
-                        color: a.src === "scan" || a.src === "api" ? "var(--ink-3)" : "var(--accent)",
+                        color: a.src === "scan" || a.src === "api" ? "var(--ink-3)" : "var(--accent-text)",
                       }}
                     >
                       <T k={`src.${a.src}`} />

@@ -26,7 +26,7 @@ const STATUS_LABEL: Record<DeviceStatus, MessageKey> = {
   revoked: "dev.stRevoked",
 };
 const STATUS_COLOR: Record<DeviceStatus, string> = {
-  pending: "var(--amber)",
+  pending: "var(--warn)",
   approved: "var(--pass)",
   revoked: "var(--fail)",
 };
@@ -307,7 +307,7 @@ function MatrixCard({
                               style={{
                                 padding: "4px 9px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)",
                                 cursor: "pointer", fontFamily: "inherit", fontSize: ".74rem", fontWeight: on ? 600 : 400,
-                                background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-3)",
+                                background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-3)",
                               }}
                             >
                               {opt.label}

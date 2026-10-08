@@ -1,7 +1,8 @@
 "use client";
 import { backdropClose } from "@/lib/backdrop";
 import BodyPortal from "@/components/BodyPortal";
-import { useEffect, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import Icon from "@/components/Icon";
 import { Paperclip, X, ExternalLink, Download, FileText, Image as ImageIcon, Film, Link2 } from "lucide-react";
 import {
@@ -93,13 +94,15 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
   const { t } = useT();
   const href = attachmentHref(item);
 
+  const boxRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  // Esc ปิด · Tab วนในกล่อง · คืนโฟกัสให้ชิปที่เปิด
+  useDialogA11y(boxRef, onClose);
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => { window.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
-  }, [onClose]);
+    return () => { document.body.style.overflow = prev; };
+  }, []);
 
   const btn: React.CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 10px", borderRadius: 7,
@@ -114,15 +117,16 @@ function AttachmentModal({ item, onClose }: { item: Attachment; onClose: () => v
       style={{ position: "fixed", inset: 0, zIndex: 120, background: "rgba(8,15,30,.62)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}
     >
       <div
+        ref={boxRef} role="dialog" aria-modal="true" aria-labelledby={titleId}
         onClick={(e) => e.stopPropagation()}
         style={{ width: "min(1000px, 100%)", height: "min(88vh, 100%)", display: "flex", flexDirection: "column", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden", boxShadow: "var(--shadow)" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderBottom: "1px solid var(--line)" }}>
           <Icon icon={iconFor(item)} className="h-4 w-4" />
-          <b style={{ flex: 1, fontSize: ".92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-anuphan)" }}>{item.name}</b>
+          <b id={titleId} style={{ flex: 1, fontSize: ".92rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontFamily: "var(--font-anuphan)" }}>{item.name}</b>
           <a href={href} target="_blank" rel="noopener noreferrer" style={btn}><Icon icon={ExternalLink} className="h-3.5 w-3.5" /> {t("att.newTab")}</a>
           <a href={`${href}?download=1`} style={btn}><Icon icon={Download} className="h-3.5 w-3.5" /> {t("att.download")}</a>
-          <button onClick={onClose} style={{ ...btn, padding: "6px 8px" }} aria-label={t("common.close")}><Icon icon={X} className="h-4 w-4" /></button>
+          <button type="button" onClick={onClose} style={{ ...btn, padding: "6px 8px" }} aria-label={t("common.close")}><Icon icon={X} className="h-4 w-4" /></button>
         </div>
 
         <div style={{ flex: 1, minHeight: 0, background: "var(--code-bg)", display: "flex", alignItems: "center", justifyContent: "center" }}>

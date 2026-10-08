@@ -66,7 +66,7 @@ function ProviderCard({ meta, view }: { meta: PaymentProviderMeta; view: Provide
           <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".8rem", marginTop: 2 }}>{meta.hint}</span>
         </div>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: ".82rem", color: enabled ? "var(--accent)" : "var(--ink-3)", fontWeight: 600 }}>
+          <span style={{ fontSize: ".82rem", color: enabled ? "var(--accent-text)" : "var(--ink-3)", fontWeight: 600 }}>
             {enabled ? "เปิดใช้งาน" : "ปิดอยู่"}
           </span>
           <Toggle on={enabled} disabled={busy} onClick={() => { const n = !enabled; setEnabled(n); save(n); }} />

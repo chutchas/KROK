@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     .eq("id", datasetId)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
-  if (!row) return NextResponse.json({ error: await sm("ไม่พบถังข้อมูล") }, { status: 404 });
+  if (!row) return NextResponse.json({ error: await sm("ไม่พบชุดข้อมูล") }, { status: 404 });
   const ds = rowToMeta(row as Record<string, unknown>);
 
   let parsed: { table: ParsedTable; sheets: string[] };
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
 
   // ---------- import ----------
   if (table.totalRows > maxRows)
-    return NextResponse.json({ error: `ไฟล์มี ${table.totalRows.toLocaleString()} แถว เกินที่แพ็กเกจรองรับ (สูงสุด ${maxRows.toLocaleString()} แถวต่อถัง)` }, { status: 400 });
+    return NextResponse.json({ error: `ไฟล์มี ${table.totalRows.toLocaleString()} แถว เกินที่แพ็กเกจรองรับ (สูงสุด ${maxRows.toLocaleString()} แถวต่อชุด)` }, { status: 400 });
 
   const mode = fd.get("mode") === "upsert" ? "upsert" : "replace";
   let columns: DatasetColumn[];

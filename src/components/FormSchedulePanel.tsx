@@ -52,7 +52,7 @@ export default function FormSchedulePanel({ formId, teams, members }: {
 
   if (!formId) return <div style={box}>{head}<p style={{ fontSize: ".8rem", color: "var(--ink-3)", margin: "8px 0 0" }}>{t("sch.saveFirst")}</p></div>;
   if (!loaded) return <div style={box}>{head}<p style={{ fontSize: ".8rem", color: "var(--ink-3)", margin: "8px 0 0" }}>{t("common.loading")}</p></div>;
-  if (missing) return <div style={box}>{head}<p style={{ fontSize: ".8rem", color: "var(--amber)", margin: "8px 0 0" }}>{t("sch.needMigration")}</p></div>;
+  if (missing) return <div style={box}>{head}<p style={{ fontSize: ".8rem", color: "var(--warn)", margin: "8px 0 0" }}>{t("sch.needMigration")}</p></div>;
 
   const on = !!cfg;
   const set = (patch: Partial<ScheduleConfig>) => { setCfg((c) => (c ? { ...c, ...patch } : c)); setMsg(null); };
@@ -81,7 +81,7 @@ export default function FormSchedulePanel({ formId, teams, members }: {
     display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
     padding: "7px 12px", minHeight: 36, borderRadius: 20, fontSize: ".84rem", cursor: "pointer", fontFamily: "inherit",
     border: active ? "1px solid var(--accent)" : "1px solid var(--line)", background: active ? "var(--accent-soft)" : "var(--surface)",
-    color: active ? "var(--accent)" : "var(--ink-2)", fontWeight: active ? 600 : 500,
+    color: active ? "var(--accent-text)" : "var(--ink-2)", fontWeight: active ? 600 : 500,
   });
   const label: React.CSSProperties = { fontSize: ".86rem", fontWeight: 600, margin: "12px 0 6px", display: "block" };
   const dow = lang === "en" ? DOW_EN : DOW_TH;
@@ -221,7 +221,7 @@ export default function FormSchedulePanel({ formId, teams, members }: {
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 14 }}>
             <AsyncButton variant="primary" onClick={save} disabled={!dirty} style={{ padding: "8px 14px", fontSize: ".88rem" }}>{t("sch.save")}</AsyncButton>
             {saved && <Button type="button" variant="ghost" onClick={() => void turnOff()} style={{ padding: "8px 12px", fontSize: ".85rem", color: "var(--fail)" }}>{t("sch.remove")}</Button>}
-            {dirty && saved && <small style={{ color: "var(--amber)", fontSize: ".78rem" }}>{t("sch.unsaved")}</small>}
+            {dirty && saved && <small style={{ color: "var(--warn)", fontSize: ".78rem" }}>{t("sch.unsaved")}</small>}
           </div>
         </div>
       )}

@@ -6,7 +6,7 @@ import type { HealthReport, HealthStatus, AiProfileInfo } from "@/lib/platform-h
 
 const STATUS: Record<HealthStatus, { label: string; color: string; bg: string; dot: string }> = {
   ok: { label: "ปกติ", color: "var(--pass)", bg: "var(--pass-soft)", dot: "●" },
-  warn: { label: "ควรตรวจ", color: "var(--amber)", bg: "var(--accent-soft)", dot: "▲" },
+  warn: { label: "ควรตรวจ", color: "var(--warn)", bg: "var(--warn-soft)", dot: "▲" },
   fail: { label: "ผิดปกติ", color: "var(--fail)", bg: "var(--fail-soft)", dot: "✕" },
   off: { label: "ไม่ได้เปิดใช้", color: "var(--ink-3)", bg: "var(--code-bg)", dot: "○" },
 };

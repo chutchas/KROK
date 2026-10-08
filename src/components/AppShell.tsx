@@ -88,6 +88,9 @@ export default function AppShell({
   activeTenantId: string;
 }) {
   const path = usePathname();
+  // หน้ากรอกฟอร์ม = โหมดเต็มจอ (focus): ซ่อนแถบเมนูหลัก กันพลาดกดออกกลางการตรวจ
+  // หน้ากรอกมีแถบบนของตัวเอง (ชื่อฟอร์ม · ขั้นที่ · ปุ่มปิด) — ดู fill/[formId]/FillFocusBar
+  const focusMode = isFocusPath(path);
   const router = useRouter();
   const { t, tt } = useT();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -257,8 +260,11 @@ export default function AppShell({
           position: "sticky",
           top: 0,
           zIndex: 20,
+          // โหมดเต็มจอ: ซ่อนด้วย display (ไม่ถอดออก) → การแจ้งเตือน/ซิงก์คิวออฟไลน์/เตรียมออฟไลน์ ยังทำงานเบื้องหลังตามเดิม
+          display: focusMode ? "none" : undefined,
         }}
         className="no-print"
+        aria-hidden={focusMode || undefined}
       >
         <div
           className="krok-topbar"
@@ -309,7 +315,7 @@ export default function AppShell({
                     whiteSpace: "nowrap",
                     flex: "0 0 auto",
                     textDecoration: "none",
-                    color: on ? "var(--accent)" : "var(--ink-2)",
+                    color: on ? "var(--accent-text)" : "var(--ink-2)",
                     background: on ? "var(--accent-soft)" : "transparent",
                   }}
                 >
@@ -479,7 +485,7 @@ export default function AppShell({
                             fontSize: ".95rem",
                             textDecoration: "none",
                             fontWeight: on ? 600 : 500,
-                            color: on ? "var(--accent)" : "var(--ink)",
+                            color: on ? "var(--accent-text)" : "var(--ink)",
                             background: on ? "var(--accent-soft)" : "transparent",
                           }}
                         >
@@ -509,9 +515,17 @@ export default function AppShell({
       )}
 
       <TourGuide userId={userId} />
-      <main style={{ maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
+      <main style={focusMode
+        // โหมดเต็มจอ: ไม่จำกัดความกว้าง (หน้ากรอกจัดคอลัมน์กลางจอเอง + แถบบนชิดขอบจอ) ไม่เว้นที่บน
+        ? { margin: "0 auto", padding: "0 var(--krok-gutter) 24px" }
+        : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
     </>
   );
+}
+
+/** หน้าที่แสดงแบบเต็มจอ (ไม่มีแถบเมนูหลัก) — หน้ากรอกฟอร์มที่ล็อกอิน /fill/<id> */
+function isFocusPath(path: string | null): boolean {
+  return !!path && path.startsWith("/fill/");
 }
 
 function Avatar({ url, size }: { url: string; size: number }) {

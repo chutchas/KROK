@@ -127,3 +127,21 @@ export const metricUnit = (m: WidgetMetric, en = false): string => {
   if (m === "submitters") return en ? "" : "คน";
   return en ? "" : "ครั้ง";
 };
+
+// ---- ส่วนของหน้าแดชบอร์ด (ลำดับจากบนลงล่าง) ----
+// ตอนนี้ใช้ลำดับตั้งต้นเสมอ · ภายหลังถ้าให้ workspace จัดเอง: เก็บ array คีย์ไว้ แล้วผ่าน cleanSections ก่อนใช้
+/** attention = ต้องดูตอนนี้ · compliance = ความครบถ้วนรอบตรวจ · widgets = การ์ดปรับเองได้ · latest = รายการล่าสุด · usage = โควตาแพ็กเกจ */
+export type DashSectionKey = "attention" | "compliance" | "widgets" | "latest" | "usage";
+export const DASH_SECTIONS: readonly DashSectionKey[] = ["attention", "compliance", "widgets", "latest", "usage"];
+/** ลำดับตั้งต้น: เรื่องที่ต้องจัดการก่อน → ภาพรวม → โควตา/การเงินไว้ล่างสุด */
+export const DEFAULT_DASH_SECTIONS: readonly DashSectionKey[] = DASH_SECTIONS;
+
+const isSection = (k: unknown): k is DashSectionKey => typeof k === "string" && (DASH_SECTIONS as readonly string[]).includes(k);
+
+/** ล้างลำดับที่บันทึกไว้: ตัดคีย์แปลก/ซ้ำ แล้วต่อท้ายส่วนที่ขาด (ส่วนใหม่ที่เพิ่มทีหลังจะไม่หายไป) */
+export function cleanSections(raw: unknown): DashSectionKey[] {
+  const out: DashSectionKey[] = [];
+  if (Array.isArray(raw)) for (const k of raw) if (isSection(k) && !out.includes(k)) out.push(k);
+  for (const k of DEFAULT_DASH_SECTIONS) if (!out.includes(k)) out.push(k);
+  return out;
+}

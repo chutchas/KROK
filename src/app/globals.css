@@ -35,21 +35,29 @@
   --ink-3: #64748b; /* เดิม #94a3b8 — ตัวเล็กบนพื้นขาว contrast ไม่ถึง 4.5:1 */
 
   /* ---- lines / accents ---- */
-  --line: #cbd5e1;
+  --line: #cbd5e1; /* เส้นแบ่ง/ขอบการ์ด */
+  /* ขอบช่องกรอก (input/select/textarea) — contrast ≥ 3:1 กับพื้น ให้เห็นขอบช่องชัด (WCAG 1.4.11) */
+  --line-strong: #7b8aa1;
   --border-soft: rgba(148, 163, 184, 0.35);
   --accent: var(--brand-primary);
   --accent-ink: #ffffff;
   --accent-soft: var(--brand-tint);
   /* สีแบรนด์ในรูปตัวอักษร/ไอคอนบนพื้นอ่อน — เข้มกว่าปุ่มให้ contrast ≥ 4.5:1 (WCAG AA) */
   --accent-text: #2559c4;
-  --amber: var(--brand-primary); /* info highlight = แบรนด์ */
+  --amber: var(--brand-primary); /* info highlight = แบรนด์ (ไม่ใช่คำเตือน — คำเตือนใช้ --warn) */
 
   /* ---- semantic ---- */
   --pass: #15803d;
   --pass-solid: #15803d; /* พื้นปุ่มสีเขียว (ตัวอักษรขาว) — ไม่เปลี่ยนตามธีม */
   --pass-soft: #e7f6ec;
+  --pass-text: #166534; /* ตัวอักษรเขียวบน --pass-soft ≥ 4.5:1 */
   --fail: #dc2626;
+  --fail-solid: #b91c1c; /* พื้นปุ่มลบ/อันตราย (ตัวอักษรขาว 6.5:1) — ไม่เปลี่ยนตามธีม */
   --fail-soft: #fdeaea;
+  --fail-text: #b91c1c; /* ตัวอักษรแดงบน --fail-soft ≥ 4.5:1 */
+  /* คำเตือน/รอดำเนินการ/ต้องใส่ใจ — อำพันเข้ม อ่านได้ ≥ 4.5:1 บนพื้นขาวและ --warn-soft */
+  --warn: #b45309;
+  --warn-soft: #fef3c7;
   --code-bg: #f1f5f9;
 
   /* ---- logo mark stripes (fallback ให้ .hazard เดิม) ---- */
@@ -76,6 +84,7 @@
     --ink-2: #cbd5e1;
     --ink-3: #8b98ad;
     --line: #2b3a53;
+    --line-strong: #717f96;
     --border-soft: rgba(148, 163, 184, 0.22);
     --accent: var(--brand-primary);
     --accent-ink: #ffffff;
@@ -84,8 +93,12 @@
     --amber: #8ba4ff;
     --pass: #4ade80;
     --pass-soft: #16261d;
+    --pass-text: #4ade80;
     --fail: #f87171;
     --fail-soft: #2c1a1a;
+    --fail-text: #f87171;
+    --warn: #fbbf24;
+    --warn-soft: rgba(251, 191, 36, 0.14);
     --code-bg: #232f45;
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
   }
@@ -104,6 +117,7 @@
   --ink-2: #cbd5e1;
   --ink-3: #8b98ad;
   --line: #2b3a53;
+  --line-strong: #717f96;
   --border-soft: rgba(148, 163, 184, 0.22);
   --accent: var(--brand-primary);
   --accent-ink: #ffffff;
@@ -112,8 +126,12 @@
   --amber: #8ba4ff;
   --pass: #4ade80;
   --pass-soft: #16261d;
+  --pass-text: #4ade80;
   --fail: #f87171;
   --fail-soft: #2c1a1a;
+  --fail-text: #f87171;
+  --warn: #fbbf24;
+  --warn-soft: rgba(251, 191, 36, 0.14);
   --code-bg: #232f45;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
 }
@@ -155,6 +173,13 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background-image: var(--brand-gradient-hover);
   background-clip: padding-box;
+}
+/* สปินเนอร์ของ Button/Spinner ใน ui.tsx — ประกาศครั้งเดียวที่นี่ (เดิมฉีด <style> ทุกครั้งที่ render) */
+@keyframes krok-spin { to { transform: rotate(360deg); } }
+@keyframes krok-sp {
+  to {
+    transform: rotate(360deg);
+  }
 }
 h1, h2, h3, h4 {
   font-family: var(--font-anuphan);
@@ -214,6 +239,7 @@ a {
     --ink-2: #475569;
     --ink-3: #64748b;
     --line: #cbd5e1;
+    --line-strong: #7b8aa1;
     --border-soft: rgba(148, 163, 184, 0.35);
     --accent: var(--brand-primary);
     --accent-ink: #ffffff;
@@ -223,6 +249,10 @@ a {
     --pass-soft: #e7f6ec;
     --fail: #dc2626;
     --fail-soft: #fdeaea;
+    --fail-text: #b91c1c;
+    --pass-text: #166534;
+    --warn: #b45309;
+    --warn-soft: #fef3c7;
     --code-bg: #f1f5f9;
     --shadow: none;
   }

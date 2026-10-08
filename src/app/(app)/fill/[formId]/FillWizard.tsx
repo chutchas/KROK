@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin } from "lucide-react";
+import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
 import { isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
@@ -45,6 +45,7 @@ import { FieldControl, toCode } from "./FieldControl";
 import { PhotoStampProvider } from "./photo-stamp";
 import { useGeo } from "./useGeo";
 import { watermarkLines } from "@/lib/geo";
+import { FillActionBar, FillTopBar, FOCUS_COL_W, type FocusMenuItem } from "./FillFocusBar";
 
 
 // โหมดกระดาษใช้เฉพาะบางคน — แยก bundle (หน้ากรอกบนมือถือโหลดเร็วขึ้น)
@@ -443,13 +444,38 @@ export default function FillWizard(props: Props) {
     }
   }, [props.offlineShell, router]);
 
+  // ================= โหมดเต็มจอ (focus) =================
+  // หน้ากรอกที่ล็อกอิน: ไม่มีเมนูหลักของแอป มีแถบบน (ชื่อ · ขั้นที่ · ⋯ · X) + แถบปุ่มล่างติดจอ
+  // หน้าสาธารณะ (/f/*) มีหัวของตัวเอง → ใช้เฉพาะแถบปุ่มล่าง
+  const focus = !props.publicMode;
+  const [exiting, setExiting] = useState(false);
+  const listPath = kase ? "/forms?tab=tasks" : "/forms";
+
+  /** ออกจากฟอร์ม: มีของที่ยังไม่บันทึก → บันทึกร่างให้ก่อน · บันทึกไม่ได้ → ถามยืนยันก่อนทิ้ง */
   async function exitForm() {
-    if (draftsOn && dirty.current !== savedAt.current && hasContent()) {
-      const ok = await saveDraftNow("auto");
-      if (!ok && !(await confirmDialog({ message: t("draft.exitUnsaved"), confirmLabel: t("fill.exit"), danger: true }))) return;
+    if (exiting) return;
+    setExiting(true);
+    try {
+      if (draftsOn && dirty.current !== savedAt.current && hasContent()) {
+        const ok = await saveDraftNow("auto");
+        if (!ok && !(await confirmDialog({ message: t("draft.exitUnsaved"), confirmLabel: t("fill.exit"), danger: true }))) return;
+      }
+      go(listPath);
+    } finally {
+      setExiting(false);
     }
-    go(kase ? "/forms?tab=tasks" : "/forms");
   }
+
+  // เปลี่ยนขั้น → เลื่อนขึ้นบนสุด + ย้ายโฟกัสไปหัวข้อขั้นใหม่ (โปรแกรมอ่านหน้าจอ/คีย์บอร์ดรู้ว่าเปลี่ยนขั้นแล้ว)
+  // ไม่ทำตอนเปิดหน้าครั้งแรก (ไม่แย่งโฟกัส)
+  const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const shownIdx = useRef(idx);
+  useEffect(() => {
+    if (shownIdx.current === idx) return;
+    shownIdx.current = idx;
+    window.scrollTo(0, 0);
+    stepHeadingRef.current?.focus({ preventScroll: true });
+  }, [idx]);
 
   /** ส่งฟอร์มสำเร็จแล้ว → ลบร่างทิ้ง */
   /** ลบร่างในเครื่องหลังส่ง — รอการบันทึกร่างที่ค้างอยู่จบก่อน (ไม่งั้นร่างที่บันทึกทีหลังจะโผล่กลับมา) */
@@ -1022,17 +1048,26 @@ export default function FillWizard(props: Props) {
     router.push("/forms?tab=tasks");
   }
 
+  /** หน้าจอสถานะ (ตรวจเครื่อง / ส่งแล้ว ฯลฯ) ในโหมดเต็มจอ: แถบบนมีแค่ชื่อ + ปุ่มปิด */
+  const focusShell = (node: React.ReactNode) => !focus ? node : (
+    <>
+      <FillTopBar title={props.title} menu={[]} closing={exiting}
+        onClose={done ? () => go(done.handoff || done.returned ? "/forms?tab=tasks" : "/forms") : () => void exitForm()} />
+      <div style={{ maxWidth: FOCUS_COL_W, margin: "0 auto" }}>{node}</div>
+    </>
+  );
+
   // ---- ประตูตรวจอุปกรณ์: ฟอร์มที่ล็อค ต้องเป็นเครื่องที่อนุมัติแล้วเท่านั้น ----
   if (deviceLocked && device.status !== "approved") {
     const code = deviceShortCode(typeof window !== "undefined" ? getDeviceKey() : "");
     const box: React.CSSProperties = { background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "32px 20px", textAlign: "center", boxShadow: "var(--shadow)", maxWidth: 460, margin: "0 auto" };
 
     if (device.status === "checking")
-      return (
+      return focusShell(
         <div style={box}>
           <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={TabletSmartphone} className="h-10 w-10" strokeWidth={1.5} /></div>
           <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("fw.device.checking")}</h2>
-        </div>
+        </div>,
       );
 
     const title = device.status === "revoked" ? t("fw.device.revoked")
@@ -1044,9 +1079,9 @@ export default function FillWizard(props: Props) {
       : device.status === "error" ? (device.msg || t("fw.device.retryAgain"))
       : t("fw.device.notApprovedSub");
 
-    return (
+    return focusShell(
       <div style={box}>
-        <div style={{ display: "flex", justifyContent: "center", color: device.status === "pending" || device.status === "notlinked" ? "var(--amber)" : "var(--fail)" }}>
+        <div style={{ display: "flex", justifyContent: "center", color: device.status === "pending" || device.status === "notlinked" ? "var(--warn)" : "var(--fail)" }}>
           <Icon icon={ShieldAlert} className="h-11 w-11" strokeWidth={1.5} />
         </div>
         <h2 style={{ margin: "10px 0 4px", fontSize: "1.08rem" }}>{title}</h2>
@@ -1075,27 +1110,27 @@ export default function FillWizard(props: Props) {
           </Button>
           <Button onClick={() => go("/forms")}>{t("fill.backToList")}</Button>
         </div>
-      </div>
+      </div>,
     );
   }
 
   // ฟอร์มกรอกหลายคนที่ขั้นแรกจำกัดทีม — ผู้ใช้นี้เริ่มงานไม่ได้
   if (wf && !kase && viewOnly) {
     const tn = whoOf(0);
-    return (
+    return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "36px 20px", textAlign: "center", boxShadow: "var(--shadow)", maxWidth: 480, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={Users} className="h-11 w-11" strokeWidth={1.5} /></div>
         <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("wf.startTeamOnly")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>{t("wf.startTeamOnlySub").replace("{team}", tn || "-")}</p>
         <Button onClick={() => go("/forms")} style={{ marginTop: 12 }}>{t("fill.backToList")}</Button>
-      </div>
+      </div>,
     );
   }
 
   if (done && (done.handoff || done.returned)) {
-    return (
+    return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "center", color: done.returned ? "#d97706" : "var(--pass)" }}>
+        <div style={{ display: "flex", justifyContent: "center", color: done.returned ? "var(--warn)" : "var(--pass)" }}>
           <Icon icon={done.returned ? CornerUpLeft : Send} className="h-12 w-12" strokeWidth={1.6} />
         </div>
         <h2 style={{ margin: "10px 0 4px" }}>{done.returned ? t("wf.doneReturned") : t("wf.doneHandoff")}</h2>
@@ -1108,14 +1143,14 @@ export default function FillWizard(props: Props) {
           <Button variant="primary" onClick={() => router.push("/forms?tab=tasks")}>{t("wf.backToTasks")}</Button>
           <Button onClick={() => go("/forms")}>{t("fill.backToList")}</Button>
         </div>
-      </div>
+      </div>,
     );
   }
 
   if (done) {
-    return (
+    return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--amber)" : done.pending ? "var(--amber)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
+        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--warn)" : done.pending ? "var(--warn)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
         <h2 style={{ margin: "10px 0 4px" }}>
           {done.offline
             ? t("fill.doneOffline")
@@ -1131,7 +1166,7 @@ export default function FillWizard(props: Props) {
             : tt("fw.doneSub", { title: props.title, sec: done.dur, next: done.pending ? t("fw.doneNotifyAppr") : t("fw.doneOnDash") })}
         </p>
         {done.caseWarn && (
-          <p style={{ color: "#d97706", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
+          <p style={{ color: "var(--warn)", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
         )}
         {done.fails.length > 0 && (
           <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>
@@ -1150,7 +1185,7 @@ export default function FillWizard(props: Props) {
             </>
           )}
         </div>
-      </div>
+      </div>,
     );
   }
 
@@ -1239,28 +1274,27 @@ export default function FillWizard(props: Props) {
     );
   };
 
-  const draftBtn = draftsOn ? (
-    <Button data-tour="fill-draft" onClick={() => void saveDraftNow("manual")} loading={draftState.kind === "saving"} disabled={mediaLoading} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.draftTitle")}>
-      <Icon icon={Save} className="h-4 w-4" /> {kase ? t("common.save") : t("draft.save")}
-    </Button>
-  ) : null;
-
-  const draftNotice = draftsOn && (draftState.kind !== "idle" || versionChanged || mediaLoading) ? (
+  // สถานะบันทึก (กำลังบันทึก / บันทึกแล้วเวลา … / บันทึกในเครื่อง) — โหมดเต็มจอแสดงตัวเล็กใต้ชื่อบนแถบบน
+  const savedStatus = !draftsOn ? null
+    : draftState.kind === "saving" ? <span>{t("draft.saving")}</span>
+    : draftState.kind === "saved" && draftState.at ? (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
+      </span>
+    )
+    : draftState.kind === "local" && draftState.at ? (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+        <Icon icon={CloudOff} className="h-3.5 w-3.5" /> {t("draft.savedLocal").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
+      </span>
+    )
+    : null;
+  const savedInBar = focus && !!savedStatus;
+  const draftNotice = draftsOn && ((draftState.kind !== "idle" && !savedInBar) || draftState.kind === "error" || versionChanged || mediaLoading) ? (
     <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 12px", alignItems: "center", fontSize: ".78rem", margin: "6px 0 2px", color: draftState.kind === "error" ? "var(--fail)" : "var(--ink-3)" }}>
-      {draftState.kind === "saving" && <span>{t("draft.saving")}</span>}
-      {draftState.kind === "saved" && draftState.at && (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Icon icon={Check} className="h-3.5 w-3.5" /> {t(kase ? "wf.savedAt" : "draft.savedAt").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
-        </span>
-      )}
-      {draftState.kind === "local" && draftState.at && (
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-          <Icon icon={CloudOff} className="h-3.5 w-3.5" /> {t("draft.savedLocal").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
-        </span>
-      )}
+      {!savedInBar && savedStatus}
       {draftState.kind === "error" && <span>⚠ {draftState.msg}</span>}
       {mediaLoading && <span>{t("draft.loadingMedia")}</span>}
-      {versionChanged && <span style={{ color: "var(--amber)" }}>⚠ {t("draft.versionChanged")}</span>}
+      {versionChanged && <span style={{ color: "var(--warn)" }}>⚠ {t("draft.versionChanged")}</span>}
     </div>
   ) : null;
 
@@ -1279,6 +1313,21 @@ export default function FillWizard(props: Props) {
         );
       })}
     </div>
+  );
+
+  // เมนู ⋯ บนแถบบน (โหมดเต็มจอ): มุมมอง · พิมพ์ (กระดาษ) · บันทึกร่าง
+  const focusMenu: FocusMenuItem[] = [
+    { key: "v-mobile", label: t("studio.viewMobile"), icon: Smartphone, checked: mode === "mobile", onSelect: () => setMode("mobile") },
+    { key: "v-paper", label: t("studio.viewPaper"), icon: FileText, checked: mode === "paper", onSelect: () => setMode("paper") },
+    ...(mode === "paper" ? [{ key: "print", label: t("sub.print"), icon: Printer, separator: true, onSelect: () => void printWhenReady() }] : []),
+    ...(draftsOn ? [{
+      key: "draft", label: kase ? t("common.save") : t("draft.save"), icon: Save, separator: mode !== "paper",
+      disabled: mediaLoading || draftState.kind === "saving", onSelect: () => void saveDraftNow("manual"),
+    }] : []),
+  ];
+  const topBar = (colWidth: number | string) => (
+    <FillTopBar title={props.title} colWidth={colWidth} menu={focusMenu} onClose={() => void exitForm()} closing={exiting}
+      stepLabel={mode === "mobile" ? tt("fw.stepOf", { n: idx + 1, total: nSteps }) : undefined} status={savedStatus} />
   );
 
   // ---------- งาน: แถบสถานะ + ปุ่มส่งต่อ/ส่งกลับ ----------
@@ -1366,22 +1415,23 @@ export default function FillWizard(props: Props) {
   if (mode === "paper") {
     return (
       <PhotoStampProvider value={schema.watermark ? stampOf : null}>
-      <div className={themeScope}>
+      {focus && topBar("var(--krok-page-w)")}
+      <div className={themeScope} style={focus ? { maxWidth: "var(--krok-page-w)", margin: "0 auto" } : undefined}>
         <ThemeStyle scope={themeScope} theme={theme} />
-        {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) */}
+        {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) — โหมดเต็มจอ: ปุ่มย้ายไปเมนู ⋯ บนแถบบน */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <div style={{ minWidth: 0, flex: "1 1 220px" }}>
             <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
             {formDesc}
           </div>
-          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            {viewToggle}
-            <Button onClick={() => void printWhenReady()} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.printPaper")} aria-label={t("fw.printPaper")}>
-              <Icon icon={Printer} className="h-4 w-4" /> {t("sub.print")}
-            </Button>
-            {draftBtn}
-            {!props.publicMode && <Button variant="ghost" onClick={exitForm} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
-          </div>
+          {!focus && (
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              {viewToggle}
+              <Button onClick={() => void printWhenReady()} style={{ fontSize: ".8rem", padding: "6px 12px" }} title={t("fw.printPaper")} aria-label={t("fw.printPaper")}>
+                <Icon icon={Printer} className="h-4 w-4" /> {t("sub.print")}
+              </Button>
+            </div>
+          )}
         </div>
 
         {draftNotice}
@@ -1406,9 +1456,6 @@ export default function FillWizard(props: Props) {
 
         {!viewOnly && (
           <div style={{ marginTop: 14 }}>
-            <Button data-tour="fill-submit" variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={{ width: "100%", padding: 14, fontSize: "1.02rem" }}>
-              {submitting ? t("fill.submitting") : wf && !isLastSeg ? handoffLabel : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
-            </Button>
             {submitErr && !submitting && (
           <div ref={submitErrRef} role="alert" style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--fail)", background: "var(--fail-soft)", color: "var(--fail)", fontSize: ".88rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
             <span style={{ flex: "1 1 200px", display: "inline-flex", gap: 6, alignItems: "flex-start" }}><Icon icon={AlertTriangle} className="h-4 w-4" /> {submitErr}</span>
@@ -1419,6 +1466,13 @@ export default function FillWizard(props: Props) {
         )}
         {caseTools}
         {caseModals}
+        {!viewOnly && (
+          <FillActionBar colWidth={focus ? "var(--krok-page-w)" : PUBLIC_COL_W}>
+            <Button data-tour="fill-submit" variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={actionBtn(true)}>
+              {submitting ? t("fill.submitting") : wf && !isLastSeg ? handoffLabel : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
+            </Button>
+          </FillActionBar>
+        )}
       </div>
       </PhotoStampProvider>
     );
@@ -1427,22 +1481,22 @@ export default function FillWizard(props: Props) {
   // ---------- โหมดมือถือ: ทีละขั้นตอน ----------
   return (
     <PhotoStampProvider value={schema.watermark ? stampOf : null}>
-    <div className={themeScope} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)" }}>
+    {focus && topBar(FOCUS_COL_W)}
+    <div className={themeScope} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)", ...(focus ? { maxWidth: FOCUS_COL_W, margin: "0 auto" } : {}) }}>
       <ThemeStyle scope={themeScope} theme={theme} />
       {branded && <FormBrandHeader theme={theme} icon={props.icon} title={props.title} description={schema.description} />}
-      <div style={{ display: "flex", justifyContent: branded ? "flex-end" : "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-        {!branded && (
-          <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-            <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
-            {formDesc}
-          </div>
-        )}
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          {viewToggle}
-          {draftBtn}
-          {!props.publicMode && <Button variant="ghost" onClick={exitForm} style={{ fontSize: ".8rem" }}>{t("fill.exit")}</Button>}
+      {(!branded || !focus) && (
+        <div style={{ display: "flex", justifyContent: branded ? "flex-end" : "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+          {!branded && (
+            <div style={{ minWidth: 0, flex: "1 1 220px" }}>
+              <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              {formDesc}
+            </div>
+          )}
+          {/* หน้าสาธารณะ: ปุ่มสลับมุมมองอยู่ที่หัวเหมือนเดิม · โหมดเต็มจอ: อยู่ในเมนู ⋯ */}
+          {!focus && <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{viewToggle}</div>}
         </div>
-      </div>
+      )}
 
       {draftNotice}
       {banner}
@@ -1456,10 +1510,13 @@ export default function FillWizard(props: Props) {
       </div>
 
       <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 8px" }}>
-        <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
-          {tt("fw.stepOf", { n: idx + 1, total: schema.steps.length })}
-        </span>
-        <h3 style={{ fontSize: "1.05rem" }}>{step.title}</h3>
+        {/* โหมดเต็มจอ: "ขั้นที่ x/N" อยู่บนแถบบนแล้ว */}
+        {!focus && (
+          <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
+            {tt("fw.stepOf", { n: idx + 1, total: schema.steps.length })}
+          </span>
+        )}
+        <h3 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: "1.05rem", scrollMarginTop: 72 }}>{step.title}</h3>
       </div>
 
       {wf && lockedStep(idx) && !viewOnly && (
@@ -1471,17 +1528,6 @@ export default function FillWizard(props: Props) {
 
       {step.fields.map((f) => renderField(f))}
 
-      <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-        {idx > 0 && <Button onClick={() => { setIdx(idx - 1); latest.current.idx = idx - 1; window.scrollTo(0, 0); void saveDraftNow("auto"); }}>{t("fill.prev")}</Button>}
-        {!(viewOnly && idx >= maxIdx) && (
-          <Button data-tour="fill-submit" variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={{ flex: 1, padding: 14, fontSize: "1.02rem" }}>
-            {submitting ? t("fill.submitting")
-              : idx < maxIdx || viewOnly ? t("fill.next")
-              : wf && !isLastSeg ? handoffLabel
-              : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
-          </Button>
-        )}
-      </div>
       {submitErr && !submitting && (
         <div ref={submitErrRef} role="alert" style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, border: "1px solid var(--fail)", background: "var(--fail-soft)", color: "var(--fail)", fontSize: ".88rem", display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
           <span style={{ flex: "1 1 200px", display: "inline-flex", gap: 6, alignItems: "flex-start" }}><Icon icon={AlertTriangle} className="h-4 w-4" /> {submitErr}</span>
@@ -1495,9 +1541,30 @@ export default function FillWizard(props: Props) {
       </div>
       <FormFooterText text={theme.footer} />
     </div>
+    {/* ปุ่มก่อนหน้า / ถัดไป / ส่ง — ติดขอบล่างจอ (นิ้วโป้งถึงเสมอ) */}
+    {(idx > 0 || !(viewOnly && idx >= maxIdx)) && (
+      <FillActionBar colWidth={focus ? FOCUS_COL_W : PUBLIC_COL_W}>
+        {idx > 0 && <Button onClick={() => { setIdx(idx - 1); latest.current.idx = idx - 1; window.scrollTo(0, 0); void saveDraftNow("auto"); }} style={actionBtn(false)}>{t("fill.prev")}</Button>}
+        {!(viewOnly && idx >= maxIdx) && (
+          <Button data-tour="fill-submit" variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={actionBtn(true)}>
+            {submitting ? t("fill.submitting")
+              : idx < maxIdx || viewOnly ? t("fill.next")
+              : wf && !isLastSeg ? handoffLabel
+              : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
+          </Button>
+        )}
+      </FillActionBar>
+    )}
     </PhotoStampProvider>
   );
 }
+
+/** หน้าสาธารณะ (/f/*): คอลัมน์ 640px ลบ padding 16px สองข้าง */
+const PUBLIC_COL_W = 608;
+/** ปุ่มในแถบล่าง: สูง ≥48px · ปุ่มหลักยืดเต็มที่เหลือ */
+const actionBtn = (primary: boolean): React.CSSProperties => (
+  primary ? { flex: 1, minHeight: 48, padding: "10px 14px", fontSize: "1.02rem" } : { flex: "0 0 auto", minHeight: 48, padding: "10px 16px" }
+);
 
 
 /**

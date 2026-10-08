@@ -109,7 +109,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
             <h3 style={{ fontSize: ".85rem", color: "var(--ink-2)", margin: "0 0 8px", fontWeight: 600 }}>{g.label} ({items.length})</h3>
             <div style={{ display: "grid", gap: 10 }}>
               {items.map((c) => (
-                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, border: c.returned ? "1px solid #d97706" : "1px solid var(--line)", borderRadius: 12, padding: 14, background: "var(--surface)", flexWrap: "wrap" }}>
+                <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, border: c.returned ? "1px solid var(--warn)" : "1px solid var(--line)", borderRadius: 12, padding: 14, background: "var(--surface)", flexWrap: "wrap" }}>
                   <FormIcon value={c.formIcon} size={44} />
                   <div style={{ flex: 1, minWidth: 180 }}>
                     <b style={{ fontFamily: "var(--font-anuphan)" }}>{c.formTitle}</b>
@@ -128,7 +128,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
                       {(() => {
                         // รอเกิน 1 วัน = สีส้ม, เกิน 3 วัน = สีแดง
                         const m = waitMinutes(c.waitingSince, now);
-                        const color = m >= 4320 ? "var(--fail)" : m >= 1440 ? "#d97706" : "var(--ink-3)";
+                        const color = m >= 4320 ? "var(--fail)" : m >= 1440 ? "var(--warn)" : "var(--ink-3)";
                         return (
                           <span title={fmtWhen(c.waitingSince, lang)} style={{ display: "inline-flex", alignItems: "center", gap: 3, color, fontWeight: m >= 1440 ? 600 : 400 }}>
                             <Icon icon={Hourglass} className="h-3 w-3" /> {waitLabel(m)}
@@ -138,7 +138,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
                     </div>
                     {err?.id === c.id && <div role="alert" style={{ fontSize: ".8rem", color: "var(--fail)", marginTop: 4 }}>⚠ {err.msg}</div>}
                     {c.returned && (
-                      <div style={{ fontSize: ".8rem", color: "#d97706", marginTop: 4, display: "flex", gap: 4, alignItems: "flex-start" }}>
+                      <div style={{ fontSize: ".8rem", color: "var(--warn)", marginTop: 4, display: "flex", gap: 4, alignItems: "flex-start" }}>
                         <Icon icon={CornerUpLeft} className="h-3.5 w-3.5" />
                         <span>{t("wf.returnedBy").replace("{name}", c.returned.name)}: {c.returned.note}</span>
                       </div>
