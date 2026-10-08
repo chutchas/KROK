@@ -19,7 +19,7 @@ function Blank({ f }: { f: FormField }) {
       </span>
     );
   }
-  if ((f.type === "checkbox" || f.type === "select") && f.options_source) {
+  if ((f.type === "checkbox" || f.type === "select") && (f.options_source || f.area)) {
     // ตัวเลือกจากข้อมูลอ้างอิงอาจมีหลายร้อยรายการ → พิมพ์เป็นช่องเขียน
     return <span style={{ display: "block", borderBottom: "1px dotted #999", minHeight: 18 }} />;
   }

@@ -2,7 +2,7 @@
 import { useRef, useState } from "react";
 import type { ResolvedTheme } from "@/lib/theme";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
-import { Camera, Check, GripVertical, Lightbulb, Lock, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
+import { Camera, Check, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import FormIcon from "@/components/FormIcon";
 import { useT } from "@/i18n/LanguageProvider";
@@ -39,6 +39,7 @@ function MockControl({ f, scan }: { f: FormField; scan: boolean }) {
     case "checkbox": {
       const opts = f.options || [];
       if (f.options_source) return <div style={box}><Icon icon={Search} className="h-4 w-4" /> {t("fw.prev.fromDataset")}</div>;
+      if (f.area) return <div style={box}><Icon icon={MapPin} className="h-4 w-4" /> {t("ftype.area")}{f.area_default ? ` · ${f.area_default}` : ""}</div>;
       if (opts.length > 8) return <div style={box}><Icon icon={Search} className="h-4 w-4" /> {tt("fw.prev.searchN", { n: opts.length })}</div>;
       return (
         <div style={{ display: "grid", gap: 2 }}>

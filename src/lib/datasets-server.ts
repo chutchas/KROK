@@ -17,7 +17,7 @@ import {
   type DatasetSyncMode,
   type PullConfig,
 } from "@/lib/datasets";
-import { datasetIdsOf, type FormField, type FormSchema, type OptionsSource } from "@/lib/form-schema";
+import { areaFieldOf, datasetIdsOf, type FormField, type FormSchema, type OptionsSource } from "@/lib/form-schema";
 import { FORBIDDEN_HEADERS, safeFetch } from "@/lib/safe-fetch";
 
 type Db = SupabaseClient;
@@ -35,10 +35,46 @@ type Db = SupabaseClient;
 /** ใช้ร่วมกันหลายฟอร์ม (ชุดฟอร์มออฟไลน์): ชื่อ dataset ของ workspace + ตัวเลือกที่ดึงแล้ว — ไม่ยิงซ้ำต่อฟอร์ม */
 export interface OptionsShared {
   names?: Map<string, string>;
+  /** รายชื่อพื้นที่ของ workspace (ดึงครั้งเดียวต่อชุด) */
+  areas?: Promise<{ code: string; name: string }[] | null>;
   cache: Map<string, Promise<OptRow[] | null>>;
 }
 
 export async function resolveFormOptions(schema: FormSchema, db: Db, tenantId: string, shared?: OptionsShared): Promise<FormSchema> {
+  const withAreas = areaFieldOf(schema) ? await resolveAreaOptions(schema, db, tenantId, shared) : schema;
+  return resolveDatasetOptions(withAreas, db, tenantId, shared);
+}
+
+/**
+ * ฟิลด์พื้นที่: ตัวเลือก = รหัสพื้นที่ที่เปิดใช้ของ workspace · ชื่อที่แสดง = ชื่อพื้นที่
+ * กรอง tenant เองเสมอ (ฟอร์มสาธารณะเรียกด้วย service role) · ยังไม่รัน 0072 = ไม่มีตัวเลือก + เตือน
+ */
+async function resolveAreaOptions(schema: FormSchema, db: Db, tenantId: string, shared?: OptionsShared): Promise<FormSchema> {
+  if (shared && !shared.areas) {
+    shared.areas = Promise.resolve(
+      db.from("workspace_areas").select("code, name").eq("tenant_id", tenantId).eq("active", true).order("sort").order("name")
+    ).then(({ data, error }) => (error ? null : ((data || []) as { code: string; name: string }[])), () => null);
+  }
+  const rows = shared?.areas
+    ? await shared.areas
+    : await Promise.resolve(
+        db.from("workspace_areas").select("code, name").eq("tenant_id", tenantId).eq("active", true).order("sort").order("name")
+      ).then(({ data, error }) => (error ? null : ((data || []) as { code: string; name: string }[])), () => null);
+  const out: FormSchema = structuredClone(schema);
+  const f = areaFieldOf(out);
+  if (!f) return out;
+  if (!rows) {
+    f.options = [];
+    f.options_error = "ดึงรายชื่อพื้นที่ไม่ได้";
+    return out;
+  }
+  f.options = rows.map((r) => r.code);
+  f.option_labels = rows.map((r) => r.name);
+  if (f.area_default && !f.options.includes(f.area_default)) delete f.area_default; // ค่าเริ่มต้นถูกปิดใช้ไปแล้ว
+  return out;
+}
+
+async function resolveDatasetOptions(schema: FormSchema, db: Db, tenantId: string, shared?: OptionsShared): Promise<FormSchema> {
   const ids = datasetIdsOf(schema);
   if (ids.length === 0) return schema;
 

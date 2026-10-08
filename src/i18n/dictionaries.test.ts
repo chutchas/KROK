@@ -35,7 +35,7 @@ describe("landing dictionaries TH/EN parity", async () => {
 });
 
 describe("per-page dictionaries TH/EN parity", async () => {
-  const mods = await Promise.all([import("./ns/ds"), import("./ns/notify"), import("./ns/admin"), import("./ns/pay")]);
+  const mods = await Promise.all([import("./ns/ds"), import("./ns/notify"), import("./ns/admin"), import("./ns/pay"), import("./ns/area")]);
   const { th: mainTh } = await import("./th");
   it("ทุกชุดมี key ตรงกัน ไม่ว่าง และไม่ซ้ำกับพจนานุกรมหลัก", () => {
     for (const m of mods) {

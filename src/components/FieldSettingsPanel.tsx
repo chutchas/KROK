@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useT } from "@/i18n/LanguageProvider";
 import AttachmentsPanel from "@/components/AttachmentsPanel";
 import OptionsSourceEditor, { ColumnSourceEditor } from "@/components/OptionsSourceEditor";
+import AreaFieldSettings from "@/components/AreaFieldSettings";
 import FormulaInput from "@/components/FormulaInput";
 import PhotoPrintSettings from "@/components/PhotoPrintSettings";
 import {
@@ -281,16 +282,23 @@ export default function FieldSettingsPanel({
       <Field value={field.label} onChange={(e) => patchField({ label: e.target.value })} placeholder={t("editor.fieldNamePh")} />
 
       <label style={lbl}>{t("editor.fieldType")}</label>
-      <select value={field.type} onChange={(e) => {
-        const nt = e.target.value as FieldType;
-        if (nt === "barcode") { setScan(true, { type: "text" }); return; }
+      <select value={field.area ? "area" : field.type} onChange={(e) => {
+        const v = e.target.value;
+        // "พื้นที่" = select ที่ตัวเลือกมาจากรายชื่อพื้นที่ของ workspace (ฟอร์มละ 1 ช่อง)
+        if (v === "area") { patchField({ type: "select", area: true, options: undefined, options_source: undefined }); return; }
+        // ออกจาก "พื้นที่" → ล้างค่าพื้นที่ในการแก้ครั้งเดียวกัน (แก้สองครั้งติดกันจะทับกันเอง)
+        const clr: Partial<FormField> = field.area ? { area: undefined, area_default: undefined } : {};
+        const nt = v as FieldType;
+        if (nt === "barcode") { setScan(true, { type: "text", ...clr }); return; }
         if (nt === "table" && !(field.columns && field.columns.length))
-          patchField({ type: nt, columns: [{ id: newId("c"), label: "รายการ", type: "text", width: 3 }, { id: newId("c"), label: "จำนวน", type: "number" }], min_rows: field.min_rows ?? 1 });
-        else if (nt === "formula") patchField({ type: nt, required: false, decimals: field.decimals ?? 2 });
-        else patchField({ type: nt });
+          patchField({ ...clr, type: nt, columns: [{ id: newId("c"), label: "รายการ", type: "text", width: 3 }, { id: newId("c"), label: "จำนวน", type: "number" }], min_rows: field.min_rows ?? 1 });
+        else if (nt === "formula") patchField({ ...clr, type: nt, required: false, decimals: field.decimals ?? 2 });
+        else patchField({ ...clr, type: nt });
       }} style={sel}>
         {FIELD_TYPES.map((ft) => <option key={ft} value={ft}>{t(`ftype.${ft}`)}</option>)}
+        <option value="area" disabled={!field.area && schema.steps.some((st) => st.fields.some((x) => x.area && x.id !== field.id))}>{t("ftype.area")}</option>
       </select>
+      {field.area && <AreaFieldSettings field={field} onPatch={patchField} />}
       {field.type === "text" && (
         <>
           <label style={lbl}>{t("editor.textKind")}</label>
@@ -382,7 +390,7 @@ export default function FieldSettingsPanel({
         </label>
       )}
 
-      {(field.type === "select" || field.type === "checkbox") && (
+      {(field.type === "select" || field.type === "checkbox") && !field.area && (
         <div style={{ marginTop: 8 }}>
           <label style={lbl}>{t("editor.option")}</label>
           <OptionsSourceEditor schema={schema} field={field} onPatch={patchField} staticEditor={

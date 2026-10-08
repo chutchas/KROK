@@ -12,6 +12,8 @@ import { useT } from "@/i18n/LanguageProvider";
 
 import type { ApprovalStep } from "@/lib/approval";
 import { alertDialog } from "@/components/dialogs";
+import AreaOpenNotice from "@/components/AreaOpenNotice";
+import type { OpenItem } from "@/lib/areas";
 
 export interface PendingSub {
   id: string;
@@ -24,6 +26,8 @@ export interface PendingSub {
   submitted_at: string;
   approval_step: number;
   approval_chain: ApprovalStep[] | unknown[];
+  /** ใบอื่นที่ยังไม่จบในพื้นที่เดียวกัน (มีฟิลด์พื้นที่ · 0072) — เตือนอย่างเดียว */
+  area?: { id: string; name: string; others: OpenItem[] };
 }
 
 function fmt(ts: string, lang: string) {
@@ -88,6 +92,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
             </div>
             {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("appr.problems", { n: s.fails.length })}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("appr.complete")}</span></Pill>}
           </div>
+          {s.area && s.area.others.length > 0 && <AreaOpenNotice areaId={s.area.id} excludeId={s.id} preload={{ name: s.area.name, items: s.area.others }} />}
 
           {chainOf(s).length > 0 && (
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", marginTop: 12 }}>

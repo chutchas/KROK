@@ -97,6 +97,8 @@ export interface CaseData {
   stepMeta: Record<string, { by: string; name: string; at: string }>;
   history: CaseHistoryItem[];
   submissionId: string | null;
+  /** พื้นที่ของงาน (จากฟิลด์พื้นที่ · คำนวณโดยฐานข้อมูล 0072) */
+  areaId: string | null;
 }
 
 /** ถูกส่งกลับมาที่ขั้นปัจจุบันไหม (ใช้โชว์เหตุผลให้คนที่ต้องแก้) */
@@ -133,5 +135,6 @@ export function rowToCase(d: Record<string, unknown>): CaseData {
     stepMeta: (d.step_meta as CaseData["stepMeta"]) || {},
     history: Array.isArray(d.history) ? (d.history as CaseHistoryItem[]) : [],
     submissionId: (d.submission_id as string) ?? null,
+    areaId: (d.area_id as string) ?? null,
   };
 }

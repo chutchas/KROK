@@ -32,6 +32,8 @@ const ACTIONS: Record<string, L> = {
   "member.role_change": { th: "เปลี่ยนบทบาทสมาชิก", en: "Changed a member's role" },
   "member.remove": { th: "นำสมาชิกออก", en: "Removed a member" },
   "workspace.rename": { th: "เปลี่ยนชื่อ workspace", en: "Renamed the workspace" },
+  "area.create": { th: "เพิ่มพื้นที่", en: "Added an area" },
+  "area.update": { th: "แก้ไขพื้นที่", en: "Edited an area" },
   "plan.change": { th: "เปลี่ยนแพ็กเกจ", en: "Changed plan" },
   "intake.key_rotate": { th: "ออกกุญแจ API รับข้อมูลเข้าฟอร์มใหม่", en: "Issued a new form intake API key" },
   "intake.key_expiry": { th: "เปลี่ยนวันหมดอายุกุญแจ API รับข้อมูลเข้าฟอร์ม", en: "Changed form intake API key expiry" },

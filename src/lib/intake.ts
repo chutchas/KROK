@@ -293,6 +293,7 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
         const name = labelMap(f.options, f.option_labels).get(a.value);
         item.display = name ?? a.value;
         if (name) item.code = a.value;
+        if (f.area) { item.code = a.value; item.area = true; }
       } else item.display = String(a.value ?? "—");
       list.push(item);
     }

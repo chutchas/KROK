@@ -18,6 +18,7 @@ import {
 } from "@/lib/dashboard-meta";
 
 import { loadCompliance, complianceByTeam, type ComplianceRow } from "@/lib/schedule-server";
+import type { OpenItem } from "@/lib/areas";
 
 const RANGES: WidgetRange[] = ["today", "7d", "30d", "month", "all"];
 
@@ -72,6 +73,7 @@ export type WidgetResult =
   | { kind: "stat"; value: number; pass?: number; fail?: number }
   | { kind: "trend"; total: number; series: { key: string; v: number }[] }
   | { kind: "ranking"; items: { title: string; icon: string; v: number }[] }
+  | { kind: "area"; items: OpenItem[] }
   | { error: string };
 
 function rangeStartIso(range: WidgetRange, days?: number): string | null {
@@ -149,6 +151,7 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   if (!RANGES.includes(w.range)) return { error: "bad widget" };
 
   const supabase = await createClient();
+  if (w.format === "area") return computeAreaWidget(supabase, session.tenantId, w.formId);
   {
     const scopedFast = w.format !== "ranking" && w.formId && w.formId !== "all" && UUID.test(w.formId) ? w.formId : null;
     if (w.format === "ranking" || !w.formId || w.formId === "all" || scopedFast) {
@@ -213,6 +216,17 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
     .sort((a, b) => b.v - a.v)
     .slice(0, 8);
   return { kind: "ranking", items };
+}
+
+// ---------- ใบที่ยังไม่จบตามพื้นที่ (0072) ----------
+async function computeAreaWidget(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string, areaId: string): Promise<WidgetResult> {
+  const { data, error } = await supabase.rpc("area_open_items", { p_tenant: tenantId, p_area: UUID.test(areaId) ? areaId : null });
+  if (error) {
+    const m = error.message || "";
+    if (/area_open_items/.test(m) && /does not exist|schema cache|not find/i.test(m)) return { error: await sm("ยังไม่ได้รัน migration 0072") };
+    return { error: await sm(dbError(error)) };
+  }
+  return { kind: "area", items: (data || []) as OpenItem[] };
 }
 
 // ---------- รอบตรวจตามตาราง: ความครบถ้วน (0064) ----------

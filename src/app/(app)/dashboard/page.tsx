@@ -4,7 +4,7 @@ import { getQuotaSnapshot } from "@/lib/quota";
 import { quotaWarnings } from "@/lib/quota-warn";
 import QuotaBanner from "@/components/QuotaBanner";
 import type { DashWidget } from "@/lib/dashboard-meta";
-import DashboardClient, { type SubRow, type FormOpt, type Summary } from "./DashboardClient";
+import DashboardClient, { type SubRow, type FormOpt, type Summary, type AreaOpt } from "./DashboardClient";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export default async function DashboardPage() {
   const session = await enforceMenu("dashboard");
   const supabase = await createClient();
 
-  const [snap, recentRes, formsRes, layoutRes, schedRes] = await Promise.all([
+  const [snap, recentRes, formsRes, layoutRes, schedRes, areasRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
     supabase
@@ -37,6 +37,8 @@ export default async function DashboardPage() {
       .maybeSingle(),
     // มีรอบตรวจตามตารางไหม (ไม่มี = ไม่โหลดการ์ด compliance เลย) · ยังไม่รัน 0064 = error → ไม่มี
     supabase.from("form_schedules").select("form_id", { count: "exact", head: true }).eq("tenant_id", session.tenantId).eq("enabled", true),
+    // พื้นที่ (ตัวเลือกของ widget "ตามพื้นที่") · ยังไม่รัน 0072 = error → ไม่มีพื้นที่
+    supabase.from("workspace_areas").select("id, code, name").eq("tenant_id", session.tenantId).eq("active", true).order("sort").order("name"),
   ]);
 
   const summary: Summary = {
@@ -63,6 +65,7 @@ export default async function DashboardPage() {
       summary={summary}
       hasSchedules={!schedRes.error && (schedRes.count ?? 0) > 0}
       initialWidgets={initialWidgets}
+      areas={areasRes.error ? [] : ((areasRes.data || []) as AreaOpt[])}
     />
   </>);
 }

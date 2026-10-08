@@ -63,7 +63,7 @@ export function diffForms(prev: FormSchema | null | undefined, next: FormSchema)
     if ((a.label || "") !== (b.label || "")) out.fields.push({ kind: "label", id, label: b.label, from: a.label, to: b.label });
     if (a.type !== b.type) out.fields.push({ kind: "type", id, label: b.label, from: a.type, to: b.type });
     if (!!a.required !== !!b.required) out.fields.push({ kind: "required", id, label: b.label, from: String(!!a.required), to: String(!!b.required) });
-    if (j(a.options) !== j(b.options) || j(a.options_source) !== j(b.options_source) || j(a.columns) !== j(b.columns))
+    if (j(a.options) !== j(b.options) || j(a.options_source) !== j(b.options_source) || j(a.area) !== j(b.area) || j(a.area_default) !== j(b.area_default) || j(a.columns) !== j(b.columns))
       out.fields.push({ kind: "options", id, label: b.label });
     if (a.min !== b.min || a.max !== b.max || (a.unit || "") !== (b.unit || "")) out.fields.push({ kind: "limits", id, label: b.label });
     if ((a.formula || "") !== (b.formula || "")) out.fields.push({ kind: "formula", id, label: b.label });

@@ -1,5 +1,6 @@
 "use client";
 // ชิ้นส่วนหน้าจอของ "งาน" (ฟอร์มกรอกหลายคน): ช่องแบบอ่านอย่างเดียว, แถบสถานะงาน, หน้าต่างส่งต่อ/ส่งกลับ
+import AreaOpenNotice from "@/components/AreaOpenNotice";
 import { formatDtThai } from "@/lib/dt-format";
 import { backdropClose } from "@/lib/backdrop";
 import { useEffect, useId, useState } from "react";
@@ -181,6 +182,8 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
           </span>
         )}
       </div>
+
+      {kase?.areaId && kase.status === "open" && <AreaOpenNotice areaId={kase.areaId} excludeId={kase.id} />}
 
       <ol style={{ listStyle: "none", padding: 0, margin: "8px 0 0", display: "grid", gap: 4 }}>
         {rows.map((r) => (

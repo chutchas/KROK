@@ -33,6 +33,8 @@ export interface AnswerItem {
    * คอลัมน์ select ในตาราง: เก็บเป็น rows[i]["<colId>#code"]
    */
   code?: string;
+  /** คำตอบของฟิลด์พื้นที่ (รหัสพื้นที่อยู่ใน code) */
+  area?: true;
 }
 
 /** key ของรหัสในแถวตาราง */

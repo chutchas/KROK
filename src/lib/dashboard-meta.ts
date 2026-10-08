@@ -1,7 +1,8 @@
 // เมทาดาทา widget ของ dashboard — ใช้ร่วมกัน client (ตัวสร้าง widget) + คำนวณค่า
 // ไม่มี server-only ที่นี่
 
-export type WidgetFormat = "stat" | "trend" | "ranking";
+/** area = รายการใบที่ยังไม่จบตามพื้นที่ (formId เก็บ id พื้นที่ หรือ "all") — metric/range ไม่ใช้ */
+export type WidgetFormat = "stat" | "trend" | "ranking" | "area";
 export type WidgetMetric = "usage" | "pending" | "passrate" | "avgtime" | "submitters";
 export type WidgetRange = "today" | "7d" | "30d" | "month" | "all";
 
@@ -13,13 +14,14 @@ export interface DashWidget {
   range: WidgetRange;
 }
 
-export const WIDGET_FORMATS: WidgetFormat[] = ["stat", "trend", "ranking"];
+export const WIDGET_FORMATS: WidgetFormat[] = ["stat", "trend", "ranking", "area"];
 export const WIDGET_METRICS: WidgetMetric[] = ["usage", "pending", "passrate", "avgtime", "submitters"];
 // trend เป็นอนุกรมเวลา จึงรองรับเฉพาะช่วงที่เป็นเวลา
 export const RANGES_BY_FORMAT: Record<WidgetFormat, WidgetRange[]> = {
   stat: ["today", "7d", "30d", "month", "all"],
   ranking: ["today", "7d", "30d", "month", "all"],
   trend: ["7d", "30d", "month"],
+  area: ["all"],
 };
 
 type L = { th: string; en: string };
@@ -29,11 +31,13 @@ const FORMAT_L: Record<WidgetFormat, L> = {
   stat: { th: "ตัวเลขใหญ่", en: "Stat" },
   trend: { th: "กราฟแนวโน้ม", en: "Trend" },
   ranking: { th: "อันดับฟอร์ม", en: "Ranking" },
+  area: { th: "ตามพื้นที่", en: "By area" },
 };
 const FORMAT_HINT_L: Record<WidgetFormat, L> = {
   stat: { th: "ตัวเลขเดียวของฟอร์มที่เลือก", en: "Single number for the chosen form" },
   trend: { th: "กราฟรายวันของค่าที่เลือก", en: "Daily chart of the metric" },
   ranking: { th: "จัดอันดับทุกฟอร์มตามค่าที่เลือก", en: "Rank all forms by the metric" },
+  area: { th: "ใบที่ยังไม่จบในแต่ละพื้นที่", en: "Open work in each area" },
 };
 const METRIC_L: Record<WidgetMetric, L> = {
   usage: { th: "จำนวนการใช้งาน", en: "Submissions" },

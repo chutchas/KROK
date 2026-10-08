@@ -93,6 +93,13 @@ export interface FormField {
   option_labels?: string[];
   /** runtime เท่านั้น: ตัวเลือกจาก dataset มีมากกว่าที่ส่งมาให้ (ถูกตัดที่เพดาน) */
   options_truncated?: boolean;
+  /**
+   * ฟิลด์ "พื้นที่" (เฉพาะ select · ฟอร์มละ 1 ช่อง) — ตัวเลือกมาจากรายชื่อพื้นที่ของ workspace (ตั้งค่า › พื้นที่)
+   * ค่าที่บันทึก = รหัสพื้นที่ · แสดงชื่อ · ฐานข้อมูลใช้หาใบที่ยังไม่จบในพื้นที่เดียวกัน (0072)
+   */
+  area?: true;
+  /** ฟิลด์พื้นที่: รหัสพื้นที่ที่เลือกไว้ให้ก่อน (ฟอร์มที่ใช้ที่เดียวตายตัว) */
+  area_default?: string;
   // ความกว้างในหน้ากระดาษ: full = เต็มแถว, half = ครึ่งแถว (default ปฏิบัติเหมือน half)
   width?: "full" | "half";
   // photo
@@ -282,6 +289,15 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
   formula: "สูตรคำนวณ",
 };
 
+/** รหัสพื้นที่ — ตรงกับ check ใน workspace_areas (0072): ห้ามช่องว่าง/จุลภาค ยาวไม่เกิน 20 */
+export const AREA_CODE_RE = /^[^\s,]{1,20}$/;
+
+/** ฟิลด์พื้นที่ของฟอร์ม (มีได้ช่องเดียว) */
+export function areaFieldOf(schema: FormSchema): FormField | null {
+  for (const s of schema.steps) for (const f of s.fields) if (f.area) return f;
+  return null;
+}
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const DS_COL_RE = /^[a-z_][a-z0-9_]{0,39}$/;
 
@@ -454,7 +470,13 @@ export function sanitizeSchema(raw: unknown): FormSchema {
           if ((type === "select" || type === "checkbox") && Array.isArray(fo.options)) {
             o.options = fo.options.slice(0, 200).map((x) => str(x, 80));
           }
-          if (type === "select" || type === "checkbox") {
+          if (type === "select" && fo.area === true) {
+            // ตัวเลือกมาจากรายชื่อพื้นที่เท่านั้น — ไม่เก็บตัวเลือกที่พิมพ์เอง / ถังข้อมูล
+            o.area = true;
+            delete o.options;
+            const d = typeof fo.area_default === "string" ? fo.area_default.trim() : "";
+            if (AREA_CODE_RE.test(d)) o.area_default = d;
+          } else if (type === "select" || type === "checkbox") {
             const os = sanitizeOptionsSource(fo.options_source, true);
             if (os) o.options_source = os;
           }
@@ -561,8 +583,14 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   // ฟิลด์แม่ของ dropdown ที่กรองตามกัน ต้องเป็น select/checkbox ที่อยู่ "ก่อนหน้า" ในฟอร์ม
   // (กันวงวน และให้การกรอกทีละขั้นตอนมีค่าแม่ก่อนถึงฟิลด์ลูกเสมอ)
   const seenChoice = new Set<string>();
+  // ฟิลด์พื้นที่ได้ฟอร์มละ 1 ช่อง (ใบหนึ่งอยู่พื้นที่เดียว) — ช่องถัดไปกลายเป็น select ธรรมดาที่ไม่มีตัวเลือก
+  let areaSeen = false;
   for (const s of steps)
     for (const f of s.fields) {
+      if (f.area) {
+        if (areaSeen) { delete f.area; delete f.area_default; f.options = []; }
+        areaSeen = true;
+      }
       const p = f.options_source?.parent;
       if (p && !seenChoice.has(p.field_id)) delete f.options_source!.parent;
       if (f.type === "select" || f.type === "checkbox") seenChoice.add(f.id);

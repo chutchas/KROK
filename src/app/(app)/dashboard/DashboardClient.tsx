@@ -11,8 +11,9 @@ import Icon from "@/components/Icon";
 import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
-  ChevronUp, ChevronDown,
+  ChevronUp, ChevronDown, MapPin,
 } from "lucide-react";
+import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
 import { answerPhotoKeys } from "@/lib/photo-slots";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
@@ -56,6 +57,7 @@ export interface SubRow {
 // realtime ส่งเฉพาะคอลัมน์ที่รายการใช้ (ไม่ส่งคำตอบทั้งฟอร์มทุกครั้งที่มีคนส่ง) — คำตอบโหลดตอนเปิดดูรายละเอียด
 const LIVE_COLS = ["id", "form_title", "form_icon", "user_name", "result", "fails", "duration_s", "submitted_at", "approval_status"];
 export interface FormOpt { id: string; title: string; icon: string }
+export interface AreaOpt { id: string; code: string; name: string }
 export interface Summary {
   forms: { used: number; max: number };
   members: { used: number; max: number };
@@ -80,9 +82,11 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 }
 
 export default function DashboardClient({
-  tenantId, initial, forms, summary, initialWidgets, hasSchedules = false,
+  tenantId, initial, forms, summary, initialWidgets, hasSchedules = false, areas = [],
 }: {
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
+  /** พื้นที่ที่เปิดใช้ (widget "ตามพื้นที่") */
+  areas?: AreaOpt[];
   /** มีรอบตรวจตามตาราง — ไม่มี = ไม่แสดง/ไม่โหลดการ์ด compliance */
   hasSchedules?: boolean;
 }) {
@@ -98,6 +102,10 @@ export default function DashboardClient({
     const m = new Map(forms.map((f) => [f.id, f.title]));
     return (id: string) => (id === "all" ? t("report.allForms") : m.get(id) || t("dash.deletedForm"));
   }, [forms, t]);
+  const areaName = useMemo(() => {
+    const m = new Map(areas.map((a) => [a.id, a.name]));
+    return (id: string) => (id === "all" ? null : m.get(id) ?? "");
+  }, [areas]);
 
   function persist(next: DashWidget[]) {
     setWidgets(next);
@@ -169,7 +177,7 @@ export default function DashboardClient({
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
             {widgets.map((w, i) => (
               <div key={w.id} style={{ minWidth: 0 }} draggable onDragStart={() => setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => onDrop(w.id)}>
-                <WidgetCard w={w} formName={formName} en={en}
+                <WidgetCard w={w} formName={formName} areaName={areaName} en={en}
                   onEdit={() => setBuilder(w)} onRemove={() => removeWidget(w.id)} t={t}
                   onUp={i > 0 ? () => move(w.id, -1) : undefined}
                   onDown={i < widgets.length - 1 ? () => move(w.id, 1) : undefined} />
@@ -209,7 +217,7 @@ export default function DashboardClient({
 
       {open && <DetailModal sub={open} tenantId={tenantId} onClose={() => setOpen(null)} />}
       {builder && (
-        <WidgetBuilder initial={builder} forms={forms} en={en} t={t}
+        <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t}
           onCancel={() => setBuilder(null)} onSave={upsertWidget} />
       )}
 
@@ -241,8 +249,8 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
 
 // ---------- การ์ด widget ----------
 type TFn = (k: never) => string;
-function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
-  w: DashWidget; formName: (id: string) => string; en: boolean;
+function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown, t }: {
+  w: DashWidget; formName: (id: string) => string; areaName: (id: string) => string | null; en: boolean;
   onEdit: () => void; onRemove: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
 }) {
   const [res, setRes] = useState<WidgetResult | null>(null);
@@ -255,8 +263,9 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
 
-  const fIcon = w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
-  const sub = `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
+  const isArea = w.format === "area";
+  const fIcon = isArea ? MapPin : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
+  const sub = isArea ? <AreaSubtitle name={areaName(w.formId)} /> : `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
 
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, height: "100%", display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
@@ -264,7 +273,7 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
         <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600 }}>
-            <Icon icon={fIcon} className="h-4 w-4" /> {metricLabel(w.metric, en)}
+            <Icon icon={fIcon} className="h-4 w-4" /> {isArea ? <AreaWidgetTitle /> : metricLabel(w.metric, en)}
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".74rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
@@ -286,6 +295,7 @@ function WidgetCard({ w, formName, en, onEdit, onRemove, onUp, onDown, t }: {
             {res.kind === "stat" && <StatView res={res} metric={w.metric} en={en} />}
             {res.kind === "trend" && <TrendView res={res} metric={w.metric} en={en} />}
             {res.kind === "ranking" && <RankingView res={res} metric={w.metric} en={en} />}
+            {res.kind === "area" && <AreaView items={res.items} grouped={w.formId === "all"} />}
           </>
         )}
       </div>
@@ -361,8 +371,8 @@ function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "
 }
 
 // ---------- ตัวสร้าง/แก้ widget ----------
-function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
-  initial: DashWidget; forms: FormOpt[]; en: boolean; t: TFn;
+function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
+  initial: DashWidget; forms: FormOpt[]; areas: AreaOpt[]; en: boolean; t: TFn;
   onCancel: () => void; onSave: (w: DashWidget) => void;
 }) {
   const [format, setFormat] = useState<WidgetFormat>(initial.format);
@@ -387,7 +397,7 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
 
         {/* 1. รูปแบบ */}
         <Section n={1} label={t("dash.stepFormat" as never)} />
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
           {WIDGET_FORMATS.map((f) => (
             <button key={f} onClick={() => setFormat(f)}
               style={pickBtn(format === f)}>
@@ -397,8 +407,11 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
           ))}
         </div>
 
+        {/* ตามพื้นที่: เลือกพื้นที่อย่างเดียว (ไม่มีค่า/ช่วงเวลา — แสดงใบที่ยังไม่จบ ณ ตอนนี้) */}
+        {format === "area" && <AreaPicker areas={areas} value={formId} onChange={setFormId} />}
+
         {/* 2. ฟอร์ม (ranking = ทุกฟอร์มเสมอ) */}
-        {format !== "ranking" && (
+        {format !== "ranking" && format !== "area" && (
           <>
             <Section n={2} label={t("dash.stepForm" as never)} />
             <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
@@ -408,6 +421,7 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
           </>
         )}
 
+        {format !== "area" && <>
         {/* 3. ค่าที่แสดง */}
         <Section n={format === "ranking" ? 2 : 3} label={t("dash.stepMetric" as never)} />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
@@ -423,9 +437,12 @@ function WidgetBuilder({ initial, forms, en, t, onCancel, onSave }: {
             <button key={r} onClick={() => setRange(r)} style={chip(effRange === r)}>{rangeLabel(r, en)}</button>
           ))}
         </div>
+        </>}
 
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-          <button onClick={() => onSave({ id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric, range: effRange })}
+          <button onClick={() => onSave(format === "area"
+              ? { id: initial.id, format, formId: areas.some((a) => a.id === formId) ? formId : "all", metric: "usage", range: "all" }
+              : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric, range: effRange })}
             style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
             {t("common.save" as never)}
           </button>

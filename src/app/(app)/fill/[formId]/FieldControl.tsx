@@ -183,12 +183,14 @@ export function FieldControl({
   const [numValue, setNumValue] = useState(String(initial.value ?? ""));
   const [pf, setPf] = useState(typeof initial.value === "string" ? initial.value : "");
   const [cbVals, setCbVals] = useState<string[]>(Array.isArray(initial.value) && typeof initial.value[0] === "string" ? (initial.value as string[]) : []);
-  const [selVal, setSelVal] = useState<string>(typeof initial.value === "string" ? initial.value : "");
+  // ฟิลด์พื้นที่ที่ตั้งค่าเริ่มต้นไว้ (ฟอร์มที่ใช้ที่เดียวตายตัว) — ใช้เมื่อยังไม่มีคำตอบเท่านั้น
+  const areaDefault = f.area && f.area_default && (initial.value == null || initial.value === "") ? f.area_default : "";
+  const [selVal, setSelVal] = useState<string>(typeof initial.value === "string" && initial.value ? initial.value : areaDefault);
   const [sigOpen, setSigOpen] = useState(false);
   // ตัวเลือกจากข้อมูลอ้างอิง (ดึงไม่ได้ → ใช้ตัวเลือกที่พิมพ์ไว้แทน)
   const parentValue = getParentValue?.();
   const optLabels = useMemo(() => labelMap(f.options, f.option_labels), [f.options, f.option_labels]);
-  const dsBound = !!f.options_source && !f.options_error && (f.type === "select" || f.type === "checkbox");
+  const dsBound = (!!f.options_source || !!f.area) && !f.options_error && (f.type === "select" || f.type === "checkbox");
   const dsOptions = dsBound ? filterOptions(f.options || [], f.options_parents, parentValue) : [];
   const waitParent = dsBound && !!f.options_parents && (parentValue == null || parentValue === "" || (Array.isArray(parentValue) && parentValue.length === 0));
   const dtMode = f.dt_mode ?? "datetime";
@@ -200,6 +202,7 @@ export function FieldControl({
     if (f.type === "datetime" && dtDefault && (initial.value == null || initial.value === "")) {
       onPatch({ value: dtDefault });
     }
+    if (areaDefault) onPatch({ value: areaDefault });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // แป้นตัวเลขของ iPhone ไม่มีปุ่ม "−" → ช่องที่ค่าติดลบได้ มีปุ่มสลับเครื่องหมาย

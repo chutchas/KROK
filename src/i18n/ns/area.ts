@@ -1,0 +1,83 @@
+"use client";
+// ข้อความ "area.*" (พื้นที่) — แยกจากพจนานุกรมหลัก โหลดเฉพาะหน้าที่ใช้
+import { createNsHook } from "./factory";
+import type { MessageKey } from "../dictionaries";
+
+const th = {
+  "area.title": "พื้นที่",
+  "area.sub": "รายชื่อพื้นที่ของ workspace เช่น โซนผลิต อาคาร คลัง — ฟอร์มที่มีช่อง \"พื้นที่\" เลือกได้จากรายชื่อนี้เท่านั้น และแดชบอร์ดใช้ดูว่าพื้นที่ไหนมีใบงานที่ยังไม่จบ",
+  "area.codeNote": "รหัสถูกบันทึกลงเอกสาร จึงแก้ไม่ได้หลังสร้าง · พื้นที่ที่เลิกใช้ให้ปิดใช้แทนการลบ เอกสารเก่ายังอ้างได้",
+  "area.missing": "ฐานข้อมูลยังไม่มีตารางพื้นที่ — ต้องรัน migration 0072 ก่อน",
+  "area.addTitle": "เพิ่มพื้นที่",
+  "area.code": "รหัส",
+  "area.codeBad": "1–20 ตัว ไม่มีช่องว่างหรือจุลภาค",
+  "area.name": "ชื่อพื้นที่",
+  "area.namePh": "เช่น โซน 3 · อาคารผลิต B",
+  "area.add": "เพิ่ม",
+  "area.empty": "ยังไม่มีพื้นที่ — เพิ่มรายการแรกด้านบน",
+  "area.moveUp": "เลื่อนขึ้น",
+  "area.moveDown": "เลื่อนลง",
+  "area.active": "ใช้งาน",
+  "area.inactive": "ปิดใช้",
+  "area.fieldHint": "ตัวเลือกมาจากรายชื่อพื้นที่ของ workspace · ฟอร์มหนึ่งมีช่องพื้นที่ได้ช่องเดียว",
+  "area.manageLink": "จัดการพื้นที่",
+  "area.default": "พื้นที่เริ่มต้น (ไม่บังคับ)",
+  "area.noDefault": "— ให้ผู้กรอกเลือกเอง —",
+  "area.noneYet": "ยังไม่มีพื้นที่ที่เปิดใช้",
+  "area.widgetTitle": "ใบที่ยังไม่จบ",
+  "area.allAreas": "ทุกพื้นที่",
+  "area.gone": "พื้นที่ที่ถูกปิดใช้",
+  "area.pick": "พื้นที่",
+  "area.noOpen": "ไม่มีใบที่ค้างอยู่",
+  "area.ageM": "{n} นาที",
+  "area.ageH": "{n} ชม.",
+  "area.ageD": "{n} วัน",
+  "area.inProgress": "กำลังทำ",
+  "area.pendingApproval": "รออนุมัติ",
+  "area.othersOpen": "มีใบอื่นที่ยังไม่จบใน {area} {n} ใบ",
+  "area.thisArea": "พื้นที่นี้",
+  "area.show": "ดูรายการ",
+  "area.hide": "ซ่อน",
+} as const;
+export type AreaKey = keyof typeof th;
+export type AreaAnyKey = MessageKey | AreaKey;
+
+const en: Record<AreaKey, string> = {
+  "area.title": "Areas",
+  "area.sub": "Your workspace's areas, such as production zones, buildings or warehouses. A form's \"Area\" field can only pick from this list, and the dashboard uses it to show where work is still open.",
+  "area.codeNote": "Codes are saved into documents, so they can't be changed after creation. Turn an area off instead of deleting it — older documents still refer to it.",
+  "area.missing": "The areas table doesn't exist yet — run migration 0072 first.",
+  "area.addTitle": "Add an area",
+  "area.code": "Code",
+  "area.codeBad": "1–20 characters, no spaces or commas",
+  "area.name": "Area name",
+  "area.namePh": "e.g. Zone 3 · Production building B",
+  "area.add": "Add",
+  "area.empty": "No areas yet — add the first one above.",
+  "area.moveUp": "Move up",
+  "area.moveDown": "Move down",
+  "area.active": "In use",
+  "area.inactive": "Off",
+  "area.fieldHint": "Options come from the workspace's area list. A form can have only one area field.",
+  "area.manageLink": "Manage areas",
+  "area.default": "Default area (optional)",
+  "area.noDefault": "— Let the person filling in choose —",
+  "area.noneYet": "No areas in use yet.",
+  "area.widgetTitle": "Open work",
+  "area.allAreas": "All areas",
+  "area.gone": "Area turned off",
+  "area.pick": "Area",
+  "area.noOpen": "Nothing open",
+  "area.ageM": "{n} min",
+  "area.ageH": "{n} h",
+  "area.ageD": "{n} d",
+  "area.inProgress": "In progress",
+  "area.pendingApproval": "Awaiting approval",
+  "area.othersOpen": "{n} other open item(s) in {area}",
+  "area.thisArea": "this area",
+  "area.show": "Show",
+  "area.hide": "Hide",
+};
+
+export const useAreaT = createNsHook<AreaKey>(th, en);
+export const areaDicts = { th, en };

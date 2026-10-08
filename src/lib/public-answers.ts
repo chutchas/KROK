@@ -103,6 +103,8 @@ export function sanitizePublicAnswers(
       item.display = str(a.display, 5000) ?? "—";
       const code = str(a.code, 1000);
       if (code && (f.type === "select" || f.type === "checkbox")) item.code = code;
+      // ฟิลด์พื้นที่: ฐานข้อมูลอ่านรหัสจากรายการนี้ไปหาพื้นที่ของเอกสาร (trigger submissions_area · 0072)
+      if (f.area) item.area = true;
       const note = str(a.note, 1000);
       if (note && f.type === "checkbox") item.note = note;
     }
