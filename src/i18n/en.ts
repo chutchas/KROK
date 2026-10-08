@@ -1594,6 +1594,8 @@ export const en: Record<MessageKey, string> = {
   "ftype.table": "Table",
   "ftype.formula": "Formula",
   "ftype.child_form": "Open child form button",
+  "studio.prevAll": "All steps",
+  "studio.prevPaged": "Step by step",
   "fs.title": "Form settings",
   "fs.hint": "Applies to the whole form — tap a field on the form to set up that field",
   "fs.tab.access": "Access",

@@ -1609,6 +1609,8 @@ export const th = {
   "ftype.table": "ตาราง",
   "ftype.formula": "สูตรคำนวณ",
   "ftype.child_form": "ปุ่มเปิดฟอร์มลูก",
+  "studio.prevAll": "ทั้งหมด",
+  "studio.prevPaged": "ทีละขั้น",
   "fs.title": "ตั้งค่าฟอร์ม",
   "fs.hint": "ใช้กับทั้งฟอร์ม — แตะฟิลด์บนฟอร์มเพื่อตั้งค่าฟิลด์นั้น",
   "fs.tab.access": "ใครใช้ได้",

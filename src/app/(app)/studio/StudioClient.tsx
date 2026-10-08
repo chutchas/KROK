@@ -17,6 +17,7 @@ import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 import FormDevicePicker from "@/components/FormDevicePicker";
 import type { ShareValue } from "@/components/ShareScopeModal";
 import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
+import { assigneeLabel } from "@/lib/case-flow";
 import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY, buildPrompt } from "@/lib/prompt-library";
 import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
 import { saveForm, updateForm, deleteForm, saveDraft, setFormStatus, loadFormSchema } from "./actions";
@@ -62,6 +63,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   // ตั้งค่าระดับฟอร์ม: แท็บที่เปิดอยู่ · จอแคบ = เปิดเป็นแผงลอยด้วยปุ่ม "ตั้งค่าฟอร์ม"
   const [formTab, setFormTab] = useState<FormTab>("access");
   const [formPanel, setFormPanel] = useState(false);
+  // มุมมองมือถือ: ทั้งหมด (แก้ง่าย) / ทีละขั้น (เหมือนหน้ากรอกจริง)
+  const [previewPaged, setPreviewPaged] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
@@ -415,6 +418,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     if ("error" in res) await alertDialog(res.error);
     else router.refresh();
   }
+
+  // ชื่อผู้รับผิดชอบขั้น (ปุ่ม "ส่งต่อให้ …" ในมุมมองทีละขั้น)
+  const stepLabel = (i: number) => draft ? assigneeLabel(draft, i,
+    Object.fromEntries(teams.map((x) => [x.id, x.name])), Object.fromEntries(members.map((m) => [m.user_id, m.name])),
+    { team: (name: string) => tt("wf.teamName", { name }), deletedTeam: t("wf.deletedTeam"), goneUser: t("wf.goneUser") }) : null;
 
   // ===== ตั้งค่าระดับฟอร์ม (แผงขวา · แบ่งแท็บ) — ทุกแท็บ mount ค้างไว้ (ซ่อนด้วย display) ค่าที่กรอกค้างในแผงย่อยจึงไม่หายตอนสลับแท็บ
   const formTabs: { k: FormTab; label: string; on: boolean }[] = [
@@ -891,17 +899,28 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <AsyncButton onClick={refineDraft} disabled={!!busy || !refine.trim()}>{t("studio.refineBtn")}</AsyncButton>
           </div>
 
-          <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "10px 0 0" }}>{t("studio.clickToEdit")}</p>
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
               <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()}
                 onDeleteKey={deleteKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} theme={resolveTheme(branding, draft.theme)} tenantId={tenantId} />
             ) : (
-              <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 8 }}>
+                <div role="radiogroup" aria-label={t("studio.viewMobile")} style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                  {([[false, t("studio.prevAll")], [true, t("studio.prevPaged")]] as const).map(([v, label], i) => {
+                    const on = previewPaged === v;
+                    return (
+                      <button key={label} type="button" role="radio" aria-checked={on} data-krok-keep="" onClick={() => setPreviewPaged(v)}
+                        style={{ padding: "6px 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
                   <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} theme={resolveTheme(branding, draft.theme)} />
+                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} theme={resolveTheme(branding, draft.theme)}
+                    paged={previewPaged} stepLabel={stepLabel} />
                 </div>
               </div>
             )}

@@ -8,7 +8,7 @@ import { usePaperReflow } from "@/components/paper/usePaperReflow";
 import { PaperChoices, PaperFooterText, PaperHeaderContent, PaperImageContent, PaperLabel, PaperMetaContent, PaperPassFail, PaperPhoto, PaperSignature, PaperTable, paperBoxStyle, paperHeaderBoxStyle, paperInputStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
-import { LayoutGrid, RotateCcw, Move, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, Trash2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard, ImagePlus } from "lucide-react";
+import { LayoutGrid, RotateCcw, GripVertical, Printer, Plus, ListPlus, Copy, Scissors, ClipboardPaste, CopyPlus, Trash2, Undo2, Redo2, EyeOff, StretchHorizontal, Columns2, Keyboard, ImagePlus } from "lucide-react";
 import type { ResolvedTheme } from "@/lib/theme";
 import { useUploadErrorText } from "@/components/BrandingEditor";
 import BrandImageChooser from "@/components/BrandImageChooser";
@@ -471,9 +471,6 @@ export default function FormPaperEditor({
     <div style={{ marginTop: 8 }}>
       {/* แถบเครื่องมือ */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".82rem", color: "var(--ink-2)" }}>
-          <Icon icon={Move} className="h-4 w-4" /> {t("paper.keyboardHint")}
-        </span>
         {onAddField && (
           <button data-krok-keep="" onClick={onAddField} className="inline-flex items-center gap-1.5"
             style={{ padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
