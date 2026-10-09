@@ -110,7 +110,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
         onClick={toggle}
         aria-label={t("bell.title")}
         aria-expanded={open}
-        className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm"
+        className="relative inline-flex h-11 w-11 items-center justify-center rounded-full border shadow-sm"
         style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer" }}
       >
         <Icon icon={Bell} className="h-4 w-4" />

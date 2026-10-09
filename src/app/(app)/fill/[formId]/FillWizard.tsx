@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText, Download, Info } from "lucide-react";
+import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText, Download, Info, ClipboardCheck } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
 import { docNoOf, isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
@@ -677,7 +677,13 @@ export default function FillWizard(props: Props) {
     setErrors(errs);
     if (typeof document !== "undefined") {
       const first = fields.find((f) => errs[f.id]);
-      if (first) setTimeout(() => document.getElementById("fld-" + first.id)?.scrollIntoView({ behavior: "smooth", block: "center" }), 30);
+      // เลื่อนไปช่องแรกที่ผิด + ย้ายโฟกัสไปช่องนั้น (คีย์บอร์ด/โปรแกรมอ่านหน้าจอรู้ทันทีว่าต้องแก้ตรงไหน)
+      if (first) setTimeout(() => {
+        const box = document.getElementById("fld-" + first.id);
+        box?.scrollIntoView({ behavior: "smooth", block: "center" });
+        const ctl = box?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), textarea, select, button:not([disabled])");
+        ctl?.focus({ preventScroll: true });
+      }, 30);
     }
     return Object.keys(errs).length === 0;
   }
@@ -709,6 +715,20 @@ export default function FillWizard(props: Props) {
     setCaseModal("handoff");
   }
 
+  /** มีเรื่องที่ควรเห็นก่อนส่ง: ข้อไม่ผ่าน / ค่านอกช่วง / ช่องรูปหรือลายเซ็นที่ยังว่าง → เปิดหน้าตรวจทานให้เองแม้ฟอร์มไม่ได้ตั้ง */
+  function hasIssues(): boolean {
+    const fv = hasFormula ? calcFrom(answers.current) : {};
+    return schema.steps.slice(Math.max(segStart, 0), segEnd + 1).some((st) => st.fields.some((f) => {
+      const a = answers.current[f.id] || {};
+      if (f.type === "pass_fail") return a.value === "fail";
+      if (f.type === "photo") return filledPhotoKeys(f, (k) => !!photos[k]).length === 0;
+      if (f.type === "signature") return !sigs[f.id];
+      if (f.type === "number") { const v = parseFloat(String(a.value)); return Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max)); }
+      if (f.type === "formula") return outOfRange(fv[f.id] ?? null, f);
+      return false;
+    }));
+  }
+
   async function next() {
     if (!validate(lockedStep(idx) ? [] : step.fields)) return;
     if (viewOnly) {
@@ -717,7 +737,7 @@ export default function FillWizard(props: Props) {
     }
     if (wf && !isLastSeg && idx === segEnd) { openHandoff(); return; }
     // ตรวจทานก่อนส่ง: ขั้นสุดท้าย (หรือแก้จากหน้าตรวจทาน) → เปิดหน้าตรวจทานแทนการส่งทันที
-    if (schema.review && (idx >= maxIdx || reviewReturn)) {
+    if ((idx >= maxIdx || reviewReturn) && (schema.review || reviewReturn || hasIssues())) {
       if (!validate(segFields())) return;
       setReviewReturn(false);
       setReviewSnap({ ...answers.current });
@@ -1207,7 +1227,7 @@ export default function FillWizard(props: Props) {
     const toneColor = { pass: "var(--pass-text)", fail: "#fff", warn: "var(--warn)" } as const;
     const backTo = (si: number) => {
       setReviewing(false); setReviewReturn(true); setIdx(si); window.scrollTo(0, 0);
-      latest.current.idx = si; // eslint-disable-line react-hooks/refs -- เรียกตอนกดปุ่ม ไม่ใช่ระหว่าง render
+      latest.current.idx = si;
     };
     return focusShell(
       <div className={reviewScope}>
@@ -1224,7 +1244,7 @@ export default function FillWizard(props: Props) {
           {body.map(({ st, si, items }) => (
             <section key={st.id} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 6px 6px 14px", background: "var(--surface-2)", borderBottom: "1px solid var(--line)" }}>
-                <b style={{ fontFamily: "var(--font-anuphan)" }}>{si + 1}. {st.title}</b>
+                <h3 style={{ fontSize: "1rem", margin: 0 }}>{si + 1}. {st.title}</h3>
                 {!lockedStep(si) && (
                   <button type="button" onClick={() => backTo(si)} style={{ minHeight: 44, padding: "0 12px", border: "none", background: "transparent", color: "var(--accent-text)", fontWeight: 600, fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}>{t("common.edit" as never)}</button>
                 )}
@@ -1253,7 +1273,7 @@ export default function FillWizard(props: Props) {
     const canOpenDoc = !props.publicMode && !props.offlineShell && !done.offline && !!done.subId;
     return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "40px 20px", textAlign: "center", boxShadow: "var(--shadow)" }}>
-        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--warn)" : done.pending ? "var(--warn)" : done.result === "pass" ? "var(--pass)" : "var(--fail)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : AlertTriangle} className="h-12 w-12" strokeWidth={1.6} /></div>
+        <div style={{ display: "flex", justifyContent: "center", color: done.offline ? "var(--warn)" : done.pending ? "var(--warn)" : done.result === "pass" ? "var(--pass)" : "var(--accent-text)" }}><Icon icon={done.offline ? CloudOff : done.pending ? Clock : done.result === "pass" ? CheckCircle2 : ClipboardCheck} className="h-12 w-12" strokeWidth={1.6} /></div>
         <h2 style={{ margin: "10px 0 4px" }}>
           {done.offline
             ? t("fill.doneOffline")
@@ -1276,6 +1296,7 @@ export default function FillWizard(props: Props) {
             userName={props.userName}
             stamp={done.pending ? { tone: "warn", text: t("fw.stampPending") } : done.result === "pass" ? { tone: "pass", text: t("fw.stampPass") } : { tone: "fail", text: tt("fw.stampFail", { n: done.fails.length }) }}
             href={canOpenDoc ? `/submission/${done.subId}` : undefined}
+            pdfUrl={canOpenDoc ? `/api/submission/${done.subId}/pdf` : undefined}
             label={t("fill.doneDocNo")}
           />
         )}
@@ -1450,7 +1471,7 @@ export default function FillWizard(props: Props) {
   ];
   const topBar = (colWidth: number | string) => (
     <FillTopBar title={props.title} colWidth={colWidth} menu={focusMenu} onClose={() => void exitForm()} closing={exiting}
-      stepLabel={mode === "mobile" ? tt("fw.stepOf", { n: idx + 1, total: nSteps }) : undefined} status={savedStatus} />
+      stepLabel={mode === "mobile" ? `${tt("fw.stepOf", { n: idx + 1, total: nSteps })} · ${schema.steps[idx]?.title ?? ""}` : undefined} status={savedStatus} />
   );
 
   // ---------- งาน: แถบสถานะ + ปุ่มส่งต่อ/ส่งกลับ ----------
@@ -1714,14 +1735,35 @@ function fmtDuration(sec: number, tt: (k: "fw.durMin" | "fw.durSec", v: Record<s
 }
 
 /** ภาพย่อเอกสาร A4 บนหน้าส่งเสร็จ — หัวเอกสาร + เลขที่ + ตราผล (ภาพประกอบ ไม่ใช่เอกสารจริง) */
-function DoneDocCard({ title, docNo, userName, stamp, href, label }: {
+function DoneDocCard({ title, docNo, userName, stamp, href, label, pdfUrl }: {
   title: string; docNo: string; userName: string; label: string;
   stamp: { tone: "pass" | "fail" | "warn"; text: string };
   href?: string;
+  /** มี = ดึง PDF จริงมาวาดหน้าแรกแทนภาพจำลอง (ระหว่างรอ/ล้มเหลว = ภาพจำลอง) */
+  pdfUrl?: string;
 }) {
+  const [img, setImg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pdfUrl) return;
+    let alive = true;
+    (async () => {
+      try {
+        const res = await fetch(pdfUrl);
+        if (!res.ok) return;
+        const buf = await res.arrayBuffer();
+        // โหลดตัววาด PDF เฉพาะตอนถึงหน้าส่งเสร็จ (ไม่ถ่วงหน้ากรอก)
+        const { pdfFirstPageImage } = await import("@/lib/pdf-to-image");
+        const url = await pdfFirstPageImage(buf, 220);
+        if (alive) setImg(url);
+      } catch { /* ใช้ภาพจำลองต่อ */ }
+    })();
+    return () => { alive = false; };
+  }, [pdfUrl]);
   const color = stamp.tone === "pass" ? "#15803d" : stamp.tone === "fail" ? "#b91c1c" : "#b45309";
   const now = new Date();
-  const body = (
+  const body = img ? (
+    <img src={img} alt={`${title} · ${docNo}`} style={{ display: "block", width: 220, maxWidth: "100%", height: "auto", margin: "0 auto", border: "1px solid #cbd5e1", borderRadius: 4, boxShadow: "0 12px 28px -14px rgba(15,23,42,.45)", background: "#fff" }} />
+  ) : (
     <div style={{ position: "relative", width: 200, aspectRatio: "210 / 297", margin: "0 auto", background: "#fff", color: "#111", border: "1px solid #cbd5e1", borderRadius: 4, boxShadow: "0 12px 28px -14px rgba(15,23,42,.45)", padding: "14px 14px 12px", textAlign: "left", display: "flex", flexDirection: "column", gap: 6, overflow: "hidden" }}>
       <div style={{ display: "flex", justifyContent: "space-between", gap: 6, borderBottom: "1.5px solid #111", paddingBottom: 6 }}>
         <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".72rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{title}</b>

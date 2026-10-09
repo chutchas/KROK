@@ -6,7 +6,7 @@ import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PROFILE_AVATAR_EVENT, PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
-import TourGuide, { TOUR_START_EVENT, TourHelpButton } from "@/components/TourGuide";
+import TourGuide, { TourHelpButton } from "@/components/TourGuide";
 import { SETTINGS_HUBS, canSee, hubOf, type NavCtx, type SettingsHub } from "@/lib/settings-nav";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -22,7 +22,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid, CircleHelp } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -255,11 +255,16 @@ export default function AppShell({
           .krok-tabbar, .krok-mobile-only{ display: none !important; }
         }
         .krok-desk-only{ display: contents; }
+        /* ลิงก์ข้ามไปเนื้อหา: โผล่เมื่อกด Tab ครั้งแรก */
+        .krok-skip{ position: absolute; left: 8px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-weight: 600; text-decoration: none; }
+        .krok-skip:focus{ top: 8px; }
+        #krok-main:focus{ outline: none; }
         /* workspace ในเมนูข้าง: ปุ่มเต็มความกว้าง รายการกางในเมนูเลย (ไม่ลอยทับ) */
         .krok-drawer-ws .krok-ws-chip{ width: 100%; }
         .krok-drawer-ws .krok-ws-name{ flex: 1 1 auto; max-width: none !important; }
         .krok-drawer-ws .krok-ws-menu{ position: static !important; margin-top: 8px; box-shadow: none !important; min-width: 0 !important; }
       `}</style>
+      {!focusMode && <a href="#krok-main" className="krok-skip">{t("nav.skipToContent")}</a>}
       <header
         style={{
           background: "var(--surface)",
@@ -345,7 +350,6 @@ export default function AppShell({
           <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <OfflineSync />
             <OfflinePrep userId={userId} tenantId={activeTenantId} />
-            <span className="krok-desk-only"><ThemeToggle /><LanguageToggle /><TourHelpButton /></span>
             <NotificationBell userId={userId} />
             <div ref={profileRef} data-tour="profile" style={{ position: "relative" }}>
               <button
@@ -392,6 +396,12 @@ export default function AppShell({
                       <b style={{ fontSize: ".88rem", display: "block", overflowWrap: "break-word" }}>{fullName}</b>
                       <small style={{ color: "var(--ink-3)", fontSize: ".72rem", display: "block", overflowWrap: "break-word" }}>{tenantName}</small>
                     </div>
+                  </div>
+                  {/* ธีม · ภาษา · แนะนำการใช้งาน — ย้ายจากแถบบน (ลดปุ่มบนแถบ) */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4 }}>
+                    <ThemeToggle />
+                    <LanguageToggle />
+                    <span onClick={() => setProfileOpen(false)} style={{ display: "contents" }}><TourHelpButton /></span>
                   </div>
                   <Link
                     href="/settings/profile"
@@ -542,17 +552,6 @@ export default function AppShell({
                   <Icon icon={LifeBuoy} className="h-[19px] w-[19px]" /> {t("nav.contactTeam")}
                 </Link>
               </div>
-              {/* มือถือ: แนะนำการใช้งาน (ปุ่ม ? ย้ายมาจากแถบบน) */}
-              <button type="button" className="krok-mobile-only inline-flex items-center gap-3"
-                onClick={() => { setMenuOpen(false); setTimeout(() => window.dispatchEvent(new Event(TOUR_START_EVENT)), 250); }}
-                style={{ width: "100%", padding: "10px 12px", minHeight: 44, borderRadius: 9, fontSize: ".95rem", fontWeight: 500, color: "var(--ink)", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                <Icon icon={CircleHelp} className="h-[19px] w-[19px]" /> {t("tour.replay")}
-              </button>
-              {/* มือถือ: ธีม/ภาษา (แถบบนไม่มีที่แล้ว) */}
-              <div className="krok-mobile-only" style={{ display: "flex", gap: 10, alignItems: "center", padding: "16px 12px 0" }}>
-                <ThemeToggle />
-                <LanguageToggle />
-              </div>
             </nav>
           </aside>
         </div>
@@ -580,7 +579,7 @@ export default function AppShell({
         </nav>
       )}
       <TourGuide userId={userId} />
-      <main style={focusMode
+      <main id="krok-main" tabIndex={-1} style={focusMode
         // โหมดเต็มจอ: ไม่จำกัดความกว้าง (หน้ากรอกจัดคอลัมน์กลางจอเอง + แถบบนชิดขอบจอ) ไม่เว้นที่บน
         ? { margin: "0 auto", padding: "0 var(--krok-gutter) 24px" }
         : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) calc(40px + var(--krok-tabbar-h))" }}>{children}</main>
