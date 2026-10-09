@@ -1,7 +1,7 @@
 "use server";
 import { sm } from "@/lib/server-msg";
 import { dbError } from "@/lib/db-error";
-import { getSession, hasMenu } from "@/lib/session";
+import { canManage, getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
 export interface ReportFilters {
@@ -40,6 +40,9 @@ export async function previewReport(
   // นับทั้งหมดตามเงื่อนไข
   // กรองตาม workspace ที่เปิดอยู่ — RLS อย่างเดียวจะคืน submission ของทุก workspace ที่ผู้ใช้เป็นสมาชิก
   let cq = supabase.from("submissions").select("id", { count: "exact", head: true }).eq("tenant_id", session.tenantId);
+  // สมาชิกทั่วไป: รายงาน = ประวัติการส่งของตัวเอง (กรองที่แอปด้วย ไม่พึ่ง RLS อย่างเดียว)
+  const mineOnly = !canManage(session.role);
+  if (mineOnly) cq = cq.eq("submitted_by", session.userId);
   if (f.formId && f.formId !== "all") cq = cq.eq("form_id", f.formId);
   if (f.from) cq = cq.gte("submitted_at", f.from + "T00:00:00+07:00");
   if (f.to) cq = cq.lte("submitted_at", f.to + "T23:59:59.999+07:00");
@@ -54,6 +57,7 @@ export async function previewReport(
     .eq("tenant_id", session.tenantId)
     .order("submitted_at", { ascending: false })
     .range(Math.max(0, Math.floor(offset)), Math.max(0, Math.floor(offset)) + PREVIEW_LIMIT - 1);
+  if (mineOnly) q = q.eq("submitted_by", session.userId);
   if (f.formId && f.formId !== "all") q = q.eq("form_id", f.formId);
   if (f.from) q = q.gte("submitted_at", f.from + "T00:00:00+07:00");
   if (f.to) q = q.lte("submitted_at", f.to + "T23:59:59.999+07:00");

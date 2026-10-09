@@ -3,13 +3,14 @@ import { fmtCoords, mapUrl, readGeo } from "@/lib/geo";
 import StoredText from "@/i18n/StoredText";
 import { notFound, redirect } from "next/navigation";
 import { InlineFormIcon } from "@/components/FormIcon";
-import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
+import { TriangleAlert, Check, Undo2, Clock } from "lucide-react";
 import { getSession, canManage, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
 import DeleteSubmission from "./DeleteSubmission";
+import BackLink from "./BackLink";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
 import { getFormPrintInfo } from "@/lib/print-photos-server";
@@ -117,7 +118,7 @@ function RelatedRef({ r }: { r: RelatedDoc }) {
   );
 }
 
-export default async function SubmissionPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ view?: string }> }) {
+export default async function SubmissionPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ view?: string; from?: string }> }) {
   const [{ id }, sp] = await Promise.all([params, searchParams]);
   const session = await getSession();
   if (!session) return redirectNoSession();
@@ -197,6 +198,8 @@ export default async function SubmissionPage({ params, searchParams }: { params:
   // แท็บ: "เอกสาร A4" (ค่าเริ่มต้น — หน้าตาเดียวกับตอนกรอกแบบกระดาษ/ตอนพิมพ์/PDF) · "สรุป" (รายการคำตอบ + ประวัติ)
   const view: "doc" | "summary" = sp.view === "summary" || !docSchema ? "summary" : "doc";
   const docNo = docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined });
+  // สลับแท็บแล้วยังจำที่มา (ปุ่มกลับยังพาไปหน้าเดิม)
+  const fromQ = (sep: "?" | "&") => (sp.from && /^[a-z]{1,20}$/.test(sp.from) ? `${sep}from=${sp.from}` : "");
   const tab = (on: boolean): React.CSSProperties => ({
     display: "inline-flex", alignItems: "center", minHeight: 40, padding: "0 16px", borderRadius: 8, fontSize: ".9rem", fontWeight: 600, textDecoration: "none",
     background: on ? "var(--surface)" : "transparent", color: on ? "var(--ink)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none",
@@ -208,7 +211,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
   return (
     <div style={{ maxWidth: view === "doc" ? 900 : 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="sub.backDashboard" /></a>
+        <BackLink from={sp.from} mine={!canManage(session.role)} />
         <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
           {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}
           <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} />
@@ -217,8 +220,8 @@ export default async function SubmissionPage({ params, searchParams }: { params:
 
       {docSchema && (
         <div className="no-print" role="tablist" aria-label={docNo} style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)", marginBottom: 12 }}>
-          <a role="tab" aria-selected={view === "doc"} href={`/submission/${sub.id}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
-          <a role="tab" aria-selected={view === "summary"} href={`/submission/${sub.id}?view=summary`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
+          <a role="tab" aria-selected={view === "doc"} href={`/submission/${sub.id}${fromQ("?")}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
+          <a role="tab" aria-selected={view === "summary"} href={`/submission/${sub.id}?view=summary${fromQ("&")}`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
         </div>
       )}
 
@@ -227,7 +230,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
           {sub.approval_status && sub.approval_status !== "none" && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: ".86rem" }}>
               <span style={{ border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "2px 10px", fontWeight: 700 }}><T k={status.k} /></span>
-              <a href={`/submission/${sub.id}?view=summary`} style={{ fontSize: ".82rem" }}><T k="sub.seeHistory" /></a>
+              <a href={`/submission/${sub.id}?view=summary${fromQ("&")}`} style={{ fontSize: ".82rem" }}><T k="sub.seeHistory" /></a>
             </div>
           )}
           <SubmissionDoc
