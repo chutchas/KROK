@@ -143,7 +143,7 @@ export default function ContactClient({ me, defaultTopic }: { me: Me; defaultTop
             <LogoMark size={28} title="KROK" />
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
           </Link>
-          <Link href={me ? "/dashboard" : "/login#pricing"} style={{ marginLeft: "auto", fontSize: ".86rem" }}>{me ? t("contact.backApp") : t("contact.backPricing")}</Link>
+          <Link href={me ? "/dashboard" : "/login#pricing"} style={{ marginLeft: "auto", fontSize: ".86rem", display: "inline-flex", alignItems: "center", minHeight: 44 }}>{me ? t("contact.backApp") : t("contact.backPricing")}</Link>
           <ThemeToggle />
           <LanguageToggle />
         </div>

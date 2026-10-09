@@ -363,14 +363,15 @@ export default function AppShell({
                   fontSize: ".8rem",
                   color: "var(--ink-2)",
                   border: "1px solid var(--line)",
-                  borderRadius: 20,
-                  padding: "5px 12px",
+                  borderRadius: 22,
+                  padding: "0 12px 0 6px",
+                  minHeight: 44, // เท่ากระดิ่งข้างๆ
                   background: profileOpen ? "var(--accent-soft)" : "var(--surface)",
                   cursor: "pointer",
                   fontFamily: "inherit",
                 }}
               >
-                <Avatar url={shownAvatar} size={22} /><span className="krok-profile-name" title={fullName} style={{ maxWidth: "9em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortName}</span>
+                <Avatar url={shownAvatar} size={30} /><span className="krok-profile-name" title={fullName} style={{ maxWidth: "9em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{shortName}</span>
                 <Icon icon={ChevronDown} className="h-3.5 w-3.5" />
               </button>
               {profileOpen && (

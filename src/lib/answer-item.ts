@@ -25,7 +25,7 @@ export interface AnswerItem {
   /** ชื่อใต้รูปของแต่ละรูป (ตรงกับ photoFields / photoField) — ไม่มี = ไม่ได้ตั้ง */
   photoLabels?: string[];
   rows?: Record<string, string>[];
-  columns?: { id: string; label: string; type?: string }[];
+  columns?: { id: string; label: string; type?: string; fail_options?: string[] }[];
   src?: AnswerSrc;
   /**
    * รหัสของตัวเลือกจากข้อมูลอ้างอิงที่ "แสดงชื่อ เก็บรหัส"

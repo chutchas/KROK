@@ -5,7 +5,7 @@
 // → ไม่เชื่อ payload ตรง ๆ: จับคู่กับช่องใน schema ตามลำดับ, เก็บเฉพาะ property ที่รู้จัก, ตัดความยาว,
 //   และคำนวณ "ไม่ผ่าน" + ผลรวมใหม่จาก schema (client ส่ง result/fails มาก็ไม่ใช้)
 // ============================================================
-import { isUiOnlyField, type FormField, type FormSchema } from "@/lib/form-schema";
+import { isFailChoice, isUiOnlyField, type FormField, type FormSchema } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { finalizeTableRows, rowPhotoKeyOf } from "@/lib/table-rows";
@@ -121,13 +121,19 @@ export function sanitizePublicAnswers(
       }
       const fin = finalizeTableRows(f, rows, (k) => uploaded.has(k));
       item.rows = fin.rows;
-      item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
+      item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type, ...(c.fail_options ? { fail_options: c.fail_options } : {}) }));
       item.display = `${fin.rows.length} แถว`;
       if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
     } else {
       item.display = str(a.display, 5000) ?? "—";
       const code = str(a.code, 1000);
       if (code && (f.type === "select" || f.type === "checkbox")) item.code = code;
+      // ตัวเลือกที่ตั้งว่าเป็นข้อบกพร่อง → ไม่ผ่าน (ตัดสินฝั่ง server จากค่าที่บันทึก ไม่เชื่อ client)
+      if ((f.type === "select" || f.type === "checkbox") && f.fail_options?.length) {
+        const raw = code ?? (typeof item.display === "string" ? item.display : "");
+        const vals = f.type === "checkbox" ? raw.split(/,\s*/) : [raw];
+        if (isFailChoice(f.fail_options, vals)) { item.fail = true; fails.push(f.label); }
+      }
       // ฟิลด์พื้นที่: ฐานข้อมูลอ่านรหัสจากรายการนี้ไปหาพื้นที่ของเอกสาร (trigger submissions_area · 0072)
       if (f.area) item.area = true;
       const note = str(a.note, 1000);

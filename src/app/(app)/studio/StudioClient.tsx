@@ -672,7 +672,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         </div>
       )}
       {/* แท็บหลัก 3 แท็บ */}
-      <div data-tour="studio-tabs" style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)", flexWrap: "wrap" }}>
+      <div data-tour="studio-tabs" role="tablist" aria-label={t("nav.studio")} style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)" }}>
         {([
           { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
           { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
@@ -683,10 +683,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <button
               key={tb.k}
               onClick={() => setTab(tb.k)}
+              role="tab"
+              aria-selected={on}
               className="inline-flex items-center justify-center gap-1.5"
-              style={{ flex: 1, minWidth: 120, padding: "10px 14px", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: ".92rem", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
+              // แถวเดียวเสมอ (เดิม minWidth 120 ทำให้มือถือตกเป็น 2 บรรทัด) · จอแคบลดขอบ/ตัวอักษร
+              style={{ flex: "1 1 0", minWidth: 0, minHeight: 44, whiteSpace: "nowrap", padding: "8px clamp(6px, 2vw, 14px)", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: "clamp(.82rem, 3.6vw, .92rem)", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
             >
-              <Icon icon={tb.icon} className="h-4 w-4" /> {tb.label}
+              <Icon icon={tb.icon} className="h-4 w-4 shrink-0" /> <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tb.label}</span>
             </button>
           );
         })}

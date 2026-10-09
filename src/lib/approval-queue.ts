@@ -5,7 +5,9 @@
 // - กติกาเหตุผลตีกลับ · จำกัดจำนวนอนุมัติทีละหลายใบ · สรุปผลอนุมัติหลายใบ
 // ============================================================
 import { answerPhotoKeys } from "@/lib/photo-slots";
-import { cellPhotoKey } from "@/lib/table-rows";
+import { cellPhotoKey, passFailCode } from "@/lib/table-rows";
+import { isFailChoice } from "@/lib/form-schema";
+import { tableCodeKey } from "@/lib/answer-item";
 
 /** เหตุผลตีกลับขั้นต่ำ (ตัวอักษร หลังตัดช่องว่าง) — ใช้ทั้งปุ่มบนหน้าจอและ server action */
 export const MIN_REJECT_REASON = 3;
@@ -31,7 +33,7 @@ interface AnswerLike {
   photoFields?: string[];
   photoLabels?: string[];
   rows?: Record<string, string>[];
-  columns?: { id: string; label: string; type?: string }[];
+  columns?: { id: string; label: string; type?: string; fail_options?: string[] }[];
 }
 
 export interface FailedAnswer {
@@ -73,7 +75,7 @@ export function buildEvidence(answers: AnswerLike[], max = MAX_THUMBS): Evidence
         const cols = a.columns || [];
         const details: string[] = [];
         a.rows.forEach((r, ri) => {
-          const bad = cols.filter((c) => c.type === "pass_fail" && r?.[c.id] === "fail");
+          const bad = cols.filter((c) => storedCellFails(c, r));
           if (!bad.length) return;
           details.push(`แถว ${ri + 1}: ${bad.map((c) => c.label).join(", ")}`);
           for (const c of cols)
@@ -204,4 +206,12 @@ export async function mapLimit<T, R>(items: T[], limit: number, fn: (x: T, i: nu
   };
   await Promise.all(Array.from({ length: Math.max(1, Math.min(limit, items.length)) }, worker));
   return out;
+}
+
+/** ช่องในแถวที่บันทึกแล้วไม่ผ่าน: ผ่าน/ไม่ผ่าน (เก็บเป็นรหัสหรือคำ) · ตัวเลือกที่นับเป็นข้อบกพร่อง (รหัสอยู่ใน #code ถ้ามี) */
+function storedCellFails(c: { id: string; type?: string; fail_options?: string[] }, r: Record<string, string> | undefined): boolean {
+  if (!r) return false;
+  if (c.type === "pass_fail") return passFailCode(r[c.id]) === "fail";
+  if (c.type === "select") return isFailChoice(c.fail_options, r[tableCodeKey(c.id)] ?? r[c.id]);
+  return false;
 }

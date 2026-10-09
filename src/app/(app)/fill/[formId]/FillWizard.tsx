@@ -8,7 +8,7 @@ import Icon from "@/components/Icon";
 import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText, Download, Info, ClipboardCheck } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
-import { docNoOf, isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
+import { docNoOf, isFailChoice, isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import { PhotoFrame } from "@/components/paper/PaperPhotoGrid";
 import { mmToPx } from "@/lib/paper-layout";
@@ -23,7 +23,7 @@ import { CaseBanner, CaseConfirmModal, HandoffModal, ReadonlyField, ReturnModal 
 import { assigneeLabel, segmentEnd, type CaseData, type CaseDocExtract } from "@/lib/case-flow";
 import { fieldStepMap, loadCaseMedia, saveCase } from "@/lib/cases";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
-import { finalizeTableRows, mediaFieldId } from "@/lib/table-rows";
+import { failRowsMissingPhoto, finalizeTableRows, mediaFieldId } from "@/lib/table-rows";
 import FillSourceBar, { type AppliedValue } from "@/components/FillSourceBar";
 import { enqueue, isQuotaExceeded, pushSubmission, PermanentSubmitError, type PendingSubmission } from "@/lib/offline-queue";
 import { deleteLocalDraft, saveLocalDraft, type LocalDraft } from "@/lib/offline-store";
@@ -240,6 +240,7 @@ export default function FillWizard(props: Props) {
       if (f.type === "formula") return outOfRange(fv[f.id] ?? null, f);
       // ตาราง: กฎเดียวกับตอนส่ง (คอลัมน์ผ่าน/ไม่ผ่านที่เลือก "ไม่ผ่าน" → ใบนี้ไม่ผ่าน)
       if (f.type === "table") return finalizeTableRows(f, asRows(a.value)).fails.length > 0;
+      if (f.type === "select" || f.type === "checkbox") return isFailChoice(f.fail_options, a.value);
       return false;
     }));
   }, [schema, segStart, segEnd, hasFormula, calcFrom]);
@@ -662,6 +663,9 @@ export default function FillWizard(props: Props) {
     if (f.type === "table") {
       const all = asRows(a.value);
       if (f.required && !all.some(rowHasValue)) return t("fw.err.tableRow");
+      // แถวที่ไม่ผ่าน (เช่น ชำรุด) ต้องมีรูป — ตั้งที่ตาราง "ต้องแนบรูปเมื่อไม่ผ่าน"
+      const noPhoto = failRowsMissingPhoto(f, all, (k) => !!ph[k]);
+      if (noPhoto.length) return tt("fw.err.failPhoto", { rows: noPhoto.join(", ") });
       const bad = firstBadRow(f.columns || [], all);
       if (bad) return tt("fw.err.tableCell", { row: bad.row + 1, col: bad.col.label });
       return undefined;
@@ -862,7 +866,7 @@ export default function FillWizard(props: Props) {
             item.display = `${fin.rows.length} แถว`;
             item.rows = fin.rows;
             if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
-            item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
+            item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type, ...(c.fail_options ? { fail_options: c.fail_options } : {}) }));
           } else if (f.type === "select" && f.option_labels && typeof a.value === "string" && a.value) {
             const name = labelMap(f.options, f.option_labels).get(a.value);
             item.display = name ?? a.value;
@@ -870,6 +874,8 @@ export default function FillWizard(props: Props) {
           } else if (f.type === "datetime") {
             item.display = a.value ? formatDtThai(String(a.value), f.dt_mode ?? "datetime") : "—";
           } else item.display = String(a.value ?? "—");
+          // ตัวเลือกที่ตั้งว่าเป็นข้อบกพร่อง (เช่น ชำรุด) → ใบนี้ไม่ผ่าน
+          if ((f.type === "select" || f.type === "checkbox") && isFailChoice(f.fail_options, a.value)) { item.fail = true; fails.push(f.label); }
           list.push(item);
         }
 
@@ -1246,9 +1252,16 @@ export default function FillWizard(props: Props) {
       if (f.type === "checkbox") {
         const vals = (Array.isArray(a.value) ? a.value : []).filter((v): v is string => typeof v === "string");
         const names = labelMap(f.options, f.option_labels);
-        return { text: vals.map((v) => names.get(v) ?? v).join(", ") || "—" };
+        const text = vals.map((v) => names.get(v) ?? v).join(", ") || "—";
+        if (isFailChoice(f.fail_options, vals)) { nFail++; return { text: "✕ " + text, tone: "fail", note: a.note?.trim() || undefined }; }
+        return { text };
       }
-      if (f.type === "select" && typeof a.value === "string" && a.value) return { text: labelMap(f.options, f.option_labels).get(a.value) ?? a.value };
+      if (f.type === "select" && typeof a.value === "string" && a.value) {
+        const text = labelMap(f.options, f.option_labels).get(a.value) ?? a.value;
+        // ตัวเลือกที่ตั้งว่าเป็นข้อบกพร่อง (เช่น ชำรุด) → แดงเหมือนข้อไม่ผ่าน
+        if (isFailChoice(f.fail_options, a.value)) { nFail++; return { text: "✕ " + text, tone: "fail" }; }
+        return { text };
+      }
       if (f.type === "datetime") return { text: a.value ? formatDtThai(String(a.value), f.dt_mode ?? "datetime") : "—" };
       return { text: a.value == null || a.value === "" ? "—" : String(a.value) };
     };

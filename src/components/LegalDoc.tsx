@@ -33,7 +33,7 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
             <LogoMark size={28} title="KROK" />
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
           </Link>
-          <Link href={d.other.href} style={{ marginLeft: "auto", fontSize: ".86rem" }}>{d.other.label}</Link>
+          <Link href={d.other.href} style={{ marginLeft: "auto", fontSize: ".86rem", display: "inline-flex", alignItems: "center", minHeight: 44 }}>{d.other.label}</Link>
           <ThemeToggle />
           <LanguageToggle />
         </div>

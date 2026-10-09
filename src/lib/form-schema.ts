@@ -62,6 +62,8 @@ export interface TableColumn {
   formula?: string;
   /** เฉพาะ formula — ทศนิยม (default 2) */
   decimals?: number;
+  /** เฉพาะ select (ตัวเลือกที่พิมพ์เอง) — ตัวเลือกที่นับเป็นข้อบกพร่อง เช่น ["ชำรุด","ขาด"] → แถวนั้นไม่ผ่าน */
+  fail_options?: string[];
 }
 
 export interface FormField {
@@ -135,8 +137,12 @@ export interface FormField {
   // signature
   /** ให้พิมพ์ชื่อผู้เซ็นกำกับ */
   sign_name?: boolean;
+  /** select/checkbox (ตัวเลือกที่พิมพ์เอง) — ตัวเลือกที่นับเป็นข้อบกพร่อง → ใบนี้ไม่ผ่าน */
+  fail_options?: string[];
   // table
   columns?: TableColumn[];
+  /** ตาราง: แถวที่ไม่ผ่านต้องแนบรูปในคอลัมน์รูปของแถวนั้น (ต้องมีคอลัมน์รูป) */
+  require_photo_on_fail?: boolean;
   min_rows?: number; // จำนวนแถวเริ่มต้นที่แสดงตอนกรอก (default 1)
   /** จำนวนแถวสูงสุดที่เพิ่มได้ (ไม่ระบุ = ไม่จำกัด) */
   max_rows?: number;
@@ -550,6 +556,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
           }
           if ((type === "select" || type === "checkbox") && Array.isArray(fo.options)) {
             o.options = fo.options.slice(0, 200).map((x) => str(x, 80));
+            const fl = cleanFailOptions(fo.fail_options, o.options);
+            if (fl) o.fail_options = fl;
           }
           if (type === "select" && fo.area === true) {
             // ตัวเลือกมาจากรายชื่อพื้นที่เท่านั้น — ไม่เก็บตัวเลือกที่พิมพ์เอง / ถังข้อมูล
@@ -607,7 +615,11 @@ export function sanitizeSchema(raw: unknown): FormSchema {
                   label: str(co.label, 60, `คอลัมน์ ${ci + 1}`),
                   type: ct,
                 };
-                if (ct === "select" && Array.isArray(co.options)) col.options = co.options.slice(0, 100).map((x) => str(x, 60));
+                if (ct === "select" && Array.isArray(co.options)) {
+                  col.options = co.options.slice(0, 100).map((x) => str(x, 60));
+                  const fl = cleanFailOptions(co.fail_options, col.options);
+                  if (fl) col.fail_options = fl;
+                }
                 if (co.required === true && ct !== "formula") col.required = true;
                 if (ct === "select") {
                   const os = sanitizeOptionsSource(co.options_source, false);
@@ -623,6 +635,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
                 return col;
               });
             o.columns = cols.length ? cols : [{ id: "c0", label: "รายการ", type: "text" }];
+            if (fo.require_photo_on_fail === true && o.columns.some((c) => c.type === "photo")) o.require_photo_on_fail = true;
             const mr = num(fo.min_rows);
             o.min_rows = mr !== undefined ? Math.min(20, Math.max(1, Math.round(mr))) : 1;
             const xr = num(fo.max_rows);
@@ -864,3 +877,18 @@ export function docDerivedRatio(schema: FormSchema): number {
 }
 
 export const DOC_DERIVED_WARN_RATIO = 0.5;
+
+/** ตัวเลือกที่นับเป็นข้อบกพร่อง: ต้องเป็นตัวเลือกที่มีอยู่จริง · ไม่ซ้ำ · ว่าง = undefined */
+function cleanFailOptions(raw: unknown, options: string[]): string[] | undefined {
+  if (!Array.isArray(raw)) return undefined;
+  const have = new Set(options);
+  const out = [...new Set(raw.filter((x): x is string => typeof x === "string" && have.has(x)))];
+  return out.length ? out : undefined;
+}
+
+/** ค่าที่เลือก (ตัวเลือกเดียวหรือหลายตัว) มีตัวที่นับเป็นข้อบกพร่องหรือไม่ */
+export function isFailChoice(failOptions: string[] | undefined, value: unknown): boolean {
+  if (!failOptions?.length) return false;
+  if (Array.isArray(value)) return value.some((v) => typeof v === "string" && failOptions.includes(v));
+  return typeof value === "string" && failOptions.includes(value);
+}

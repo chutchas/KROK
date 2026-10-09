@@ -71,9 +71,9 @@ export default function TwoFactorCard() {
 
   return (
     <Card>
-      <h3 style={{ fontSize: "1rem", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 6 }}>
+      <h2 style={{ fontSize: "1rem", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 6 }}>
         <Icon icon={ShieldCheck} className="h-4 w-4" /> {t("mfa.title")}
-      </h3>
+      </h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}>{factorId ? t("mfa.hintOn") : t("mfa.hintOff")}</p>
       {factorId === undefined ? null : factorId ? (
         <>

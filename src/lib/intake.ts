@@ -5,7 +5,7 @@
 //   key = ชื่อที่ตั้งต่อช่องในแท็บ API (field_keys) ถ้าไม่ได้ตั้งใช้รหัสช่อง (field id)
 // แล้วตัดสินว่า "ครบ" (ส่งเป็นเอกสารได้เลย) หรือ "ยังไม่ครบ" (เปิดงานให้คนกรอกต่อ)
 // ============================================================
-import { labelMap, type FormField, type FormSchema, type TableColumn, isUiOnlyField } from "@/lib/form-schema";
+import { isFailChoice, labelMap, type FormField, type FormSchema, type TableColumn, isUiOnlyField } from "@/lib/form-schema";
 import { computeFormulas, formatNumber, outOfRange } from "@/lib/formula";
 import { checkCode, finalizeTableRows, passFailCode } from "@/lib/table-rows";
 
@@ -49,7 +49,7 @@ export function intakeFields(schema: FormSchema, fieldKeys: Record<string, strin
         const names = labelMap(f.options, f.option_labels);
         info.options = f.options.slice(0, 200).map((o) => (names.get(o) ? { value: o, label: names.get(o) } : { value: o }));
       }
-      if (f.type === "table") info.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
+      if (f.type === "table") info.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type, ...(c.fail_options ? { fail_options: c.fail_options } : {}) }));
       out.push(info);
     }
   });
@@ -277,6 +277,7 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
         const names = labelMap(f.options, f.option_labels);
         item.display = vals.map((v) => names.get(v) ?? v).join(", ") || "—";
         if (names.size && vals.length) item.code = vals.join(", ");
+        if (isFailChoice(f.fail_options, vals)) { item.fail = true; fails.push(f.label); }
       } else if (f.type === "number") {
         item.display = String(a.value ?? "—") + (f.unit && a.value != null ? " " + f.unit : "");
         const v = parseFloat(String(a.value));
@@ -290,12 +291,13 @@ export function buildAnswerList(schema: FormSchema, answers: Record<string, Inta
         item.display = `${fin.rows.length} แถว`;
         item.rows = fin.rows;
         if (fin.fails.length) { item.fail = true; fails.push(...fin.fails); }
-        item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type }));
+        item.columns = (f.columns || []).map((c) => ({ id: c.id, label: c.label, type: c.type, ...(c.fail_options ? { fail_options: c.fail_options } : {}) }));
       } else if (f.type === "select" && typeof a.value === "string" && a.value) {
         const name = labelMap(f.options, f.option_labels).get(a.value);
         item.display = name ?? a.value;
         if (name) item.code = a.value;
         if (f.area) { item.code = a.value; item.area = true; }
+        if (isFailChoice(f.fail_options, a.value)) { item.fail = true; fails.push(f.label); }
       } else item.display = String(a.value ?? "—");
       list.push(item);
     }
