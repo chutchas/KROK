@@ -117,8 +117,9 @@ export default function FormsListClient({
     .filter((f) => !search.trim() || f.title.toLowerCase().includes(search.trim().toLowerCase()));
 
   return (
-    <Card>
-      <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("forms.title")}</h1>
+    // หัวหน้าเพจอยู่นอกการ์ด (เหมือนหน้าอื่น) — เดิมทั้งหน้าอยู่ในการ์ดใหญ่ แล้วรายการ/หน้าว่างซ้อนการ์ดอีกชั้น
+    <div style={{ minWidth: 0 }}>
+      <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("forms.title")}</h1>
       <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("forms.subtitle")}</p>
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
@@ -227,7 +228,7 @@ export default function FormsListClient({
         })}
       </div>
       </>)}
-    </Card>
+    </div>
   );
 }
 

@@ -38,6 +38,9 @@ const th = {
   "area.thisArea": "พื้นที่นี้",
   "area.show": "ดูรายการ",
   "area.hide": "ซ่อน",
+  "area.codePh": "เช่น Z3",
+  "area.codeRequired": "ใส่รหัสพื้นที่",
+  "area.nameRequired": "ใส่ชื่อพื้นที่",
 } as const;
 export type AreaKey = keyof typeof th;
 export type AreaAnyKey = MessageKey | AreaKey;
@@ -77,6 +80,9 @@ const en: Record<AreaKey, string> = {
   "area.thisArea": "this area",
   "area.show": "Show",
   "area.hide": "Hide",
+  "area.codePh": "e.g. Z3",
+  "area.codeRequired": "Enter an area code",
+  "area.nameRequired": "Enter an area name",
 };
 
 export const useAreaT = createNsHook<AreaKey>(th, en);

@@ -928,7 +928,7 @@ export const en: Record<MessageKey, string> = {
   "push.title": "Push notifications",
   "push.sub": "Get notifications on your phone/computer even when the app isn't open — rounds due, approvals waiting, tasks handed to you · enable per device",
   "push.needMigration": "This feature isn't available yet — contact KROK support",
-  "push.notConfigured": "Push notifications aren't set up yet (VAPID) — contact your system admin",
+  "push.notConfigured": "Push notifications aren't available yet — contact KROK support",
   "push.iosInstall": "iPhone/iPad: push works after adding KROK to the Home Screen (Safari › Share › Add to Home Screen) and opening it from that icon · requires iOS 16.4+",
   "push.unsupported": "This browser doesn't support push notifications — try a recent Chrome, Edge, Firefox or Safari",
   "push.blocked": "Notifications for this site are blocked on this device — allow them in your browser/phone settings, then reload",

@@ -1,4 +1,5 @@
 "use client";
+import { fmtPeriod } from "@/lib/dt-format";
 import { localizeServerMsg } from "@/i18n/stored-text";
 import ComplianceCard from "./ComplianceCard";
 import StoredText from "@/i18n/StoredText";
@@ -279,7 +280,7 @@ export default function DashboardClient({
             <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }} className="krok-sumcards">
               <SummaryCard icon={FileText} label={t("dash.sumForms")} used={summary.forms.used} max={summary.forms.max} />
               <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
-              <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={summary.period} />
+              <SummaryCard icon={Zap} label={t("dash.sumAi")} used={summary.ai.used} max={summary.ai.max} sub={fmtPeriod(summary.period, lang)} />
             </div>
           </section>
         ) : null;

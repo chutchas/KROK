@@ -1,4 +1,5 @@
 "use client";
+import { fmtPeriod } from "@/lib/dt-format";
 import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -207,7 +208,7 @@ export default function BillingClient({
       <Card>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("plan.usage")}</h2>
-          <span style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.period")}: {usage.period}</span>
+          <span style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.period")}: {fmtPeriod(usage.period, lang)}</span>
         </div>
         <div className="krok-usage-grid">
           {limited(rows).map((r) => <UsageBar key={r.label} {...r} />)}
