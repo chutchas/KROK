@@ -24,3 +24,18 @@ describe("pdfFirstPagePng", () => {
     console.log("thumb bytes", png.length, "ms", ms);
   }, 30_000);
 });
+
+describe("PDF ตารางที่มีแถวชำรุด", () => {
+  it("วาดได้ (ช่องที่ไม่ผ่านเป็นสีแดง)", async () => {
+    const pdf = await buildSubmissionPdf({
+      tenantName: "ทดสอบ", formTitle: "รับสินค้า", docNo: "RC-0001", fullId: "x", statusLabel: "ส่งแล้ว", resultFail: true, failCount: 1,
+      userName: "สมชาย", submittedAt: "-", durationS: 1, formVersion: 1,
+      answers: [{ label: "รายการสินค้า", type: "table", fail: true,
+        columns: [{ id: "name", label: "สินค้า", type: "text" }, { id: "cond", label: "สภาพ", type: "select", fail_options: ["ชำรุด"] }, { id: "ok", label: "ตรวจ", type: "pass_fail" }],
+        rows: [{ name: "A", cond: "ปกติ", ok: "ผ่าน" }, { name: "B", cond: "ชำรุด", ok: "ไม่ผ่าน" }] }],
+    });
+    const png = await pdfFirstPagePng(new Uint8Array(pdf));
+    if (process.env.THUMB_OUT) (await import("fs")).writeFileSync(process.env.THUMB_OUT.replace(".png", "-table.png"), png);
+    expect(png.length).toBeGreaterThan(1000);
+  }, 30_000);
+});

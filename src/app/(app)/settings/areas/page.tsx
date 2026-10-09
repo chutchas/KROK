@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { T } from "@/i18n/T";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { listAreas } from "./actions";
 import AreasClient from "./AreasClient";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AreasPage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (session.role !== "owner" && session.role !== "admin")
     return <div style={{ color: "var(--ink-2)" }}><T k="page.ownerAdminOnly" /></div>;
 

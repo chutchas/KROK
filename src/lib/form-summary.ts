@@ -1,5 +1,6 @@
 import { countFields, type FormSchema } from "@/lib/form-schema";
 import { isWorkflowSchema } from "@/lib/case-flow";
+import { defectSuggestions } from "@/lib/defect-words";
 
 // สรุปย่อของฟอร์ม (คอลัมน์ forms.summary จาก migration 0050) — ใช้แสดงรายการโดยไม่ต้องโหลด schema เต็ม
 export type FormSummary = {
@@ -8,6 +9,8 @@ export type FormSummary = {
   steps: number;
   fields: number;
   workflow: boolean;
+  /** มีตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (0078) — ติดป้ายในรายการฟอร์ม */
+  defect_hint?: boolean;
 };
 
 /** คำนวณจาก schema (ใช้ตอนยังไม่รัน 0050 หรือหลังแก้ฟอร์มในหน้า) — ต้องตรงกับ public.form_summary() */
@@ -15,6 +18,7 @@ export function summaryOf(schema: FormSchema): FormSummary {
   const s: FormSummary = { steps: schema.steps.length, fields: countFields(schema), workflow: isWorkflowSchema(schema) };
   if (schema.category) s.category = schema.category;
   if (schema.privacy_notice) s.privacy_notice = schema.privacy_notice;
+  if (defectSuggestions(schema).length) s.defect_hint = true;
   return s;
 }
 
@@ -25,5 +29,6 @@ export function readSummary(raw: unknown): FormSummary {
   const s: FormSummary = { steps: n(o.steps), fields: n(o.fields), workflow: o.workflow === true };
   if (typeof o.category === "string" && o.category) s.category = o.category;
   if (typeof o.privacy_notice === "string" && o.privacy_notice) s.privacy_notice = o.privacy_notice;
+  if (o.defect_hint === true) s.defect_hint = true;
   return s;
 }

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import AdminUsersClient, { type SysUser } from "./AdminUsersClient";
 import { getPlanCatalog } from "@/lib/plans-server";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AdminUsersPage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (!session.isPlatformAdmin)
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ admin ของระบบเท่านั้น</div>;
 

@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
 import { getEffectivePlans } from "@/lib/plans-server";
@@ -19,7 +19,7 @@ function fmt(ts: string) {
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (session.role !== "owner" && session.role !== "admin")
     return <div style={{ color: "var(--ink-2)" }}><T k="inv.ownerOnly" /></div>;
 

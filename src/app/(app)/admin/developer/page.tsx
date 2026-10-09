@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import DeveloperClient, { type PlatformStats } from "./DeveloperClient";
 
@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 export default async function DeveloperPage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (!session.isPlatformAdmin && session.platformRole !== "developer")
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ Developer / Platform Admin เท่านั้น</div>;
 

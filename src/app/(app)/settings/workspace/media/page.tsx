@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getBrandLibrary } from "@/lib/branding-library";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 // ตั้งค่า Workspace › คลังรูปภาพ (owner/admin)
 export default async function WorkspaceMediaPage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (session.role !== "owner" && session.role !== "admin")
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
   const supabase = await createClient();

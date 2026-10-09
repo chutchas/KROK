@@ -312,6 +312,8 @@ export interface FormSchema {
   watermark?: boolean;
   /** หน้าตรวจทานก่อนส่ง (สรุปคำตอบทุกขั้น + ข้อไม่ผ่าน/รูปที่ขาด ก่อนกดยืนยันส่ง) — ไม่ระบุ = ส่งทันที */
   review?: boolean;
+  /** เจ้าของฟอร์มตอบแถบ "ตัวเลือกเหล่านี้ดูเหมือนข้อบกพร่อง" แล้ว (รับหรือ "ไม่ใช่") → ไม่เสนออีก */
+  defect_ack?: true;
   /** เลขที่เอกสารแบบรัน (ออกตอนบันทึกใบ ฝั่งฐานข้อมูล 0077) — ไม่ระบุ = รหัส 8 ตัวจาก id */
   doc_no?: DocNoConfig;
   // ธีมสี / โลโก้ / ข้อความท้ายเอกสาร ของฟอร์มนี้ (ไม่ระบุ = ใช้ของ workspace) — ดู @/lib/theme
@@ -759,6 +761,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (r.geo === "optional" || r.geo === "required") schema.geo = r.geo;
   if (r.watermark === true) schema.watermark = true;
   if (r.review === true) schema.review = true;
+  if (r.defect_ack === true) schema.defect_ack = true;
   const dn = sanitizeDocNo(r.doc_no);
   if (dn) schema.doc_no = dn;
   const th = sanitizeFormTheme(r.theme);

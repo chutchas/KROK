@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -1095,6 +1095,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               <div style={{ flex: 1, minWidth: 140 }}>
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>{" "}
                 {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="fail">{t("studio.stArchived")}</Pill>}
+                {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง → ชวนเปิดแก้ (แถบเสนอจะขึ้นในหน้าแก้ไข) */}
+                {f.summary.defect_hint && f.status !== "archived" && (
+                  <button type="button" onClick={() => void editExisting(f)} title={t("defect.listHint")}
+                    style={{ marginLeft: 6, display: "inline-flex", alignItems: "center", gap: 4, minHeight: 28, padding: "0 8px", borderRadius: 999, border: "1px solid color-mix(in srgb, var(--warn) 45%, transparent)", background: "color-mix(in srgb, var(--warn) 10%, var(--surface))", color: "var(--ink)", fontFamily: "inherit", fontSize: ".74rem", fontWeight: 600, cursor: "pointer", verticalAlign: "middle" }}>
+                    <Icon icon={CircleAlert} className="h-3.5 w-3.5" /> {t("defect.listBadge")}
+                  </button>
+                )}
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem" }}>
                   {f.summary.category && <span style={{ display: "inline-block", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "0 6px", marginRight: 6, color: "var(--ink-2)" }}>{categoryLabel(f.summary.category, lang)}</span>}
                   {tt("forms.stepsFields", { steps: f.summary.steps, fields: f.summary.fields })}

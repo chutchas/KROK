@@ -4,9 +4,13 @@ import type { FormSchema } from "@/lib/form-schema";
  * เดาตัวเลือกที่น่าจะหมายถึงข้อบกพร่อง — ใช้แค่ "เสนอ" ในหน้าสร้างฟอร์ม (เจ้าของฟอร์มกดยืนยันเอง)
  * ไม่ใช้ตัดสินผลเอง: คำบางคำกำกวม เช่น "ขาด" ในฟอร์มลงเวลา = ขาดงาน ไม่ใช่ของชำรุด
  */
-const STRONG = /ชำรุด|เสียหาย|ไม่ผ่าน|ผิดปกติ|ไม่ปกติ|แตก|รั่ว|บุบ|ฉีกขาด|ไม่สมบูรณ์|ใช้งานไม่ได้|^เสีย$|^ng$|^n\/g$|^fail(ed)?$|damage|broken|defect|faulty|leak/i;
+/** คำที่อยู่ส่วนไหนของตัวเลือกก็ได้ · ต้องตรงกับ 0078_form_defect_hint.sql (มีเทสต์ตรวจ) */
+export const DEFECT_CONTAINS = ["ชำรุด", "เสียหาย", "ไม่ผ่าน", "ผิดปกติ", "ไม่ปกติ", "แตก", "รั่ว", "บุบ", "ฉีกขาด", "ไม่สมบูรณ์", "ใช้งานไม่ได้", "damage", "broken", "defect", "faulty", "leak"];
+/** คำที่ต้องเป็นตัวเลือกทั้งคำ (สั้น/กำกวมถ้าอยู่ในคำอื่น) */
+export const DEFECT_EXACT = ["เสีย", "ng", "n/g", "fail", "failed"];
+const STRONG = { test: (o: string) => { const l = o.trim().toLowerCase(); return DEFECT_EXACT.includes(l) || DEFECT_CONTAINS.some((w) => l.includes(w)); } };
 /** กำกวม → เสนอเฉพาะเมื่อในชุดเดียวกันมีคำชัดเจนข้างบนอยู่แล้ว (เช่น ปกติ/ชำรุด/ขาด) */
-const WEAK = /^(ขาด|หาย|ไม่ครบ|missing|short)$/i;
+const WEAK = /^(ขาด|หาย|สูญหาย|ไม่ครบ|missing|lost|short)$/i;
 
 export function guessDefectOptions(options: string[]): string[] {
   const opts = options.map((o) => o.trim()).filter(Boolean);
@@ -26,6 +30,7 @@ export type DefectSuggestion = {
 
 /** ช่อง/คอลัมน์ตัวเลือก (พิมพ์เอง) ที่ยังไม่ได้ตั้ง fail_options แต่มีตัวเลือกที่ดูเหมือนข้อบกพร่อง */
 export function defectSuggestions(schema: FormSchema): DefectSuggestion[] {
+  if (schema.defect_ack) return [];
   const out: DefectSuggestion[] = [];
   for (const st of schema.steps)
     for (const f of st.fields) {
@@ -49,6 +54,7 @@ export function applyDefectSuggestions(schema: FormSchema, list: DefectSuggestio
   const m = new Map(list.map((s) => [key(s.fieldId, s.colId), s.options]));
   return {
     ...schema,
+    defect_ack: true,
     steps: schema.steps.map((st) => ({
       ...st,
       fields: st.fields.map((f) => {

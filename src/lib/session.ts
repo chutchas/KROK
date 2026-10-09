@@ -240,6 +240,21 @@ export const getSession = cache(async (): Promise<KrokSession | null> => {
   };
 });
 
+/**
+ * ผู้ใช้ที่ล็อกอินแล้ว (ไม่สนว่ามี workspace หรือยัง) — ใช้หน้า /welcome
+ * (ถูกเอาออกจากทีม / workspace ถูกลบ / ฐานข้อมูลสะดุด) ซึ่ง getSession() คืน null
+ */
+export const getAuthUser = cache(async (): Promise<{ id: string; email: string; mfaPending: boolean; hasWorkspace: boolean } | null> => {
+  const res = await getBundle();
+  if (!res) return null;
+  return {
+    id: res.user.id,
+    email: res.user.email ?? "",
+    mfaPending: res.bundle.mfa === true && res.user.aal !== "aal2",
+    hasWorkspace: !!res.bundle.active,
+  };
+});
+
 /** ล็อกอินด้วยรหัสผ่านแล้ว แต่ยังไม่ได้กรอกรหัส 2FA (ใช้ตัดสินว่าจะพาไป /login?mfa=1) */
 export const isMfaPending = cache(async (): Promise<boolean> => {
   const res = await getBundle();
@@ -307,4 +322,15 @@ export async function enforceMenu(menu: MenuKey): Promise<KrokSession> {
   const { MENUS } = await import("@/lib/menus");
   const first = MENUS.find((m) => allowed.includes(m.key));
   redirect(first ? first.href : "/settings/profile");
+}
+
+/**
+ * ไม่มี session ในหน้าที่ต้องล็อกอิน → ไปหน้าที่ถูก (ใช้แทน redirect("/login") ตรง ๆ)
+ * - ค้าง 2FA → /login?mfa=1 · ล็อกอินอยู่แต่ไม่มี workspace → /welcome · ไม่ได้ล็อกอิน → /login
+ * (ส่ง /login ทั้งที่ล็อกอินอยู่ = middleware ส่งกลับ /dashboard วนไม่จบ)
+ */
+export async function redirectNoSession(): Promise<never> {
+  if (await isMfaPending()) redirect("/login?mfa=1");
+  if (await getAuthUser()) redirect("/welcome");
+  redirect("/login");
 }

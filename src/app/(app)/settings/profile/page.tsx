@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ProfileClient, { type ProfileData } from "./ProfileClient";
 import Link from "next/link";
@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
 
   const supabase = await createClient();
   const { data, error } = await supabase

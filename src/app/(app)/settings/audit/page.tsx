@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { T } from "@/i18n/T";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import AuditClient, { type AuditRow } from "./AuditClient";
 import { getTenantPlan } from "@/lib/quota";
@@ -10,7 +10,7 @@ export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (!session.canManageWs)
     return <div style={{ color: "var(--ink-2)" }}><T k="page.wsAdminOnly" /></div>;
 

@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import AuditAdminClient, { type AuditRow, type Facet } from "./AuditAdminClient";
 
@@ -9,7 +9,7 @@ type SP = { [k: string]: string | string[] | undefined };
 
 export default async function PlatformAuditPage({ searchParams }: { searchParams: Promise<SP> }) {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (!session.isPlatformAdmin)
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ Platform Admin เท่านั้น</div>;
 
