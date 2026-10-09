@@ -67,7 +67,8 @@ export async function updateSession(request: NextRequest) {
   if (!user && !isPublic) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.searchParams.set("next", path);
+    // หน้าแรก "/" = คนทั่วไปเข้าเว็บ → ไปหน้า landing เฉย ๆ (มี next = หน้า landing เปิดกล่องเข้าสู่ระบบทับทันที)
+    if (path !== "/") url.searchParams.set("next", path);
     return NextResponse.redirect(url);
   }
   // ค้างขั้นกรอกรหัส 2FA (/login?mfa=1) → อยู่หน้า login ได้ ไม่เด้งเข้าแดชบอร์ด (กันวนรอบ)
