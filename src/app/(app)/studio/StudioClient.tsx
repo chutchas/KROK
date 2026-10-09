@@ -75,6 +75,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [listFilter, setListFilter] = useState<"all" | "published" | "draft" | "archived">("all");
+  /** ข้อความยืนยันหลังบันทึก (แสดงบนแท็บทั้งหมด) */
+  const [flash, setFlash] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [customCat, setCustomCat] = useState(false);
@@ -99,15 +101,25 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   async function saveAsDraft() {
     if (!draft) return;
-    setBusy(t("studio.busyPublish"));
+    setStatus(null);
+    setBusy(t("studio.busySaveDraft"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
-    const res = editingId
-      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope, versionNote)
-      : await saveDraft(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
-    setBusy(null);
+    let res: { id: string } | { error: string };
+    try {
+      res = editingId
+        ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope, versionNote)
+        : await saveDraft(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
+    } catch {
+      // เรียก server ไม่สำเร็จ (เน็ต/ข้อมูลใหญ่เกิน) — เดิมเงียบ ปุ่มกดแล้วไม่มีอะไรเกิดขึ้น
+      res = { error: t("studio.saveFailedNet") };
+    } finally {
+      setBusy(null);
+    }
     if ("error" in res) { setStatus({ t: res.error, err: true }); return; }
+    const title = draft.title;
     resetDraft();
     setTab("all");
+    setFlash(tt("studio.draftSaved", { title }));
     router.refresh();
   }
 
@@ -227,18 +239,27 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       setStatus({ t: t("studio.visPickUser"), err: true });
       return;
     }
+    setStatus(null);
     setBusy(t("studio.busyPublish"));
     const visibility = { mode: visMode, teamIds: visTeams, userIds: visUsers };
-    const res = editingId
-      ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope, versionNote)
-      : await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
-    setBusy(null);
+    let res: { id: string } | { error: string };
+    try {
+      res = editingId
+        ? await updateForm(editingId, draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope, versionNote)
+        : await saveForm(draft, requiresApproval, requiresApproval ? chain : [], visibility, requireDevice, deviceScope);
+    } catch {
+      res = { error: t("studio.saveFailedNet") };
+    } finally {
+      setBusy(null);
+    }
     if ("error" in res) {
       setStatus({ t: res.error, err: true });
       return;
     }
+    const title = draft.title;
     resetDraft();
     setTab("all");
+    setFlash(tt(editingId ? "studio.formSaved" : "studio.formPublished", { title }));
     router.refresh();
   }
 
@@ -693,7 +714,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           return (
             <button
               key={tb.k}
-              onClick={() => setTab(tb.k)}
+              onClick={() => { setTab(tb.k); setFlash(null); }}
               role="tab"
               aria-selected={on}
               className="inline-flex items-center justify-center gap-1.5"
@@ -990,6 +1011,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             </div>
           )}
 
+          {/* ผลการบันทึก/เผยแพร่ — เดิมแสดงแค่ในแท็บ "สร้างใหม่" กดในแท็บแก้ไขแล้วไม่เห็นอะไร */}
+          {busy && <div style={{ marginTop: 14 }}><Notice><Spinner /> {busy}</Notice></div>}
+          {status && !busy && <div role="alert" style={{ marginTop: 14 }}><Notice kind={status.err ? "error" : "info"}>{status.t}</Notice></div>}
           <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
             <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
             {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
@@ -1028,6 +1052,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
       {tab === "all" && (
       <Card>
+        {flash && <div role="status" style={{ marginBottom: 12 }}><Notice>{flash}</Notice></div>}
         <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
 
