@@ -227,6 +227,7 @@ export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = t
             <div style={{ textAlign: "center", padding: "20px 0", display: "grid", gap: 6, justifyItems: "center" }}>
               <b>{t("appr.noneSetTitle")}</b>
               <span style={{ color: "var(--ink-2)", fontSize: ".88rem", maxWidth: 440 }}>{t("appr.noneSetBody")}</span>
+              <a href="/studio" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontWeight: 600 }}>{t("appr.goStudio")}</a>
             </div>
           )}
         </Card>

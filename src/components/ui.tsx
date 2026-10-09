@@ -30,7 +30,9 @@ export function Button({ variant = "default", style, loading, disabled, children
     danger: { color: "var(--fail)" },
   };
   return (
-    <button {...rest} disabled={disabled || loading} style={{ ...base, ...v[variant], ...style, ...(loading ? { opacity: 0.75, cursor: "default" } : {}) }}>
+    <button {...rest} disabled={disabled || loading}
+      // กดไม่ได้ต้องดูออก (เดิมเหมือนปุ่มปกติทุกอย่าง) · กำลังทำงาน = จางเล็กน้อย + สปินเนอร์
+      style={{ ...base, ...v[variant], ...style, ...(loading ? { opacity: 0.75, cursor: "default" } : disabled ? { opacity: 0.5, cursor: "not-allowed" } : {}) }}>
       {loading && <BtnSpinner />}
       {children}
     </button>

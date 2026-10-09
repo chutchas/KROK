@@ -4,7 +4,7 @@ import LegalContact from "@/components/LegalContact";
 import LegalDoc, { type LegalSection } from "@/components/LegalDoc";
 import { LEGAL } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "ข้อกำหนดการใช้งาน · KROK" };
+export const metadata: Metadata = { title: "ข้อกำหนดการใช้งาน" };
 
 // ร่างข้อกำหนดการใช้งาน + ข้อตกลงการประมวลผลข้อมูล (มาตรา 40 พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล) — ควรให้ที่ปรึกษากฎหมายตรวจก่อนใช้จริง
 export default function TermsPage() {

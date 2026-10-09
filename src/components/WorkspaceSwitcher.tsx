@@ -155,6 +155,7 @@ export default function WorkspaceSwitcher({
                 key={w.tenantId}
                 onClick={() => pick(w.tenantId)}
                 disabled={busy}
+                aria-current={on ? "true" : undefined}
                 style={{
                   display: "flex",
                   alignItems: "center",

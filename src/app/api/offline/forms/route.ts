@@ -12,7 +12,7 @@ export async function GET(req: Request) {
   const session = await getSession();
   if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (await rateLimited(`offline:bundle:${session.userId}`, 20, 600))
-    return NextResponse.json({ error: "rate_limited" }, { status: 429 });
+    return NextResponse.json({ error: "rate_limited" }, { status: 429, headers: { "Retry-After": "120" } });
   if (!(await hasMenu(session, "forms")))
     return NextResponse.json({ same: false, bundle: null }, { headers: { "Cache-Control": "no-store" } });
 
