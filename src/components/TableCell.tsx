@@ -109,12 +109,16 @@ export default function TableCell({
   }
 
   if (col.type === "select") {
+    // เลือกตัวเลือกที่นับเป็นข้อบกพร่อง (เช่น ชำรุด) → ขอบ/ตัวอักษรแดง + ✕ ให้รู้ทันทีตอนกรอก
+    const bad = !!value && !!col.fail_options?.includes(value);
     return (
-      <select value={value} onChange={(e) => onChange(e.target.value)} style={style} aria-label={col.label}>
+      <select value={value} onChange={(e) => onChange(e.target.value)} aria-label={bad ? `${col.label} — ${value} (✕)` : col.label}
+        style={bad ? { ...style, borderColor: "var(--fail-solid)", color: "var(--fail-text)", fontWeight: 600, background: paper ? style.background : "var(--fail-soft)" } : style}>
         <option value="">—</option>
         {(col.options || []).map((o, i) => {
           const name = col.option_labels?.[i];
-          return <option key={i} value={o}>{name ? `${name} · ${o}` : o}</option>;
+          const label = name ? `${name} · ${o}` : o;
+          return <option key={i} value={o}>{col.fail_options?.includes(o) ? `✕ ${label}` : label}</option>;
         })}
       </select>
     );

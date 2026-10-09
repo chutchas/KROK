@@ -152,7 +152,7 @@ const CORE_TEMPLATES: FormTemplate[] = [
         {
           title: "ยืนยันการรับ",
           fields: [
-            { id: "damaged_photo", type: "photo", label: "รูปสินค้าชำรุด (ถ้ามี)", required: false, photo_hint: "ถ่ายให้เห็นความเสียหายชัด" },
+            { id: "damaged_photo", type: "photo", label: "รูปสินค้าชำรุด", required: false, required_if_fail: true, photo_hint: "ถ่ายให้เห็นความเสียหายชัด" },
             { id: "note", type: "text", label: "หมายเหตุ", required: false },
             { id: "sign", type: "signature", label: "ลายเซ็นผู้ตรวจรับ", required: true },
           ],

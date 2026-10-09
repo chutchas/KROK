@@ -6,7 +6,7 @@ import Icon from "@/components/Icon";
 import { AlertTriangle, Lightbulb, Check, X, Camera, ScanLine, Sparkles } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
-import { labelMap, type FormField } from "@/lib/form-schema";
+import { isFailChoice, labelMap, type FormField } from "@/lib/form-schema";
 import OptionPicker from "@/components/OptionPicker";
 import { PhotoFrame, EmptyPhotoHint } from "@/components/paper/PaperPhotoGrid";
 import { CONTROL_H } from "@/lib/paper-layout";
@@ -416,6 +416,9 @@ export function FieldControl({
       )}
       {attachments.length > 0 && <AttachmentChips items={attachments} paper={paper} />}
 
+      {!compact && f.type === "photo" && f.required_if_fail && !f.required && (
+        <div style={{ fontSize: ".8rem", color: paper ? "#777" : "var(--warn)", margin: "4px 0", fontWeight: 600 }}>{t("fw.photoIfFailHint")}</div>
+      )}
       {!compact && f.photo_hint && (
         <div style={{ fontSize: ".8rem", color: paper ? "#777" : "var(--ink-3)", margin: "4px 0" }}>
           {t("fw.photoMustShow")} <b style={{ color: paper ? "#333" : "var(--ink-2)", fontWeight: 600 }}>{f.photo_hint}</b>
@@ -507,10 +510,16 @@ export function FieldControl({
         {f.type === "select" && !dsBound && (f.options || []).length <= MANY_OPTIONS &&
           (f.options || []).map((o) => (
             <label key={o} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 4px", minHeight: 44 }}>
-              <input type="radio" name={"r_" + f.id} value={o} checked={selVal === o} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} onChange={() => { setSelVal(o); onPatch({ value: o }); }} />
-              {o}
+              <input type="radio" name={"r_" + f.id} value={o} checked={selVal === o} style={{ width: 20, height: 20, accentColor: f.fail_options?.includes(o) ? "var(--fail-solid)" : "var(--accent)" }} onChange={() => { setSelVal(o); onPatch({ value: o }); }} />
+              <span style={selVal === o && f.fail_options?.includes(o) ? { color: "var(--fail-text)", fontWeight: 600 } : undefined}>{o}</span>
             </label>
           ))}
+        {!paper && (f.type === "select" || f.type === "checkbox") && isFailChoice(f.fail_options, f.type === "checkbox" ? cbVals : selVal) && (
+          // เลือกตัวเลือกที่ตั้งว่าเป็นข้อบกพร่อง → บอกทันที (ไม่ต้องรอถึงหน้าตรวจทาน)
+          <div role="status" style={{ display: "flex", alignItems: "center", gap: 6, margin: "6px 0 2px", padding: "6px 10px", borderRadius: 8, background: "var(--fail-soft)", border: "1px solid color-mix(in srgb, var(--fail-solid) 45%, transparent)", color: "var(--fail-text)", fontSize: ".86rem", fontWeight: 600 }}>
+            <Icon icon={X} className="h-4 w-4" /> {t("fw.defectChosen")}
+          </div>
+        )}
         {f.type === "select" && !dsBound && !f.required && selVal && (f.options || []).length <= MANY_OPTIONS && (
           <button type="button" onClick={() => { setSelVal(""); onPatch({ value: undefined }); }}
             style={{ background: "none", border: "none", padding: "2px 4px", color: paper ? "#666" : "var(--ink-3)", fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer", textDecoration: "underline" }}>
@@ -535,7 +544,7 @@ export function FieldControl({
                   onPatch({ value: nextVals });
                 }}
               />
-              {o}
+              <span style={cbVals.includes(o) && f.fail_options?.includes(o) ? { color: "var(--fail-text)", fontWeight: 600 } : undefined}>{o}</span>
             </label>
           ))}
         {f.type === "pass_fail" && (

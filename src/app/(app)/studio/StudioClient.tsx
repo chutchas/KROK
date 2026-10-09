@@ -13,6 +13,7 @@ import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
 import FormPaperView from "@/components/FormPaperView";
 import FieldSettingsPanel from "@/components/FieldSettingsPanel";
+import DefectSuggestBanner from "@/components/DefectSuggestBanner";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 import FormDevicePicker from "@/components/FormDevicePicker";
 import type { ShareValue } from "@/components/ShareScopeModal";
@@ -385,7 +386,17 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   async function editExisting(f: FormRow) {
     let schema = f.schema;
     if (!schema) {
-      const res = await loadFormSchema(f.id);
+      // เน็ตหลุด/ค้าง → ไม่ปล่อยปุ่มหมุนค้างเงียบๆ: ตัดที่ 20 วินาทีแล้วบอกให้ลองใหม่
+      let res: Awaited<ReturnType<typeof loadFormSchema>>;
+      try {
+        res = await Promise.race([
+          loadFormSchema(f.id),
+          new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), 20_000)),
+        ]);
+      } catch {
+        await alertDialog(t("studio.loadFormFailed"));
+        return;
+      }
       if ("error" in res) { await alertDialog(res.error); return; }
       schema = res.schema;
     }
@@ -902,6 +913,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </div>
             </div>
           </div>
+
+          {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (ฟอร์มที่สร้างก่อนมีตัวเลือกนี้) → เสนอให้ยืนยัน */}
+          <DefectSuggestBanner key={editingId ?? "new"} schema={draft} onApply={(s) => setDraft(s)} />
 
           {/* ตั้งค่าฟอร์ม: ไอคอน/ชื่อ + ประเภท (แถวเดียวกัน) / คำอธิบาย */}
           <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 12, display: "grid", gap: 8 }}>
