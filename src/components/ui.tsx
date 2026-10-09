@@ -111,10 +111,21 @@ function fallbackLabel(p: { id?: string; placeholder?: string; "aria-label"?: st
   return p["aria-label"] ?? (p.id || p["aria-labelledby"] ? undefined : p.placeholder || undefined);
 }
 
+/**
+ * ช่องที่อยู่ใน <label> (ไม่มี id) มีชื่อจาก label อยู่แล้ว — ถอด aria-label ที่เดาจาก placeholder ออก
+ * ไม่งั้น placeholder (เช่น "—") จะทับข้อความ label ตอนอ่านออกเสียง · ref callback รันทุก render จึงถอดซ้ำได้เสมอ
+ */
+function dropGuessedLabel(explicit: string | undefined) {
+  return (el: HTMLInputElement | HTMLTextAreaElement | null) => {
+    if (el && !explicit && el.labels && el.labels.length > 0) el.removeAttribute("aria-label");
+  };
+}
+
 export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <input
       {...props}
+      ref={dropGuessedLabel(props["aria-label"])}
       aria-label={fallbackLabel(props)}
       style={{
         width: "100%",
@@ -131,10 +142,16 @@ export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
   );
 }
 
-export function TextArea(props: React.ComponentProps<"textarea">) {
+export function TextArea({ ref, ...props }: React.ComponentProps<"textarea">) {
+  const drop = dropGuessedLabel(props["aria-label"]);
   return (
     <textarea
       {...props}
+      ref={(el) => {
+        drop(el);
+        if (typeof ref === "function") ref(el);
+        else if (ref) ref.current = el;
+      }}
       aria-label={fallbackLabel(props)}
       style={{
         width: "100%",

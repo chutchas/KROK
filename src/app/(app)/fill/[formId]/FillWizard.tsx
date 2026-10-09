@@ -1467,7 +1467,7 @@ export default function FillWizard(props: Props) {
         {caseTools}
         {caseModals}
         {!viewOnly && (
-          <FillActionBar colWidth={focus ? "var(--krok-page-w)" : PUBLIC_COL_W}>
+          <FillActionBar colWidth={focus ? "var(--krok-page-w)" : PUBLIC_COL_W} themeScope={themeScope}>
             <Button data-tour="fill-submit" variant="primary" onClick={submitPaper} loading={submitting} disabled={mediaLoading} style={actionBtn(true)}>
               {submitting ? t("fill.submitting") : wf && !isLastSeg ? handoffLabel : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
             </Button>
@@ -1543,7 +1543,7 @@ export default function FillWizard(props: Props) {
     </div>
     {/* ปุ่มก่อนหน้า / ถัดไป / ส่ง — ติดขอบล่างจอ (นิ้วโป้งถึงเสมอ) */}
     {(idx > 0 || !(viewOnly && idx >= maxIdx)) && (
-      <FillActionBar colWidth={focus ? FOCUS_COL_W : PUBLIC_COL_W}>
+      <FillActionBar colWidth={focus ? FOCUS_COL_W : PUBLIC_COL_W} themeScope={themeScope}>
         {idx > 0 && <Button onClick={() => { setIdx(idx - 1); latest.current.idx = idx - 1; window.scrollTo(0, 0); void saveDraftNow("auto"); }} style={actionBtn(false)}>{t("fill.prev")}</Button>}
         {!(viewOnly && idx >= maxIdx) && (
           <Button data-tour="fill-submit" variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={actionBtn(true)}>
