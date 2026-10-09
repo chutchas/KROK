@@ -18,12 +18,28 @@ export interface TourDef {
   /** ต้องมี element นี้บนหน้าก่อนจึงเริ่มได้ (เช่น ทัวร์ editor รอจนเปิด editor) */
   requires?: string;
   steps: TourStep[];
+  /** ดูทัวร์นี้จบ/ข้าม = นับทัวร์เหล่านี้ว่าดูแล้วด้วย (ไม่พาซ้ำต่อทันทีในหน้าเดียวกัน) */
+  alsoSeen?: string[];
 }
 
 export const TOURS: TourDef[] = [
   {
+    // ผู้ใช้ใหม่ที่ยังไม่มีฟอร์ม: แดชบอร์ดยังว่าง → พาไปขั้นที่ทำได้จริง (สร้างฟอร์มแรก) แทนการอธิบายกล่องเปล่า
+    id: "dashboard-new",
+    match: (p) => p === "/dashboard",
+    requires: "dash-start-new",
+    alsoSeen: ["dashboard"],
+    steps: [
+      { id: "welcome" },
+      { id: "start", target: "dash-start-new" },
+      { id: "profile", target: "profile" },
+    ],
+  },
+  {
     id: "dashboard",
     match: (p) => p === "/dashboard",
+    // แดชบอร์ดที่มีข้อมูลแล้ว (ยังไม่มีฟอร์ม = ทัวร์ dashboard-new)
+    requires: "dash-latest",
     steps: [
       { id: "welcome" },
       { id: "nav", target: "nav" },

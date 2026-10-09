@@ -32,7 +32,8 @@ export default function DefectSuggestBanner({ schema, onApply }: { schema: FormS
             style={{ minHeight: 44, padding: "0 14px", borderRadius: 8, border: "none", background: "var(--accent)", color: "var(--accent-ink)", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>
             {t("defect.apply")}
           </button>
-          <button type="button" onClick={() => setDismissed(true)}
+          {/* "ไม่ใช่" = จำไว้ในฟอร์ม (ไม่เสนออีกหลังบันทึก) */}
+          <button type="button" onClick={() => { setDismissed(true); onApply({ ...schema, defect_ack: true }); }}
             style={{ minHeight: 44, padding: "0 14px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)", fontFamily: "inherit", cursor: "pointer" }}>
             {t("defect.dismiss")}
           </button>

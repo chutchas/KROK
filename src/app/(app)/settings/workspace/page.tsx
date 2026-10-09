@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { getSession } from "@/lib/session";
+import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceBranding } from "@/lib/branding";
 import WorkspaceClient from "./WorkspaceClient";
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export default async function WorkspaceSettingsPage() {
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
   if (session.role !== "owner" && session.role !== "admin")
     return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
 

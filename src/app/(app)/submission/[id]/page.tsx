@@ -4,7 +4,7 @@ import StoredText from "@/i18n/StoredText";
 import { notFound, redirect } from "next/navigation";
 import { InlineFormIcon } from "@/components/FormIcon";
 import { ArrowLeft, TriangleAlert, Check, Undo2, Clock } from "lucide-react";
-import { getSession, canManage } from "@/lib/session";
+import { getSession, canManage, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import Icon from "@/components/Icon";
@@ -105,7 +105,7 @@ function RelatedRef({ r }: { r: RelatedDoc }) {
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await getSession();
-  if (!session) redirect("/login");
+  if (!session) return redirectNoSession();
 
   const supabase = await createClient();
   const { data: sub } = await supabase

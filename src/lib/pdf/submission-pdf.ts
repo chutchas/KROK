@@ -3,6 +3,9 @@ import { mix } from "@/lib/theme";
 import fs from "fs";
 import path from "path";
 import PDFDocument from "pdfkit";
+import { passFailCode } from "@/lib/table-rows";
+import { isFailChoice } from "@/lib/form-schema";
+import { tableCodeKey } from "@/lib/answer-item";
 
 // ฟอนต์ไทย Garuda (TLWG, เผยแพร่ต่อได้) — ฝังใน repo ที่ src/assets/fonts
 // pdfkit ใช้ fontkit จัด layout จึงวางสระ/วรรณยุกต์ไทยถูกต้อง
@@ -45,7 +48,7 @@ export interface PdfAnswer {
   fail?: boolean;
   photo?: Buffer | null;
   rows?: Record<string, string>[];
-  columns?: { id: string; label: string; type?: string }[];
+  columns?: { id: string; label: string; type?: string; fail_options?: string[] }[];
   /** ฟิลด์หลายรูป: ทุกรูปพร้อมคำบรรยาย */
   photos?: { caption: string; photo: Buffer }[];
   /** รูปถ่ายต่อแถวของตาราง (วาดเป็นตารางรูปใต้ตาราง) */
@@ -403,11 +406,17 @@ function drawTable(doc: PDFKit.PDFDocument, a: PdfAnswer, startY: number, newPag
     doc.font(bold ? "th-bold" : "th").fontSize(bold ? 8.5 : 9);
     return Math.min(doc.heightOfString(txt, { width: colW - PADX * 2 }), LINE * 3);
   };
-  const drawRow = (vals: string[], header: boolean) => {
-    const h = Math.max(...vals.map((v) => cellH(v, header))) + PADY * 2;
+  const drawRow = (vals: string[], header: boolean, bad: boolean[] = []) => {
+    const h = Math.max(...vals.map((v, i) => cellH(v, header || !!bad[i]))) + PADY * 2;
     if (header) doc.rect(M, y, CONTENT_W, h).fill(headFill);
+    // ช่องที่ไม่ผ่าน (ผ่าน/ไม่ผ่าน = ไม่ผ่าน · ตัวเลือกที่นับเป็นข้อบกพร่อง เช่น ชำรุด) → พื้นแดงอ่อน ตัวแดงหนา + แถบแดงซ้ายแถว
+    if (!header && bad.some(Boolean)) {
+      bad.forEach((b, i) => { if (b) doc.rect(M + i * colW, y, colW, h).fill(C.failSoft); });
+      doc.rect(M, y, 3, h).fill(C.fail);
+    }
     vals.forEach((v, i) => {
-      doc.font(header ? "th-bold" : "th").fontSize(header ? 8.5 : 9).fillColor(C.ink)
+      const isBad = !header && !!bad[i];
+      doc.font(header || isBad ? "th-bold" : "th").fontSize(header ? 8.5 : 9).fillColor(isBad ? C.fail : C.ink)
         .text(v, M + i * colW + PADX, y + PADY, { width: colW - PADX * 2, height: LINE * 3, ellipsis: true });
     });
     doc.lineWidth(0.5).strokeColor(C.line);
@@ -426,10 +435,14 @@ function drawTable(doc: PDFKit.PDFDocument, a: PdfAnswer, startY: number, newPag
   drawRow(headVals, true);
 
   const bodyRows = rows.length ? rows.map((r) => cols.map((c) => clean(r[c.id]) || "—")) : [cols.map((_, i) => (i === 0 ? "—" : ""))];
-  for (const vals of bodyRows) {
-    const h = Math.max(...vals.map((v) => cellH(v, false))) + PADY * 2;
+  const badRows = rows.map((r) => cols.map((c) =>
+    c.type === "pass_fail" ? passFailCode(r[c.id]) === "fail"
+    : c.type === "select" ? isFailChoice(c.fail_options, r[tableCodeKey(c.id)] ?? r[c.id])
+    : false));
+  bodyRows.forEach((vals, ri) => {
+    const h = Math.max(...vals.map((v) => cellH(v, true))) + PADY * 2;
     if (brk(h)) drawRow(headVals, true);
-    drawRow(vals, false);
-  }
+    drawRow(vals, false, badRows[ri] || []);
+  });
   return y + 10;
 }

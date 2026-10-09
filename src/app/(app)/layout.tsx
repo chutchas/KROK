@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getSession, canManage, listWorkspaces, getAllowedMenus, isMfaPending } from "@/lib/session";
+import { getSession, canManage, listWorkspaces, getAllowedMenus, redirectNoSession } from "@/lib/session";
 import AppShell from "@/components/AppShell";
 import InviteBanner from "@/components/InviteBanner";
 import { myPendingInvites } from "@/lib/workspace-actions";
@@ -9,7 +8,8 @@ import { LEGAL_VERSION } from "@/lib/legal";
 export default async function AppGroupLayout({ children }: { children: React.ReactNode }) {
   const session = await getSession();
   // เปิด 2FA ไว้แต่ยังไม่ได้กรอกรหัส — ฐานข้อมูลบล็อกข้อมูลอยู่แล้ว (0055) พาไปกรอกรหัสก่อน
-  if (!session) redirect((await isMfaPending()) ? "/login?mfa=1" : "/login");
+  // ไม่มี session: ค้าง 2FA → /login?mfa=1 · ล็อกอินแต่ไม่มี workspace → /welcome (เดิมวน /login ↔ /dashboard) · ไม่ได้ล็อกอิน → /login
+  if (!session) return redirectNoSession();
   const [workspaces, allowedMenus, invites] = await Promise.all([
     listWorkspaces(),
     getAllowedMenus(session.tenantId, session.roleKey),

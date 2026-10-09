@@ -154,6 +154,8 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
     id: "returns-inspection", industries: ["retail", "logistics"],
     schema: {
       title: "ตรวจรับสินค้าคืน (Returns)", icon: "i:package-check", category: "logistics",
+      // "เหตุผลที่คืน: ชำรุด" เป็นเหตุผลของลูกค้า ไม่ใช่ผลตรวจ → ไม่ต้องเสนอให้นับเป็นข้อบกพร่อง
+      defect_ack: true,
       description: "ตรวจสภาพสินค้าที่ลูกค้าส่งคืน ตัดสินว่าขายต่อ ซ่อม หรือทำลาย พร้อมรูปหลักฐาน",
       steps: [
         { title: "ข้อมูลการคืน", fields: [scan("order_no", "เลขที่คำสั่งซื้อ/ใบคืน"), txt("customer", "ลูกค้า"), sel("reason", "เหตุผลที่คืน", ["ชำรุด", "ส่งผิดรุ่น", "ไม่ตรงปก", "เปลี่ยนใจ", "อื่นๆ"])] },
@@ -322,7 +324,7 @@ export const EXTRA_TEMPLATES: FormTemplate[] = [
         { title: "การยืม", fields: [scan("asset", "รหัสอุปกรณ์"), txt("borrower", "ผู้ยืม"), txt("dept", "หน่วยงาน/ห้องเรียน"), when("borrowed_at", "วันเวลายืม"), when("due", "กำหนดคืน")] },
         { title: "การคืน", fields: [
           when("returned_at", "วันเวลาคืน", { required: false }),
-          sel("condition", "สภาพตอนคืน", ["ปกติ", "ชำรุดเล็กน้อย", "ชำรุดใช้งานไม่ได้", "สูญหาย"], { required: false }),
+          sel("condition", "สภาพตอนคืน", ["ปกติ", "ชำรุดเล็กน้อย", "ชำรุดใช้งานไม่ได้", "สูญหาย"], { required: false, fail_options: ["ชำรุดเล็กน้อย", "ชำรุดใช้งานไม่ได้", "สูญหาย"] }),
           chk("parts", "อุปกรณ์ที่คืนครบ", ["ตัวเครื่อง", "สายชาร์จ/สายไฟ", "กระเป๋า", "รีโมต"]),
           sign("sign", "ลายเซ็นผู้ยืม"),
         ] },

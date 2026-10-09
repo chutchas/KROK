@@ -3,7 +3,9 @@ import { TOURS, tourFor } from "../tours";
 
 describe("tours", () => {
   it("เลือกทัวร์ตามหน้า", () => {
-    expect(tourFor("/dashboard", () => true)?.id).toBe("dashboard");
+    // มีข้อมูลแล้ว (ไม่มีการ์ดเริ่มต้น) → ทัวร์ปกติ · ยังไม่มีฟอร์ม → ทัวร์ผู้ใช้ใหม่
+    expect(tourFor("/dashboard", (t) => t !== "dash-start-new")?.id).toBe("dashboard");
+    expect(tourFor("/dashboard", (t) => t !== "dash-latest")?.id).toBe("dashboard-new");
     expect(tourFor("/fill/abc", () => true)?.id).toBe("fill");
     expect(tourFor("/settings/team", () => true)).toBeNull();
   });

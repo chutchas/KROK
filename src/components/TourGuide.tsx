@@ -129,7 +129,10 @@ export default function TourGuide({ userId }: { userId: string }) {
     return () => { clearTimeout(t1); window.removeEventListener("resize", measure); window.removeEventListener("scroll", measure, true); };
   }, [step]);
 
-  const finish = useCallback(() => { if (tour) markSeen(tour.id); setTour(null); }, [tour, markSeen]);
+  const finish = useCallback(() => {
+    if (tour) { markSeen(tour.id); tour.alsoSeen?.forEach(markSeen); }
+    setTour(null);
+  }, [tour, markSeen]);
   const next = useCallback(() => { if (idx >= steps.length - 1) finish(); else setIdx(idx + 1); }, [idx, steps.length, finish]);
   const prev = useCallback(() => setIdx((i) => Math.max(0, i - 1)), []);
 
@@ -187,7 +190,7 @@ export default function TourGuide({ userId }: { userId: string }) {
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
             <b style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.02rem", flex: 1 }}>{title}</b>
             <button type="button" onClick={finish} aria-label={t("tour.skip")} title={t("tour.skip")}
-              style={{ border: "none", background: "none", color: "var(--ink-3)", cursor: "pointer", display: "flex", padding: 2, margin: "-4px -4px 0 0" }}>
+              style={{ border: "none", background: "none", color: "var(--ink-3)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", width: 44, height: 44, padding: 0, margin: "-12px -12px -8px 0", borderRadius: 10 }}>
               <Icon icon={X} className="h-4 w-4" />
             </button>
           </div>
