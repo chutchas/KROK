@@ -115,7 +115,8 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       size: "A4",
       margins: { top: M, bottom: PAGE.h - BOTTOM, left: M, right: M },
       bufferPages: true,
-      info: { Title: clean(data.formTitle) || "KROK", Author: clean(data.tenantName), Creator: "KROK" },
+      // เอกสารของลูกค้า — ไม่ใส่ชื่อแพลตฟอร์มในคุณสมบัติไฟล์
+      info: { Title: clean(data.formTitle) || clean(data.tenantName) || "เอกสาร", Author: clean(data.tenantName), Creator: clean(data.tenantName) },
     });
     doc.registerFont("th", fonts.reg);
     doc.registerFont("th-bold", fonts.bold);
@@ -136,7 +137,7 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     const tenant = clean(data.tenantName);
     let logoDrawn = false;
     if (data.brand?.logo) {
-      // โลโก้บริษัทแทนเครื่องหมาย KROK (สูง 26pt กว้างไม่เกิน 120pt)
+      // โลโก้ของ workspace (สูง 26pt กว้างไม่เกิน 120pt)
       try {
         doc.image(data.brand.logo, M, y - 6, { fit: [120, 26], valign: "center" });
         logoDrawn = true;
@@ -144,13 +145,9 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     }
     if (logoDrawn) {
       if (tenant) doc.font("th-bold").fontSize(10).fillColor(C.ink2).text(tenant, M + 128, y + 1.5, { width: CONTENT_W / 2 - 128, lineBreak: false, ellipsis: true });
-    } else {
-      doc.roundedRect(M, y, 14, 14, 3).fill(brandColor);
-      doc.font("th-bold").fontSize(11).fillColor(C.ink).text("KROK", M + 20, y + 0.5, { lineBreak: false });
-      if (tenant) {
-        const kw = doc.font("th-bold").fontSize(11).widthOfString("KROK");
-        doc.font("th").fontSize(9).fillColor(C.muted).text(`·  ${tenant}`, M + 26 + kw, y + 2.5, { width: CONTENT_W / 2, lineBreak: false, ellipsis: true });
-      }
+    } else if (tenant) {
+      // ไม่มีโลโก้ → ชื่อ workspace (เอกสารเป็นของลูกค้า ไม่แสดงชื่อ/เครื่องหมายแพลตฟอร์ม)
+      doc.font("th-bold").fontSize(12).fillColor(brandColor === C.brand ? C.ink : brandColor).text(tenant, M, y, { width: CONTENT_W / 2, lineBreak: false, ellipsis: true });
     }
     // เลขที่เอกสาร (ขวาบน)
     doc.font("th").fontSize(8.5).fillColor(C.muted).text("เลขที่เอกสาร", M, y - 1, { width: CONTENT_W, align: "right", lineBreak: false });
@@ -158,17 +155,20 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
     y += 34;
 
     // ชื่อฟอร์ม + ป้ายสถานะ
+    // ป้ายสถานะเฉพาะฟอร์มที่มีการอนุมัติ (รออนุมัติ/อนุมัติแล้ว/ตีกลับ) — ไม่มีอนุมัติ = ไม่แสดง
     const badge = clean(data.statusLabel);
     doc.font("th-bold").fontSize(9.5);
-    const bw = doc.widthOfString(badge) + 20;
-    const titleW = CONTENT_W - bw - 12;
+    const bw = badge ? doc.widthOfString(badge) + 20 : 0;
+    const titleW = CONTENT_W - (badge ? bw + 12 : 0);
     const title = clean(data.formTitle) || "ฟอร์ม";
     doc.font("th-bold").fontSize(18);
     const titleH = doc.heightOfString(title, { width: titleW });
     doc.fillColor(C.ink).text(title, M, y, { width: titleW });
-    const sc = statusColors(data.statusColor);
-    doc.roundedRect(PAGE.w - M - bw, y + 4, bw, 20, 10).fill(sc.bg);
-    doc.font("th-bold").fontSize(9.5).fillColor(sc.fg).text(badge, PAGE.w - M - bw, y + 8.5, { width: bw, align: "center", lineBreak: false });
+    if (badge) {
+      const sc = statusColors(data.statusColor);
+      doc.roundedRect(PAGE.w - M - bw, y + 4, bw, 20, 10).fill(sc.bg);
+      doc.font("th-bold").fontSize(9.5).fillColor(sc.fg).text(badge, PAGE.w - M - bw, y + 8.5, { width: bw, align: "center", lineBreak: false });
+    }
     y += Math.max(titleH, 28) + 4;
     // เส้นใต้ชื่อเอกสาร = สีแถบหัวของธีม
     if (data.brand?.header) doc.rect(M, y, CONTENT_W, 2).fill(data.brand.header);
@@ -346,7 +346,7 @@ export function buildSubmissionPdf(data: SubmissionPdfData): Promise<Buffer> {
       const fy = PAGE.h - M + 6;
       doc.moveTo(M, fy - 8).lineTo(PAGE.w - M, fy - 8).lineWidth(0.5).stroke(C.line);
       doc.font("th").fontSize(7.5).fillColor(C.faint);
-      doc.text(`${clean(data.formTitle)} · เลขที่ ${data.docNo} · สร้างโดย KROK`, M, fy, { width: CONTENT_W - 70, lineBreak: false, ellipsis: true });
+      doc.text(`${clean(data.formTitle)} · เลขที่ ${data.docNo}`, M, fy, { width: CONTENT_W - 70, lineBreak: false, ellipsis: true });
       doc.text(`หน้า ${i - range.start + 1}/${range.count}`, PAGE.w - M - 70, fy, { width: 70, align: "right", lineBreak: false });
       // ข้อความท้ายเอกสารของธีม (ที่อยู่/รหัสเอกสาร) — บรรทัดเดียว
       const ft = clean((data.brand?.footer || "").replace(/\s*\n\s*/g, " · "));

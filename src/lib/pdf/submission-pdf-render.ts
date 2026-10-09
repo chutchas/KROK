@@ -12,7 +12,8 @@ import { answerPhotoKeys } from "@/lib/photo-slots";
 import { docNoOf } from "@/lib/form-schema";
 
 const STATUS: Record<string, { label: string; color: SubmissionPdfData["statusColor"] }> = {
-  none: { label: "ส่งแล้ว", color: "muted" },
+  // ไม่มีการอนุมัติ = ไม่มีป้ายสถานะ (ส่งแล้วก็คือเอกสารนี้อยู่แล้ว)
+  none: { label: "", color: "muted" },
   pending: { label: "รออนุมัติ", color: "amber" },
   approved: { label: "อนุมัติแล้ว", color: "pass" },
   rejected: { label: "ตีกลับ", color: "fail" },

@@ -25,7 +25,7 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false }: 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `KROK-${docNoFileSafe(docNo || (submissionId ?? "").slice(0, 8).toUpperCase())}.pdf`;
+      a.download = `${docNoFileSafe(docNo || (submissionId ?? "").slice(0, 8).toUpperCase())}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -50,7 +50,7 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false }: 
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `KROK-${docNoFileSafe(docNo || (submissionId ?? "").slice(0, 8).toUpperCase())}-photos.zip`;
+      a.download = `${docNoFileSafe(docNo || (submissionId ?? "").slice(0, 8).toUpperCase())}-photos.zip`;
       document.body.appendChild(a);
       a.click();
       a.remove();

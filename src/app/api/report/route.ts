@@ -87,7 +87,7 @@ export async function GET(req: Request) {
 
   const origin = url.origin;
   const wb = new ExcelJS.Workbook();
-  wb.creator = "KROK";
+  wb.creator = session.tenantName; // ไฟล์ของลูกค้า — ไม่ใส่ชื่อแพลตฟอร์ม
   wb.created = new Date();
   const ws = wb.addWorksheet("รายงาน", { views: [{ state: "frozen", ySplit: 1 }] });
 

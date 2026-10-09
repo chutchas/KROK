@@ -90,7 +90,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     status: 200,
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": attachmentHeader(`KROK-${docNoFileSafe(docNo)}-photos.zip`),
+      "Content-Disposition": attachmentHeader(`${docNoFileSafe(docNo)}-photos.zip`),
       "Cache-Control": "no-store",
     },
   });
