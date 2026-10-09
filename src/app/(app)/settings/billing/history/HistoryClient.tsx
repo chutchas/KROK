@@ -1,4 +1,5 @@
 "use client";
+import { fmtPeriod } from "@/lib/dt-format";
 import Link from "next/link";
 import { Card, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -58,7 +59,7 @@ export default function HistoryClient({ events, invoices, plans }: { events: Pla
                     <b style={{ fontSize: ".9rem" }}>{iv.number}</b>{" "}
                     {iv.status === "paid" ? <Pill kind="pass">{stLabel(iv.status)}</Pill> : iv.status === "failed" || iv.status === "void" ? <Pill kind="fail">{stLabel(iv.status)}</Pill> : <Pill kind="na">{stLabel(iv.status)}</Pill>}
                     <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>
-                      {lang === "en" ? p.nameEn : p.name} · {iv.period} · {fmt(iv.issuedAt, lang)}
+                      {lang === "en" ? p.nameEn : p.name} · {fmtPeriod(iv.period, lang)} · {fmt(iv.issuedAt, lang)}
                     </small>
                   </div>
                   <span className="tabnum" style={{ fontWeight: 600 }}>฿{iv.amount.toLocaleString()}</span>

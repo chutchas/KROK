@@ -19,15 +19,18 @@ export default function AreasClient({ initial, missing }: { initial: AreaRow[]; 
 
   const codeOk = AREA_CODE_RE.test(code.trim());
   const canAdd = codeOk && !!name.trim() && !busy;
+  // กดเพิ่มทั้งที่ยังกรอกไม่ครบ → บอกว่าขาดอะไร (เดิมปุ่มกดไม่ได้เฉย ๆ)
+  const [tried, setTried] = useState(false);
 
   async function add() {
-    if (!canAdd) return;
+    if (busy) return;
+    if (!canAdd) { setTried(true); return; }
     setBusy("add"); setErr("");
     const r = await createArea(code.trim(), name.trim());
     setBusy(null);
     if ("error" in r) { setErr(r.error); return; }
     setRows((xs) => [...xs, r.area]);
-    setCode(""); setName("");
+    setCode(""); setName(""); setTried(false);
   }
 
   async function patch(id: string, p: { name?: string; active?: boolean }) {
@@ -70,17 +73,18 @@ export default function AreasClient({ initial, missing }: { initial: AreaRow[]; 
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
             <div style={{ flex: "0 0 140px" }}>
               <label htmlFor="area-code" style={lbl}>{t("area.code")}</label>
-              <Field id="area-code" value={code} maxLength={20} onChange={(e) => setCode(e.target.value)} placeholder="Z3"
+              <Field id="area-code" value={code} maxLength={20} onChange={(e) => setCode(e.target.value)} placeholder={t("area.codePh")}
                 style={{ fontFamily: "monospace" }} aria-invalid={!!code && !codeOk} />
-              {!!code && !codeOk && <span style={{ fontSize: ".74rem", color: "var(--fail)" }}>{t("area.codeBad")}</span>}
+              {(!!code || tried) && !codeOk && <span role="alert" style={{ fontSize: ".78rem", color: "var(--fail)" }}>{code ? t("area.codeBad") : t("area.codeRequired")}</span>}
             </div>
             <div style={{ flex: "1 1 220px" }}>
               <label htmlFor="area-name" style={lbl}>{t("area.name")}</label>
               <Field id="area-name" value={name} maxLength={80} onChange={(e) => setName(e.target.value)} placeholder={t("area.namePh")}
-                onKeyDown={(e) => { if (e.key === "Enter") add(); }} />
+                onKeyDown={(e) => { if (e.key === "Enter") add(); }} aria-invalid={tried && !name.trim() ? true : undefined} />
+              {tried && !name.trim() && <span role="alert" style={{ fontSize: ".78rem", color: "var(--fail)" }}>{t("area.nameRequired")}</span>}
             </div>
             <div style={{ alignSelf: "flex-end" }}>
-              <Button variant="primary" onClick={add} disabled={!canAdd} loading={busy === "add"}>
+              <Button variant="primary" onClick={add} loading={busy === "add"}>
                 <Icon icon={Plus} className="h-4 w-4" /> {t("area.add")}
               </Button>
             </div>

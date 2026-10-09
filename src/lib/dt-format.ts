@@ -28,3 +28,11 @@ export function formatDtThai(v: string | undefined | null, mode: DtMode = "datet
   const time = d.toLocaleTimeString(loc, { hour: "2-digit", minute: "2-digit", hour12: false });
   return `${date} ${time}${lang === "th" ? " น." : ""}`;
 }
+
+/** รอบโควตา/บิล "YYYY-MM" → "ต.ค. 2569" / "Oct 2026" (รูปแบบอื่นคืนค่าเดิม) */
+export function fmtPeriod(period: string, lang: "th" | "en" = "th"): string {
+  const m = /^(\d{4})-(\d{2})$/.exec(period || "");
+  if (!m) return period;
+  const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 15));
+  return d.toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { month: "short", year: "numeric", timeZone: "UTC" });
+}

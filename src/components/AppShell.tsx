@@ -40,9 +40,12 @@ const PRIMARY: NavEntry[] = [
 ];
 
 // มือถือ: แถบเมนูล่างจอ — 3 เมนูแรกที่ role นี้เห็นตามลำดับนี้ (งานหน้างานก่อน) + "เมนูเพิ่มเติม" (เปิดเมนูข้าง)
-// แถบล่างมือถือ (3 ปุ่ม + เมนูเพิ่มเติม) เรียงตามบทบาท — คนหน้างาน: กรอก/อนุมัติ/แดชบอร์ด · ผู้จัดการ: กรอก/สร้างฟอร์ม/อนุมัติ
+// แถบล่างมือถือ + เมนูเพิ่มเติม เรียงตามบทบาท — คนหน้างาน 3 ปุ่ม: กรอก/อนุมัติ/แดชบอร์ด
+// ผู้จัดการ 4 ปุ่ม: กรอก/สร้างฟอร์ม/อนุมัติ/แดชบอร์ด (แดชบอร์ด = หน้าแรกหลังล็อกอิน ต้องมีในแถบ)
 const TAB_PRIORITY = ["/forms", "/approvals", "/dashboard", "/studio", "/reports", "/datasets"];
 const TAB_PRIORITY_MANAGER = ["/forms", "/studio", "/approvals", "/dashboard", "/reports", "/datasets"];
+const TAB_COUNT = 3;
+const TAB_COUNT_MANAGER = 4;
 
 // เมนูระบบ (ผู้ดูแลแพลตฟอร์ม) — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
 const PLATFORM: NavEntry[] = [
@@ -178,7 +181,7 @@ export default function AppShell({
   const isActive = (href: string) => href === activePrimary || href === activePlatform || hubs.some((h) => h.href === href && h.hubKey === activeHubKey);
   const activeSecondary = hubs.find((h) => h.hubKey === activeHubKey) ?? platform.find((n) => n.href === activePlatform);
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
-  const tabItems = (canManage ? TAB_PRIORITY_MANAGER : TAB_PRIORITY).map((h) => primary.find((n) => n.href === h)).filter((n): n is NavEntry => !!n).slice(0, 3);
+  const tabItems = (canManage ? TAB_PRIORITY_MANAGER : TAB_PRIORITY).map((h) => primary.find((n) => n.href === h)).filter((n): n is NavEntry => !!n).slice(0, canManage ? TAB_COUNT_MANAGER : TAB_COUNT);
   // อยู่หน้าที่ไม่มีในแถบล่าง (ตั้งค่า, ชุดข้อมูล ฯลฯ) → ไฮไลต์ปุ่ม "เมนูเพิ่มเติม"
   const moreActive = !tabItems.some((n) => isActive(n.href));
 
@@ -590,14 +593,16 @@ export default function AppShell({
             const on = isActive(n.href);
             return (
               <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
-                style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textDecoration: "none", fontSize: ".72rem", fontWeight: on ? 700 : 500, color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
+                style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textDecoration: "none", fontSize: ".75rem", fontWeight: on ? 700 : 500, color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
                 <Icon icon={n.icon} className="h-[22px] w-[22px]" />
                 <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 2px" }}>{t(NAV_SHORT[n.key] ?? n.key)}</span>
               </Link>
             );
           })}
           <button type="button" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen}
-            style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: ".72rem", fontWeight: moreActive ? 700 : 500, color: moreActive ? "var(--accent-text)" : "var(--ink-2)" }}>
+            // หน้าที่อยู่ไม่มีในแถบล่าง → บอกโปรแกรมอ่านหน้าจอด้วย (เหมือนปุ่ม ☰)
+            aria-label={moreActive && activeSecondary ? `${t("nav.more")} — ${t(activeSecondary.key)}` : t("nav.more")}
+            style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: ".75rem", fontWeight: moreActive ? 700 : 500, color: moreActive ? "var(--accent-text)" : "var(--ink-2)" }}>
             <Icon icon={LayoutGrid} className="h-[22px] w-[22px]" />
             <span>{t("nav.more")}</span>
           </button>

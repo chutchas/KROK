@@ -1,5 +1,6 @@
 "use client";
 // แถบแท็บด้านบนหน้าตั้งค่า — หมวดที่มีแท็บเดียว (หรือหน้านอกหมวด เช่น โปรไฟล์) ไม่แสดง
+import { useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useT } from "@/i18n/LanguageProvider";
@@ -11,9 +12,20 @@ export default function SettingsTabs({ hubs }: { hubs: { key: string; items: { h
   const { t } = useT();
   const cur = hubOf(path);
   const items = cur ? hubs.find((h) => h.key === cur.hub.key)?.items ?? [] : [];
+  // มือถือ: แท็บล้นจอ → เลื่อนแถบให้แท็บที่เปิดอยู่เห็นครบ (เลื่อนเฉพาะแถบ ไม่เลื่อนทั้งหน้า)
+  const navRef = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const nav = navRef.current;
+    const el = nav?.querySelector<HTMLElement>('a[aria-current="page"]');
+    if (!nav || !el || nav.scrollWidth <= nav.clientWidth) return;
+    const left = el.offsetLeft - nav.offsetLeft;
+    const pad = 32;
+    if (left - pad < nav.scrollLeft) nav.scrollLeft = Math.max(0, left - pad);
+    else if (left + el.offsetWidth + pad > nav.scrollLeft + nav.clientWidth) nav.scrollLeft = left + el.offsetWidth + pad - nav.clientWidth;
+  }, [path]);
   if (!cur || items.length < 2) return null;
   return (
-    <nav aria-label={t(cur.hub.labelKey)} className="krok-tabscroll no-print"
+    <nav ref={navRef} aria-label={t(cur.hub.labelKey)} className="krok-tabscroll no-print"
       style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 18, overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
       {items.map((it) => {
         const on = it.href === cur.item.href;
