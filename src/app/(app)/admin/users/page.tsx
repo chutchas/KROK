@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { getSession, redirectNoSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import AdminUsersClient, { type SysUser } from "./AdminUsersClient";
@@ -10,7 +10,7 @@ export default async function AdminUsersPage() {
   const session = await getSession();
   if (!session) return redirectNoSession();
   if (!session.isPlatformAdmin)
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ admin ของระบบเท่านั้น</div>;
+    notFound(); // ไม่ใช่ผู้ดูแลแพลตฟอร์ม = หน้า "ไม่พบ" (มีทางไปต่อ · ไม่บอกว่ามีหน้านี้)
 
   const admin = getAdminClient();
   if (!admin)

@@ -4,7 +4,7 @@ import { getSession } from "@/lib/session";
 import { TOPIC_OPTIONS, type ContactTopic } from "@/lib/contact";
 import { ContactInApp } from "@/app/contact/ContactClient";
 
-export const metadata: Metadata = { title: "ติดต่อทีม KROK" };
+export const metadata: Metadata = { title: "ติดต่อทีมงาน" };
 export const dynamic = "force-dynamic";
 
 // ติดต่อทีม KROK จากในแอป (เมนูโปรไฟล์ / เมนูข้าง) — คนนอกใช้ /contact

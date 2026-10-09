@@ -288,6 +288,7 @@ export default function DashboardClient({
     }
   }
   // "รายการล่าสุด" ยังเป็น JSX inline — แบ่งส่วนอื่นเป็นก่อน/หลังมัน
+  const firstRun = forms.length === 0 && subs.length === 0;
   const latestAt = sections.indexOf("latest");
   const before = latestAt < 0 ? sections : sections.slice(0, latestAt);
   const after = latestAt < 0 ? [] : sections.slice(latestAt + 1);
@@ -307,6 +308,8 @@ export default function DashboardClient({
 
       <GettingStarted hasForms={forms.length > 0} firstSubId={subs[0]?.id ?? null} canCreate={canCreate} />
 
+      {/* ผู้ใช้ใหม่ (ยังไม่มีฟอร์มและยังไม่มีใบส่ง): เหลือแค่การ์ดเริ่มต้นใช้งาน + โควตา — การ์ด/ฟีด/ตัวเลือกแดชบอร์ดยังไม่มีอะไรให้ดู */}
+      {firstRun ? renderSection("usage") : <>
       {before.map(renderSection)}
 
       {/* รายการล่าสุด (คงเดิม) */}
@@ -340,6 +343,7 @@ export default function DashboardClient({
       </Card>
 
       {after.map(renderSection)}
+      </>}
 
       {open && <DetailModal sub={open} tenantId={tenantId} onClose={() => setOpen(null)} />}
       {builder && (

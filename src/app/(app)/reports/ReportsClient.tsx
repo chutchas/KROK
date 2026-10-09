@@ -134,6 +134,16 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
         )}
       </div>
 
+      {forms.length === 0 ? (
+        // ยังไม่มีฟอร์ม = ยังไม่มีอะไรให้ค้น/ส่งออก — ไม่โชว์ตัวกรองกับปุ่ม Excel
+        <Card>
+          <div style={{ textAlign: "center", padding: "28px 12px", display: "grid", gap: 8, justifyItems: "center" }}>
+            <b>{t("rep.emptyTitle")}</b>
+            <span style={{ color: "var(--ink-2)", fontSize: ".9rem", maxWidth: 460 }}>{mine ? t("rep.emptyMine") : t("rep.emptyBody")}</span>
+            {!mine && <a href="/studio" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontWeight: 600 }}>{t("appr.goStudio")}</a>}
+          </div>
+        </Card>
+      ) : (<>
       <Card>
         {/* แถวตัวกรอง — dropdown เรียงแถวเดียว (ตัดบรรทัดบนจอแคบ) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
@@ -258,6 +268,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
           </Card>
         )
       )}
+      </>)}
     </div>
   );
 }
