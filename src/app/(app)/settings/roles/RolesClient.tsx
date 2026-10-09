@@ -5,7 +5,10 @@ import { Card, Button, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ShieldCheck, Lock, Trash2, Plus } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
-import { MENUS, type MenuKey } from "@/lib/menus";
+import { ALWAYS_MENUS, MENUS as ALL_MENUS, type MenuKey } from "@/lib/menus";
+
+// เมนูที่ทุกคนมีเสมอ (รายงาน) ไม่ให้ติ๊กเปิด/ปิดที่นี่
+const MENUS = ALL_MENUS.filter((m) => !ALWAYS_MENUS.includes(m.key));
 import { createRole, updateRole, deleteRole } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
 
@@ -29,7 +32,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
   const [newMenus, setNewMenus] = useState<MenuKey[]>(["forms", "dashboard"]);
 
   function menuLabel(k: MenuKey) {
-    const d = MENUS.find((m) => m.key === k);
+    const d = ALL_MENUS.find((m) => m.key === k);
     return d ? t(d.labelKey) : k;
   }
 
@@ -79,7 +82,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
               {t("roles.canManage")}
             </label>
             <div>
-              <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")}</div>
+              <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")} <span style={{ color: "var(--ink-3)", fontSize: ".74rem" }}>· {t("roles.reportsAlways")}</span></div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {MENUS.map((m) => {
                   const on = newMenus.includes(m.key);
@@ -134,7 +137,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                       {t("roles.canManage")}
                     </label>
                   ) : null}
-                  <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")}</div>
+                  <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")} <span style={{ color: "var(--ink-3)", fontSize: ".74rem" }}>· {t("roles.reportsAlways")}</span></div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {MENUS.map((m) => {
                       const on = r.menus.includes(m.key);

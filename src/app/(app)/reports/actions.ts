@@ -27,7 +27,9 @@ const PREVIEW_LIMIT = 100;
 
 // ดึงข้อมูลตัวอย่างก่อน export — คืน 100 แถวแรก + จำนวนทั้งหมดตามเงื่อนไข
 export async function previewReport(
-  f: ReportFilters
+  f: ReportFilters,
+  /** แถวที่ข้ามไป (ปุ่ม "แสดงเพิ่ม") */
+  offset = 0
 ): Promise<{ rows: PreviewRow[]; total: number } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
@@ -51,7 +53,7 @@ export async function previewReport(
     .select("id, form_title, form_icon, user_name, result, approval_status, fails, submitted_at")
     .eq("tenant_id", session.tenantId)
     .order("submitted_at", { ascending: false })
-    .limit(PREVIEW_LIMIT);
+    .range(Math.max(0, Math.floor(offset)), Math.max(0, Math.floor(offset)) + PREVIEW_LIMIT - 1);
   if (f.formId && f.formId !== "all") q = q.eq("form_id", f.formId);
   if (f.from) q = q.gte("submitted_at", f.from + "T00:00:00+07:00");
   if (f.to) q = q.lte("submitted_at", f.to + "T23:59:59.999+07:00");

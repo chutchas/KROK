@@ -9,6 +9,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
+import DeleteSubmission from "./DeleteSubmission";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
 import { getFormPrintInfo } from "@/lib/print-photos-server";
@@ -72,7 +73,7 @@ async function loadRelated(db: Db, viewer: Db, caseId: string | null, tenantId: 
   if (up) {
     const [{ data: pc }, { data: ps }] = await Promise.all([
       db.from("form_cases").select("form_title, status").eq("id", up.parent_case_id).eq("tenant_id", tenantId).maybeSingle(),
-      db.from("submissions").select("id").eq("case_id", up.parent_case_id).eq("tenant_id", tenantId).limit(1).maybeSingle(),
+      db.from("submissions").select("id").eq("case_id", up.parent_case_id).eq("tenant_id", tenantId).is("deleted_at", null).limit(1).maybeSingle(),
     ]);
     parentCase = (pc as PC | null) ?? null;
     parentSub = (ps as { id?: string } | null)?.id ?? null;
@@ -208,7 +209,10 @@ export default async function SubmissionPage({ params, searchParams }: { params:
     <div style={{ maxWidth: view === "doc" ? 900 : 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="sub.backDashboard" /></a>
-        <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} />
+        <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+          {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}
+          <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} />
+        </div>
       </div>
 
       {docSchema && (
