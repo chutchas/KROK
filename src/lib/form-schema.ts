@@ -302,6 +302,8 @@ export interface FormSchema {
   geo?: "optional" | "required";
   /** ประทับวันเวลา (+พิกัดถ้าเปิด GPS) + ชื่อฟอร์ม ลงรูปถ่ายตอนถ่าย */
   watermark?: boolean;
+  /** หน้าตรวจทานก่อนส่ง (สรุปคำตอบทุกขั้น + ข้อไม่ผ่าน/รูปที่ขาด ก่อนกดยืนยันส่ง) — ไม่ระบุ = ส่งทันที */
+  review?: boolean;
   /** เลขที่เอกสารแบบรัน (ออกตอนบันทึกใบ ฝั่งฐานข้อมูล 0077) — ไม่ระบุ = รหัส 8 ตัวจาก id */
   doc_no?: DocNoConfig;
   // ธีมสี / โลโก้ / ข้อความท้ายเอกสาร ของฟอร์มนี้ (ไม่ระบุ = ใช้ของ workspace) — ดู @/lib/theme
@@ -740,6 +742,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (pn) schema.privacy_notice = pn;
   if (r.geo === "optional" || r.geo === "required") schema.geo = r.geo;
   if (r.watermark === true) schema.watermark = true;
+  if (r.review === true) schema.review = true;
   const dn = sanitizeDocNo(r.doc_no);
   if (dn) schema.doc_no = dn;
   const th = sanitizeFormTheme(r.theme);

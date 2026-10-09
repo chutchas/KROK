@@ -2,10 +2,11 @@
 import { getAllPending } from "@/lib/offline-queue";
 import { confirmDialog } from "@/components/dialogs";
 import { backdropClose } from "@/lib/backdrop";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { PROFILE_AVATAR_EVENT, PROFILE_NAME_EVENT, firstName } from "@/lib/profile-events";
-import TourGuide, { TourHelpButton } from "@/components/TourGuide";
+import TourGuide, { TOUR_START_EVENT, TourHelpButton } from "@/components/TourGuide";
 import { SETTINGS_HUBS, canSee, hubOf, type NavCtx, type SettingsHub } from "@/lib/settings-nav";
 import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
@@ -21,7 +22,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid, CircleHelp } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -115,6 +116,8 @@ export default function AppShell({
   const shortName = firstName(fullName);
   const [profileOpen, setProfileOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  // เมนูข้าง: โฟกัสวนในเมนู (Tab ไม่หลุดไปหน้าหลังฉาก) · ปิดแล้วคืนโฟกัสให้ปุ่มที่เปิด
+  useDialogA11y(menuRef, () => setMenuOpen(false), { active: menuOpen });
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -243,7 +246,7 @@ export default function AppShell({
            workspace + ธีม/ภาษา ย้ายไปอยู่ในเมนูข้าง (☰ / "เมนูเพิ่มเติม") */
         @media (max-width: 640px){
           .krok-topbar{ flex-wrap: nowrap !important; gap: 8px !important; }
-          .krok-nav, .krok-ws-slot, .krok-desk-only{ display: none !important; }
+          .krok-nav, .krok-ws-slot, .krok-desk-only, .krok-desk-only-btn{ display: none !important; }
           .krok-brand{ flex: 1 1 auto; min-width: 0; }
           .krok-controls{ flex: 0 0 auto; gap: 6px !important; }
           .krok-profile-name{ display: none !important; }
@@ -283,12 +286,13 @@ export default function AppShell({
             flexWrap: "wrap",
           }}
         >
+          {/* มือถือ: ซ่อน (ปุ่ม "เมนูเพิ่มเติม" ในแถบล่างเปิดเมนูเดียวกัน) */}
           <button
             onClick={() => setMenuOpen(true)}
             data-tour="menu"
+            className="krok-desk-only-btn inline-flex h-9 w-9 items-center justify-center rounded-xl"
             aria-label={t("nav.menu")}
             title={t("nav.menu")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-xl"
             style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", flex: "0 0 auto" }}
           >
             <Icon icon={Menu} className="h-5 w-5" />
@@ -341,8 +345,7 @@ export default function AppShell({
           <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <OfflineSync />
             <OfflinePrep userId={userId} tenantId={activeTenantId} />
-            <span className="krok-desk-only"><ThemeToggle /><LanguageToggle /></span>
-            <TourHelpButton />
+            <span className="krok-desk-only"><ThemeToggle /><LanguageToggle /><TourHelpButton /></span>
             <NotificationBell userId={userId} />
             <div ref={profileRef} data-tour="profile" style={{ position: "relative" }}>
               <button
@@ -539,6 +542,12 @@ export default function AppShell({
                   <Icon icon={LifeBuoy} className="h-[19px] w-[19px]" /> {t("nav.contactTeam")}
                 </Link>
               </div>
+              {/* มือถือ: แนะนำการใช้งาน (ปุ่ม ? ย้ายมาจากแถบบน) */}
+              <button type="button" className="krok-mobile-only inline-flex items-center gap-3"
+                onClick={() => { setMenuOpen(false); setTimeout(() => window.dispatchEvent(new Event(TOUR_START_EVENT)), 250); }}
+                style={{ width: "100%", padding: "10px 12px", minHeight: 44, borderRadius: 9, fontSize: ".95rem", fontWeight: 500, color: "var(--ink)", border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+                <Icon icon={CircleHelp} className="h-[19px] w-[19px]" /> {t("tour.replay")}
+              </button>
               {/* มือถือ: ธีม/ภาษา (แถบบนไม่มีที่แล้ว) */}
               <div className="krok-mobile-only" style={{ display: "flex", gap: 10, alignItems: "center", padding: "16px 12px 0" }}>
                 <ThemeToggle />
@@ -574,7 +583,7 @@ export default function AppShell({
       <main style={focusMode
         // โหมดเต็มจอ: ไม่จำกัดความกว้าง (หน้ากรอกจัดคอลัมน์กลางจอเอง + แถบบนชิดขอบจอ) ไม่เว้นที่บน
         ? { margin: "0 auto", padding: "0 var(--krok-gutter) 24px" }
-        : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) calc(90px + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
+        : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) calc(40px + var(--krok-tabbar-h))" }}>{children}</main>
     </>
   );
 }

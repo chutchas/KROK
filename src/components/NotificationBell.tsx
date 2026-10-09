@@ -110,12 +110,12 @@ export default function NotificationBell({ userId }: { userId: string }) {
         onClick={toggle}
         aria-label={t("bell.title")}
         aria-expanded={open}
-        className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border text-rose-400 shadow-sm"
-        style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
+        className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm"
+        style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer" }}
       >
         <Icon icon={Bell} className="h-4 w-4" />
         {unread > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full bg-rose-500 font-bold text-white" style={{ fontSize: ".62rem", minWidth: 16, height: 16, padding: "0 4px" }}>
+          <span className="absolute -top-0.5 -right-0.5 inline-flex items-center justify-center rounded-full font-bold text-white" style={{ fontSize: ".62rem", minWidth: 16, height: 16, padding: "0 4px", background: "var(--fail-solid)" }}>
             {unread > 99 ? "99+" : unread}
           </span>
         )}

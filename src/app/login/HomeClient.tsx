@@ -53,6 +53,7 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
 
   return (
     <div className="lp" style={{ minHeight: "100dvh" }}>
+      <noscript><style>{`.lp-rv{opacity:1!important;transform:none!important}`}</style></noscript>
       <header className={`lp-nav${stuck ? " is-stuck" : ""}`}>
         <div className="lp-nav-in">
           <a href="#top" style={{ display: "flex", alignItems: "center", gap: 10 }}>

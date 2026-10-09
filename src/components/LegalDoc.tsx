@@ -38,7 +38,8 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
           <LanguageToggle />
         </div>
       </header>
-      <main lang={lang} style={{ maxWidth: 1180, margin: "0 auto", padding: "28px 24px 80px", lineHeight: 1.75, fontSize: ".95rem" }}>
+      {/* อ่านง่าย: บรรทัดไม่ยาวเกิน ~75 ตัวอักษร */}
+      <main lang={lang} style={{ maxWidth: 820, margin: "0 auto", padding: "28px 24px 80px", lineHeight: 1.75, fontSize: ".95rem" }}>
         <h1 style={{ fontSize: "1.6rem", margin: "0 0 4px" }}>{d.title}</h1>
         <div style={{ color: "var(--ink-3)", fontSize: ".82rem", marginBottom: 18 }}>
           {ui.effective} · {ui.version} {LEGAL_VERSION}

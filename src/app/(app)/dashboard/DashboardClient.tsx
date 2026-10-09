@@ -10,10 +10,11 @@ import type { AttentionData } from "@/lib/dashboard-attention";
 import { createClient } from "@/lib/supabase/client";
 import { Card, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
+import Link from "next/link";
 import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
-  ChevronUp, ChevronDown, MapPin, Settings2,
+  ChevronUp, ChevronDown, MapPin, Settings2, Smartphone,
 } from "lucide-react";
 import { confirmDialog } from "@/components/dialogs";
 import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
@@ -87,8 +88,10 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 export default function DashboardClient({
   tenantId, initial, forms, summary, initialWidgets, hasSchedules = false, areas = [],
   workspaceWidgets = [], workspaceReady = false, isWsAdmin = false, seesAllForms = false,
-  attention, sections = DEFAULT_DASH_SECTIONS,
+  attention, sections = DEFAULT_DASH_SECTIONS, canFill = false,
 }: {
+  /** มีสิทธิ์เมนูกรอกฟอร์ม → ปุ่มหลักของหน้า = "เริ่มกรอกฟอร์ม" (งานจริง) แทน "เพิ่มการ์ด" */
+  canFill?: boolean;
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
   /** พื้นที่ที่เปิดใช้ (widget "ตามพื้นที่") */
   areas?: AreaOpt[];
@@ -128,6 +131,14 @@ export default function DashboardClient({
   // โหมดจัดการการ์ด: ปุ่มเลื่อน/แก้/ลบ โผล่เฉพาะตอนเปิด (ปกติดูอย่างเดียว ไม่เสี่ยงกดลบพลาด)
   const [managing, setManaging] = useState(false);
   const editing = canEdit && managing;
+  // "เพิ่มการ์ด" = งานจัดหน้า (ทำครั้งเดียว) → อยู่ในโหมดจัดการ / ตอนยังว่าง ไม่ใช่ปุ่มหลักของหน้า
+  const addCardBtn = (
+    <button type="button" data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
+      className="inline-flex items-center gap-1.5"
+      style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+      <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
+    </button>
+  );
 
   const formName = useMemo(() => {
     const m = new Map(forms.map((f) => [f.id, f.title]));
@@ -221,20 +232,26 @@ export default function DashboardClient({
 
             {/* โซน widget ปรับเองได้ */}
             {shown.length === 0 && (
-              <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: "0 0 18px" }}>
-                {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
-              </p>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "0 0 18px" }}>
+                <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: 0, flex: "1 1 260px" }}>
+                  {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
+                </p>
+                {canEdit && addCardBtn}
+              </div>
             )}
             {shown.length > 0 && (
               <>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 10px", flexWrap: "wrap" }}>
                   <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
                   {canEdit && (
+                    <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+                    {managing && addCardBtn}
                     <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
                       className="inline-flex items-center gap-1.5"
                       style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
                       {managing ? <><Icon icon={Check} className="h-4 w-4" /> {t("dash.manageDone")}</> : <><Icon icon={Settings2} className="h-4 w-4" /> {t("dash.manage")}</>}
                     </button>
+                    </span>
                   )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
@@ -276,11 +293,12 @@ export default function DashboardClient({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        {canEdit && <button data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
-          className="inline-flex items-center gap-1.5"
-          style={{ padding: "9px 16px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 600 }}>
-          <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
-        </button>}
+        {canFill && (
+          <Link href="/forms" className="inline-flex items-center gap-1.5"
+            style={{ minHeight: 44, padding: "10px 18px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".95rem", fontWeight: 600, textDecoration: "none" }}>
+            <Icon icon={Smartphone} className="h-[18px] w-[18px]" /> {t("dash.startFill")}
+          </Link>
+        )}
       </div>
 
       {before.map(renderSection)}
@@ -288,7 +306,7 @@ export default function DashboardClient({
       {/* รายการล่าสุด (คงเดิม) */}
       <Card>
         <h2 data-tour="dash-latest" style={{ fontSize: "1.15rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--pass)" }} />
+          <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--pass)" }} />
           {t("dash.latest")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("dash.latestSub")}</p>

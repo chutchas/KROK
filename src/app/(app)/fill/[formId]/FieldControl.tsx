@@ -626,16 +626,24 @@ export function NumHint({ field: f, value }: { field: FormField; value?: string 
 }
 
 export function PfBtn({ active, kind, onClick, children, paper = false }: { active: boolean; kind: "pass" | "fail" | "na"; onClick: () => void; children: React.ReactNode; paper?: boolean }) {
-  const on = kind === "pass"
-    ? { background: "var(--pass-soft)", border: "1px solid var(--pass)", color: "var(--pass-text)" }
+  // ที่เลือกแล้ว = พื้นสีทึบ ตัวขาว (เห็นชัดกลางแดด/ทั้งสองธีม · สีไม่เปลี่ยนตามธีม) — ไอคอน ✓/✕ อยู่ใน children
+  // มุมมองกระดาษ: คงแบบสีอ่อน+ขอบ (สั่งพิมพ์แล้วพื้นหลังมักหาย ตัวขาวจะหายไปด้วย)
+  const onPaper = kind === "pass"
+    ? { background: "#e7f6ec", border: "1px solid #15803d", color: "#166534", boxShadow: "inset 0 0 0 1px currentColor" }
     : kind === "fail"
-    ? { background: "var(--fail-soft)", border: "1px solid var(--fail)", color: "var(--fail-text)" }
-    : { background: paper ? "#eef0f2" : "var(--code-bg)", border: `1px solid ${paper ? "#666" : "var(--ink-3)"}`, color: paper ? "#333" : "var(--ink-2)" };
+    ? { background: "#fdeaea", border: "1px solid #b91c1c", color: "#b91c1c", boxShadow: "inset 0 0 0 1px currentColor" }
+    : { background: "#eef0f2", border: "1px solid #666", color: "#333", boxShadow: "inset 0 0 0 1px currentColor" };
+  const onScreen = kind === "pass"
+    ? { background: "var(--pass-solid)", border: "1px solid var(--pass-solid)", color: "#fff" }
+    : kind === "fail"
+    ? { background: "var(--fail-solid)", border: "1px solid var(--fail-solid)", color: "#fff" }
+    : { background: "#475569", border: "1px solid #475569", color: "#fff" };
+  const on = paper ? onPaper : { ...onScreen, boxShadow: "0 2px 6px -2px rgba(15,23,42,.35)" };
   const base = paper
     ? { border: "1px solid #b9bec4", background: "#fff", color: "#111" }
     : { border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" };
   return (
-    <button type="button" aria-pressed={active} onClick={onClick} style={{ padding: 14, fontWeight: 700, fontSize: "1rem", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", ...base, ...(active ? on : {}), ...(active ? { boxShadow: "inset 0 0 0 1px currentColor" } : {}) }}>
+    <button type="button" aria-pressed={active} onClick={onClick} style={{ padding: 14, fontWeight: 700, fontSize: "1rem", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", ...base, ...(active ? on : {}) }}>
       {children}
     </button>
   );
