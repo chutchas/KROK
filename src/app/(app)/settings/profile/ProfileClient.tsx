@@ -120,9 +120,12 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
               onClick={() => fileRef.current?.click()}
               disabled={avatarBusy}
               aria-label={t("profile.avatarChange")}
-              style={{ position: "absolute", right: -2, bottom: -2, width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", border: "2px solid var(--surface)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
+              style={{ position: "absolute", right: -8, bottom: -8, width: 44, height: 44, borderRadius: "50%", background: "transparent", border: "none", padding: 0, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}
             >
-              <Icon icon={Camera} className="h-4 w-4" />
+              {/* วงกลมที่เห็น 28px · พื้นที่กด 44px */}
+              <span style={{ width: 28, height: 28, borderRadius: "50%", background: "var(--accent)", color: "var(--accent-ink)", border: "2px solid var(--surface)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon icon={Camera} className="h-4 w-4" />
+              </span>
             </button>
           </div>
           <div>

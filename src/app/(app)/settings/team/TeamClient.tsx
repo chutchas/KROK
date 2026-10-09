@@ -116,7 +116,7 @@ export default function TeamClient({
         </p>
         <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <Field type="email" placeholder={t("team.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
-          <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} style={selstyle}>
+          <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} aria-label={t("team.inviteRoleSel")} style={selstyle}>
             {inviteOptions.map((r) => (
               <option key={r.key} value={r.key}>{r.name}</option>
             ))}
@@ -197,6 +197,7 @@ export default function TeamClient({
                 </div>
                 {canEditThis && !isMe ? (
                   <select
+                    aria-label={tt("team.roleOf", { name: m.name || m.email || t("team.memberFallback") })}
                     defaultValue={curKey}
                     onChange={async (e) => {
                       const v = e.target.value;

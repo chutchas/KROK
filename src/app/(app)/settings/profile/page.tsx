@@ -17,11 +17,22 @@ export default async function ProfilePage() {
   if (!session) redirect("/login");
 
   const supabase = await createClient();
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("profiles")
     .select("first_name, last_name, phone, position, language, avatar_url")
     .eq("user_id", session.userId)
     .maybeSingle();
+
+  // โหลดโปรไฟล์ไม่สำเร็จ (เน็ต/ฐานข้อมูลสะดุด) → ไม่แสดงฟอร์มเปล่า (กดบันทึกแล้วจะทับข้อมูลเดิมด้วยค่าว่าง)
+  if (error) {
+    return (
+      <Card>
+        <h2 style={{ fontSize: "1.1rem", margin: "0 0 6px" }}><T k="profile.loadFailed" /></h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: "0 0 14px" }}><T k="profile.loadFailedHint" /></p>
+        <a href="/settings/profile" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--accent-text)", fontWeight: 600, textDecoration: "none" }}><T k="common.retry" /></a>
+      </Card>
+    );
+  }
 
   const profile: ProfileData = {
     first_name: data?.first_name ?? "",

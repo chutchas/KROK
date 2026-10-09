@@ -394,11 +394,20 @@ a {
 }
 .krok-tabscroll::-webkit-scrollbar { display: none; }
 /* ปุ่มเล็ก (chip) บนจอสัมผัส: สูงอย่างน้อย 44px ให้นิ้วกดถึง */
-@media (pointer: coarse) { .krok-touch44 { min-height: 44px; } }
+@media (pointer: coarse) {
+  .krok-touch44 { min-height: 44px; }
+  a.krok-touch44 { display: inline-block; padding-block: 11px; line-height: 22px; box-sizing: border-box; }
+}
+/* ป้ายสั้นสำหรับจอแคบ (แต่ละหน้าสลับ long/short เองใน media query) */
+.krok-lbl-short { display: none; }
 /* จอแคบ: แท็บล้นจอ → ขอบขวาจางลง (บอกว่าเลื่อนได้) · padding ท้ายให้แท็บสุดท้ายพ้นส่วนที่จางเมื่อเลื่อนสุด */
 @media (max-width: 640px) {
   .krok-tabscroll { padding-right: 28px; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 28px), transparent); }
   .krok-tabscroll > [role="tab"] { padding-left: 9px !important; padding-right: 9px !important; }
+  /* แท็บบนจอแคบ: ป้ายสั้น ไม่มีไอคอน → พอดีจอ (ชื่อเต็มอยู่ใน aria-label) */
+  .krok-tabscroll .krok-lbl-long { display: none; }
+  .krok-tabscroll .krok-lbl-short { display: inline; }
+  .krok-tabscroll > [role="tab"] > svg { display: none; }
 }
 
 /* ความกว้างหน้าแอป — ทุกหน้าใช้ค่าเดียวกัน (แถบบน + เนื้อหา) · ขอบซ้าย-ขวายืดตามจอ 16–32px */

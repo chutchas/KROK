@@ -84,7 +84,7 @@ export function SignaturePad({ hasSig, initialUrl, onSave, paper = false, compac
       )}
       </div>
       <div style={{ marginTop: 6 }}>
-        <Button onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); drawing.current = false; dirty.current = false; onSave(null); }}>{t("fw.sig.clear")}</Button>
+        <Button data-no-autofocus onClick={() => { const ctx = ref.current!.getContext("2d")!; ctx.clearRect(0, 0, ref.current!.width, ref.current!.height); drawing.current = false; dirty.current = false; onSave(null); }}>{t("fw.sig.clear")}</Button>
         {hasSig && <span style={{ marginLeft: 10, color: "var(--pass)", fontSize: ".82rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={Check} className="h-3.5 w-3.5" /> {t("fw.sig.signed")}</span>}
       </div>
     </>

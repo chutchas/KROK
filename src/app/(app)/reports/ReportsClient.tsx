@@ -203,10 +203,11 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
 
 function Selectable({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div>
-      <label style={{ fontWeight: 600, fontSize: ".82rem", display: "block", marginBottom: 5, color: "var(--ink-2)" }}>{label}</label>
+    // ป้ายครอบช่องเลือก → โปรแกรมอ่านหน้าจออ่านชื่อช่องได้
+    <label style={{ display: "block" }}>
+      <span style={{ fontWeight: 600, fontSize: ".82rem", display: "block", marginBottom: 5, color: "var(--ink-2)" }}>{label}</span>
       {children}
-    </div>
+    </label>
   );
 }
 

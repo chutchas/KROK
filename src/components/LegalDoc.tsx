@@ -30,7 +30,7 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
       <header style={{ borderBottom: "1px solid var(--line)", background: "var(--surface)", padding: "12px 0" }} className="no-print">
         <div style={{ maxWidth: 1180, margin: "0 auto", padding: "0 24px", display: "flex", alignItems: "center", gap: 10 }}>
           <Link href="/login" style={{ display: "inline-flex", alignItems: "center", gap: 8, color: "inherit", textDecoration: "none" }}>
-            <LogoMark size={26} variant="compact" title="KROK" />
+            <LogoMark size={28} title="KROK" />
             <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem" }}>KROK</b>
           </Link>
           <Link href={d.other.href} style={{ marginLeft: "auto", fontSize: ".86rem" }}>{d.other.label}</Link>
@@ -50,7 +50,7 @@ export default function LegalDoc({ docs }: { docs: Record<Lang, LegalContent> })
         <nav aria-label={ui.toc} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 10, padding: "12px 16px", margin: "18px 0 8px" }}>
           <b style={{ fontSize: ".86rem" }}>{ui.toc}</b>
           <ol style={{ margin: "6px 0 0", paddingLeft: 20, fontSize: ".88rem" }}>
-            {d.sections.map((s) => <li key={s.id}><a href={`#${s.id}`}>{s.title}</a></li>)}
+            {d.sections.map((s) => <li key={s.id}><a href={`#${s.id}`} className="krok-touch44">{s.title}</a></li>)}
           </ol>
         </nav>
 

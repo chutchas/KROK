@@ -238,6 +238,8 @@ export default function FillWizard(props: Props) {
       if (f.type === "pass_fail") return a.value === "fail";
       if (f.type === "number") { const v = parseFloat(String(a.value)); return Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max)); }
       if (f.type === "formula") return outOfRange(fv[f.id] ?? null, f);
+      // ตาราง: กฎเดียวกับตอนส่ง (คอลัมน์ผ่าน/ไม่ผ่านที่เลือก "ไม่ผ่าน" → ใบนี้ไม่ผ่าน)
+      if (f.type === "table") return finalizeTableRows(f, asRows(a.value)).fails.length > 0;
       return false;
     }));
   }, [schema, segStart, segEnd, hasFormula, calcFrom]);
@@ -697,8 +699,10 @@ export default function FillWizard(props: Props) {
       if (first) setTimeout(() => {
         const box = document.getElementById("fld-" + first.id);
         box?.scrollIntoView({ behavior: "smooth", block: "center" });
-        const ctl = box?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]), textarea, select, button:not([disabled])");
-        ctl?.focus({ preventScroll: true });
+        // ข้ามปุ่มลบ/ล้าง (data-no-autofocus) — กด Enter/Space ต่อทันทีแล้วลบของที่ทำไว้
+        const ctl = box?.querySelector<HTMLElement>("input:not([type=hidden]):not([disabled]):not([data-no-autofocus]), textarea, select, button:not([disabled]):not([data-no-autofocus])");
+        if (ctl) ctl.focus({ preventScroll: true });
+        else if (box) { box.tabIndex = -1; box.focus({ preventScroll: true }); }
       }, 30);
     }
     return Object.keys(errs).length === 0;
@@ -1205,7 +1209,7 @@ export default function FillWizard(props: Props) {
     const fvals = hasFormula ? calcFrom(reviewSnap) : {};
     let nFail = 0;
     let nMissPhoto = 0;
-    const show = (f: FormField): { text: string; tone?: "pass" | "fail" | "warn" | "muted"; note?: string } => {
+    const show = (f: FormField): { text: string; tone?: "pass" | "fail" | "warn" | "muted"; note?: string; detail?: string; failN?: number } => {
       const a = reviewSnap[f.id] || {};
       if (f.type === "pass_fail") {
         if (a.value === "fail") { nFail++; return { text: "✕ " + pfDisplay(f, a.value), tone: "fail", note: a.note?.trim() || undefined }; }
@@ -1221,7 +1225,13 @@ export default function FillWizard(props: Props) {
         return { text: tt("fw.review.photos", { n }) };
       }
       if (f.type === "signature") return sigs[f.id] ? { text: "✓ " + t("fw.review.signed"), tone: "pass" } : { text: t("fw.review.unsigned"), tone: f.required ? "warn" : "muted" };
-      if (f.type === "table") return { text: tt("fw.review.rows", { n: finalizeTableRows(f, asRows(a.value)).rows.length }) };
+      if (f.type === "table") {
+        const fin = finalizeTableRows(f, asRows(a.value));
+        if (!fin.fails.length) return { text: tt("fw.review.rows", { n: fin.rows.length }) };
+        // "ชื่อตาราง แถว 2: สภาพ" → "แถว 2: สภาพ" (ชื่อตารางอยู่ซ้ายแล้ว)
+        const detail = fin.fails.map((x) => (x.startsWith(f.label + " ") ? x.slice(f.label.length + 1) : x)).join(" · ");
+        return { text: "✕ " + tt("fw.review.rowsFail", { n: fin.fails.length }), tone: "fail", detail, failN: fin.fails.length };
+      }
       if (f.type === "formula") {
         const v = fvals[f.id] ?? null;
         if (outOfRange(v, f)) nFail++;
@@ -1243,6 +1253,7 @@ export default function FillWizard(props: Props) {
       return { text: a.value == null || a.value === "" ? "—" : String(a.value) };
     };
     const body = rows.map(({ st, si }) => ({ st, si, items: st.fields.filter((f) => !isUiOnlyField(f)).map((f) => ({ f, d: show(f) })) }));
+    const nTableFail = body.reduce((n, b) => n + b.items.reduce((m, it) => m + (it.d.failN ?? 0), 0), 0);
     const toneColor = { pass: "var(--pass-text)", fail: "#fff", warn: "var(--warn)", muted: "var(--ink-3)" } as const;
     const backTo = (si: number) => {
       setReviewing(false); setReviewReturn(true); setIdx(si); window.scrollTo(0, 0);
@@ -1251,9 +1262,9 @@ export default function FillWizard(props: Props) {
     return focusShell(
       <div className={reviewScope}>
         <h2 id="krok-review-h" tabIndex={-1} style={{ fontSize: "1.15rem", margin: "4px 0 10px", outline: "none" }}>{t("fw.review.title")}</h2>
-        {(nFail > 0 || nMissPhoto > 0) ? (
+        {(nFail + nTableFail > 0 || nMissPhoto > 0) ? (
           <Notice kind="error">
-            <b>{[nFail > 0 ? tt("fw.stampFail", { n: nFail }) : "", nMissPhoto > 0 ? tt("fw.review.missPhotos", { n: nMissPhoto }) : ""].filter(Boolean).join(" · ")}</b>
+            <b>{[nFail + nTableFail > 0 ? tt("fw.stampFail", { n: nFail + nTableFail }) : "", nMissPhoto > 0 ? tt("fw.review.missPhotos", { n: nMissPhoto }) : ""].filter(Boolean).join(" · ")}</b>
             <div style={{ fontSize: ".85rem" }}>{t("fw.review.checkFirst")}</div>
           </Notice>
         ) : (
@@ -1275,6 +1286,9 @@ export default function FillWizard(props: Props) {
                     <b style={{ flex: "0 1 auto", textAlign: "right", overflowWrap: "anywhere", color: d.tone ? toneColor[d.tone] : "var(--ink)", ...(d.tone === "muted" ? { fontWeight: 500 } : {}), ...(d.tone === "fail" ? { background: "var(--fail-solid)", borderRadius: 6, padding: "1px 8px" } : {}) }}>{d.text}</b>
                   </div>
                   {/* หมายเหตุของข้อไม่ผ่าน — สิ่งที่ผู้ตรวจทานต้องเห็นที่สุด */}
+                  {d.detail && (
+                    <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "var(--fail-soft)", color: "var(--ink)", fontSize: ".88rem", overflowWrap: "anywhere" }}>{d.detail}</div>
+                  )}
                   {d.note && (
                     <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "var(--fail-soft)", color: "var(--ink)", fontSize: ".88rem", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
                       <span style={{ color: "var(--fail-text)", fontWeight: 600 }}>{t("fw.review.note")}:</span> {d.note}
@@ -1325,6 +1339,7 @@ export default function FillWizard(props: Props) {
             href={canOpenDoc ? `/submission/${done.subId}` : undefined}
             thumbUrl={canOpenDoc ? `/api/submission/${done.subId}/thumb` : undefined}
             label={t("fill.doneDocNo")}
+            openLabel={t("fill.openDoc")}
           />
         )}
         {done.caseWarn && (
@@ -1771,8 +1786,10 @@ function fmtDuration(sec: number, tt: (k: "fw.durMin" | "fw.durSec", v: Record<s
 }
 
 /** ภาพย่อเอกสาร A4 บนหน้าส่งเสร็จ — หัวเอกสาร + เลขที่ + ตราผล (ภาพประกอบ ไม่ใช่เอกสารจริง) */
-function DoneDocCard({ title, docNo, userName, stamp, href, label, thumbUrl }: {
+function DoneDocCard({ title, docNo, userName, stamp, href, label, openLabel, thumbUrl }: {
   title: string; docNo: string; userName: string; label: string;
+  /** ชื่อลิงก์สำหรับโปรแกรมอ่านหน้าจอ เช่น "เปิดเอกสาร" (ตามด้วยเลขที่) */
+  openLabel: string;
   stamp: { tone: "pass" | "fail" | "warn"; text: string };
   href?: string;
   /** มี = ภาพย่อหน้าแรกของเอกสารจริง (PNG จากเซิร์ฟเวอร์ ~30KB) ทับภาพจำลองเมื่อโหลดเสร็จ · ล้มเหลว = ภาพจำลองต่อ */
@@ -1804,7 +1821,7 @@ function DoneDocCard({ title, docNo, userName, stamp, href, label, thumbUrl }: {
   );
   return (
     <div style={{ margin: "14px 0 6px" }}>
-      {href ? <a href={href} aria-label={docNo} style={{ display: "block", textDecoration: "none" }}>{body}</a> : body}
+      {href ? <a href={href} aria-label={`${openLabel} ${docNo} · ${stamp.text}`} style={{ display: "block", textDecoration: "none" }}>{body}</a> : body}
     </div>
   );
 }

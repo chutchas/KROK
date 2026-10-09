@@ -22,7 +22,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid, ShieldCheck } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -305,7 +305,7 @@ export default function AppShell({
 
           <div className="krok-brand" style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
             <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: "0 0 auto" }} aria-label="KROK">
-              <LogoMark size={26} variant="compact" title="KROK" />
+              <LogoMark size={28} title="KROK" />
               <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
             </Link>
           </div>
@@ -463,7 +463,7 @@ export default function AppShell({
           >
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--surface)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <LogoMark size={28} variant="compact" title="KROK" />
+                <LogoMark size={28} title="KROK" />
                 <div>
                   <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem", letterSpacing: ".02em" }}>KROK</b>
                   <small style={{ color: "var(--ink-3)", fontSize: ".7rem", display: "block", lineHeight: 1 }}>{tenantName}</small>
@@ -508,10 +508,15 @@ export default function AppShell({
               ].map((g) => {
                 const items = g.items;
                 if (items.length === 0) return null;
+                // เมนูผู้ดูแลแพลตฟอร์ม: แยกเป็นกล่องของตัวเอง ไม่ปนกับเมนูงานปกติ
+                const sys = g.labelKey === "grp.platform";
                 return (
-                  <div key={g.labelKey} style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
-                      {t(g.labelKey)}
+                  <div key={g.labelKey} style={sys
+                    ? { marginTop: 16, padding: "6px 4px 4px", border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface-2)" }
+                    : { marginTop: 12 }}>
+                    <div style={{ fontSize: ".68rem", color: sys ? "var(--ink-2)" : "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                      {sys && <Icon icon={ShieldCheck} className="h-3.5 w-3.5" />}
+                      {t(sys ? "grp.platformAdmin" : g.labelKey)}
                     </div>
                     {items.map((n) => {
                       const on = isActive(n.href);
@@ -524,6 +529,7 @@ export default function AppShell({
                           style={{
                             width: "100%",
                             padding: "10px 12px",
+                            minHeight: 44,
                             borderRadius: 9,
                             fontSize: ".95rem",
                             textDecoration: "none",

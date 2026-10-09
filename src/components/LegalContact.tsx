@@ -8,8 +8,8 @@ export default function LegalContact({ en = false }: { en?: boolean }) {
     <p>
       <b>{LEGAL.name}</b><br />
       {lines.map((l, i) => <span key={i}>{l}<br /></span>)}
-      {LEGAL.phone && <>{en ? "Tel" : "โทร"}: <a href={`tel:${tel}`}>{LEGAL.phone}</a><br /></>}
-      {en ? "Email" : "อีเมล"}: <a href={`mailto:${LEGAL.email}`}>{LEGAL.email}</a>
+      {LEGAL.phone && <>{en ? "Tel" : "โทร"}: <a href={`tel:${tel}`} className="krok-touch44">{LEGAL.phone}</a><br /></>}
+      {en ? "Email" : "อีเมล"}: <a href={`mailto:${LEGAL.email}`} className="krok-touch44">{LEGAL.email}</a>
     </p>
   );
 }
