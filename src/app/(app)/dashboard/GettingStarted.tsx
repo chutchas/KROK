@@ -51,6 +51,8 @@ export default function GettingStarted({ hasForms, firstSubId, canCreate }: { ha
                 </b>
                 {!s.done && <small style={{ color: "var(--ink-2)", fontSize: ".78rem" }}>{s.hint}</small>}
               </div>
+              {/* ขั้นที่ 3: ตัวอย่างเอกสาร A4 ย่อ — ให้เห็นผลลัพธ์ (จุดขาย) ตั้งแต่ยังไม่ได้ส่งใบแรก */}
+              {i === 2 && !s.done && <MiniA4 />}
               {!s.done && s.href && (
                 <Link href={s.href} onClick={s.onClick} className="inline-flex items-center gap-1.5"
                   style={{ minHeight: 44, padding: "0 14px", borderRadius: 9, flex: "0 0 auto", fontWeight: 600, fontSize: ".88rem", textDecoration: "none",
@@ -63,5 +65,23 @@ export default function GettingStarted({ hasForms, firstSubId, canCreate }: { ha
         })}
       </ol>
     </section>
+  );
+}
+
+/** เอกสาร A4 ย่อ (ภาพประกอบ ไม่ใช่ข้อมูลจริง): หัวเอกสาร · ช่องที่กรอกแล้ว · ผ่าน/ไม่ผ่าน · ลายเซ็น */
+function MiniA4() {
+  const line = (w: string, c = "#cbd5e1") => <span style={{ display: "block", height: 3, width: w, background: c, borderRadius: 2 }} />;
+  return (
+    <span aria-hidden className="krok-mini-a4" style={{ flex: "0 0 auto", width: 44, height: 62, boxSizing: "border-box", background: "#fff", border: "1px solid #d4d9e0", borderRadius: 3, boxShadow: "0 1px 4px rgba(15,23,42,.12)", padding: "6px 5px", display: "grid", alignContent: "start", gap: 4 }}>
+      {line("70%", "#334155")}
+      <span style={{ display: "block", height: 1, background: "#334155", marginBottom: 1 }} />
+      {line("90%")}{line("60%")}
+      <span style={{ display: "flex", gap: 2 }}>
+        <span style={{ flex: 1, height: 5, borderRadius: 1, background: "#bbf7d0", border: "1px solid #16a34a" }} />
+        <span style={{ flex: 1, height: 5, borderRadius: 1, border: "1px solid #cbd5e1" }} />
+      </span>
+      {line("80%")}
+      <span style={{ display: "block", height: 6, width: "55%", marginLeft: "auto", borderBottom: "1px solid #334155" }} />
+    </span>
   );
 }

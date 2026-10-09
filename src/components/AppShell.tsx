@@ -40,7 +40,9 @@ const PRIMARY: NavEntry[] = [
 ];
 
 // มือถือ: แถบเมนูล่างจอ — 3 เมนูแรกที่ role นี้เห็นตามลำดับนี้ (งานหน้างานก่อน) + "เมนูเพิ่มเติม" (เปิดเมนูข้าง)
+// แถบล่างมือถือ (3 ปุ่ม + เมนูเพิ่มเติม) เรียงตามบทบาท — คนหน้างาน: กรอก/อนุมัติ/แดชบอร์ด · ผู้จัดการ: กรอก/สร้างฟอร์ม/อนุมัติ
 const TAB_PRIORITY = ["/forms", "/approvals", "/dashboard", "/studio", "/reports", "/datasets"];
+const TAB_PRIORITY_MANAGER = ["/forms", "/studio", "/approvals", "/dashboard", "/reports", "/datasets"];
 
 // เมนูระบบ (ผู้ดูแลแพลตฟอร์ม) — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
 const PLATFORM: NavEntry[] = [
@@ -176,7 +178,7 @@ export default function AppShell({
   const isActive = (href: string) => href === activePrimary || href === activePlatform || hubs.some((h) => h.href === href && h.hubKey === activeHubKey);
   const activeSecondary = hubs.find((h) => h.hubKey === activeHubKey) ?? platform.find((n) => n.href === activePlatform);
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
-  const tabItems = TAB_PRIORITY.map((h) => primary.find((n) => n.href === h)).filter((n): n is NavEntry => !!n).slice(0, 3);
+  const tabItems = (canManage ? TAB_PRIORITY_MANAGER : TAB_PRIORITY).map((h) => primary.find((n) => n.href === h)).filter((n): n is NavEntry => !!n).slice(0, 3);
   // อยู่หน้าที่ไม่มีในแถบล่าง (ตั้งค่า, ชุดข้อมูล ฯลฯ) → ไฮไลต์ปุ่ม "เมนูเพิ่มเติม"
   const moreActive = !tabItems.some((n) => isActive(n.href));
 
@@ -308,7 +310,8 @@ export default function AppShell({
             onClick={() => setMenuOpen(true)}
             data-tour="menu"
             className={`krok-desk-only-btn krok-menu-btn inline-flex h-9 w-9 items-center justify-center rounded-xl${activeSecondary && !primary.some((n) => n.href === activeSecondary.href) ? " is-current" : ""}`}
-            aria-label={t("nav.menu")}
+            // หน้าที่อยู่ไม่มีในแถบเมนู → บอกโปรแกรมอ่านหน้าจอด้วยว่าอยู่หน้าไหนของเมนูนี้ (ไฮไลต์อย่างเดียวเห็นแค่ด้วยตา)
+            aria-label={activeSecondary && !primary.some((n) => n.href === activeSecondary.href) ? `${t("nav.menu")} — ${t(activeSecondary.key)}` : t("nav.menu")}
             title={t("nav.menu")}
             style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", flex: "0 0 auto" }}
           >
@@ -316,7 +319,7 @@ export default function AppShell({
           </button>
 
           <div className="krok-brand" style={{ display: "flex", alignItems: "center", minWidth: 0 }}>
-            <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: "0 0 auto" }} aria-label="KROK">
+            <Link href="/dashboard" style={{ display: "flex", alignItems: "center", gap: 8, textDecoration: "none", flex: "0 0 auto", minHeight: 44 }} aria-label="KROK">
               <LogoMark size={28} title="KROK" />
               <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.15rem", letterSpacing: ".02em" }}>KROK</b>
             </Link>

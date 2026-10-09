@@ -1,4 +1,4 @@
-import type { CSSProperties } from "react";
+import { useId, type CSSProperties } from "react";
 
 /**
  * KROK — โลโก้มาร์ค "Inspect Lens"
@@ -56,9 +56,10 @@ export function LogoMark({
   const compact = variant === "compact";
   const mono = tone === "mono";
   const [c1, c2, c3, ink] = mode === "auto" ? AUTO : PALETTE[mode];
-  // id ต้องต่างกันต่อชุดสี ไม่งั้น instance ที่ mode ต่างกันจะไปใช้ gradient ตัวแรกที่เจอ
-  const gid = `krokGrad-${mode}`;
-  const mid = "krokMask";
+  // id ต้องไม่ซ้ำต่อ instance — ถ้าซ้ำ url(#id) จะไปชี้ SVG ตัวแรกในหน้า (เช่นโลโก้ในแถบบนที่ถูกซ่อนบนหน้ากรอก → โลโก้หน้า "ไม่พบ" เหลือแค่เครื่องหมายถูก)
+  const uid = useId().replace(/:/g, "");
+  const gid = `krokGrad-${mode}-${uid}`;
+  const mid = `krokMask-${uid}`;
 
   return (
     <svg

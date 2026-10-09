@@ -6,6 +6,12 @@ import { getPlanCatalog } from "@/lib/plans-server";
 
 export const dynamic = "force-dynamic";
 
+/** ไม่ใช่ผู้ดูแลแพลตฟอร์ม = หน้า "ไม่พบ" → ชื่อแท็บต้องตรงกัน */
+export async function generateMetadata() {
+  const session = await getSession();
+  return { title: session?.isPlatformAdmin ? "ผู้ใช้ทั้งระบบ" : "ไม่พบหน้านี้" };
+}
+
 export default async function AdminUsersPage() {
   const session = await getSession();
   if (!session) return redirectNoSession();

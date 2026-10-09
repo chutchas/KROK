@@ -66,7 +66,8 @@ export const TOURS: TourDef[] = [
   {
     id: "studio",
     match: (p) => p === "/studio",
-    requires: "studio-tabs",
+    // แถบแท็บซ่อนเมื่อยังไม่มีฟอร์ม → เริ่มทัวร์จากปุ่มโหมดสร้าง (ขั้นแท็บข้ามเองเมื่อไม่เห็น)
+    requires: "studio-modes",
     steps: [
       { id: "tabs", target: "studio-tabs" },
       { id: "modes", target: "studio-modes" },
