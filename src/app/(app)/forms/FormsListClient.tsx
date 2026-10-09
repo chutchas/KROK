@@ -132,13 +132,14 @@ export default function FormsListClient({
         ]).map((x) => {
           const on = tab === x.k;
           return (
-            <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)} aria-label={`${x.label} ${x.n}`}
+            <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)} aria-label={x.n > 0 ? `${x.label} ${x.n}` : x.label}
               style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", minHeight: 44, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}
               <span className="krok-lbl-long">{x.label}</span><span className="krok-lbl-short">{x.short}</span>
-              <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>{x.n}</span>
+              {/* ตัวเลข 0 ไม่บอกอะไร — แสดงเฉพาะเมื่อมีรายการ */}
+              {x.n > 0 && <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>{x.n}</span>}
             </button>
           );
         })}

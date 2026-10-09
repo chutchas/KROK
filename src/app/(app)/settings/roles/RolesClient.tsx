@@ -82,7 +82,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
               {t("roles.canManage")}
             </label>
             <div>
-              <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")} <span style={{ color: "var(--ink-3)", fontSize: ".74rem" }}>· {t("roles.reportsAlways")}</span></div>
+              <div style={{ fontSize: ".82rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")} <span style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>· {t("roles.reportsAlways")}</span></div>
               <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                 {MENUS.map((m) => {
                   const on = newMenus.includes(m.key);
@@ -137,7 +137,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                       {t("roles.canManage")}
                     </label>
                   ) : null}
-                  <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")} <span style={{ color: "var(--ink-3)", fontSize: ".74rem" }}>· {t("roles.reportsAlways")}</span></div>
+                  <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("roles.menusLabel")} <span style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>· {t("roles.reportsAlways")}</span></div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     {MENUS.map((m) => {
                       const on = r.menus.includes(m.key);

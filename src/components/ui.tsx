@@ -124,7 +124,7 @@ function dropGuessedLabel(explicit: string | undefined) {
   };
 }
 
-export function Field(props: React.InputHTMLAttributes<HTMLInputElement>) {
+export function Field(props: React.ComponentProps<"input">) {
   return (
     <input
       {...props}

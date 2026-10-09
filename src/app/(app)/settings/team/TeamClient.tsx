@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -264,9 +264,13 @@ function TeamsSection({
     return m?.name || m?.email || t("team.memberFallback");
   }
 
+  const [nameErr, setNameErr] = useState(false);
+  const nameRef = useRef<HTMLInputElement>(null);
+
   async function add(e: React.FormEvent) {
     e.preventDefault();
-    if (!newName.trim()) return;
+    // ยังไม่ใส่ชื่อ: กดได้ แต่บอกเหตุผล + โฟกัสช่องชื่อ (เดิมปุ่มกดไม่ได้เฉย ๆ ไม่รู้ว่าทำไม)
+    if (!newName.trim()) { setNameErr(true); nameRef.current?.focus(); return; }
     setBusy(true);
     const res = await createTeam(newName);
     setBusy(false);
@@ -295,8 +299,10 @@ function TeamsSection({
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("team.teamsSub")}</p>
 
       <form onSubmit={add} style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        <Field value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("team.teamNamePlaceholder")} style={{ flex: 1, minWidth: 200 }} />
-        <Button variant="primary" type="submit" disabled={busy || !newName.trim()}>{t("team.addTeam")}</Button>
+        <Field ref={nameRef} value={newName} onChange={(e) => { setNewName(e.target.value); setNameErr(false); }} placeholder={t("team.teamNamePlaceholder")} aria-label={t("team.teamNamePlaceholder")}
+          aria-invalid={nameErr || undefined} aria-describedby={nameErr ? "team-name-err" : undefined} style={{ flex: 1, minWidth: 200 }} />
+        <Button variant="primary" type="submit" disabled={busy}>{t("team.addTeam")}</Button>
+        {nameErr && <span id="team-name-err" role="alert" style={{ flexBasis: "100%", fontSize: ".8rem", color: "var(--fail)" }}>{t("team.nameRequired")}</span>}
       </form>
 
       {teams.length === 0 && <p style={{ color: "var(--ink-3)", fontSize: ".85rem" }}>{t("team.noTeams")}</p>}

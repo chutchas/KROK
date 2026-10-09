@@ -691,6 +691,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     </div>
   );
 
+  const studioTabs = ([
+          { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
+          { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
+          { k: "all" as const, icon: FileText, label: `${t("studio.tabAll")} (${initialForms.length})` },
+        // ซ่อนแท็บที่ยังไม่มีอะไร: "แก้ไข" เมื่อยังไม่ได้เปิดฟอร์มไหน · "ทั้งหมด" เมื่อยังไม่มีฟอร์ม (แท็บที่เปิดอยู่แสดงเสมอ)
+        ]).filter((tb) => tb.k === tab || tb.k === "new" || (tb.k === "edit" ? !!draft : initialForms.length > 0));
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {toast && (
@@ -704,13 +710,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         </div>
       )}
       {/* แท็บหลัก 3 แท็บ */}
+      {/* เหลือแท็บเดียว (ยังไม่มีฟอร์ม) = ไม่ต้องมีแถบแท็บ */}
+      {studioTabs.length > 1 && (
       <div data-tour="studio-tabs" role="tablist" aria-label={t("nav.studio")} style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)" }}>
-        {([
-          { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
-          { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
-          { k: "all" as const, icon: FileText, label: `${t("studio.tabAll")} (${initialForms.length})` },
-        // ซ่อนแท็บที่ยังไม่มีอะไร: "แก้ไข" เมื่อยังไม่ได้เปิดฟอร์มไหน · "ทั้งหมด" เมื่อยังไม่มีฟอร์ม (แท็บที่เปิดอยู่แสดงเสมอ)
-        ]).filter((tb) => tb.k === tab || tb.k === "new" || (tb.k === "edit" ? !!draft : initialForms.length > 0)).map((tb) => {
+        {studioTabs.map((tb) => {
           const on = tab === tb.k;
           return (
             <button
@@ -727,6 +730,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           );
         })}
       </div>
+      )}
 
       {tab === "new" && (
       <>

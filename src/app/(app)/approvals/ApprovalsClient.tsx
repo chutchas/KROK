@@ -214,9 +214,8 @@ export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = t
     <div style={{ display: "grid", gap: 16 }}>
       <div>
         <h1 data-tour="appr-title" style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("appr.title")}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-          {subs.length ? tt("appr.count", { n: subs.length }) : t("appr.none")}
-        </p>
+        {/* ไม่มีรายการ = การ์ดด้านล่างบอกอยู่แล้ว (ไม่พูดซ้ำสองบรรทัด) */}
+        {subs.length > 0 && <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{tt("appr.count", { n: subs.length })}</p>}
       </div>
 
       {subs.length === 0 && (
