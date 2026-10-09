@@ -647,7 +647,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {toast && (
-        <div role="status" data-krok-keep="" style={{ position: "fixed", left: "50%", bottom: 24, transform: "translateX(-50%)", zIndex: 95, display: "flex", alignItems: "center", gap: 12, background: "var(--ink)", color: "var(--surface)", borderRadius: 10, padding: "10px 14px", boxShadow: "0 8px 24px rgba(0,0,0,.25)", fontSize: ".88rem", maxWidth: "calc(100vw - 32px)" }}>
+        <div role="status" data-krok-keep="" style={{ position: "fixed", left: "50%", bottom: "calc(24px + var(--krok-tabbar-h))", transform: "translateX(-50%)", zIndex: 95, display: "flex", alignItems: "center", gap: 12, background: "var(--ink)", color: "var(--surface)", borderRadius: 10, padding: "10px 14px", boxShadow: "0 8px 24px rgba(0,0,0,.25)", fontSize: ".88rem", maxWidth: "calc(100vw - 32px)" }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toast.msg}</span>
           {toast.undo && (
             <button type="button" onClick={doUndo} style={{ border: "none", background: "transparent", color: "var(--brand-stop-2)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", whiteSpace: "nowrap" }}>

@@ -13,8 +13,9 @@ import Icon from "@/components/Icon";
 import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
-  ChevronUp, ChevronDown, MapPin,
+  ChevronUp, ChevronDown, MapPin, Settings2,
 } from "lucide-react";
+import { confirmDialog } from "@/components/dialogs";
 import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
 import { answerPhotoKeys } from "@/lib/photo-slots";
 import { useT } from "@/i18n/LanguageProvider";
@@ -124,6 +125,9 @@ export default function DashboardClient({
   );
   const [builder, setBuilder] = useState<DashWidget | null>(null); // widget กำลังสร้าง/แก้
   const [dragId, setDragId] = useState<string | null>(null);
+  // โหมดจัดการการ์ด: ปุ่มเลื่อน/แก้/ลบ โผล่เฉพาะตอนเปิด (ปกติดูอย่างเดียว ไม่เสี่ยงกดลบพลาด)
+  const [managing, setManaging] = useState(false);
+  const editing = canEdit && managing;
 
   const formName = useMemo(() => {
     const m = new Map(forms.map((f) => [f.id, f.title]));
@@ -150,7 +154,10 @@ export default function DashboardClient({
     persist(exists ? widgets.map((x) => (x.id === w.id ? w : x)) : [...widgets, w]);
     setBuilder(null);
   }
-  function removeWidget(id: string) { persist(widgets.filter((x) => x.id !== id)); }
+  async function removeWidget(id: string) {
+    if (!(await confirmDialog({ message: t("dash.removeConfirm"), confirmLabel: t("common.delete" as never), danger: true }))) return;
+    persist(widgets.filter((x) => x.id !== id));
+  }
   /** ปุ่มเลื่อนขึ้น/ลง — ทางเลือกของการลาก (มือถือ/จอสัมผัส/คีย์บอร์ดลากไม่ได้) */
   function move(id: string, dir: -1 | 1) {
     // สลับกับ widget ข้าง ๆ ที่ "มองเห็น" (บางตัวถูกซ่อนเพราะผูกฟอร์มที่ไม่มีสิทธิ์)
@@ -201,7 +208,7 @@ export default function DashboardClient({
             {/* Workspace (owner/admin จัด) / ของฉัน */}
             <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 14, overflowX: "auto" }}>
               {(["ws", "mine"] as const).map((k) => (
-                <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); }}
+                <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); setManaging(false); }}
                   style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
                     color: tab === k ? "var(--accent-text)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
                   {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
@@ -220,14 +227,23 @@ export default function DashboardClient({
             )}
             {shown.length > 0 && (
               <>
-                <h2 style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.widgets")}</h2>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 10px", flexWrap: "wrap" }}>
+                  <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
+                  {canEdit && (
+                    <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
+                      className="inline-flex items-center gap-1.5"
+                      style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+                      {managing ? <><Icon icon={Check} className="h-4 w-4" /> {t("dash.manageDone")}</> : <><Icon icon={Settings2} className="h-4 w-4" /> {t("dash.manage")}</>}
+                    </button>
+                  )}
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
                   {shown.map((w, i) => (
-                    <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={canEdit} onDragStart={() => canEdit && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => canEdit && onDrop(w.id)}>
-                      <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t}
-                        onEdit={canEdit ? () => setBuilder(w) : undefined} onRemove={canEdit ? () => removeWidget(w.id) : undefined}
-                        onUp={canEdit && i > 0 ? () => move(w.id, -1) : undefined}
-                        onDown={canEdit && i < shown.length - 1 ? () => move(w.id, 1) : undefined} />
+                    <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={editing} onDragStart={() => editing && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => editing && onDrop(w.id)}>
+                      <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t} editing={editing}
+                        onEdit={editing ? () => setBuilder(w) : undefined} onRemove={editing ? () => void removeWidget(w.id) : undefined}
+                        onUp={editing && i > 0 ? () => move(w.id, -1) : undefined}
+                        onDown={editing && i < shown.length - 1 ? () => move(w.id, 1) : undefined} />
                     </div>
                   ))}
                 </div>
@@ -335,7 +351,9 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
 
 // ---------- การ์ด widget ----------
 type TFn = (k: never) => string;
-function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown, t }: {
+function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemove, onUp, onDown, t }: {
+  /** โหมดจัดการการ์ด: แถบปุ่มเลื่อน/แก้/ลบ ขนาดนิ้วกดได้ (44px) ใต้หัวการ์ด */
+  editing?: boolean;
   w: DashWidget; formName: (id: string) => string; areaName: (id: string) => string | null; en: boolean;
   /** ไม่มี = ดูอย่างเดียว (dashboard ของ workspace สำหรับสมาชิก) */
   onEdit?: () => void; onRemove?: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
@@ -364,15 +382,17 @@ function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown,
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".74rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
-        {(onUp || onDown) && (
-          <span style={{ display: "inline-flex", gap: 2 }}>
-            <button onClick={onUp} disabled={!onUp} title={t("dash.moveUp" as never)} aria-label={t("dash.moveUp" as never)} style={{ ...iconBtn, opacity: onUp ? 1 : 0.35, cursor: onUp ? "pointer" : "default" }}><Icon icon={ChevronUp} className="h-3.5 w-3.5" /></button>
-            <button onClick={onDown} disabled={!onDown} title={t("dash.moveDown" as never)} aria-label={t("dash.moveDown" as never)} style={{ ...iconBtn, opacity: onDown ? 1 : 0.35, cursor: onDown ? "pointer" : "default" }}><Icon icon={ChevronDown} className="h-3.5 w-3.5" /></button>
-          </span>
-        )}
-        {onEdit && <button onClick={onEdit} title={t("common.edit" as never)} aria-label={t("common.edit" as never)} style={iconBtn}><Icon icon={Pencil} className="h-3.5 w-3.5" /></button>}
-        {onRemove && <button onClick={onRemove} title={t("common.delete" as never)} aria-label={t("common.delete" as never)} style={iconBtn}><Icon icon={Trash2} className="h-3.5 w-3.5" /></button>}
       </div>
+      {editing && (
+        <div style={{ display: "flex", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
+          {/* ปุ่มที่ใช้ไม่ได้ (ใบแรก/ใบสุดท้าย) ซ่อนไว้แต่คงที่ว่าง — ปุ่มไม่กระโดดตำแหน่ง */}
+          <button onClick={onUp} disabled={!onUp} title={t("dash.moveUp" as never)} aria-label={t("dash.moveUp" as never)} style={{ ...iconBtn, visibility: onUp ? "visible" : "hidden" }}><Icon icon={ChevronUp} className="h-5 w-5" /></button>
+          <button onClick={onDown} disabled={!onDown} title={t("dash.moveDown" as never)} aria-label={t("dash.moveDown" as never)} style={{ ...iconBtn, visibility: onDown ? "visible" : "hidden" }}><Icon icon={ChevronDown} className="h-5 w-5" /></button>
+          <span style={{ flex: 1 }} />
+          {onEdit && <button onClick={onEdit} title={t("common.edit" as never)} aria-label={t("common.edit" as never)} style={iconBtn}><Icon icon={Pencil} className="h-[18px] w-[18px]" /></button>}
+          {onRemove && <button onClick={onRemove} title={t("common.delete" as never)} aria-label={t("common.delete" as never)} style={{ ...iconBtn, color: "var(--fail-text)" }}><Icon icon={Trash2} className="h-[18px] w-[18px]" /></button>}
+        </div>
+      )}
 
       <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
         {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
@@ -390,7 +410,8 @@ function WidgetCard({ w, formName, areaName, en, onEdit, onRemove, onUp, onDown,
   );
 }
 const iconBtn: React.CSSProperties = {
-  border: "1px solid var(--line)", background: "var(--surface)", borderRadius: 6, cursor: "pointer", padding: "4px", color: "var(--ink-2)", flexShrink: 0,
+  width: 44, height: 44, display: "inline-flex", alignItems: "center", justifyContent: "center",
+  border: "1px solid var(--line-strong)", background: "var(--surface)", borderRadius: 10, cursor: "pointer", color: "var(--ink-2)", flexShrink: 0,
 };
 
 function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "stat" }>; metric: WidgetMetric; en: boolean }) {

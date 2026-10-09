@@ -181,6 +181,11 @@ body {
     transform: rotate(360deg);
   }
 }
+/* ความสูงแถบเมนูล่างจอ (มือถือ, AppShell) — ของที่ลอย/ติดขอบล่างให้เว้นระยะนี้ */
+:root { --krok-tabbar-h: 0px; }
+@media (max-width: 640px) {
+  :root { --krok-tabbar-h: calc(57px + env(safe-area-inset-bottom, 0px)); }
+}
 /* placeholder: ค่าเริ่มต้นของเบราว์เซอร์จางเกิน (~3.4:1) → ใช้ --ink-3 (≥4.5:1 ทั้งสองธีม) · Firefox ใส่ opacity ทับเองจึงต้องตั้ง 1 */
 ::placeholder {
   color: var(--ink-3);
