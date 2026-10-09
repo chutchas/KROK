@@ -11,7 +11,8 @@ function apply(theme: Theme) {
   document.documentElement.setAttribute("data-theme", theme);
 }
 
-export default function ThemeToggle() {
+/** row = แถวในเมนูโปรไฟล์ (ไอคอน + ข้อความ) */
+export default function ThemeToggle({ row = false }: { row?: boolean } = {}) {
   const { t } = useT();
   const [theme, setTheme] = useState<Theme>("light");
 
@@ -41,6 +42,12 @@ export default function ThemeToggle() {
   }
 
   const isDark = theme === "dark";
+  if (row) return (
+    <button type="button" onClick={toggle} className="inline-flex items-center gap-2.5" style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", color: "var(--ink)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+      <span className={isDark ? "text-indigo-300" : "text-amber-700"} style={{ display: "inline-flex" }}><Icon icon={isDark ? MoonStar : SunMedium} className="h-[18px] w-[18px]" /></span>
+      {isDark ? t("theme.toLight") : t("theme.toDark")}
+    </button>
+  );
   return (
     <button
       onClick={toggle}

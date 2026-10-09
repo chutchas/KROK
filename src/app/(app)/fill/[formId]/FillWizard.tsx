@@ -41,7 +41,7 @@ import { Answer, DocRec, MediaPhotos, TableRow, asRows, dataUrlToBlob, shrinkIma
 import { firstBadRow, isChildRow, rowHasValue } from "./FillTable";
 import ChildFormPanel from "./ChildFormPanel";
 import { listChildLinks, type ChildLink } from "./child-actions";
-import { FieldControl, toCode } from "./FieldControl";
+import { FieldControl, toCode, fallbackFieldLabel } from "./FieldControl";
 import { PhotoStampProvider } from "./photo-stamp";
 import { useGeo } from "./useGeo";
 import { watermarkLines } from "@/lib/geo";
@@ -127,6 +127,8 @@ export default function FillWizard(props: Props) {
   /** คำตอบ ณ ตอนเปิดหน้าตรวจทาน (หน้าตรวจทานอ่านจาก state ไม่อ่าน ref ระหว่าง render) */
   const [reviewSnap, setReviewSnap] = useState<Record<string, Answer>>({});
   const [reviewReturn, setReviewReturn] = useState(false);
+  // เปิดหน้าตรวจทาน → ย้ายโฟกัสไปหัวข้อ (โปรแกรมอ่านหน้าจอประกาศว่าเปลี่ยนหน้า)
+  useEffect(() => { if (reviewing) document.getElementById("krok-review-h")?.focus({ preventScroll: true }); }, [reviewing]);
   // ส่งไม่สำเร็จ: แสดงแถบข้อความใกล้ปุ่มส่ง (เดิมไปติดที่ช่องแรกของขั้น — ผู้กรอกอยู่ท้ายหน้าเลยไม่เห็น)
   const [submitErr, setSubmitErr] = useState<string | null>(null);
   // ---- พิกัด GPS + ลายน้ำรูป (ตั้งต่อฟอร์ม) ----
@@ -228,8 +230,22 @@ export default function FillWizard(props: Props) {
       setPhotos((prev) => { const n = { ...prev }; if (d) n[k] = d; else delete n[k]; return n; });
     },
   }), [photos]);
+  // คำตอบที่ควรตรวจทานก่อนส่ง: ข้อไม่ผ่าน / ตัวเลขหรือสูตรนอกช่วง (ส่วนรูป/ลายเซ็นที่บังคับดูจาก state photos/sigs)
+  const answerIssues = useCallback((ans: Record<string, Answer>): boolean => {
+    const fv = hasFormula ? calcFrom(ans) : {};
+    return schema.steps.slice(Math.max(segStart, 0), segEnd + 1).some((st) => st.fields.some((f) => {
+      const a = ans[f.id] || {};
+      if (f.type === "pass_fail") return a.value === "fail";
+      if (f.type === "number") { const v = parseFloat(String(a.value)); return Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max)); }
+      if (f.type === "formula") return outOfRange(fv[f.id] ?? null, f);
+      return false;
+    }));
+  }, [schema, segStart, segEnd, hasFormula, calcFrom]);
+  /** มีข้อควรตรวจในคำตอบตอนนี้ (state — ใช้ทำป้ายปุ่มสุดท้ายระหว่าง render) */
+  const [ansIssue, setAnsIssue] = useState(() => answerIssues(((kase?.answers ?? seed?.answers) as Record<string, Answer>) ?? {}));
   // ค่าสูตรไม่เปลี่ยน → คืน state เดิม (ไม่ render ทั้งหน้าใหม่ทุกตัวอักษรที่พิมพ์ในช่องที่สูตรไม่ได้ใช้)
   const refreshFormulas = useCallback(() => {
+    setAnsIssue(answerIssues(answers.current)); // ค่าเดิม = ไม่ render ใหม่
     if (!hasFormula) return;
     const next = calcFrom(answers.current);
     setFormulaVals((prev) => {
@@ -237,7 +253,7 @@ export default function FillWizard(props: Props) {
       if (keys.length === Object.keys(prev).length && keys.every((k) => Object.is(prev[k], next[k]))) return prev;
       return next;
     });
-  }, [hasFormula, calcFrom]);
+  }, [hasFormula, calcFrom, answerIssues]);
 
   // merge a patch into an answer (ref-owned by this component)
   const patchAnswer = useCallback((id: string, patch: Partial<Answer>, render = false) => {
@@ -715,19 +731,18 @@ export default function FillWizard(props: Props) {
     setCaseModal("handoff");
   }
 
-  /** มีเรื่องที่ควรเห็นก่อนส่ง: ข้อไม่ผ่าน / ค่านอกช่วง / ช่องรูปหรือลายเซ็นที่ยังว่าง → เปิดหน้าตรวจทานให้เองแม้ฟอร์มไม่ได้ตั้ง */
-  function hasIssues(): boolean {
-    const fv = hasFormula ? calcFrom(answers.current) : {};
-    return schema.steps.slice(Math.max(segStart, 0), segEnd + 1).some((st) => st.fields.some((f) => {
-      const a = answers.current[f.id] || {};
-      if (f.type === "pass_fail") return a.value === "fail";
-      if (f.type === "photo") return filledPhotoKeys(f, (k) => !!photos[k]).length === 0;
-      if (f.type === "signature") return !sigs[f.id];
-      if (f.type === "number") { const v = parseFloat(String(a.value)); return Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max)); }
-      if (f.type === "formula") return outOfRange(fv[f.id] ?? null, f);
-      return false;
-    }));
-  }
+  /** ช่องรูป/ลายเซ็นที่บังคับแต่ยังว่าง (ช่องไม่บังคับไม่นับ — ว่างได้ตามปกติ) */
+  const missingRequiredMedia = schema.steps.slice(Math.max(segStart, 0), segEnd + 1).some((st) => st.fields.some((f) => {
+    if (!f.required) return false;
+    if (f.type === "photo") return filledPhotoKeys(f, (k) => !!photos[k]).length === 0;
+    if (f.type === "signature") return !sigs[f.id];
+    return false;
+  }));
+  /** มีเรื่องที่ควรเห็นก่อนส่ง → เปิดหน้าตรวจทานให้เองแม้ฟอร์มไม่ได้ตั้ง */
+  const hasIssues = () => answerIssues(answers.current) || missingRequiredMedia;
+  /** กดปุ่มสุดท้ายแล้วจะเปิดหน้าตรวจทาน (ใช้ทำป้ายปุ่ม) */
+  const willReview = !viewOnly && (idx >= maxIdx || reviewReturn) && !(wf && !isLastSeg && idx === segEnd)
+    && (!!schema.review || reviewReturn || ansIssue || missingRequiredMedia);
 
   async function next() {
     if (!validate(lockedStep(idx) ? [] : step.fields)) return;
@@ -1189,19 +1204,22 @@ export default function FillWizard(props: Props) {
     const fvals = hasFormula ? calcFrom(reviewSnap) : {};
     let nFail = 0;
     let nMissPhoto = 0;
-    const show = (f: FormField): { text: string; tone?: "pass" | "fail" | "warn" } => {
+    const show = (f: FormField): { text: string; tone?: "pass" | "fail" | "warn" | "muted"; note?: string } => {
       const a = reviewSnap[f.id] || {};
       if (f.type === "pass_fail") {
-        if (a.value === "fail") { nFail++; return { text: "✕ " + pfDisplay(f, a.value), tone: "fail" }; }
+        if (a.value === "fail") { nFail++; return { text: "✕ " + pfDisplay(f, a.value), tone: "fail", note: a.note?.trim() || undefined }; }
         if (a.value === "pass") return { text: "✓ " + pfDisplay(f, a.value), tone: "pass" };
         return { text: a.value ? pfDisplay(f, a.value) : "—" };
       }
       if (f.type === "photo") {
         const n = filledPhotoKeys(f, (k) => !!photos[k]).length;
-        if (!n) { nMissPhoto++; return { text: t("fw.review.noPhoto"), tone: "warn" }; }
+        if (!n) {
+          if (!f.required) return { text: t("fw.review.notAttached"), tone: "muted" }; // ไม่บังคับ = ว่างได้ ไม่นับเป็นปัญหา
+          nMissPhoto++; return { text: t("fw.review.noPhoto"), tone: "warn" };
+        }
         return { text: tt("fw.review.photos", { n }) };
       }
-      if (f.type === "signature") return sigs[f.id] ? { text: "✓ " + t("fw.review.signed"), tone: "pass" } : { text: t("fw.review.unsigned"), tone: "warn" };
+      if (f.type === "signature") return sigs[f.id] ? { text: "✓ " + t("fw.review.signed"), tone: "pass" } : { text: t("fw.review.unsigned"), tone: f.required ? "warn" : "muted" };
       if (f.type === "table") return { text: tt("fw.review.rows", { n: finalizeTableRows(f, asRows(a.value)).rows.length }) };
       if (f.type === "formula") {
         const v = fvals[f.id] ?? null;
@@ -1224,14 +1242,14 @@ export default function FillWizard(props: Props) {
       return { text: a.value == null || a.value === "" ? "—" : String(a.value) };
     };
     const body = rows.map(({ st, si }) => ({ st, si, items: st.fields.filter((f) => !isUiOnlyField(f)).map((f) => ({ f, d: show(f) })) }));
-    const toneColor = { pass: "var(--pass-text)", fail: "#fff", warn: "var(--warn)" } as const;
+    const toneColor = { pass: "var(--pass-text)", fail: "#fff", warn: "var(--warn)", muted: "var(--ink-3)" } as const;
     const backTo = (si: number) => {
       setReviewing(false); setReviewReturn(true); setIdx(si); window.scrollTo(0, 0);
       latest.current.idx = si;
     };
     return focusShell(
       <div className={reviewScope}>
-        <h2 style={{ fontSize: "1.15rem", margin: "4px 0 10px" }}>{t("fw.review.title")}</h2>
+        <h2 id="krok-review-h" tabIndex={-1} style={{ fontSize: "1.15rem", margin: "4px 0 10px", outline: "none" }}>{t("fw.review.title")}</h2>
         {(nFail > 0 || nMissPhoto > 0) ? (
           <Notice kind="error">
             <b>{[nFail > 0 ? tt("fw.stampFail", { n: nFail }) : "", nMissPhoto > 0 ? tt("fw.review.missPhotos", { n: nMissPhoto }) : ""].filter(Boolean).join(" · ")}</b>
@@ -1250,9 +1268,17 @@ export default function FillWizard(props: Props) {
                 )}
               </div>
               {items.map(({ f, d }) => (
-                <div key={f.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12, padding: "9px 14px", borderTop: "1px solid var(--line)", fontSize: ".92rem" }}>
-                  <span style={{ color: "var(--ink-2)", minWidth: 0, overflowWrap: "anywhere" }}>{f.label}</span>
-                  <b style={{ flex: "0 1 auto", textAlign: "right", overflowWrap: "anywhere", color: d.tone ? toneColor[d.tone] : "var(--ink)", ...(d.tone === "fail" ? { background: "var(--fail-solid)", borderRadius: 6, padding: "1px 8px" } : {}) }}>{d.text}</b>
+                <div key={f.id} style={{ padding: "9px 14px", borderTop: "1px solid var(--line)", fontSize: ".92rem" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 12 }}>
+                    <span style={{ color: "var(--ink-2)", minWidth: 0, overflowWrap: "anywhere" }}>{f.label || fallbackFieldLabel(f, t)}</span>
+                    <b style={{ flex: "0 1 auto", textAlign: "right", overflowWrap: "anywhere", color: d.tone ? toneColor[d.tone] : "var(--ink)", ...(d.tone === "muted" ? { fontWeight: 500 } : {}), ...(d.tone === "fail" ? { background: "var(--fail-solid)", borderRadius: 6, padding: "1px 8px" } : {}) }}>{d.text}</b>
+                  </div>
+                  {/* หมายเหตุของข้อไม่ผ่าน — สิ่งที่ผู้ตรวจทานต้องเห็นที่สุด */}
+                  {d.note && (
+                    <div style={{ marginTop: 6, padding: "6px 10px", borderRadius: 8, background: "var(--fail-soft)", color: "var(--ink)", fontSize: ".88rem", overflowWrap: "anywhere", whiteSpace: "pre-wrap" }}>
+                      <span style={{ color: "var(--fail-text)", fontWeight: 600 }}>{t("fw.review.note")}:</span> {d.note}
+                    </div>
+                  )}
                 </div>
               ))}
             </section>
@@ -1427,9 +1453,17 @@ export default function FillWizard(props: Props) {
       </span>
     )
     : draftState.kind === "local" && draftState.at ? (
-      <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
-        <Icon icon={CloudOff} className="h-3.5 w-3.5" /> {t("draft.savedLocal").replace("{t}", new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }))}
-      </span>
+      (() => {
+        const hm = new Date(draftState.at).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
+        const full = t("draft.savedLocal").replace("{t}", hm);
+        // แถบบนแคบ → ข้อความสั้น (เต็มอยู่ใน title / โปรแกรมอ่านหน้าจอ)
+        return (
+          <span title={focus ? full : undefined} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+            <Icon icon={CloudOff} className="h-3.5 w-3.5" />
+            {focus ? <><span aria-hidden>{t("draft.savedLocalShort").replace("{t}", hm)}</span><span className="sr-only">{full}</span></> : full}
+          </span>
+        );
+      })()
     )
     : null;
   const savedInBar = focus && !!savedStatus;
@@ -1693,8 +1727,9 @@ export default function FillWizard(props: Props) {
         {!(viewOnly && idx >= maxIdx) && (
           <Button data-tour="fill-submit" variant="primary" onClick={next} loading={submitting} disabled={mediaLoading && idx === maxIdx} style={actionBtn(true)}>
             {submitting ? t("fill.submitting")
-              : idx < maxIdx || viewOnly ? t("fill.next")
+              : viewOnly || (idx < maxIdx && !willReview) ? t("fill.next")
               : wf && !isLastSeg ? handoffLabel
+              : willReview ? t("fw.review.open")
               : <><Icon icon={CheckCircle2} className="h-[18px] w-[18px]" /> {t("fill.submit")}</>}
           </Button>
         )}
@@ -1745,6 +1780,9 @@ function DoneDocCard({ title, docNo, userName, stamp, href, label, pdfUrl }: {
   const [img, setImg] = useState<string | null>(null);
   useEffect(() => {
     if (!pdfUrl) return;
+    // เน็ตช้า / โหมดประหยัดเน็ต → ไม่ดึง PDF (~230KB) ใช้ภาพจำลองแทน
+    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    if (conn?.saveData || (conn?.effectiveType && /(^|-)(2g|3g)$/.test(conn.effectiveType))) return;
     let alive = true;
     (async () => {
       try {
@@ -1761,20 +1799,25 @@ function DoneDocCard({ title, docNo, userName, stamp, href, label, pdfUrl }: {
   }, [pdfUrl]);
   const color = stamp.tone === "pass" ? "#15803d" : stamp.tone === "fail" ? "#b91c1c" : "#b45309";
   const now = new Date();
-  const body = img ? (
-    <img src={img} alt={`${title} · ${docNo}`} style={{ display: "block", width: 220, maxWidth: "100%", height: "auto", margin: "0 auto", border: "1px solid #cbd5e1", borderRadius: 4, boxShadow: "0 12px 28px -14px rgba(15,23,42,.45)", background: "#fff" }} />
-  ) : (
-    <div style={{ position: "relative", width: 200, aspectRatio: "210 / 297", margin: "0 auto", background: "#fff", color: "#111", border: "1px solid #cbd5e1", borderRadius: 4, boxShadow: "0 12px 28px -14px rgba(15,23,42,.45)", padding: "14px 14px 12px", textAlign: "left", display: "flex", flexDirection: "column", gap: 6, overflow: "hidden" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 6, borderBottom: "1.5px solid #111", paddingBottom: 6 }}>
-        <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".72rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{title}</b>
-      </div>
-      <div style={{ fontSize: ".58rem", color: "#555", display: "grid", gap: 2 }}>
-        <span>{label} <b className="tabnum" style={{ color: "#111" }}>{docNo}</b></span>
-        <span className="tabnum">{now.toLocaleDateString("th-TH")} {now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</span>
-        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName}</span>
-      </div>
-      {[86, 70, 92, 64, 80, 58, 74].map((w, i) => <i key={i} style={{ display: "block", height: 4, width: `${w}%`, background: "#e2e8f0", borderRadius: 2 }} />)}
-      <span style={{ position: "absolute", right: 12, bottom: 26, transform: "rotate(-10deg)", border: `2px solid ${color}`, color, fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: ".78rem", padding: "2px 8px", borderRadius: 5, background: "rgba(255,255,255,.75)", whiteSpace: "nowrap" }}>{stamp.text}</span>
+  // กรอบ A4 ขนาดคงที่ 220px (ภาพจำลอง → ภาพจริง ไม่กระตุก) · ตราผลทับมุมล่างทั้งสองแบบ
+  const body = (
+    <div style={{ position: "relative", width: 220, maxWidth: "100%", aspectRatio: "210 / 297", margin: "0 auto", background: "#fff", color: "#111", border: "1px solid #cbd5e1", borderRadius: 4, boxShadow: "0 12px 28px -14px rgba(15,23,42,.45)", textAlign: "left", overflow: "hidden" }}>
+      {img ? (
+        <img src={img} alt={`${title} · ${docNo}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
+      ) : (
+        <div style={{ padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", gap: 6, borderBottom: "1.5px solid #111", paddingBottom: 6 }}>
+            <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".72rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{title}</b>
+          </div>
+          <div style={{ fontSize: ".58rem", color: "#555", display: "grid", gap: 2 }}>
+            <span>{label} <b className="tabnum" style={{ color: "#111" }}>{docNo}</b></span>
+            <span className="tabnum">{now.toLocaleDateString("th-TH")} {now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" })}</span>
+            <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName}</span>
+          </div>
+          {[86, 70, 92, 64, 80, 58, 74].map((w, i) => <i key={i} style={{ display: "block", height: 4, width: `${w}%`, background: "#e2e8f0", borderRadius: 2 }} />)}
+        </div>
+      )}
+      <span style={{ position: "absolute", right: 12, bottom: 26, transform: "rotate(-10deg)", border: `2px solid ${color}`, color, fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: ".78rem", padding: "2px 8px", borderRadius: 5, background: "rgba(255,255,255,.85)", whiteSpace: "nowrap" }}>{stamp.text}</span>
     </div>
   );
   return (

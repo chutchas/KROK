@@ -256,8 +256,8 @@ export default function AppShell({
         }
         .krok-desk-only{ display: contents; }
         /* ลิงก์ข้ามไปเนื้อหา: โผล่เมื่อกด Tab ครั้งแรก */
-        .krok-skip{ position: absolute; left: 8px; top: -60px; z-index: 100; padding: 10px 14px; border-radius: 8px; background: var(--surface); color: var(--ink); box-shadow: var(--shadow); font-weight: 600; text-decoration: none; }
-        .krok-skip:focus{ top: 8px; }
+        .krok-skip{ position: absolute; left: 8px; top: 8px; z-index: 100; padding: 10px 14px; border-radius: 8px; background: var(--surface); color: var(--ink); font-weight: 600; text-decoration: none; transform: translateY(-200%); opacity: 0; pointer-events: none; }
+        .krok-skip:focus{ transform: none; opacity: 1; pointer-events: auto; box-shadow: var(--shadow); }
         #krok-main:focus{ outline: none; }
         /* workspace ในเมนูข้าง: ปุ่มเต็มความกว้าง รายการกางในเมนูเลย (ไม่ลอยทับ) */
         .krok-drawer-ws .krok-ws-chip{ width: 100%; }
@@ -398,10 +398,10 @@ export default function AppShell({
                     </div>
                   </div>
                   {/* ธีม · ภาษา · แนะนำการใช้งาน — ย้ายจากแถบบน (ลดปุ่มบนแถบ) */}
-                  <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 10px 8px", borderBottom: "1px solid var(--line)", marginBottom: 4 }}>
-                    <ThemeToggle />
-                    <LanguageToggle />
-                    <span onClick={() => setProfileOpen(false)} style={{ display: "contents" }}><TourHelpButton /></span>
+                  <div style={{ display: "grid", paddingBottom: 4, borderBottom: "1px solid var(--line)", marginBottom: 4 }}>
+                    <ThemeToggle row />
+                    <LanguageToggle row />
+                    <span onClick={() => setProfileOpen(false)} style={{ display: "contents" }}><TourHelpButton row /></span>
                   </div>
                   <Link
                     href="/settings/profile"
