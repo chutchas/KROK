@@ -321,9 +321,20 @@
   .lp-screen-foot span:first-child { display: none; }
   .lp-screen-body .lp-q:last-child { display: none; }
   .lp-sheet-head b { font-size: 13px; }
+  /* มือถือ: มือถือในภาพบังครึ่งขวาของกระดาษ → เนื้อหากระดาษอยู่เฉพาะส่วนที่มองเห็น ไม่ให้ตัวหนังสือโดนตัดใต้มือถือ */
+  .lp-sheet-head, .lp-sheet-meta, .lp-sheet-rows { max-width: 108px; }
+  .lp-sheet-head .lp-doc-code, .lp-sheet-rows .lp-doc-code { display: none; }
+  .lp-sheet-rows div:nth-child(n+4) { display: none; } /* เหลือ 3 ข้อ · ตราประทับไม่ทับตัวหนังสือ */
+  .lp-sheet-meta { grid-template-columns: 1fr; gap: 4px; }
+  .lp-sheet-meta > :nth-child(even) { display: none; }
+  .lp-sheet-rows div { padding: 5px 0; line-height: 1.35; }
   .lp-btn { flex: 1 1 auto; }
   .lp-cta-btns { width: 100%; }
 }
 @media (max-width: 520px) {
   .lp-nav-start { display: none; }
+  .lp-sheet { left: 0; width: 214px; }
+  .lp-phone { width: 206px; height: 430px; }
+  .lp-stamp-fail { font-size: 12px; left: 14px; }
+  .lp-shot { display: none; } /* ให้ปุ่มล่างของมือถือในภาพอยู่ในจอ */
 }

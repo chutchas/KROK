@@ -377,6 +377,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
   onEdit?: () => void; onRemove?: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
 }) {
   const [res, setRes] = useState<WidgetResult | null>(null);
+  const [attempt, setAttempt] = useState(0); // กด "ลองใหม่" → คำนวณการ์ดนี้ใหม่
   const key = `${w.format}|${w.formId}|${w.metric}|${w.range}`;
   useEffect(() => {
     let active = true;
@@ -384,7 +385,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
     loadWidget(w).then((r) => { if (active) setRes(r); });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [key, attempt]);
 
   const isArea = w.format === "area";
   const fIcon = isArea ? MapPin : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
@@ -414,7 +415,12 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
 
       <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
         {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
-        {res && "error" in res && <div style={{ color: "var(--fail)", fontSize: ".82rem" }}><StoredErr text={res.error} /></div>}
+        {res && "error" in res && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "var(--fail-text)", fontSize: ".82rem" }}>
+            <StoredErr text={res.error} />
+            <button type="button" onClick={() => setAttempt((n) => n + 1)} style={{ minHeight: 44, padding: "0 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--accent-text)", fontWeight: 600, fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer" }}>{t("common.retry" as never)}</button>
+          </div>
+        )}
         {res && !("error" in res) && (
           <>
             {res.kind === "stat" && <StatView res={res} metric={w.metric} en={en} />}

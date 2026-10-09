@@ -353,6 +353,7 @@ export const en: Record<MessageKey, string> = {
   "common.loading": "Loading…",
   "common.delete": "Delete",
   "common.edit": "Edit",
+  "common.retry": "Try again",
   "common.close": "Close",
   "scan.title": "Scan QR / barcode",
   "scan.hint": "Point the camera at the code — it reads automatically",

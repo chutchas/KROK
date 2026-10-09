@@ -1,6 +1,7 @@
 "use client";
 import { backdropClose } from "@/lib/backdrop";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import { useSearchParams } from "next/navigation";
 import { X } from "lucide-react";
 import Icon from "@/components/Icon";
@@ -41,15 +42,10 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
 
-  // ปิด modal ด้วย Esc
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open]);
+  // หน้าต่างเข้าสู่ระบบ: โฟกัสเข้าไปในกล่อง · Tab วนในกล่อง · Esc ปิด · ปิดแล้วโฟกัสกลับปุ่มที่เปิด
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const closeLogin = useCallback(() => setOpen(false), []);
+  useDialogA11y(dialogRef, closeLogin, { active: open });
 
   return (
     <div className="lp" style={{ minHeight: "100dvh" }}>
@@ -114,20 +110,21 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
           }}
         >
           {/* margin auto = อยู่กลางจอเมื่อพอที่ แต่ไม่กระโดดตามความสูงคีย์บอร์ดมือถือ (align-items:center ทำให้กล่องขยับทุกครั้งที่คีย์บอร์ดเปลี่ยนขนาด) */}
-          <div onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, position: "relative", margin: "auto 0" }}>
+          <div ref={dialogRef} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, position: "relative", margin: "auto 0" }}>
+            <LoginForm embedded />
+            {/* ปุ่มปิดอยู่ในกรอบ (เดิมล้นขอบครึ่งปุ่ม) · อยู่หลังฟอร์มใน DOM → โฟกัสแรกตกที่ช่องกรอก */}
             <button
               type="button"
               onClick={() => setOpen(false)}
-              aria-label="close"
+              aria-label={t("common.close")}
               style={{
-                position: "absolute", top: -6, right: -6, zIndex: 1, width: 34, height: 34, borderRadius: 999,
-                border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer",
-                display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "var(--shadow)",
+                position: "absolute", top: 6, right: 6, zIndex: 1, width: 44, height: 44, borderRadius: 999,
+                border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer",
+                display: "flex", alignItems: "center", justifyContent: "center",
               }}
             >
               <Icon icon={X} className="h-5 w-5" />
             </button>
-            <LoginForm embedded />
           </div>
         </div>
       )}

@@ -137,42 +137,42 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
         <form onSubmit={submit} style={{ display: "grid", gap: 14 }}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
-              <label style={label}>{t("profile.firstName")}</label>
-              <Field value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
+              <label htmlFor="pf-first" style={label}>{t("profile.firstName")}</label>
+              <Field id="pf-first" value={form.first_name} onChange={(e) => set("first_name", e.target.value)} />
             </div>
             <div>
-              <label style={label}>{t("profile.lastName")}</label>
-              <Field value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
+              <label htmlFor="pf-last" style={label}>{t("profile.lastName")}</label>
+              <Field id="pf-last" value={form.last_name} onChange={(e) => set("last_name", e.target.value)} />
             </div>
           </div>
 
           <div>
-            <label style={label}>{t("profile.email")}</label>
-            <Field value={form.email} readOnly disabled style={{ opacity: 0.7 }} />
+            <label htmlFor="pf-email" style={label}>{t("profile.email")}</label>
+            <Field id="pf-email" value={form.email} readOnly disabled style={{ opacity: 0.7 }} />
             <p style={{ color: "var(--ink-3)", fontSize: ".76rem", margin: "4px 0 0" }}>{t("profile.emailReadonly")}</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
-              <label style={label}>{t("profile.phone")}</label>
-              <Field value={form.phone} onChange={(e) => set("phone", e.target.value)} inputMode="tel" placeholder="08x-xxx-xxxx" />
+              <label htmlFor="pf-phone" style={label}>{t("profile.phone")}</label>
+              <Field id="pf-phone" value={form.phone} onChange={(e) => set("phone", e.target.value)} inputMode="tel" placeholder="08x-xxx-xxxx" />
             </div>
             <div>
-              <label style={label}>{t("profile.position")}</label>
-              <Field value={form.position} onChange={(e) => set("position", e.target.value)} placeholder="เช่น หัวหน้ากะ / QA" />
+              <label htmlFor="pf-position" style={label}>{t("profile.position")}</label>
+              <Field id="pf-position" value={form.position} onChange={(e) => set("position", e.target.value)} placeholder="เช่น หัวหน้ากะ / QA" />
             </div>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
             <div>
-              <label style={label}>{t("profile.role")}</label>
+              <span style={{ ...label, display: "block" }}>{t("profile.role")}</span>
               <div style={{ padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface-2, var(--code-bg))", color: "var(--ink-2)", fontSize: ".95rem" }}>
                 {roleLabel}
               </div>
             </div>
             <div>
-              <label style={label}>{t("profile.language")}</label>
-              <select
+              <label htmlFor="pf-lang" style={label}>{t("profile.language")}</label>
+              <select id="pf-lang"
                 value={form.language}
                 onChange={(e) => set("language", e.target.value)}
                 style={{ width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" }}

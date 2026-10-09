@@ -742,7 +742,8 @@ export default function FillWizard(props: Props) {
   const hasIssues = () => answerIssues(answers.current) || missingRequiredMedia;
   /** กดปุ่มสุดท้ายแล้วจะเปิดหน้าตรวจทาน (ใช้ทำป้ายปุ่ม) */
   const willReview = !viewOnly && (idx >= maxIdx || reviewReturn) && !(wf && !isLastSeg && idx === segEnd)
-    && (!!schema.review || reviewReturn || ansIssue || missingRequiredMedia);
+    // ไม่นับช่องบังคับที่ยังว่าง: กดแล้วจะขึ้น error ให้กรอกก่อน ไม่ได้เปิดหน้าตรวจทาน
+    && (!!schema.review || reviewReturn || ansIssue);
 
   async function next() {
     if (!validate(lockedStep(idx) ? [] : step.fields)) return;
@@ -1322,7 +1323,7 @@ export default function FillWizard(props: Props) {
             userName={props.userName}
             stamp={done.pending ? { tone: "warn", text: t("fw.stampPending") } : done.result === "pass" ? { tone: "pass", text: t("fw.stampPass") } : { tone: "fail", text: tt("fw.stampFail", { n: done.fails.length }) }}
             href={canOpenDoc ? `/submission/${done.subId}` : undefined}
-            pdfUrl={canOpenDoc ? `/api/submission/${done.subId}/pdf` : undefined}
+            thumbUrl={canOpenDoc ? `/api/submission/${done.subId}/thumb` : undefined}
             label={t("fill.doneDocNo")}
           />
         )}
@@ -1770,42 +1771,20 @@ function fmtDuration(sec: number, tt: (k: "fw.durMin" | "fw.durSec", v: Record<s
 }
 
 /** ภาพย่อเอกสาร A4 บนหน้าส่งเสร็จ — หัวเอกสาร + เลขที่ + ตราผล (ภาพประกอบ ไม่ใช่เอกสารจริง) */
-function DoneDocCard({ title, docNo, userName, stamp, href, label, pdfUrl }: {
+function DoneDocCard({ title, docNo, userName, stamp, href, label, thumbUrl }: {
   title: string; docNo: string; userName: string; label: string;
   stamp: { tone: "pass" | "fail" | "warn"; text: string };
   href?: string;
-  /** มี = ดึง PDF จริงมาวาดหน้าแรกแทนภาพจำลอง (ระหว่างรอ/ล้มเหลว = ภาพจำลอง) */
-  pdfUrl?: string;
+  /** มี = ภาพย่อหน้าแรกของเอกสารจริง (PNG จากเซิร์ฟเวอร์ ~30KB) ทับภาพจำลองเมื่อโหลดเสร็จ · ล้มเหลว = ภาพจำลองต่อ */
+  thumbUrl?: string;
 }) {
-  const [img, setImg] = useState<string | null>(null);
-  useEffect(() => {
-    if (!pdfUrl) return;
-    // เน็ตช้า / โหมดประหยัดเน็ต → ไม่ดึง PDF (~230KB) ใช้ภาพจำลองแทน
-    const conn = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
-    if (conn?.saveData || (conn?.effectiveType && /(^|-)(2g|3g)$/.test(conn.effectiveType))) return;
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch(pdfUrl);
-        if (!res.ok) return;
-        const buf = await res.arrayBuffer();
-        // โหลดตัววาด PDF เฉพาะตอนถึงหน้าส่งเสร็จ (ไม่ถ่วงหน้ากรอก)
-        const { pdfFirstPageImage } = await import("@/lib/pdf-to-image");
-        const url = await pdfFirstPageImage(buf, 220);
-        if (alive) setImg(url);
-      } catch { /* ใช้ภาพจำลองต่อ */ }
-    })();
-    return () => { alive = false; };
-  }, [pdfUrl]);
+  const [loaded, setLoaded] = useState(false);
   const color = stamp.tone === "pass" ? "#15803d" : stamp.tone === "fail" ? "#b91c1c" : "#b45309";
   const now = new Date();
   // กรอบ A4 ขนาดคงที่ 220px (ภาพจำลอง → ภาพจริง ไม่กระตุก) · ตราผลทับมุมล่างทั้งสองแบบ
   const body = (
     <div style={{ position: "relative", width: 220, maxWidth: "100%", aspectRatio: "210 / 297", margin: "0 auto", background: "#fff", color: "#111", border: "1px solid #cbd5e1", borderRadius: 4, boxShadow: "0 12px 28px -14px rgba(15,23,42,.45)", textAlign: "left", overflow: "hidden" }}>
-      {img ? (
-        <img src={img} alt={`${title} · ${docNo}`} style={{ display: "block", width: "100%", height: "100%", objectFit: "cover", objectPosition: "top" }} />
-      ) : (
-        <div style={{ padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
+      <div aria-hidden={loaded || undefined} style={{ padding: "14px 14px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
           <div style={{ display: "flex", justifyContent: "space-between", gap: 6, borderBottom: "1.5px solid #111", paddingBottom: 6 }}>
             <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".72rem", lineHeight: 1.25, overflow: "hidden", display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical" }}>{title}</b>
           </div>
@@ -1815,7 +1794,10 @@ function DoneDocCard({ title, docNo, userName, stamp, href, label, pdfUrl }: {
             <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{userName}</span>
           </div>
           {[86, 70, 92, 64, 80, 58, 74].map((w, i) => <i key={i} style={{ display: "block", height: 4, width: `${w}%`, background: "#e2e8f0", borderRadius: 2 }} />)}
-        </div>
+      </div>
+      {thumbUrl && (
+        <img src={thumbUrl} alt={`${title} · ${docNo}`} onLoad={() => setLoaded(true)} onError={() => setLoaded(false)}
+          style={{ position: "absolute", inset: 0, display: "block", width: "100%", height: "100%", objectFit: "cover", objectPosition: "top", background: "#fff", opacity: loaded ? 1 : 0, transition: "opacity .25s" }} />
       )}
       <span style={{ position: "absolute", right: 12, bottom: 26, transform: "rotate(-10deg)", border: `2px solid ${color}`, color, fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: ".78rem", padding: "2px 8px", borderRadius: 5, background: "rgba(255,255,255,.85)", whiteSpace: "nowrap" }}>{stamp.text}</span>
     </div>

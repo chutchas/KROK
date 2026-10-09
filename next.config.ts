@@ -29,13 +29,18 @@ const nextConfig: NextConfig = {
 
   // pdfkit อ่านไฟล์ฟอนต์มาตรฐาน (.afm) จาก __dirname ตอน runtime → ห้าม bundle
   // ให้ require จาก node_modules ตรง ๆ เพื่อให้ path ข้อมูลไม่พัง
-  serverExternalPackages: ["pdfkit", "nodemailer"],
+  serverExternalPackages: ["pdfkit", "nodemailer", "@napi-rs/canvas"],
 
   // ให้ไฟล์ที่ API อ่านตอน runtime ถูกรวมไปกับ serverless/standalone function:
   // - ฟอนต์ไทย Garuda สำหรับสร้าง PDF ใบส่งฟอร์ม
   // - โฟลเดอร์ข้อมูลฟอนต์มาตรฐานของ pdfkit (.afm)
   outputFileTracingIncludes: {
     "/api/submission/[id]/pdf": [
+      "./src/assets/fonts/**",
+      "./node_modules/pdfkit/js/data/**",
+    ],
+    // ภาพย่อหน้าส่งเสร็จ: สร้าง PDF เดียวกัน แล้ววาดหน้าแรกด้วย pdfjs
+    "/api/submission/[id]/thumb": [
       "./src/assets/fonts/**",
       "./node_modules/pdfkit/js/data/**",
     ],

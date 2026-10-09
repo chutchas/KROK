@@ -355,6 +355,7 @@ export const th = {
   "common.loading": "กำลังโหลด…",
   "common.delete": "ลบ",
   "common.edit": "แก้ไข",
+  "common.retry": "ลองใหม่",
   "common.close": "ปิด",
   "scan.title": "สแกน QR / บาร์โค้ด",
   "scan.hint": "เล็งกล้องไปที่โค้ด ระบบจะอ่านให้อัตโนมัติ",

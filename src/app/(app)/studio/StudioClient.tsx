@@ -824,6 +824,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                           promptRef.current?.focus({ preventScroll: true });
                         });
                       }}
+                      className="krok-touch44"
                       style={{ fontSize: ".82rem", padding: "7px 13px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", lineHeight: 1.35 }}
                     >
                       {lang === "en" ? it.en : it.th}
