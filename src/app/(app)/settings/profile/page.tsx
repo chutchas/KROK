@@ -10,6 +10,8 @@ import DeleteAccountCard from "./DeleteAccountCard";
 import TwoFactorCard from "./TwoFactorCard";
 import PushCard from "./PushCard";
 
+export const metadata = { title: "โปรไฟล์" };
+
 export const dynamic = "force-dynamic";
 
 export default async function ProfilePage() {

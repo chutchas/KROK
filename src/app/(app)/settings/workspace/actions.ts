@@ -77,7 +77,7 @@ export async function saveBranding(input: { logo_url?: string | null; primary?: 
     updated_at: new Date().toISOString(),
     updated_by: session.userId,
   });
-  if (error) return { error: /tenant_branding/.test(error.message) ? "ยังไม่ได้รัน migration 0056_branding" : error.message };
+  if (error) return { error: /tenant_branding/.test(error.message) ? "ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK" : error.message };
 
   await writeAudit({
     tenant_id: session.tenantId,
@@ -101,7 +101,7 @@ export async function listBrandLibrary(): Promise<{ assets: BrandAsset[] } | { e
     return { assets: await getBrandLibrary(supabase, getAdminClient() ?? supabase, session.tenantId) };
   } catch (e) {
     const m = e instanceof Error ? e.message : String(e);
-    return { error: /bucket|not found/i.test(m) ? "ยังไม่ได้รัน migration 0056_branding" : m };
+    return { error: /bucket|not found/i.test(m) ? "ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK" : m };
   }
 }
 

@@ -9,6 +9,8 @@ import { getTenantPlan, getTenantPool, getPendingPlanChange } from "@/lib/quota"
 import { getEffectivePlans } from "@/lib/plans-server";
 import { cheapestWith } from "@/lib/plans";
 
+export const metadata = { title: "เชื่อมต่อระบบ" };
+
 export const dynamic = "force-dynamic";
 
 export default async function IntegrationsPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {

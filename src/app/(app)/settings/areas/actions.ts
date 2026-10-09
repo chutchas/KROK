@@ -32,7 +32,7 @@ export async function listAreas(includeInactive = false): Promise<{ areas: AreaR
   let q = supabase.from("workspace_areas").select(COLS).eq("tenant_id", session.tenantId).order("sort").order("name");
   if (!includeInactive) q = q.eq("active", true);
   const { data, error } = await q;
-  if (error) return missingTable(error.message || "") ? { error: await sm("ยังไม่ได้รัน migration 0072"), missing: true } : { error: await sm(dbError(error)) };
+  if (error) return missingTable(error.message || "") ? { error: await sm("ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK"), missing: true } : { error: await sm(dbError(error)) };
   return { areas: (data || []) as AreaRow[] };
 }
 

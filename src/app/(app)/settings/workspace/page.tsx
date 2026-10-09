@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import { getWorkspaceBranding } from "@/lib/branding";
 import WorkspaceClient from "./WorkspaceClient";
 
+export const metadata = { title: "Workspace" };
+
 export const dynamic = "force-dynamic";
 
 export default async function WorkspaceSettingsPage() {

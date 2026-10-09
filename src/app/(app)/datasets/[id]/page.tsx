@@ -7,6 +7,8 @@ import DatasetDetailClient, { type SyncRun } from "./DatasetDetailClient";
 import { getTenantPlan } from "@/lib/quota";
 import { MAX_DATASET_ROWS } from "@/lib/datasets";
 
+export const metadata = { title: "ชุดข้อมูล" };
+
 export const dynamic = "force-dynamic";
 
 const PREVIEW_ROWS = 300;

@@ -3,6 +3,8 @@ import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import RolesClient, { type RoleRow } from "./RolesClient";
 
+export const metadata = { title: "บทบาท" };
+
 export const dynamic = "force-dynamic";
 
 export default async function RolesPage() {

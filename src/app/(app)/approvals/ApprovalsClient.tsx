@@ -74,7 +74,7 @@ const selectStyle: React.CSSProperties = {
   background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".92rem", maxWidth: "100%",
 };
 
-export default function ApprovalsClient({ initial, isOwner }: { initial: PendingSub[]; myId: string; isOwner: boolean }) {
+export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = true }: { initial: PendingSub[]; myId: string; isOwner: boolean; hasApprovalForms?: boolean }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [subs, setSubs] = useState(initial);
@@ -221,7 +221,14 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
 
       {subs.length === 0 && (
         <Card>
-          <div style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Icon icon={PartyPopper} className="h-5 w-5" /> {t("appr.cleared")}</div>
+          {hasApprovalForms || initial.length > 0 ? (
+            <div style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Icon icon={PartyPopper} className="h-5 w-5" /> {t("appr.cleared")}</div>
+          ) : (
+            <div style={{ textAlign: "center", padding: "20px 0", display: "grid", gap: 6, justifyItems: "center" }}>
+              <b>{t("appr.noneSetTitle")}</b>
+              <span style={{ color: "var(--ink-2)", fontSize: ".88rem", maxWidth: 440 }}>{t("appr.noneSetBody")}</span>
+            </div>
+          )}
         </Card>
       )}
 

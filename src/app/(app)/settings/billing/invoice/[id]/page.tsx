@@ -6,6 +6,8 @@ import { getEffectivePlans } from "@/lib/plans-server";
 import PrintButton from "@/app/(app)/submission/[id]/PrintButton";
 import { T } from "@/i18n/T";
 
+export const metadata = { title: "ใบแจ้งหนี้" };
+
 export const dynamic = "force-dynamic";
 
 function fmt(ts: string) {

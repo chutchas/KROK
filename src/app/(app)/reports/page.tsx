@@ -2,6 +2,8 @@ import { canManage, enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ReportsClient, { type ReportFormOpt } from "./ReportsClient";
 
+export const metadata = { title: "รายงาน" };
+
 export const dynamic = "force-dynamic";
 
 export default async function ReportsPage() {

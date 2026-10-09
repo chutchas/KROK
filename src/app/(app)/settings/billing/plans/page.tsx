@@ -1,6 +1,8 @@
 import BillingClient from "../BillingClient";
 import { loadBilling } from "../load";
 
+export const metadata = { title: "เลือกแพ็กเกจ" };
+
 export const dynamic = "force-dynamic";
 
 // แท็บ "แพ็กเกจ" — เปรียบเทียบ/เลือกซื้อ

@@ -7,6 +7,8 @@ import QuotaBanner from "@/components/QuotaBanner";
 import type { DashWidget } from "@/lib/dashboard-meta";
 import DashboardClient, { type SubRow, type FormOpt, type Summary, type AreaOpt } from "./DashboardClient";
 
+export const metadata = { title: "แดชบอร์ด" };
+
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {

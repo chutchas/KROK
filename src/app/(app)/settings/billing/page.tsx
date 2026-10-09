@@ -1,6 +1,8 @@
 import BillingClient from "./BillingClient";
 import { loadBilling } from "./load";
 
+export const metadata = { title: "แพ็กเกจ" };
+
 export const dynamic = "force-dynamic";
 
 // แท็บ "แผนปัจจุบัน/โควตา" (กลับจากหน้าชำระเงินก็มาที่นี่: ?invoice= / ?card=)

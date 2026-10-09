@@ -82,7 +82,7 @@ export default function TemplateGallery({ onUse }: { onUse: (id: string) => void
           const s = tpl.schema;
           const open = openId === tpl.id;
           return (
-            <div key={tpl.id} style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 16, background: "var(--surface)", display: "flex", flexDirection: "column", minWidth: 0 }}>
+            <div key={tpl.id} className="krok-tpl-card" style={{ border: "1px solid var(--line)", borderRadius: 12, padding: 16, background: "var(--surface)", display: "flex", flexDirection: "column", minWidth: 0 }}>
               <div style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                 <FormIcon value={s.icon} size={42} />
                 <div style={{ flex: 1, minWidth: 0 }}>
@@ -118,7 +118,8 @@ export default function TemplateGallery({ onUse }: { onUse: (id: string) => void
               )}
 
               <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                <Button variant="primary" onClick={() => onUse(tpl.id)} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                {/* ปุ่มเงียบ — การ์ด 28 ใบที่ปุ่มสีหลักเท่ากันหมดแย่งสายตา ไม่มีอันไหนเด่น */}
+                <Button onClick={() => onUse(tpl.id)} style={{ flex: 1, display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
                   <Icon icon={Plus} className="h-4 w-4" /> {t("templates.use")}
                 </Button>
                 <Button variant="ghost" onClick={() => setOpenId(open ? null : tpl.id)} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: ".82rem" }}>
@@ -129,7 +130,7 @@ export default function TemplateGallery({ onUse }: { onUse: (id: string) => void
           );
         })}
       </div>
-      <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; min-width:0 !important; } }`}</style>
+      <style>{`@media(max-width:640px){ .krok-typefilter{ width:100%; min-width:0 !important; } } .krok-tpl-card{ transition: border-color .15s } .krok-tpl-card:hover, .krok-tpl-card:focus-within{ border-color: var(--accent) !important; }`}</style>
     </div>
   );
 }

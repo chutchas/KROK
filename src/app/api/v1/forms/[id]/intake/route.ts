@@ -164,7 +164,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const r = await createIntakeCase(admin, form, schema, co.answers, { ref, sourceName, assignee });
   if ("error" in r) {
     if (r.duplicate) return json({ ok: true, duplicate: true, type: "job", ref });
-    if (/form_cases|ext_ref/.test(r.error)) return json({ error: "ยังไม่ได้เปิดใช้การเปิดงานจาก API (ต้องรัน migration 0033 และ 0034)" }, 501);
+    if (/form_cases|ext_ref/.test(r.error)) return json({ error: "ยังไม่ได้เปิดใช้การเปิดงานจาก API — ติดต่อผู้ดูแลระบบ KROK" }, 501);
     return json({ error: r.error }, 500);
   }
   return json({ ok: true, type: "job", id: r.id, ref, missing, assigned_to: r.holder ?? (r.team ? `ทีม ${r.team}` : "ผู้ดูแล"), ignored: co.ignored }, 201);

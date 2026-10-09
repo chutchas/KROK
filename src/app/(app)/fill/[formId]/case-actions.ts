@@ -31,7 +31,7 @@ interface CaseRow {
 function errMsg(e: { message?: string } | null): string {
   const m = e?.message || "ทำรายการไม่สำเร็จ";
   // ยังไม่ได้รัน migration 0033
-  if (/case_\w+|form_cases/.test(m) && /does not exist|not find|schema cache/i.test(m)) return "ยังไม่ได้เปิดใช้ฟอร์มกรอกหลายคน (ต้องรัน migration 0033)";
+  if (/case_\w+|form_cases/.test(m) && /does not exist|not find|schema cache/i.test(m)) return "ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK";
   return m;
 }
 

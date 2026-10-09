@@ -28,7 +28,7 @@ export async function reviewSubmission(
   const { data, error } = await supabase.rpc("review_submission", { p_id: id, p_decision: decision, p_note: note.slice(0, 500) });
   if (error || !data) {
     const m = error?.message || "อนุมัติไม่สำเร็จ";
-    return { error: /review_submission/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ยังไม่ได้รัน migration 0036_review_rpc.sql" : m };
+    return { error: /review_submission/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK" : m };
   }
   const r = data as { status: "pending" | "approved" | "rejected"; step: number; advanced: boolean; form_id: string; form_title: string; tenant_id: string };
   if (r.tenant_id !== session.tenantId) return { error: await sm("ไม่พบรายการ") };

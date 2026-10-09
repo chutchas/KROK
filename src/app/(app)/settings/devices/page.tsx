@@ -4,6 +4,8 @@ import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import DevicesClient, { type DeviceRow, type LockedForm } from "./DevicesClient";
 
+export const metadata = { title: "อุปกรณ์" };
+
 export const dynamic = "force-dynamic";
 
 export default async function DevicesPage() {

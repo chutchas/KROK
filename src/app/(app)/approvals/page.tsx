@@ -6,6 +6,8 @@ import type { PendingSub } from "./ApprovalsClient";
 import type { OpenItem } from "@/lib/areas";
 import { buildEvidence } from "@/lib/approval-queue";
 
+export const metadata = { title: "อนุมัติ" };
+
 export const dynamic = "force-dynamic";
 
 export default async function ApprovalsPage() {
@@ -62,5 +64,12 @@ export default async function ApprovalsPage() {
     })),
   }));
 
-  return <ApprovalsClient initial={slim} myId={session.userId} isOwner={session.role === "owner"} />;
+  // ไม่มีใบรอ: แยก "ยังไม่มีฟอร์มที่ตั้งให้อนุมัติ" ออกจาก "อนุมัติหมดแล้ว" (ไม่ฉลองตอนยังไม่ได้ตั้งอะไร)
+  let hasApprovalForms = true;
+  if (!slim.length) {
+    const { count } = await supabase.from("forms").select("id", { count: "exact", head: true })
+      .eq("tenant_id", session.tenantId).eq("requires_approval", true).is("deleted_at", null);
+    hasApprovalForms = (count ?? 0) > 0;
+  }
+  return <ApprovalsClient initial={slim} myId={session.userId} isOwner={session.role === "owner"} hasApprovalForms={hasApprovalForms} />;
 }
