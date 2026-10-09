@@ -235,7 +235,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
       {!embedded && header}
 
       <Card>
-        <h2 style={{ fontSize: "1.2rem", marginBottom: 4 }}>
+        <h2 style={{ fontSize: "1.2rem", marginBottom: 4, paddingRight: embedded ? 40 : undefined }}>
           {mode === "mfa" ? t("mfa.loginTitle") : mode === "signin" ? t("login.signin") : mode === "reset" ? t("login.resetTitle") : isInvite ? t("login.inviteTitle") : t("login.signupTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>
@@ -330,7 +330,7 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
           </>}
           {mode === "signin" && (
             <button type="button" onClick={() => { setMode("reset"); setMsg(null); }}
-              style={{ justifySelf: "end", marginTop: -4, background: "none", border: "none", padding: 0, color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem" }}>
+              style={{ justifySelf: "end", margin: "-12px -8px -8px 0", minHeight: 44, background: "none", border: "none", padding: "0 8px", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem" }}>
               {t("login.forgot")}
             </button>
           )}
