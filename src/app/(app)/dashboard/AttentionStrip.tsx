@@ -70,8 +70,10 @@ function Tile({ icon, tone, label, count, capped, none, footer, children }: {
 }) {
   const hot = count > 0;
   return (
-    <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderLeft: `3px solid ${hot ? tone : "var(--line)"}`, borderRadius: 12, padding: "12px 14px", minWidth: 0, display: "flex", flexDirection: "column" }}>
+    <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "12px 14px", minWidth: 0, display: "flex", flexDirection: "column" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 7, color: hot ? tone : "var(--ink-3)", fontSize: ".82rem", fontWeight: 600 }}>
+        {/* จุดสี = มีเรื่องต้องดู (แทนแถบซ้าย) · ไอคอน+ชื่อบอกชนิด */}
+        <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", flex: "0 0 auto", background: hot ? tone : "var(--line-strong)" }} />
         <Icon icon={icon} className="h-4 w-4" /> {label}
       </div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.2, margin: "4px 0 2px", color: hot ? "var(--ink)" : "var(--ink-3)" }}>

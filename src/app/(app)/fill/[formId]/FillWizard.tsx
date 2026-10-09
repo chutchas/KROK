@@ -1176,7 +1176,7 @@ export default function FillWizard(props: Props) {
           <p style={{ color: "var(--warn)", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
         )}
         {done.fails.length > 0 && (
-          <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>
+          <div style={{ border: "1px solid color-mix(in srgb, var(--fail) 30%, transparent)", background: "var(--fail-soft)", borderRadius: 10, padding: "10px 14px", textAlign: "left", color: "var(--ink-2)", fontSize: ".9rem", margin: "14px 0" }}>
             {done.fails.map((f, i) => (
               <div key={i}>• {f}</div>
             ))}
