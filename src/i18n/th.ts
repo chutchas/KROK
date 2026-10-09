@@ -1545,6 +1545,8 @@ export const th = {
   "sub.footer": "สร้างโดย KROK · ฟอร์มดิจิทัลหน้างาน",
   "sub.print": "พิมพ์",
   "sub.printSavePdf": "พิมพ์ / บันทึกเป็น PDF",
+  "sub.a4PdfFail": "สร้างไฟล์ PDF แบบ A4 ไม่สำเร็จ — เปิดหน้าพิมพ์แล้วเลือก \"บันทึกเป็น PDF\" แทนได้",
+  "sub.a4PdfOpenPrint": "เปิดหน้าพิมพ์ A4",
   "sub.creatingPdf": "กำลังสร้าง PDF...",
   "sub.downloadPdf": "ดาวน์โหลด PDF",
   "appr.stepN": "ขั้น {n}",

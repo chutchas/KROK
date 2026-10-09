@@ -20,8 +20,11 @@ const pdfResponse = (pdf: Buffer | Uint8Array, docNo: string) =>
   });
 
 /**
- * PDF ของใบที่ส่งแล้ว = เอกสาร A4 (กระดาษแผ่นเดียวกับตอนกรอก/ตอนพิมพ์) — วาดด้วย Chromium ฝั่ง server
- * ?format=summary = PDF แบบรายการคำตอบ (pdfkit) · Chromium ใช้ไม่ได้ก็ถอยมาใช้แบบรายการ (ผู้ใช้ได้ไฟล์เสมอ)
+ * PDF ของใบที่ส่งแล้ว ตามแท็บที่ผู้ใช้เปิดอยู่
+ *   (ค่าเริ่มต้น)    = เอกสาร A4 (กระดาษแผ่นเดียวกับตอนกรอก/ตอนพิมพ์) — วาดด้วย Chromium ฝั่ง server
+ *   ?format=summary = แบบรายการคำตอบ (pdfkit)
+ * A4 สร้างไม่สำเร็จ → 503 พร้อมเหตุผล (ไม่ส่งแบบรายการมาแทน — หน้าตาจะไม่ตรงกับแท็บที่เปิด)
+ * หน้าเว็บจะให้เปิดหน้าพิมพ์ A4 แล้วบันทึกเป็น PDF จากเบราว์เซอร์แทน
  */
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -36,7 +39,9 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
       const pdf = await renderDocWithChromium(id, "pdf");
       return pdfResponse(pdf, docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }));
     } catch (e) {
-      console.error("[krok] A4 PDF (chromium) failed — falling back to summary PDF:", e);
+      console.error("[krok] A4 PDF (chromium) failed:", e);
+      const reason = (e instanceof Error ? e.message : String(e)).replace(/\s+/g, " ").slice(0, 200);
+      return NextResponse.json({ error: "a4_failed", reason }, { status: 503, headers: { "Cache-Control": "no-store" } });
     }
   }
   const r = await renderSubmissionPdf(id);
