@@ -412,7 +412,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
                           )
                         )}
                         {ev.photoTotal > ev.photos.length && (
-                          <Link href={`/submission/${s.id}`} style={{ alignSelf: "center", fontSize: ".8rem" }}>{tt("appr.morePhotos", { n: ev.photoTotal - ev.photos.length })}</Link>
+                          <Link href={`/submission/${s.id}?from=approvals`} style={{ alignSelf: "center", fontSize: ".8rem" }}>{tt("appr.morePhotos", { n: ev.photoTotal - ev.photos.length })}</Link>
                         )}
                       </div>
                     )}
@@ -435,7 +435,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
                   </div>
                 ))}
               </div>
-              <Link href={`/submission/${s.id}`} style={{ fontSize: ".85rem", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8, minHeight: TAP }}>{t("appr.openDoc").replace(/[→\s]*$/, "")} <Icon icon={ArrowRight} className="h-3.5 w-3.5" /></Link>
+              <Link href={`/submission/${s.id}?from=approvals`} style={{ fontSize: ".85rem", display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8, minHeight: TAP }}>{t("appr.openDoc").replace(/[→\s]*$/, "")} <Icon icon={ArrowRight} className="h-3.5 w-3.5" /></Link>
             </details>
 
             <TextArea

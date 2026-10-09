@@ -1,6 +1,6 @@
 "use client";
 import { InlineFormIcon } from "@/components/FormIcon";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -46,13 +46,44 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
     return { formId, from: d.from, to: d.to, result, approval };
   }
 
+  // จำตัวกรองล่าสุดในแท็บนี้ — กดดูเอกสารแล้วกลับมา ได้ผลการค้นหาเดิม (ค้นใหม่ให้ข้อมูลล่าสุด)
+  const KEY = "krok_report_filters_v1";
+  function filtersOf(v: { formId: string; preset: Preset; from: string; to: string; result: string; approval: string }) {
+    const now = new Date();
+    let d: { from?: string; to?: string } = {};
+    if (v.preset === "custom") d = { from: v.from || undefined, to: v.to || undefined };
+    else if (v.preset === "month") d = { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
+    else if (v.preset !== "all") { const days = v.preset === "7d" ? 7 : 30; d = { from: ymd(new Date(now.getTime() - days * 864e5)), to: ymd(now) }; }
+    return { formId: v.formId, from: d.from, to: d.to, result: v.result, approval: v.approval };
+  }
+
   async function search() {
+    try { sessionStorage.setItem(KEY, JSON.stringify({ formId, preset, from, to, result, approval })); } catch { /* ไม่มี storage = ไม่จำ */ }
+    await runSearch(filters());
+  }
+
+  async function runSearch(f: ReturnType<typeof filters>) {
     setBusy(true); setMsg(null);
-    const res = await previewReport(filters());
+    const res = await previewReport(f);
     setBusy(false);
     if ("error" in res) { setMsg({ t: res.error, err: true }); setPreview(null); return; }
     setPreview(res);
   }
+
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    let saved: { formId?: string; preset?: Preset; from?: string; to?: string; result?: string; approval?: string } | null = null;
+    try { saved = JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch { saved = null; }
+    if (!saved) return;
+    const f = { formId: saved.formId && (saved.formId === "all" || forms.some((x) => x.id === saved!.formId)) ? saved.formId : "all", preset: saved.preset || "30d", from: saved.from || "", to: saved.to || "", result: saved.result || "all", approval: saved.approval || "all" };
+    /* eslint-disable react-hooks/set-state-in-effect -- คืนค่าจาก sessionStorage ได้หลัง mount เท่านั้น */
+    setFormId(f.formId); setPreset(f.preset); setFrom(f.from); setTo(f.to); setResult(f.result); setApproval(f.approval);
+    /* eslint-enable react-hooks/set-state-in-effect */
+    void runSearch(filtersOf(f));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // แสดงแถวถัดไป (ทีละ 100)
   async function loadMore() {
@@ -199,10 +230,10 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
                 <tbody>
                   {preview.rows.map((r) => (
                     // ทั้งแถวกดเปิดเอกสารได้ · ลิงก์ที่ชื่อฟอร์มสำหรับคีย์บอร์ด/โปรแกรมอ่านหน้าจอ/เปิดแท็บใหม่
-                    <tr key={r.id} className="krok-rep-row" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) return; router.push(`/submission/${r.id}`); }}
+                    <tr key={r.id} className="krok-rep-row" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) return; router.push(`/submission/${r.id}?from=reports`); }}
                       style={{ borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
                       <td style={td}>{fmtWhen(r.when)}</td>
-                      <td style={td}><a href={`/submission/${r.id}`} style={{ color: "inherit", textDecoration: "none" }}><InlineFormIcon value={r.icon} size={15} />{r.form}</a></td>
+                      <td style={td}><a href={`/submission/${r.id}?from=reports`} style={{ color: "inherit", textDecoration: "none" }}><InlineFormIcon value={r.icon} size={15} />{r.form}</a></td>
                       <td style={td}>{r.user}</td>
                       <td style={td}>
                         {r.result === "fail"
