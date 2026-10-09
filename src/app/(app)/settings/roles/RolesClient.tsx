@@ -1,4 +1,5 @@
 "use client";
+import { roleLabel } from "@/lib/role-label";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
@@ -115,7 +116,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                   <Icon icon={owner ? Lock : ShieldCheck} className="h-4 w-4" />
                 </div>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <b style={{ fontSize: "1rem" }}>{r.name}</b>
+                  <b style={{ fontSize: "1rem" }}>{roleLabel(r.key, r.name, t)}</b>
                   {r.isSystem && <span style={{ fontSize: ".7rem", color: "var(--ink-3)", marginLeft: 6 }}>{t("roles.system")}</span>}
                   <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{t("roles.memberCount").replace("{n}", String(r.memberCount))}</small>
                 </div>

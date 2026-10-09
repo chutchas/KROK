@@ -42,10 +42,10 @@ const okKey = (k: unknown, max: number) => typeof k === "string" && /^[A-Za-z0-9
 export async function savePushSubscription(sub: { endpoint?: unknown; keys?: { p256dh?: unknown; auth?: unknown } }, ua: string): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (!vapidKeys()) return { error: await sm("ระบบยังไม่ได้ตั้งค่าแจ้งเตือนเด้ง (VAPID) — ติดต่อผู้ดูแลระบบ") };
+  if (!vapidKeys()) return { error: await sm("ระบบยังไม่ได้เปิดการแจ้งเตือนเด้ง — ติดต่อผู้ดูแลระบบ KROK") };
   if (!isPushEndpoint(sub?.endpoint) || !okKey(sub?.keys?.p256dh, 200) || !okKey(sub?.keys?.auth, 100)) return { error: await sm("ข้อมูลการแจ้งเตือนของเครื่องไม่ถูกต้อง") };
   const admin = getAdminClient();
-  if (!admin) return { error: await sm("ระบบยังไม่ได้ตั้งค่าแจ้งเตือนเด้ง (VAPID) — ติดต่อผู้ดูแลระบบ") };
+  if (!admin) return { error: await sm("ระบบยังไม่ได้เปิดการแจ้งเตือนเด้ง — ติดต่อผู้ดูแลระบบ KROK") };
   if (await rateLimited(`push-save:${session.userId}`, 20, 3600)) return { error: await sm("ทำรายการถี่เกินไป — ลองใหม่ภายหลัง") };
   const [{ data: same }, { count }] = await Promise.all([
     admin.from("push_subscriptions").select("user_id, p256dh, auth").eq("endpoint", sub.endpoint as string).maybeSingle(),
@@ -89,7 +89,7 @@ export async function sendTestPush(endpoint: string): Promise<{ ok: true } | { e
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
   const admin = getAdminClient();
-  if (!admin || !vapidKeys()) return { error: await sm("ระบบยังไม่ได้ตั้งค่าแจ้งเตือนเด้ง (VAPID) — ติดต่อผู้ดูแลระบบ") };
+  if (!admin || !vapidKeys()) return { error: await sm("ระบบยังไม่ได้เปิดการแจ้งเตือนเด้ง — ติดต่อผู้ดูแลระบบ KROK") };
   if (!isPushEndpoint(endpoint)) return { error: await sm("ไม่พบเครื่องนี้ในรายการ — กดเปิดแจ้งเตือนอีกครั้ง") };
   if (await rateLimited(`push-test:${session.userId}`, 10, 600)) return { error: await sm("ทำรายการถี่เกินไป — ลองใหม่ภายหลัง") };
   const r = await sendToUser(admin, session.userId, { title: "KROK", body: "ทดสอบแจ้งเตือน — เครื่องนี้รับแจ้งเตือนได้แล้ว", url: "/settings/profile", tag: "krok-test" }, endpoint);

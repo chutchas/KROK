@@ -737,7 +737,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       <Card>
         <div>
           {/* หัวข้อตามโหมดที่เลือก (AI / จากไฟล์ / จากเทมเพลต) */}
-          <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}</h1>
+          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}</p>
         </div>
 
@@ -1059,7 +1059,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {tab === "all" && (
       <Card>
         {flash && <div role="status" style={{ marginBottom: 12 }}><Notice>{flash}</Notice></div>}
-        <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("studio.allFormsTitle")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
 
         {/* ค้นหา + กรองประเภท */}

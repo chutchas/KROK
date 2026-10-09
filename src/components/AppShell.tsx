@@ -184,6 +184,8 @@ export default function AppShell({
   const tabItems = (canManage ? TAB_PRIORITY_MANAGER : TAB_PRIORITY).map((h) => primary.find((n) => n.href === h)).filter((n): n is NavEntry => !!n).slice(0, canManage ? TAB_COUNT_MANAGER : TAB_COUNT);
   // อยู่หน้าที่ไม่มีในแถบล่าง (ตั้งค่า, ชุดข้อมูล ฯลฯ) → ไฮไลต์ปุ่ม "เมนูเพิ่มเติม"
   const moreActive = !tabItems.some((n) => isActive(n.href));
+  // ชื่อหน้าปัจจุบันสำหรับปุ่ม "เมนูเพิ่มเติม" (หน้าตั้งค่า / รายงาน / ชุดข้อมูล ฯลฯ ที่ไม่มีในแถบล่าง)
+  const currentEntry = activeSecondary ?? primary.find((n) => n.href === activePrimary);
 
   // มือถือ: แถบเมนูเลื่อนแนวนอนได้ → เลื่อนให้แท็บที่ active มาอยู่ในจอเสมอ (ไม่ต้องปัดหาเอง)
   // เลื่อนเฉพาะแถบเมนู (scrollTo) ไม่ใช้ scrollIntoView ซึ่งจะเลื่อนทั้งหน้าด้วย
@@ -601,7 +603,7 @@ export default function AppShell({
           })}
           <button type="button" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen}
             // หน้าที่อยู่ไม่มีในแถบล่าง → บอกโปรแกรมอ่านหน้าจอด้วย (เหมือนปุ่ม ☰)
-            aria-label={moreActive && activeSecondary ? `${t("nav.more")} — ${t(activeSecondary.key)}` : t("nav.more")}
+            aria-label={moreActive && currentEntry ? `${t("nav.more")} — ${t(currentEntry.key)}` : t("nav.more")}
             style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: ".75rem", fontWeight: moreActive ? 700 : 500, color: moreActive ? "var(--accent-text)" : "var(--ink-2)" }}>
             <Icon icon={LayoutGrid} className="h-[22px] w-[22px]" />
             <span>{t("nav.more")}</span>

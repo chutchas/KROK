@@ -1,4 +1,5 @@
 "use client";
+import { roleLabel } from "@/lib/role-label";
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, Field, Notice } from "@/components/ui";
@@ -118,7 +119,7 @@ export default function TeamClient({
           <Field type="email" placeholder={t("team.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
           <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} aria-label={t("team.inviteRoleSel")} style={selstyle}>
             {inviteOptions.map((r) => (
-              <option key={r.key} value={r.key}>{r.name}</option>
+              <option key={r.key} value={r.key}>{roleLabel(r.key, r.name, t)}</option>
             ))}
           </select>
           <Button variant="primary" type="submit" loading={busy}>{t("team.invite")}</Button>
@@ -186,7 +187,8 @@ export default function TeamClient({
             const isMe = m.user_id === me;
             const curKey = m.role_key || (m.role === "operator" ? "user" : m.role);
             const canEditThis = curKey === "owner" ? canOwner : true;
-            const roleName = roleOptions.find((r) => r.key === curKey)?.name || curKey;
+            const ro = roleOptions.find((r) => r.key === curKey);
+            const roleName = ro ? roleLabel(ro.key, ro.name, t) : curKey;
             const options = canOwner ? roleOptions : roleOptions.filter((r) => r.key !== "owner");
             return (
               <div key={m.user_id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
@@ -213,7 +215,7 @@ export default function TeamClient({
                     style={selstyle}
                   >
                     {options.map((r) => (
-                      <option key={r.key} value={r.key}>{r.name}</option>
+                      <option key={r.key} value={r.key}>{roleLabel(r.key, r.name, t)}</option>
                     ))}
                   </select>
                 ) : (

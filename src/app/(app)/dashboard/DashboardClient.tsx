@@ -359,6 +359,7 @@ export default function DashboardClient({
 
 // ---------- การ์ดสรุป (มี progress) ----------
 function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; label: string; used: number; max: number; sub?: string }) {
+  const { t } = useT();
   const unlimited = max >= 999999;
   const pct = unlimited ? 0 : Math.min(100, Math.round((used / Math.max(1, max)) * 100));
   const over = !unlimited && used >= max;
@@ -369,7 +370,7 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
       </div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, margin: "6px 0 8px" }}>
         <span style={{ fontSize: "1.7rem", color: over ? "var(--fail)" : "var(--ink)" }}>{used.toLocaleString()}</span>
-        <span style={{ fontSize: "1rem", color: "var(--ink-3)" }}> / {unlimited ? "∞" : max.toLocaleString()}</span>
+        <span style={{ fontSize: "1rem", color: "var(--ink-3)" }}> / {unlimited ? t("plan.unlimited") : max.toLocaleString()}</span>
       </div>
       <div style={{ height: 7, borderRadius: 6, background: "var(--surface-2)", overflow: "hidden" }}>
         <div style={{ width: unlimited ? "8%" : `${pct}%`, height: "100%", background: over ? "var(--fail)" : "var(--accent)", borderRadius: 6, transition: "width .3s" }} />

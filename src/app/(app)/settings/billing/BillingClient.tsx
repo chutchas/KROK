@@ -268,7 +268,7 @@ export default function BillingClient({
               }}
             >
               {p.highlight && (
-                <span style={{ position: "absolute", top: -11, left: 16, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".7rem", fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>
+                <span style={{ position: "absolute", top: -11, left: 16, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".76rem", fontWeight: 700, padding: "2px 10px", borderRadius: 20 }}>
                   {t("plan.popular")}
                 </span>
               )}
@@ -336,6 +336,7 @@ export default function BillingClient({
 }
 
 function UsageBar({ label, used, max, unit }: { label: string; used: number; max: number; unit?: string }) {
+  const { t } = useT();
   const unlimited = max >= UNLIMITED;
   const pct = unlimited ? 0 : Math.min(100, Math.round((used / Math.max(1, max)) * 100));
   const over = !unlimited && used >= max;
@@ -344,7 +345,7 @@ function UsageBar({ label, used, max, unit }: { label: string; used: number; max
       <div style={{ display: "flex", justifyContent: "space-between", fontSize: ".85rem", marginBottom: 4 }}>
         <span style={{ color: "var(--ink-2)" }}>{label}</span>
         <span className="tabnum" style={{ fontWeight: 600, color: over ? "var(--fail)" : "var(--ink)" }}>
-          {used.toLocaleString("en-US")} / {unlimited ? "∞" : max.toLocaleString("en-US")}{unit ? ` ${unit}` : ""}
+          {used.toLocaleString("en-US")} / {unlimited ? t("plan.unlimited") : max.toLocaleString("en-US")}{unit ? ` ${unit}` : ""}
         </span>
       </div>
       <div style={{ height: 8, borderRadius: 6, background: "var(--surface-2)", overflow: "hidden" }}>

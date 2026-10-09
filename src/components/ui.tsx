@@ -91,20 +91,29 @@ export function Card({ children, style }: { children: React.ReactNode; style?: R
 }
 
 // สถานะว่าง (ไม่มีข้อมูล) แบบสม่ำเสมอทั้งเว็บ — ส่ง icon เป็น ReactNode (เช่น <Icon .../>) ได้
+/** หน้าว่าง (แบบเดียวทั้งแอป): ไอคอน · หัวข้อ · คำอธิบาย · ปุ่มไปต่อ (ถ้ามี) */
 export function EmptyState({
   icon,
   title,
   hint,
+  action,
 }: {
   icon?: React.ReactNode;
   title: string;
   hint?: string;
+  /** ทางไปต่อ — ลิงก์ปุ่มรองแบบเดียวกันทุกหน้า */
+  action?: { href: string; label: string };
 }) {
   return (
     <div style={{ textAlign: "center", padding: "30px 16px", color: "var(--ink-3)" }}>
       {icon && <div style={{ display: "flex", justifyContent: "center", marginBottom: 8, color: "var(--ink-3)" }}>{icon}</div>}
       <p style={{ margin: 0, fontSize: ".92rem", fontWeight: 600, color: "var(--ink-2)" }}>{title}</p>
-      {hint && <p style={{ margin: "3px 0 0", fontSize: ".82rem" }}>{hint}</p>}
+      {hint && <p style={{ margin: "3px auto 0", fontSize: ".84rem", color: "var(--ink-2)", maxWidth: 460 }}>{hint}</p>}
+      {action && (
+        <a href={action.href} style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minHeight: 44, marginTop: 12, padding: "0 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--accent-text)", fontWeight: 600, fontSize: ".9rem", textDecoration: "none" }}>
+          {action.label}
+        </a>
+      )}
     </div>
   );
 }

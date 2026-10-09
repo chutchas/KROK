@@ -105,7 +105,7 @@ export default function DatasetDetailClient({
           <Icon icon={ArrowLeft} className="h-4 w-4" /> {t("ds.backAll")}
         </Link>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginTop: 6 }}>
-          <h1 style={{ fontSize: "1.35rem", margin: 0 }}>{ds.name}</h1>
+          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{ds.name}</h1>
           <SyncBadge ds={ds} />
         </div>
         <div style={{ fontSize: ".82rem", color: "var(--ink-3)", display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", marginTop: 2 }}>

@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { fmtPeriod } from "@/lib/dt-format";
 import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getPlan } from "@/lib/plans";
@@ -66,7 +67,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ color: "#888", fontSize: ".72rem", textTransform: "uppercase", letterSpacing: ".05em" }}>งวด / Period</div>
-            <div style={{ fontWeight: 600 }}>{data.period as string}</div>
+            <div style={{ fontWeight: 600 }}>{fmtPeriod(data.period as string)}</div>
           </div>
         </div>
 
@@ -80,7 +81,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           </thead>
           <tbody>
             <tr style={{ borderBottom: "1px solid #e5e5e5" }}>
-              <td style={{ padding: "10px" }}>แผน {plan.name} — บริการรายเดือน ({data.period as string})</td>
+              <td style={{ padding: "10px" }}>แพ็กเกจ {plan.name} — บริการรายเดือน ({fmtPeriod(data.period as string)})</td>
               <td style={{ padding: "10px", textAlign: "right" }} className="tabnum">฿{amount.toLocaleString()}</td>
             </tr>
           </tbody>
