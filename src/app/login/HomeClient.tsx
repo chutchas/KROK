@@ -29,7 +29,7 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
   const { t } = useT();
   const sp = useSearchParams();
   // มาจากลิงก์เชิญ / ลิงก์ยืนยันอีเมล → เปิดหน้าต่างเข้าสู่ระบบทันที
-  const [open, setOpen] = useState(() => sp.has("invite") || sp.has("confirmed") || sp.has("auth_error") || sp.has("mfa") || sp.has("deleted") || sp.has("pwreset") || sp.has("next"));
+  const [open, setOpen] = useState(() => sp.has("invite") || sp.has("confirmed") || sp.has("auth_error") || sp.has("mfa") || sp.has("deleted") || sp.has("pwreset") || (sp.has("next") && sp.get("next") !== "/"));
   const [stuck, setStuck] = useState(false);
   const openLogin = useCallback(() => setOpen(true), []);
 

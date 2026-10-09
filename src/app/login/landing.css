@@ -292,7 +292,7 @@
 .lp-foot-brand { display: flex; align-items: center; gap: 8px; }
 .lp-foot-brand b { font-family: var(--font-anuphan); letter-spacing: 0.02em; }
 .lp-foot-links { display: flex; gap: 20px; flex-wrap: wrap; }
-.lp-foot-links a { color: var(--ink-2); }
+.lp-foot-links a { color: var(--ink-2); display: inline-flex; align-items: center; min-height: 44px; }
 .lp-foot-links a:hover { color: var(--ink); }
 
 /* ---------- responsive ---------- */
