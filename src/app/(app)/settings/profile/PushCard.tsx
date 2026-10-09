@@ -36,10 +36,17 @@ export default function PushCard() {
   const [perm, setPerm] = useState<NotificationPermission | "na">("na");
   const [msg, setMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
 
+  const [loadErr, setLoadErr] = useState(false);
+  // โหลดไม่สำเร็จ (เน็ตสะดุด / server error) → แสดงข้อความ + ปุ่มลองใหม่ แทนค้าง "กำลังโหลด" หรือหน้า error
   const load = useCallback(async () => {
-    const r = await getPushState();
-    if ("error" in r) return;
-    setState(r);
+    setLoadErr(false);
+    try {
+      const r = await getPushState();
+      if ("error" in r) { setLoadErr(true); return; }
+      setState(r);
+    } catch {
+      setLoadErr(true);
+    }
   }, []);
 
   useEffect(() => {
@@ -103,10 +110,15 @@ export default function PushCard() {
 
   return (
     <Card>
-      <h3 id="push" style={{ fontSize: "1rem", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 6 }}><Icon icon={BellRing} className="h-4 w-4" /> {t("push.title")}</h3>
+      <h2 id="push" style={{ fontSize: "1rem", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 6 }}><Icon icon={BellRing} className="h-4 w-4" /> {t("push.title")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}>{t("push.sub")}</p>
 
-      {!state ? <p style={{ color: "var(--ink-3)", fontSize: ".85rem", margin: 0 }}>{t("common.loading")}</p>
+      {!state && loadErr ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <span style={{ color: "var(--ink-2)", fontSize: ".86rem" }}>{t("push.loadFailed")}</span>
+          <button type="button" onClick={() => void load()} style={{ minHeight: 44, padding: "0 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--accent-text)", fontWeight: 600, fontFamily: "inherit", cursor: "pointer" }}>{t("common.retry")}</button>
+        </div>
+      ) : !state ? <p style={{ color: "var(--ink-3)", fontSize: ".85rem", margin: 0 }}>{t("common.loading")}</p>
         : state.missing ? <Notice>{t("push.needMigration")}</Notice>
         : !state.configured ? <Notice>{t("push.notConfigured")}</Notice>
         : (

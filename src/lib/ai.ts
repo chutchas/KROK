@@ -308,15 +308,17 @@ export const SCHEMA_SPEC = `ตอบกลับเป็น JSON object เด
  "example":"ตัวอย่างคำตอบที่ดี (เฉพาะ text/number)",
  "min":0,"max":100,"unit":"หน่วย (เฉพาะ number ที่มีช่วงค่ามาตรฐาน)",
  "options":["ตัวเลือก"],
+ "fail_options":["ตัวเลือกที่แปลว่าไม่ผ่าน เช่น ชำรุด (เฉพาะ select/checkbox · ต้องอยู่ใน options)"],
  "photo_hint":"รูปต้องเห็นอะไรชัดเจน (เฉพาะ photo)",
  "on_fail_require_note":true,
- "columns":[{"id":"snake_id","label":"หัวคอลัมน์","type":"text|number|select|formula|pass_fail|checkbox|datetime|scan","width":2,"options":["เฉพาะ select"],"formula":"เฉพาะ formula","decimals":2}],
+ "columns":[{"id":"snake_id","label":"หัวคอลัมน์","type":"text|number|select|formula|pass_fail|checkbox|datetime|scan","width":2,"options":["เฉพาะ select"],"fail_options":["ตัวเลือกที่แปลว่าไม่ผ่าน (เฉพาะ select)"],"formula":"เฉพาะ formula","decimals":2}],
  "min_rows":3,
  "formula":"สูตร (เฉพาะ type formula)","decimals":2}]}]}
 สำคัญสูงสุด: ถ้าผู้ใช้ระบุจำนวนฟิลด์ จำนวนขั้นตอน หรือสิ่งที่ต้องมี/ไม่ต้องมี (เช่น "5 ช่อง", "3 ขั้นตอน", "ไม่ต้องมีรูป") ให้ทำตามคำขอนั้นก่อนกฎทั่วไปเสมอ
 กติกา (เป็นค่าแนะนำ ปรับตามความเหมาะสมของงานได้ ไม่ใช่กฎตายตัว):
 โดยทั่วไปแบ่ง 2-4 steps ตามลำดับงานจริง (งานสั้นใช้ step เดียวได้ งานยาว/หลายส่วนมีมากกว่า 4 ได้), จำนวนฟิลด์ปกติ 6-14 แต่ปรับให้พอดีเนื้องาน (งานเล็กน้อยกว่านี้ได้ งานละเอียดมากกว่านี้ได้),
 ใช้ pass_fail กับรายการตรวจสภาพ (พร้อม on_fail_require_note:true),
+select ที่มีตัวเลือกแบบ ปกติ/ชำรุด/ขาด ให้ใส่ fail_options เป็นตัวเลือกที่แปลว่าไม่ผ่าน,
 ใช้ photo เมื่อควรมีหลักฐานภาพ (ใส่ photo_hint เสมอ),
 ใช้ barcode ถ้ามีการระบุเครื่องจักร/พาเลท/เอกสารด้วยรหัส,
 ใช้ number พร้อม min/max/unit เมื่อมีค่ามาตรฐาน,

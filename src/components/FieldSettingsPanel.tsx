@@ -415,6 +415,9 @@ export default function FieldSettingsPanel({
             {(field.options || []).length > 8 && <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: 0 }}>{t("editor.manyOptionsHint")}</p>}
           </div>
           } />
+          {!field.options_source && (
+            <FailOptionsPicker options={field.options || []} value={field.fail_options} onChange={(fail_options) => patchField({ fail_options })} />
+          )}
         </div>
       )}
 
@@ -549,6 +552,9 @@ export default function FieldSettingsPanel({
                     <ColumnSourceEditor col={c} onPatch={(p) => patchCol(i, p)} staticEditor={
                       <ColumnOptionsInput options={c.options || []} onChange={(options) => patchCol(i, { options })} placeholder={t("editor.colOptionsPh")} />
                     } />
+                    {!c.options_source && (
+                      <FailOptionsPicker options={c.options || []} value={c.fail_options} onChange={(fail_options) => patchCol(i, { fail_options })} />
+                    )}
                   </div>
                 )}
               </div>
@@ -560,6 +566,12 @@ export default function FieldSettingsPanel({
             )}
           </div>
           <p style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "6px 0 0" }}>{t("editor.tableWidthHint")}</p>
+          {cols.some((c) => c.type === "photo") && cols.some((c) => c.type === "pass_fail" || (c.type === "select" && !!c.fail_options?.length)) && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: ".86rem", color: "var(--ink-2)", cursor: "pointer", marginTop: 10 }}>
+              <input type="checkbox" checked={!!field.require_photo_on_fail} onChange={(e) => patchField({ require_photo_on_fail: e.target.checked ? true : undefined })} style={{ width: 17, height: 17, accentColor: "var(--accent)", marginTop: 2 }} />
+              <span>{t("editor.failPhoto")}<small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{t("editor.failPhotoHint")}</small></span>
+            </label>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
             <label style={{ ...lbl, margin: "10px 0 0" }}>{t("editor.tableMinRows")}
               <input type="number" min={1} max={20} value={field.min_rows ?? 1} onChange={(e) => patchField({ min_rows: Math.min(20, Math.max(1, Number(e.target.value) || 1)) })} style={{ ...sel, marginTop: 4 }} />
@@ -662,6 +674,37 @@ function PasteOptions({ current, onApply }: { current: string[]; onApply: (o: st
           style={{ padding: "6px 12px", border: "none", borderRadius: 7, background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>{t("editor.pasteApply")}</button>
         <button type="button" onClick={() => setOpen(false)}
           style={{ padding: "6px 12px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>{t("common.cancel")}</button>
+      </div>
+    </div>
+  );
+}
+
+/** เลือกตัวเลือกที่นับเป็นข้อบกพร่อง (เช่น ชำรุด, ขาด) — เลือกแล้วใบ/แถวนั้นไม่ผ่าน เหมือนกด "ไม่ผ่าน" */
+function FailOptionsPicker({ options, value, onChange }: { options: string[]; value?: string[]; onChange: (v: string[] | undefined) => void }) {
+  const { t } = useT();
+  const opts = [...new Set(options.map((o) => o.trim()).filter(Boolean))];
+  if (!opts.length) return null;
+  const on = new Set((value || []).filter((v) => opts.includes(v)));
+  const toggle = (o: string) => {
+    const next = new Set(on);
+    if (next.has(o)) next.delete(o); else next.add(o);
+    onChange(next.size ? opts.filter((x) => next.has(x)) : undefined);
+  };
+  return (
+    <div role="group" aria-label={t("editor.failOptions")} style={{ marginTop: 8 }}>
+      <div style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>{t("editor.failOptions")}</div>
+      <div style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "2px 0 6px" }}>{t("editor.failOptionsHint")}</div>
+      <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+        {opts.map((o) => {
+          const sel = on.has(o);
+          return (
+            <button key={o} type="button" aria-pressed={sel} onClick={() => toggle(o)} className="krok-touch44"
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 999, fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer",
+                border: `1px solid ${sel ? "var(--fail-solid)" : "var(--line)"}`, background: sel ? "var(--fail-soft)" : "var(--surface)", color: sel ? "var(--fail-text)" : "var(--ink-2)", fontWeight: sel ? 600 : 400 }}>
+              {sel && <Icon icon={X} className="h-3.5 w-3.5" />}{o}
+            </button>
+          );
+        })}
       </div>
     </div>
   );

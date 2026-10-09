@@ -7,7 +7,7 @@
 // - คอลัมน์ผ่าน/ไม่ผ่านที่ "ไม่ผ่าน" → รายการไม่ผ่านของเอกสาร
 // ============================================================
 import type { FormField, TableColumn } from "@/lib/form-schema";
-import { labelMap } from "@/lib/form-schema";
+import { isFailChoice, labelMap } from "@/lib/form-schema";
 import { tableCodeKey } from "@/lib/answer-item";
 import { computeRow } from "@/lib/formula";
 
@@ -78,7 +78,7 @@ export function finalizeTableRows(f: FormField, raw: Row[], hasPhoto?: (key: str
     .filter((r) => Object.entries(r).some(([k, v]) => String(v ?? "").trim() !== "" && typeOf.has(k) && typeOf.get(k) !== "formula"));
   const fails: string[] = [];
   filled.forEach((r, ri) => cols.forEach((c) => {
-    if (c.type === "pass_fail" && r[c.id] === "fail") fails.push(`${f.label} แถว ${ri + 1}: ${c.label}`);
+    if (cellFails(c, r[tableCodeKey(c.id)] ?? r[c.id])) fails.push(`${f.label} แถว ${ri + 1}: ${c.label}`);
   }));
   const photoKeys: string[] = [];
   const rows = filled.map((r) => {
@@ -103,4 +103,29 @@ export function finalizeTableRows(f: FormField, raw: Row[], hasPhoto?: (key: str
     return out;
   });
   return { rows, fails, photoKeys };
+}
+
+/** ช่องในตารางที่ไม่ผ่าน: ผ่าน/ไม่ผ่าน = "fail" · ตัวเลือกที่ตั้งว่าเป็นข้อบกพร่อง (เช่น ชำรุด/ขาด) */
+export function cellFails(c: TableColumn, v: unknown): boolean {
+  if (c.type === "pass_fail") return passFailCode(v) === "fail";
+  if (c.type === "select") return isFailChoice(c.fail_options, v);
+  return false;
+}
+
+/** แถวที่ไม่ผ่านแต่ยังไม่มีรูปในคอลัมน์รูป (ตารางที่เปิด require_photo_on_fail) → เลขแถว (เริ่ม 1) */
+export function failRowsMissingPhoto(f: FormField, raw: Row[], hasPhoto: (key: string) => boolean): number[] {
+  if (!f.require_photo_on_fail) return [];
+  const cols = f.columns || [];
+  const photoCols = cols.filter((c) => c.type === "photo");
+  if (!photoCols.length) return [];
+  const out: number[] = [];
+  let n = 0;
+  for (const r of raw) {
+    if (!r || !Object.values(r).some((v) => String(v ?? "").trim() !== "")) continue;
+    n++;
+    if (!cols.some((c) => cellFails(c, r[c.id]))) continue;
+    const has = photoCols.some((c) => { const k = cellPhotoKey(r, c.id); return !!k && hasPhoto(k); });
+    if (!has) out.push(n);
+  }
+  return out;
 }

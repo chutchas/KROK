@@ -49,7 +49,7 @@ export default async function ProfilePage() {
   // สิทธิของเจ้าของข้อมูล (PDPA ม.30–36): ขอสำเนา / ขอลบ — ส่งคำขอทางอีเมลผู้ให้บริการ
   const subj = (what: string) => `[KROK PDPA] ${what} — ${session.email} (${session.userId})`;
   const copyHref = privacyRequestHref(subj("ขอสำเนาข้อมูลส่วนบุคคล"));
-  const btn: React.CSSProperties = { display: "inline-flex", alignItems: "center", border: "1px solid var(--line)", borderRadius: 8, padding: "7px 12px", fontSize: ".86rem", color: "var(--ink)", textDecoration: "none", background: "var(--surface)" };
+  const btn: React.CSSProperties = { display: "inline-flex", alignItems: "center", minHeight: 44, border: "1px solid var(--line)", borderRadius: 8, padding: "7px 12px", fontSize: ".86rem", color: "var(--ink)", textDecoration: "none", background: "var(--surface)" };
 
   return (
     <>
@@ -58,7 +58,7 @@ export default async function ProfilePage() {
       <div style={{ marginTop: 16, minWidth: 0 }}><PushCard /></div>
       <div style={{ marginTop: 16, minWidth: 0 }}>
         <Card>
-          <h3 style={{ fontSize: "1rem", margin: "0 0 4px" }}><T k="legal.myData" /></h3>
+          <h2 style={{ fontSize: "1rem", margin: "0 0 4px" }}><T k="legal.myData" /></h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}><T k="legal.myDataHint" /></p>
           {copyHref ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>
