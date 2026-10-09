@@ -184,9 +184,13 @@ export async function saveForm(
     return { error: `แผนปัจจุบันสร้างฟอร์มได้สูงสุด ${fmtLimit(quota.max)} ฟอร์ม (ใช้ไป ${quota.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา” เพื่อเพิ่มโควตา` };
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  // ตั้ง id เองแล้ว insert โดยไม่ขอแถวกลับ (RETURNING) — นโยบาย select ของ forms (0054/0062) เช็กผ่านฟังก์ชัน
+  // ที่ยังมองไม่เห็นแถวที่กำลังสร้าง → Postgres ตอบ 42501 "ไม่มีสิทธิ์" แม้ insert เองผ่าน
+  const data = { id: crypto.randomUUID() };
+  const { error } = await supabase
     .from("forms")
     .insert({
+      id: data.id,
       tenant_id: session.tenantId,
       title: schema.title,
       icon: schema.icon,
@@ -201,9 +205,7 @@ export async function saveForm(
       require_approved_device: deviceLock(requireDevice, vis),
       device_scope: deviceScopeOf(requireDevice, vis, deviceScope),
       created_by: session.userId,
-    })
-    .select("id")
-    .single();
+    });
 
   if (error) return { error: await sm(dbError(error)) };
   await audit(session.tenantId, session.userId, "form.publish", data.id, {
@@ -327,9 +329,13 @@ export async function saveDraft(
   const vis = sanitizeVisibility(rawVisibility);
 
   const supabase = await createClient();
-  const { data, error } = await supabase
+  // ตั้ง id เองแล้ว insert โดยไม่ขอแถวกลับ (RETURNING) — นโยบาย select ของ forms (0054/0062) เช็กผ่านฟังก์ชัน
+  // ที่ยังมองไม่เห็นแถวที่กำลังสร้าง → Postgres ตอบ 42501 "ไม่มีสิทธิ์" แม้ insert เองผ่าน
+  const data = { id: crypto.randomUUID() };
+  const { error } = await supabase
     .from("forms")
     .insert({
+      id: data.id,
       tenant_id: session.tenantId,
       title: schema.title,
       icon: schema.icon,
@@ -344,9 +350,7 @@ export async function saveDraft(
       require_approved_device: deviceLock(requireDevice, vis),
       device_scope: deviceScopeOf(requireDevice, vis, deviceScope),
       created_by: session.userId,
-    })
-    .select("id")
-    .single();
+    });
   if (error) return { error: await sm(dbError(error)) };
   await audit(session.tenantId, session.userId, "form.draft", data.id, { title: schema.title });
   revalidatePath("/studio");
