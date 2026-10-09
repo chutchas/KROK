@@ -379,7 +379,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
 
             {/* หลักฐาน: ข้อไม่ผ่านกางไว้เสมอ พร้อมหมายเหตุ + รูป */}
             {ev && ev.failed.length > 0 ? (
-              <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "8px 12px", margin: "12px 0 0", fontSize: ".86rem", color: "var(--ink-2)" }}>
+              <div style={{ border: "1px solid color-mix(in srgb, var(--fail) 30%, transparent)", background: "var(--fail-soft)", borderRadius: 10, padding: "8px 12px", margin: "12px 0 0", fontSize: ".86rem", color: "var(--ink-2)" }}>
                 <div style={{ fontWeight: 700, color: "var(--fail)", display: "flex", alignItems: "center", gap: 4, marginBottom: 4 }}>
                   <Icon icon={TriangleAlert} className="h-3.5 w-3.5" /> {tt("appr.failedItems", { n: nFail })}
                 </div>
@@ -420,7 +420,7 @@ export default function ApprovalsClient({ initial, isOwner }: { initial: Pending
                 )}
               </div>
             ) : s.fails?.length > 0 ? (
-              <div style={{ borderLeft: "3px solid var(--fail)", background: "var(--fail-soft)", borderRadius: "0 8px 8px 0", padding: "8px 12px", margin: "12px 0 0", fontSize: ".85rem", color: "var(--ink-2)" }}>
+              <div style={{ border: "1px solid color-mix(in srgb, var(--fail) 30%, transparent)", background: "var(--fail-soft)", borderRadius: 10, padding: "8px 12px", margin: "12px 0 0", fontSize: ".85rem", color: "var(--ink-2)" }}>
                 {s.fails.map((f, i) => <div key={i}>• <StoredText text={f} /></div>)}
               </div>
             ) : null}

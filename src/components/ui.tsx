@@ -1,5 +1,6 @@
 "use client";
 import React from "react";
+import { CircleAlert, Info } from "lucide-react";
 
 // React 19: ref เป็น prop ปกติ — ส่งผ่าน ...rest ลง <button> ได้เลย
 type BtnProps = React.ComponentProps<"button"> & {
@@ -222,16 +223,26 @@ export function Notice({
       role={kind === "error" ? "alert" : "status"}
       aria-live={kind === "error" ? undefined : "polite"}
       style={{
-        borderLeft: `3px solid ${kind === "error" ? "var(--fail)" : "var(--amber)"}`,
+        display: "flex",
+        gap: 10,
+        alignItems: "flex-start",
+        border: `1px solid ${kind === "error" ? "color-mix(in srgb, var(--fail) 30%, transparent)" : "color-mix(in srgb, var(--accent) 28%, transparent)"}`,
         background: kind === "error" ? "var(--fail-soft)" : "var(--accent-soft)",
         color: "var(--ink-2)",
-        borderRadius: "0 8px 8px 0",
+        borderRadius: 10,
         padding: "10px 14px",
         fontSize: ".9rem",
         margin: "12px 0",
       }}
     >
-      {children}
+      {/* ไอคอนบอกชนิด (ไม่พึ่งสีอย่างเดียว) — แทนแถบสีด้านซ้ายแบบเดิม */}
+      {React.createElement(kind === "error" ? CircleAlert : Info, {
+        "aria-hidden": true,
+        size: 18,
+        strokeWidth: 2,
+        style: { flex: "0 0 auto", marginTop: 2, color: kind === "error" ? "var(--fail-text)" : "var(--accent-text)" },
+      })}
+      <div style={{ flex: "1 1 auto", minWidth: 0 }}>{children}</div>
     </div>
   );
 }

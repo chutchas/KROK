@@ -205,7 +205,7 @@ export function CaseBanner({ schema, kase, teams, users, userId, segStart, segEn
       )}
 
       {ret && (
-        <div style={{ marginTop: 8, borderLeft: "3px solid var(--warn)", background: "var(--warn-soft)", borderRadius: "0 8px 8px 0", padding: "8px 12px", fontSize: ".85rem" }}>
+        <div style={{ marginTop: 8, border: "1px solid color-mix(in srgb, var(--warn) 30%, transparent)", background: "var(--warn-soft)", borderRadius: 10, padding: "8px 12px", fontSize: ".85rem" }}>
           <div style={{ fontWeight: 600, display: "flex", alignItems: "center", gap: 6 }}>
             <Icon icon={CornerUpLeft} className="h-4 w-4" /> {t("wf.returnedBy").replace("{name}", ret.name)}
           </div>
