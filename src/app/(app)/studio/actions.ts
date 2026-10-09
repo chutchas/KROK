@@ -181,7 +181,7 @@ export async function saveForm(
 
   const quota = await canAddForm(session.tenantId);
   if (!quota.ok)
-    return { error: `แผนปัจจุบันสร้างฟอร์มได้สูงสุด ${fmtLimit(quota.max)} ฟอร์ม (ใช้ไป ${quota.used}) — อัปเกรดแผนที่หน้า “แผน/โควตา” เพื่อเพิ่มโควตา` };
+    return { error: `แพ็กเกจปัจจุบันสร้างฟอร์มได้สูงสุด ${fmtLimit(quota.max)} ฟอร์ม (ใช้ไป ${quota.used}) — อัปเกรดแพ็กเกจได้ที่เมนู “แพ็กเกจ” เพื่อเพิ่มโควตา` };
 
   const supabase = await createClient();
   // ตั้ง id เองแล้ว insert โดยไม่ขอแถวกลับ (RETURNING) — นโยบาย select ของ forms (0054/0062) เช็กผ่านฟังก์ชัน

@@ -1,10 +1,10 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { RotateCcw } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 import { InlineFormIcon } from "@/components/FormIcon";
 import Icon from "@/components/Icon";
-import { Button, Card, Notice } from "@/components/ui";
+import { Button, Card, EmptyState, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { restoreSubmission } from "@/lib/submission-trash-actions";
 
@@ -42,7 +42,7 @@ export default function TrashClient({ rows }: { rows: TrashRow[] }) {
     <>
       {msg && <div role={msg.err ? "alert" : "status"}><Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice></div>}
       {rows.length === 0 ? (
-        <Card><p style={{ margin: 0, color: "var(--ink-3)" }}>{t("trash.empty")}</p></Card>
+        <Card><EmptyState icon={<Icon icon={Trash2} className="h-7 w-7" />} title={t("trash.empty")} hint={t("trash.emptyHint")} /></Card>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
           {rows.map((r) => {

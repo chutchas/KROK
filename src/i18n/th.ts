@@ -272,7 +272,7 @@ export const th = {
   "plan.aiCredits": "เครดิต AI",
   "plan.perMonth": "เดือน",
   "plan.popular": "ยอดนิยม",
-  "plan.currentBadge": "แผนที่ใช้อยู่",
+  "plan.currentBadge": "แพ็กเกจที่ใช้อยู่",
   "plan.select": "เลือกแพ็กเกจนี้",
   "plan.ownerOnly": "เฉพาะ owner เปลี่ยนได้",
   "plan.changed": "เปลี่ยนแพ็กเกจเรียบร้อย",
@@ -458,6 +458,7 @@ export const th = {
   // roles
   "role.owner": "เจ้าของ",
   "role.admin": "แอดมิน",
+  "role.user": "สมาชิก",
   "role.designer": "ออกแบบฟอร์ม",
   "role.operator": "หน้างาน",
   // profile
@@ -1612,6 +1613,7 @@ export const th = {
   "rep.mineSub": "เอกสารทั้งหมดที่คุณกรอกส่ง — กรองตามฟอร์ม/ช่วงวันที่ แล้วกดที่รายการเพื่อดูเอกสาร",
   "rep.loadMore": "แสดงเพิ่ม (เหลืออีก {n} รายการ)",
   "trash.sub": "เอกสารที่ลบภายใน 30 วัน กู้คืนได้ — เลยกำหนดระบบจะลบถาวรพร้อมรูปและลายเซ็น",
+  "trash.emptyHint": "เอกสารที่ลบจะอยู่ที่นี่ 30 วัน ก่อนถูกลบถาวร",
   "trash.empty": "ไม่มีเอกสารในถังขยะ",
   "trash.delete": "ลบเอกสาร",
   "trash.deleteConfirm": "ย้ายไปถังขยะ",

@@ -147,19 +147,18 @@ export default function DevicesClient({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <Card>
-        <h1 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={TabletSmartphone} className="h-5 w-5" /> {t("dev.devicesTitle")}
-        </h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 4 }}>
+      {/* หัวหน้าเพจ: นอกการ์ด ขนาดเดียวกับทุกหน้า */}
+      <div>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("dev.devicesTitle")}</h1>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {t("dev.devicesSub1")}<b>{t("dev.stApproved")}</b>{t("dev.devicesSub2")}
         </p>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", marginTop: 6 }}>
           {t("dev.browserNote")}
         </p>
 
-        {err && <p style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 10 }}>{err}</p>}
-      </Card>
+        {err && <p role="alert" style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 10 }}>{err}</p>}
+      </div>
 
       <MatrixCard
         devices={rows.filter((d) => d.status === "approved")}

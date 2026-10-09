@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   const credit = await consumeAiCredit(session.tenantId, "form_gen");
   if (!credit.ok)
     return NextResponse.json(
-      { error: `ใช้เครดิต “${credit.label}” ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแผนที่หน้า “แผน/โควตา”` },
+      { error: `ใช้เครดิต “${credit.label}” ครบโควตาเดือนนี้แล้ว (${credit.used}/${credit.max}) — อัปเกรดแพ็กเกจได้ที่เมนู “แพ็กเกจ”` },
       { status: 402 }
     );
 

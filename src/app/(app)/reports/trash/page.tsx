@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { ArrowLeft, Trash2 } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import Icon from "@/components/Icon";
 import { Notice } from "@/components/ui";
 import { T } from "@/i18n/T";
@@ -34,7 +34,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
     <div style={{ display: "grid", gap: 14 }}>
       <a href="/reports" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="report.title" /></a>
       <div>
-        <h1 style={{ fontSize: "1.4rem", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}><Icon icon={Trash2} className="h-5 w-5" /> <T k="trash.title" /></h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}><T k="trash.title" /></h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}><T k="trash.sub" /></p>
       </div>
       {sp.deleted === "1" && <div role="status"><Notice kind="info"><T k="trash.deletedOk" /></Notice></div>}

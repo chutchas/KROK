@@ -2,9 +2,9 @@
 import { InlineFormIcon } from "@/components/FormIcon";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, Button, Field, Notice, Pill } from "@/components/ui";
+import { Card, Button, EmptyState, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { FileSpreadsheet, Download, Search, CalendarDays, Trash2, ChevronRight } from "lucide-react";
+import { Download, FileText, Search, CalendarDays, Trash2, ChevronRight } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { previewReport, type PreviewRow } from "./actions";
 
@@ -122,9 +122,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16, minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Icon icon={FileSpreadsheet} className="h-5 w-5" /> {mine ? t("rep.mineTitle") : t("report.title")}
-          </h1>
+          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{mine ? t("rep.mineTitle") : t("report.title")}</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{mine ? t("rep.mineSub") : t("report.subtitle")}</p>
         </div>
         {canTrash && (
@@ -137,11 +135,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
       {forms.length === 0 ? (
         // ยังไม่มีฟอร์ม = ยังไม่มีอะไรให้ค้น/ส่งออก — ไม่โชว์ตัวกรองกับปุ่ม Excel
         <Card>
-          <div style={{ textAlign: "center", padding: "28px 12px", display: "grid", gap: 8, justifyItems: "center" }}>
-            <b>{t("rep.emptyTitle")}</b>
-            <span style={{ color: "var(--ink-2)", fontSize: ".9rem", maxWidth: 460 }}>{mine ? t("rep.emptyMine") : t("rep.emptyBody")}</span>
-            {!mine && <a href="/studio" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontWeight: 600 }}>{t("appr.goStudio")}</a>}
-          </div>
+          <EmptyState icon={<Icon icon={FileText} className="h-7 w-7" />} title={t("rep.emptyTitle")} hint={mine ? t("rep.emptyMine") : t("rep.emptyBody")}
+            action={mine ? undefined : { href: "/studio", label: t("appr.goStudio") }} />
         </Card>
       ) : (<>
       <Card>

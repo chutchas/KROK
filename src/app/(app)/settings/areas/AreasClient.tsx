@@ -1,7 +1,7 @@
 "use client";
 // ตั้งค่า › พื้นที่ — รายชื่อกลางของ workspace ที่ฟิลด์ "พื้นที่" ในฟอร์มใช้เป็นตัวเลือก
 import { useState } from "react";
-import { ChevronDown, ChevronUp, MapPin, Plus } from "lucide-react";
+import { ChevronDown, ChevronUp, Plus } from "lucide-react";
 import Icon from "@/components/Icon";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import { useAreaT as useT } from "@/i18n/ns/area";
@@ -57,15 +57,14 @@ export default function AreasClient({ initial, missing }: { initial: AreaRow[]; 
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <Card>
-        <h1 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={MapPin} className="h-5 w-5" /> {t("area.title")}
-        </h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 4 }}>{t("area.sub")}</p>
-        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", marginTop: 6 }}>{t("area.codeNote")}</p>
+      {/* หัวหน้าเพจ: นอกการ์ด ขนาดเดียวกับทุกหน้า */}
+      <div>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("area.title")}</h1>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("area.sub")}</p>
+        <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "6px 0 0" }}>{t("area.codeNote")}</p>
         {missing && <Notice kind="error">{t("area.missing")}</Notice>}
         {err && <p role="alert" style={{ color: "var(--fail)", fontSize: ".85rem", marginTop: 10 }}>{err}</p>}
-      </Card>
+      </div>
 
       {!missing && (
         <Card>

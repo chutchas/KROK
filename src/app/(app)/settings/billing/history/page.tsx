@@ -4,7 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import HistoryClient, { type PlanEvent, type InvoiceRow } from "./HistoryClient";
 import { getEffectivePlans } from "@/lib/plans-server";
 
-export const metadata = { title: "ประวัติการชำระเงิน" };
+export const metadata = { title: "ประวัติแพ็กเกจและการเรียกเก็บเงิน" };
 
 export const dynamic = "force-dynamic";
 

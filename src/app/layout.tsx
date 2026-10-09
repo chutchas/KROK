@@ -38,7 +38,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   // nonce จาก proxy (CSP) — อ่าน header ทำให้ทุกหน้า render แบบ dynamic ซึ่งจำเป็นต่อ nonce
   const nonce = (await headers()).get("x-nonce") ?? undefined;
   return (
-    <html lang="th">
+    <html lang="th" suppressHydrationWarning>
       <head>
         <script nonce={nonce} dangerouslySetInnerHTML={{ __html: THEME_INIT }} />
       </head>

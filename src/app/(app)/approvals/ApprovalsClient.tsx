@@ -4,9 +4,9 @@ import FormIcon from "@/components/FormIcon";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { Button, Card, Field, Pill, TextArea } from "@/components/ui";
+import { Button, Card, EmptyState, Field, Pill, TextArea } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { PartyPopper, Check, X, Play, ArrowRight, Paperclip, TriangleAlert } from "lucide-react";
+import { PartyPopper, ClipboardCheck, Check, X, Play, ArrowRight, Paperclip, TriangleAlert } from "lucide-react";
 import { reviewSubmission, approveMany, loadEvidencePhotos } from "./actions";
 import { useT } from "@/i18n/LanguageProvider";
 
@@ -221,13 +221,9 @@ export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = t
       {subs.length === 0 && (
         <Card>
           {hasApprovalForms || initial.length > 0 ? (
-            <div style={{ textAlign: "center", color: "var(--ink-3)", padding: "24px 0", display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}><Icon icon={PartyPopper} className="h-5 w-5" /> {t("appr.cleared")}</div>
+            <EmptyState icon={<Icon icon={PartyPopper} className="h-7 w-7" />} title={t("appr.cleared")} />
           ) : (
-            <div style={{ textAlign: "center", padding: "20px 0", display: "grid", gap: 6, justifyItems: "center" }}>
-              <b>{t("appr.noneSetTitle")}</b>
-              <span style={{ color: "var(--ink-2)", fontSize: ".88rem", maxWidth: 440 }}>{t("appr.noneSetBody")}</span>
-              <a href="/studio" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, fontWeight: 600 }}>{t("appr.goStudio")}</a>
-            </div>
+            <EmptyState icon={<Icon icon={ClipboardCheck} className="h-7 w-7" />} title={t("appr.noneSetTitle")} hint={t("appr.noneSetBody")} action={{ href: "/studio", label: t("appr.goStudio") }} />
           )}
         </Card>
       )}

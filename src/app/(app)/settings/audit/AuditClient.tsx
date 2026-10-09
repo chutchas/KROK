@@ -1,6 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
-import { Card, Field, Pill } from "@/components/ui";
+import { Card, EmptyState, Field, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ScrollText, Search } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
@@ -56,9 +56,7 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={ScrollText} className="h-6 w-6" /> {t("audit.title")}
-        </h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("audit.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("audit.sub")}</p>
         {days != null && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "2px 0 0" }}>{tt("audit.retention", { n: days })}</p>}
       </div>
@@ -87,7 +85,7 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
         </p>
 
         {filtered.length === 0 ? (
-          <p style={{ color: "var(--ink-3)", textAlign: "center", padding: "24px 0" }}>{t("audit.empty")}</p>
+          <EmptyState icon={<Icon icon={ScrollText} className="h-7 w-7" />} title={t("audit.empty")} />
         ) : (
           <div style={{ overflowX: "auto" }}>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".86rem" }}>

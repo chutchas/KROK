@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Building2, Save, Trash2, AlertTriangle, Palette } from "lucide-react";
+import { Save, Trash2, AlertTriangle, Palette } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { renameWorkspace, deleteWorkspace, saveBranding } from "./actions";
 import BrandingEditor, { BrandPreview, type BrandingValue } from "@/components/BrandingEditor";
@@ -81,9 +81,7 @@ export default function WorkspaceClient({
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={Building2} className="h-6 w-6" /> {t("ws.title")}
-        </h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("ws.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("ws.sub")}</p>
       </div>
 
