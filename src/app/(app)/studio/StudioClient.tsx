@@ -44,6 +44,9 @@ type ViewMode = "mobile" | "paper";
 
 type FormTab = "access" | "approval" | "fill" | "schedule";
 
+/** คำสั่งตัวอย่างที่แสดงก่อนกด "ดูทั้งหมด" */
+const PROMPT_PREVIEW = 6;
+
 export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null, initialEditId = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null; initialEditId?: string | null }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
@@ -76,6 +79,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [customCat, setCustomCat] = useState(false);
   const [tab, setTab] = useState<"new" | "edit" | "all">(template ? "edit" : "new");
   const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
+  const [showAllPrompts, setShowAllPrompts] = useState(false);
   const [qrForm, setQrForm] = useState<FormRow | null>(null);
   const [versionNote, setVersionNote] = useState("");
   const [shareForm, setShareForm] = useState<FormRow | null>(null);
@@ -699,20 +703,21 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
         <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
           {([
-            { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt") },
-            { m: "file" as const, icon: FileUp, label: t("studio.modeFile") },
-            { m: "template" as const, icon: LayoutTemplate, label: t("studio.modeTemplate") },
-          ]).map(({ m, icon, label }, i) => {
+            { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt"), short: t("studio.modePromptShort") },
+            { m: "file" as const, icon: FileUp, label: t("studio.modeFile"), short: t("studio.modeFileShort") },
+            { m: "template" as const, icon: LayoutTemplate, label: t("studio.modeTemplate"), short: t("studio.modeTemplateShort") },
+          ]).map(({ m, icon, label, short }, i) => {
             const on = createMode === m;
             return (
               <button
                 key={m}
                 onClick={() => setCreateMode(m)}
                 aria-pressed={on}
+                aria-label={label}
                 className="inline-flex items-center gap-1.5 krok-seg-btn"
                 style={{ padding: "9px 16px", border: "none", borderLeft: i > 0 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}
               >
-                <Icon icon={icon} className="h-4 w-4" /> {label}
+                <Icon icon={icon} className="h-4 w-4" /> <span className="krok-lbl-long">{label}</span><span className="krok-lbl-short">{short}</span>
               </button>
             );
           })}
@@ -805,7 +810,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
 
           <div style={{ display: "grid", gap: 14 }}>
-            {(promptGroupBy === "task" ? PROMPTS_BY_TASK : PROMPTS_BY_INDUSTRY).map((group) => (
+            {(() => {
+              // ยุบไว้ 6 ปุ่มแรก (เดิมราว 32 ปุ่ม ยาวครึ่งหน้าบนมือถือ) · กด "ดูตัวอย่างทั้งหมด" เพื่อขยาย
+              const groups = promptGroupBy === "task" ? PROMPTS_BY_TASK : PROMPTS_BY_INDUSTRY;
+              const total = groups.reduce((n, g) => n + g.items.length, 0);
+              let left = showAllPrompts ? Infinity : PROMPT_PREVIEW;
+              const shown = groups.map((g) => { const items = g.items.slice(0, Math.max(0, left)); left -= items.length; return { ...g, items }; }).filter((g) => g.items.length);
+              return (<>
+            {shown.map((group) => (
               <div key={group.key}>
                 <div style={{ fontSize: ".78rem", fontWeight: 700, color: "var(--ink-3)", letterSpacing: ".02em", marginBottom: 7 }}>
                   {lang === "en" ? group.en : group.th}
@@ -833,6 +845,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </div>
               </div>
             ))}
+            {total > PROMPT_PREVIEW && (
+              <button type="button" onClick={() => setShowAllPrompts((v) => !v)} aria-expanded={showAllPrompts}
+                style={{ justifySelf: "start", minHeight: 44, padding: "0 4px", border: "none", background: "none", color: "var(--accent-text)", fontWeight: 600, fontFamily: "inherit", fontSize: ".88rem", cursor: "pointer" }}>
+                {showAllPrompts ? t("studio.libLess") : tt("studio.libMore", { n: total })}
+              </button>
+            )}
+              </>);
+            })()}
           </div>
         </Card>
       )}
@@ -1127,9 +1147,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-seg{display:flex !important;width:100%;flex-basis:100%}
           .krok-seg-btn{flex:1;justify-content:center}
           /* โหมดสร้าง 3 ปุ่ม: แคบเกินจะตัดคำ → เรียงลงแนวตั้ง */
-          .krok-seg-modes{flex-direction:column}
-          .krok-seg-modes>.krok-seg-btn{justify-content:flex-start;border-left:none !important}
-          .krok-seg-modes>.krok-seg-btn+.krok-seg-btn{border-top:1px solid var(--line) !important}
+          /* โหมดสร้าง 3 ปุ่ม: แถวเดียว ไอคอนบน ป้ายสั้นล่าง (เดิมเรียงแนวตั้ง กินที่สามแถว) */
+          .krok-seg-modes>.krok-seg-btn{flex-direction:column;gap:3px !important;padding:8px 4px !important;font-size:.8rem !important;min-height:52px}
+          .krok-lbl-long{display:none}
+          .krok-lbl-short{display:inline !important}
           /* dropdown ประเภทฟอร์ม: เต็มแถว */
           .krok-typefilter{width:100%;flex:1 1 100% !important;min-width:0 !important}
           /* ปุ่มบันทึก/ยกเลิก: เต็มแถว แบ่งเท่ากัน */

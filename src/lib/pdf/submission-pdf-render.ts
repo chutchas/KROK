@@ -97,7 +97,8 @@ export async function renderSubmissionPdf(id: string): Promise<SubmissionPdfResu
       });
     }
     return {
-    label: a.label,
+    // ช่องที่ผู้สร้างฟอร์มไม่ได้ตั้งชื่อ → ชื่อตามชนิด (เหมือนในแอป) แทน "—"
+    label: a.label?.trim() || (a.type === "photo" ? "รูปภาพ" : a.type === "signature" ? "ลายเซ็น" : "ช่องไม่มีชื่อ"),
     type: a.type,
     // ที่มาของค่าต้องปรากฏในเอกสารที่พิมพ์ออกไปด้วย ไม่งั้นตรวจย้อนหลังแยกไม่ออก
     // แสดงชื่อ เก็บรหัส → พิมพ์รหัสกำกับไว้ด้วย เพื่อใช้อ้างอิงกับระบบอื่น

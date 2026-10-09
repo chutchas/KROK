@@ -125,19 +125,19 @@ export default function FormsListClient({
       {/* จอแคบ: แท็บไม่ตัดบรรทัด เลื่อนซ้าย-ขวาได้แทน */}
       <div role="tablist" data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "12px 0 4px", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
         {([
-          { k: "all" as const, label: t("forms.tabAll"), n: forms.length },
-          ...(today && (today.length > 0 || tab === "today") ? [{ k: "today" as const, label: t("today.tab"), n: today.filter(actionable).length }] : []),
-          { k: "tasks" as const, label: t("wf.tabTasks"), n: cases.filter((c) => c.kind !== "watch").length },
-          { k: "drafts" as const, label: t("forms.tabDrafts"), n: shownDrafts.length },
+          { k: "all" as const, label: t("forms.tabAll"), short: t("forms.tabAllShort"), n: forms.length },
+          ...(today && (today.length > 0 || tab === "today") ? [{ k: "today" as const, label: t("today.tab"), short: t("today.tabShort"), n: today.filter(actionable).length }] : []),
+          { k: "tasks" as const, label: t("wf.tabTasks"), short: t("wf.tabTasks"), n: cases.filter((c) => c.kind !== "watch").length },
+          { k: "drafts" as const, label: t("forms.tabDrafts"), short: t("forms.tabDraftsShort"), n: shownDrafts.length },
         ]).map((x) => {
           const on = tab === x.k;
           return (
-            <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
+            <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)} aria-label={`${x.label} ${x.n}`}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", minHeight: 44, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}
-              {x.label}
+              <span className="krok-lbl-long">{x.label}</span><span className="krok-lbl-short">{x.short}</span>
               <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>{x.n}</span>
             </button>
           );
@@ -157,7 +157,7 @@ export default function FormsListClient({
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("forms.search")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
-          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
+          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} aria-label={t("forms.categoryFilter")} className="krok-typefilter"
             style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("forms.allCategories")}</option>
             {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}

@@ -375,7 +375,9 @@ export default function LoginForm({ embedded = false }: { embedded?: boolean }) 
             setMsg(null);
           }}
           style={{
-            marginTop: 14,
+            marginTop: 6,
+            minHeight: 44,
+            padding: "0 2px",
             background: "none",
             border: "none",
             color: "var(--accent-text)",

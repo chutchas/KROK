@@ -45,7 +45,7 @@ export default function PublicFillClient({
             </>
           ) : (
             <>
-              <LogoMark size={26} variant="compact" title="KROK" />
+              <LogoMark size={28} title="KROK" />
               <b className="brand-text" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.1rem", letterSpacing: ".02em" }}>KROK</b>
             </>
           )}
