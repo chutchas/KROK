@@ -116,7 +116,7 @@ export function PaperFooterText({ text, top }: { text: string; top: number }) {
   );
 }
 
-export function PaperMetaContent({ filler, date }: { filler?: string; date?: string }) {
+export function PaperMetaContent({ filler, date, docNo }: { filler?: string; date?: string; docNo?: string }) {
   const { t } = useT();
   return (
     // ชื่อยาวขึ้นบรรทัดใหม่ได้ไม่เกิน 2 บรรทัด (ตัดตามคำ) — กล่องกว้างจำกัด ห้ามล้นขอบกระดาษ
@@ -125,6 +125,7 @@ export function PaperMetaContent({ filler, date }: { filler?: string; date?: str
         {t("fw.paper.filler")} {filler || "__________"}
       </div>
       <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{t("fw.paper.date")} {date || "__________"}</div>
+      {docNo && <div style={{ overflowWrap: "anywhere" }}>{t("fw.paper.docNo")} <span style={{ fontFamily: "monospace" }}>{docNo}</span></div>}
     </div>
   );
 }
@@ -269,6 +270,7 @@ export function PaperTable({
   disabled = false,
   photoOf,
   onPhoto,
+  renderCell,
 }: {
   columns: TableColumn[];
   rows: Record<string, string>[];
@@ -278,6 +280,8 @@ export function PaperTable({
   /** คอลัมน์รูปถ่าย */
   photoOf?: (ri: number, colId: string) => string | undefined;
   onPhoto?: (ri: number, colId: string, file: File | null) => void;
+  /** เอกสารที่ส่งแล้ว: เนื้อหาเซลล์แบบอ่านอย่างเดียว (แทนช่องกรอก) */
+  renderCell?: (ri: number, col: TableColumn) => React.ReactNode;
 }) {
   const { t } = useT();
   const cols = columns.length ? columns : [{ id: "c0", label: t("fw.colItem"), type: "text" as const }];
@@ -302,7 +306,7 @@ export function PaperTable({
           <tr key={ri} style={{ height: TABLE_ROW_H, borderBottom: "1px solid #eee" }}>
             {cols.map((c) => (
               <td key={c.id} style={{ borderRight: "1px solid #eee", padding: 0, background: c.type === "pass_fail" && r[c.id] === "fail" ? "#fdeeee" : undefined }}>
-                {disabled ? null : <TableCell col={c} value={r[c.id] ?? ""} onChange={(v) => onCell?.(ri, c.id, v)} look="paper" style={cell}
+                {renderCell ? renderCell(ri, c) : disabled ? null : <TableCell col={c} value={r[c.id] ?? ""} onChange={(v) => onCell?.(ri, c.id, v)} look="paper" style={cell}
                   photoUrl={c.type === "photo" ? photoOf?.(ri, c.id) : undefined} onPhoto={(f) => onPhoto?.(ri, c.id, f)} />}
               </td>
             ))}

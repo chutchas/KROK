@@ -5,6 +5,7 @@ import { CANVAS_W, DEFAULT_HEADER_BOX, DEFAULT_META_BOX, buildBlocks, resolveLay
 import PaperPhotoGrid, { PhotoAppendix, photoCaption } from "@/components/paper/PaperPhotoGrid";
 import { allPhotoSlotKeys, photoSlotKey, photoSlotLabel } from "@/lib/photo-slots";
 import { usePaperReflow } from "@/components/paper/usePaperReflow";
+import { PAGE_H, pagedHeight, paginateTops } from "@/lib/paper-paginate";
 import { PaperFooterText, PaperHeaderContent, PaperImageContent, PaperMetaContent, paperBoxStyle, paperHeaderBoxStyle, paperStepStyle } from "@/components/paper/PaperParts";
 import { useT } from "@/i18n/LanguageProvider";
 import type { ResolvedTheme } from "@/lib/theme";
@@ -24,6 +25,8 @@ export default function FormPaperFill({
   renderPhotoCell,
   photoUrl,
   theme,
+  variant = "fill",
+  meta,
 }: {
   schema: FormSchema;
   icon: string;
@@ -36,12 +39,21 @@ export default function FormPaperFill({
   photoUrl?: (fieldId: string) => string | undefined;
   /** ธีมสี/โลโก้/ข้อความท้าย */
   theme?: ResolvedTheme;
+  /**
+   * fill  = หน้ากรอก (ย่อพอดีจอ + ซูม)
+   * doc   = เอกสารที่ส่งแล้วบนจอ (เหมือน fill แต่แบ่งหน้า A4 + เส้นรอยต่อหน้า)
+   * print = หน้าพิมพ์/ทำ PDF: ขนาดจริง ไม่มีกรอบ/ซูม แบ่งหน้า A4
+   */
+  variant?: "fill" | "doc" | "print";
+  /** ผู้กรอก/วันที่/เลขที่ของเอกสารที่ส่งแล้ว (ไม่ส่ง = ผู้ใช้ปัจจุบัน + วันนี้) */
+  meta?: { filler?: string; date?: string; docNo?: string };
 }) {
   const { t, tt, lang } = useT();
   const blocks = useMemo(() => buildBlocks(schema), [schema]);
   const layout = useMemo(() => resolveLayout(schema, blocks), [schema, blocks]);
   // ความสูงจริงของแต่ละบล็อก → ดันบล็อกด้านล่างลงเมื่อเนื้อหางอกเกินกล่องที่ออกแบบ (ไม่ให้ทับกัน)
-  const { measureRef, tops, height: canvasH } = usePaperReflow(blocks, layout, { resolveOverlap: true });
+  const { measureRef, tops: flowTops, height: flowH, measured } = usePaperReflow(blocks, layout, { resolveOverlap: true });
+  const paged = variant !== "fill";
   const headerBox = schema.layout?.header ?? DEFAULT_HEADER_BOX;
   const metaBox = schema.layout?.meta ?? DEFAULT_META_BOX;
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -50,6 +62,19 @@ export default function FormPaperFill({
   const pp = printPhotosOf(schema);
   const footer = theme?.footer ?? "";
   const footerH = footer ? 30 + 14 * Math.min(6, footer.split("\n").length) : 0;
+  // เอกสาร/พิมพ์: ย้ายบล็อกที่คร่อมรอยต่อหน้า A4 ไปเริ่มหน้าถัดไป (ไม่ขาดครึ่ง) และให้แคนวาสยาวเป็นจำนวนหน้าเต็ม
+  const pagination = useMemo(() => {
+    if (!paged) return null;
+    const items = blocks.flatMap((b) => {
+      const box = layout[b.key];
+      return box ? [{ key: b.key, top: flowTops[b.key] ?? box.y, h: measured[b.key] ?? blockHeight(b), keepWithNext: b.kind === "step" }] : [];
+    });
+    const r = paginateTops(items);
+    const total = pagedHeight(r.bottom + footerH + 24);
+    return { tops: r.tops, total };
+  }, [paged, blocks, layout, flowTops, measured, footerH]);
+  const tops = pagination?.tops ?? flowTops;
+  const canvasH = pagination ? pagination.total - footerH : flowH;
   const pageH = canvasH + footerH;
   const today = new Date().toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", year: "numeric", month: "short", day: "numeric" });
 
@@ -57,7 +82,7 @@ export default function FormPaperFill({
   const userZoomed = useRef(false);
   useEffect(() => {
     const el = wrapRef.current;
-    if (!el) return;
+    if (!el || variant === "print") return;
     // คำนวณใหม่เฉพาะเมื่อ "ความกว้าง" เปลี่ยน — คีย์บอร์ดมือถือเด้ง/สลับภาษาเปลี่ยนแค่ความสูง
     // ถ้าย่อขยายตามด้วย ช่องที่กำลังพิมพ์จะขยับและบางเครื่องปิดคีย์บอร์ด/ตัดการสลับภาษา
     let lastW = -1;
@@ -73,27 +98,11 @@ export default function FormPaperFill({
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
+  }, [variant]);
 
-  return (
-    // krok-print-live: กดพิมพ์ในหน้ากรอก (มุมมองกระดาษ) = พิมพ์กระดาษแผ่นนี้พร้อมค่าที่กรอก (ดู globals.css)
-    <div data-paper="" className="krok-print-live">
-      <div
-        ref={wrapRef}
-        className="krok-pl-wrap"
-        style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 12, WebkitOverflowScrolling: "touch" }}
-      >
-        {/* กล่องขนาดจริงหลังย่อ เพื่อให้ scroll พอดี (ไม่มี scroll แนวนอนตอน fit) */}
-        <div className="krok-pl-sizer" style={{ width: CANVAS_W * scale, height: pageH * scale, margin: "0 auto", position: "relative" }}>
-          <div
-            className="krok-pl-canvas"
-            style={{
-              position: "absolute", top: 0, left: 0,
-              width: CANVAS_W, minHeight: pageH,
-              transform: `scale(${scale})`, transformOrigin: "top left",
-              background: "#fff", color: "#111", boxShadow: "0 2px 16px rgba(0,0,0,.15)",
-            }}
-          >
+  function canvasBody() {
+    return (
+      <>
             {/* ชื่อเอกสาร (ซ่อน/ย้ายได้) */}
             {schema.show_header !== false && (
               <div style={{ ...paperHeaderBoxStyle, top: headerBox.y, left: headerBox.x, width: headerBox.w }}>
@@ -103,7 +112,7 @@ export default function FormPaperFill({
             {/* วันที่/ผู้กรอก (ซ่อน/ย้ายได้) */}
             {schema.show_meta !== false && (
               <div style={{ ...paperHeaderBoxStyle, top: metaBox.y, left: metaBox.x, width: metaBox.w }}>
-                <PaperMetaContent filler={userName} date={today} />
+                <PaperMetaContent filler={meta ? meta.filler : userName} date={meta?.date ?? today} docNo={meta?.docNo} />
               </div>
             )}
 
@@ -144,15 +153,58 @@ export default function FormPaperFill({
               );
             })}
             <PaperFooterText text={footer} top={canvasH - 20} />
+      </>
+    );
+  }
+
+  function appendix() {
+    return pp.mode === "appendix" ? (
+      <PhotoAppendix title={title} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
+        items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName"), field.photo_labels?.[i]), url: photoUrl?.(k) })))} />
+    ) : null;
+  }
+
+  if (variant === "print") {
+    return (
+      <div data-paper="" className="krok-doc-print">
+        <div className="krok-pl-canvas" style={{ position: "relative", width: CANVAS_W, height: pageH, background: "#fff", color: "#111", overflow: "hidden" }}>
+          {canvasBody()}
+        </div>
+        {appendix()}
+      </div>
+    );
+  }
+
+  return (
+    // krok-print-live: กดพิมพ์ในหน้ากรอก (มุมมองกระดาษ) = พิมพ์กระดาษแผ่นนี้พร้อมค่าที่กรอก (ดู globals.css)
+    <div data-paper="" className="krok-print-live">
+      <div
+        ref={wrapRef}
+        className="krok-pl-wrap"
+        style={{ overflow: "auto", background: "var(--surface-2)", border: "1px solid var(--line)", borderRadius: 10, padding: 12, WebkitOverflowScrolling: "touch" }}
+      >
+        {/* กล่องขนาดจริงหลังย่อ เพื่อให้ scroll พอดี (ไม่มี scroll แนวนอนตอน fit) */}
+        <div className="krok-pl-sizer" style={{ width: CANVAS_W * scale, height: pageH * scale, margin: "0 auto", position: "relative" }}>
+          <div
+            className="krok-pl-canvas"
+            style={{
+              position: "absolute", top: 0, left: 0,
+              width: CANVAS_W, minHeight: pageH,
+              transform: `scale(${scale})`, transformOrigin: "top left",
+              background: "#fff", color: "#111", boxShadow: "0 2px 16px rgba(0,0,0,.15)",
+            }}
+          >
+            {canvasBody()}
+            {/* รอยต่อหน้า A4 (บนจอเท่านั้น) */}
+            {paged && Array.from({ length: Math.round(pageH / PAGE_H) - 1 }, (_, i) => (
+              <div key={i} aria-hidden className="no-print" style={{ position: "absolute", left: 0, right: 0, top: (i + 1) * PAGE_H, borderTop: "2px dashed #c9ced6" }} />
+            ))}
           </div>
         </div>
       </div>
 
       {/* หน้าภาพประกอบท้ายเอกสาร (พิมพ์เท่านั้น) */}
-      {pp.mode === "appendix" && (
-        <PhotoAppendix title={title} cols={pp.cols} imgH={mmToPx(pp.height_mm)}
-          items={photoFieldsOf(schema).flatMap(({ field }) => allPhotoSlotKeys(field).map((k, i, all) => ({ key: k, label: photoSlotLabel(field.label, i, all.length, t("fw.noName"), field.photo_labels?.[i]), url: photoUrl?.(k) })))} />
-      )}
+      {appendix()}
 
       {/* แถบซูม */}
       <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>

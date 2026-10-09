@@ -1,23 +1,45 @@
 import { NextResponse } from "next/server";
-import { attachmentHeader, docNoFileSafe } from "@/lib/form-schema";
+import { attachmentHeader, docNoFileSafe, docNoOf } from "@/lib/form-schema";
 import { renderSubmissionPdf } from "@/lib/pdf/submission-pdf-render";
+import { renderDocWithChromium } from "@/lib/pdf/doc-chromium";
+import { getSession } from "@/lib/session";
+import { createClient } from "@/lib/supabase/server";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const r = await renderSubmissionPdf(id);
-  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
-  const filename = `${docNoFileSafe(r.docNo)}.pdf`;
-
-  return new NextResponse(new Uint8Array(r.pdf), {
+const pdfResponse = (pdf: Buffer | Uint8Array, docNo: string) =>
+  new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": attachmentHeader(filename),
+      "Content-Disposition": attachmentHeader(`${docNoFileSafe(docNo)}.pdf`),
       "Cache-Control": "no-store",
     },
   });
+
+/**
+ * PDF ของใบที่ส่งแล้ว = เอกสาร A4 (กระดาษแผ่นเดียวกับตอนกรอก/ตอนพิมพ์) — วาดด้วย Chromium ฝั่ง server
+ * ?format=summary = PDF แบบรายการคำตอบ (pdfkit) · Chromium ใช้ไม่ได้ก็ถอยมาใช้แบบรายการ (ผู้ใช้ได้ไฟล์เสมอ)
+ */
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const summary = new URL(req.url).searchParams.get("format") === "summary";
+  if (!summary) {
+    const session = await getSession();
+    if (!session) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    const supabase = await createClient();
+    const { data: sub } = await supabase.from("submissions").select("id, doc_no").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+    if (!sub) return NextResponse.json({ error: "not found" }, { status: 404 });
+    try {
+      const pdf = await renderDocWithChromium(id, "pdf");
+      return pdfResponse(pdf, docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }));
+    } catch (e) {
+      console.error("[krok] A4 PDF (chromium) failed — falling back to summary PDF:", e);
+    }
+  }
+  const r = await renderSubmissionPdf(id);
+  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
+  return pdfResponse(r.pdf, r.docNo);
 }

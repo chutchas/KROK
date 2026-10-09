@@ -19,6 +19,9 @@ import { mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
 import type { MessageKey } from "@/i18n/dictionaries";
 import { docNoOf } from "@/lib/form-schema";
+import { getDocSchema } from "@/lib/submission-doc-server";
+import type { StoredAnswer } from "@/lib/doc-answers";
+import SubmissionDoc from "@/components/SubmissionDoc";
 
 export const dynamic = "force-dynamic";
 
@@ -113,8 +116,8 @@ function RelatedRef({ r }: { r: RelatedDoc }) {
   );
 }
 
-export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
+export default async function SubmissionPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ view?: string }> }) {
+  const [{ id }, sp] = await Promise.all([params, searchParams]);
   const session = await getSession();
   if (!session) return redirectNoSession();
 
@@ -129,7 +132,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   // งาน (ผู้กรอกแต่ละขั้น) + รูป + หลักฐาน AI อ่านเอกสาร — ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
   // งาน: อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
   const caseDb = getAdminClient() ?? supabase;
-  const [{ pp, theme: formTheme }, caseRes, { data: photoRows }, { data: extractRows }, wsBrand, related] = await Promise.all([
+  const [{ pp, theme: formTheme }, caseRes, { data: photoRows }, { data: extractRows }, wsBrand, related, docSchema] = await Promise.all([
     getFormPrintInfo(supabase, sub.form_id as string | null),
     sub.case_id
       ? caseDb.from("form_cases").select("schema, step_meta").eq("id", sub.case_id).eq("tenant_id", sub.tenant_id).maybeSingle()
@@ -143,6 +146,8 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
       .order("created_at", { ascending: true }),
     getWorkspaceBranding(supabase, sub.tenant_id as string),
     loadRelated(caseDb, supabase, sub.case_id as string | null, sub.tenant_id as string),
+    // เอกสาร A4: วาดตามแบบกระดาษของเวอร์ชันที่กรอก
+    getDocSchema(supabase, { tenant_id: String(sub.tenant_id), form_id: sub.form_id as string | null, form_version: sub.form_version as number | null, case_id: sub.case_id as string | null }),
   ]);
   // ธีมของฟอร์ม (ปัจจุบัน) + workspace: โลโก้/เส้นใต้หัว/ข้อความท้าย
   const theme = resolveTheme(wsBrand, formTheme);
@@ -188,15 +193,53 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   const status = STATUS_LABEL[sub.approval_status as string] || STATUS_LABEL.none;
   const subGeo = readGeo(sub.geo);
 
+  // แท็บ: "เอกสาร A4" (ค่าเริ่มต้น — หน้าตาเดียวกับตอนกรอกแบบกระดาษ/ตอนพิมพ์/PDF) · "สรุป" (รายการคำตอบ + ประวัติ)
+  const view: "doc" | "summary" = sp.view === "summary" || !docSchema ? "summary" : "doc";
+  const docNo = docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined });
+  const tab = (on: boolean): React.CSSProperties => ({
+    display: "inline-flex", alignItems: "center", minHeight: 40, padding: "0 16px", borderRadius: 8, fontSize: ".9rem", fontWeight: 600, textDecoration: "none",
+    background: on ? "var(--surface)" : "transparent", color: on ? "var(--ink)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none",
+  });
+
   const label: React.CSSProperties = { color: "var(--ink-2)", fontSize: ".85rem", width: 200, flexShrink: 0 };
   const row: React.CSSProperties = { display: "flex", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)", alignItems: "flex-start" };
 
   return (
-    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+    <div style={{ maxWidth: view === "doc" ? 900 : 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="sub.backDashboard" /></a>
-        <PrintButton submissionId={String(sub.id)} docNo={docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined })} hasPhotos={hasPhotos} />
+        <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} />
       </div>
+
+      {docSchema && (
+        <div className="no-print" role="tablist" aria-label={docNo} style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)", marginBottom: 12 }}>
+          <a role="tab" aria-selected={view === "doc"} href={`/submission/${sub.id}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
+          <a role="tab" aria-selected={view === "summary"} href={`/submission/${sub.id}?view=summary`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
+        </div>
+      )}
+
+      {view === "doc" && docSchema ? (
+        <div role="tabpanel">
+          {sub.approval_status && sub.approval_status !== "none" && (
+            <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: ".86rem" }}>
+              <span style={{ border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "2px 10px", fontWeight: 700 }}><T k={status.k} /></span>
+              <a href={`/submission/${sub.id}?view=summary`} style={{ fontSize: ".82rem" }}><T k="sub.seeHistory" /></a>
+            </div>
+          )}
+          <SubmissionDoc
+            variant="doc"
+            schema={docSchema}
+            title={String(sub.form_title || "")}
+            icon={String(sub.form_icon || "")}
+            answers={allAnswers as StoredAnswer[]}
+            photos={photoMap}
+            theme={theme}
+            filler={String(sub.user_name || "")}
+            submittedAt={sub.submitted_at as string | null}
+            docNo={docNo}
+          />
+        </div>
+      ) : (<div role={docSchema ? "tabpanel" : undefined}>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
         {/* header */}
@@ -436,6 +479,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
       {pp.mode === "appendix" && (
         <PhotoAppendix items={photoItems} cols={pp.cols} imgH={mmToPx(pp.height_mm)} title={String(sub.form_title || "")} />
       )}
+      </div>)}
       <style>{`@media(max-width:600px){ .krok-sub-row{flex-direction:column;gap:4px} .krok-sub-label{width:auto !important} } @media print{ .krok-sub-thumb{max-height:64px !important; max-width:110px !important} }`}</style>
     </div>
   );

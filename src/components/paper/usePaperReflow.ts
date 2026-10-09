@@ -70,5 +70,5 @@ export function usePaperReflow(blocks: Block[], layout: Record<string, PaperBox>
   /** บล็อกนี้มีเนื้อหาสูงเกินกล่องที่ออกแบบไหม */
   const overflows = useCallback((b: Block) => (measured[b.key] ?? 0) > blockHeight(b) + 1, [measured]);
 
-  return { measureRef, tops, height, overflows };
+  return { measureRef, tops, height, overflows, measured };
 }
