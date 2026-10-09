@@ -1,7 +1,7 @@
 import { isLateSync } from "@/lib/filled-at";
 import { fmtCoords, mapUrl, readGeo } from "@/lib/geo";
 import { rateLimited } from "@/lib/rate-limit";
-import { getSession, hasMenu } from "@/lib/session";
+import { canManage, getSession, hasMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ExcelJS from "exceljs";
 import { tableCodeKey, type AnswerItem } from "@/lib/answer-item";
@@ -66,6 +66,8 @@ export async function GET(req: Request) {
       .order("id", { ascending: false }) // ลำดับตายตัว — กันแถวเวลาเดียวกันซ้ำ/หายระหว่างหน้า
       .limit(PAGE);
     if (cursor) q = q.or(`submitted_at.lt."${cursor.at}",and(submitted_at.eq."${cursor.at}",id.lt.${cursor.id})`);
+    // สมาชิกทั่วไป: รายงาน = ประวัติการส่งของตัวเอง (กรองที่แอปด้วย ไม่พึ่ง RLS อย่างเดียว)
+    if (!canManage(session.role)) q = q.eq("submitted_by", session.userId);
     if (formId && formId !== "all") q = q.eq("form_id", formId);
     if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
     if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
