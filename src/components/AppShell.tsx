@@ -21,7 +21,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -37,6 +37,9 @@ const PRIMARY: NavEntry[] = [
   { href: "/approvals", key: "nav.approvals", icon: ClipboardCheck, menu: "approvals" },
   { href: "/reports", key: "nav.reports", icon: FileSpreadsheet, menu: "reports" },
 ];
+
+// มือถือ: แถบเมนูล่างจอ — 3 เมนูแรกที่ role นี้เห็นตามลำดับนี้ (งานหน้างานก่อน) + "เมนูเพิ่มเติม" (เปิดเมนูข้าง)
+const TAB_PRIORITY = ["/forms", "/approvals", "/dashboard", "/studio", "/reports", "/datasets"];
 
 // เมนูระบบ (ผู้ดูแลแพลตฟอร์ม) — อยู่ใน sidebar; ตัวที่กำลังเปิดจะโผล่ต่อท้ายเมนูหลักบน navbar เป็นแท็บ active
 const PLATFORM: NavEntry[] = [
@@ -170,6 +173,9 @@ export default function AppShell({
   const isActive = (href: string) => href === activePrimary || href === activePlatform || hubs.some((h) => h.href === href && h.hubKey === activeHubKey);
   const activeSecondary = hubs.find((h) => h.hubKey === activeHubKey) ?? platform.find((n) => n.href === activePlatform);
   const navItems = activeSecondary ? [...primary, activeSecondary] : primary;
+  const tabItems = TAB_PRIORITY.map((h) => primary.find((n) => n.href === h)).filter((n): n is NavEntry => !!n).slice(0, 3);
+  // อยู่หน้าที่ไม่มีในแถบล่าง (ตั้งค่า, ชุดข้อมูล ฯลฯ) → ไฮไลต์ปุ่ม "เมนูเพิ่มเติม"
+  const moreActive = !tabItems.some((n) => isActive(n.href));
 
   // มือถือ: แถบเมนูเลื่อนแนวนอนได้ → เลื่อนให้แท็บที่ active มาอยู่ในจอเสมอ (ไม่ต้องปัดหาเอง)
   // เลื่อนเฉพาะแถบเมนู (scrollTo) ไม่ใช้ scrollIntoView ซึ่งจะเลื่อนทั้งหน้าด้วย
@@ -233,25 +239,23 @@ export default function AppShell({
         @media (min-width: 641px) and (max-width: 1280px){
           .krok-ws-slot .krok-ws-name{ max-width: 120px !important; }
         }
+        /* มือถือ: แถบบนเหลือแถวเดียว (เมนู · โลโก้ · สถานะ/แจ้งเตือน/โปรไฟล์) — เมนูหลักไปอยู่แถบล่างจอ
+           workspace + ธีม/ภาษา ย้ายไปอยู่ในเมนูข้าง (☰ / "เมนูเพิ่มเติม") */
         @media (max-width: 640px){
-          /* มือถือ: ปุ่มควบคุม (theme/lang/noti/profile) ขึ้นแถวบนชิดขวา */
-          .krok-controls{ order: 1; }
-          /* เมนูหลักลงแถวที่สอง เต็มความกว้าง — บรรทัดเดียว เลื่อนแนวนอนถ้าไม่พอ (ไม่ตกบรรทัด) */
-          .krok-nav{ order: 2; flex-basis: 100%; margin-left: -4px; overflow-x: auto; scrollbar-width: none; }
-          .krok-nav::-webkit-scrollbar{ display: none; }
-          .krok-nav a{ padding: 6px 9px !important; font-size: .82rem !important; flex: 0 0 auto; white-space: nowrap; }
-          .krok-nav a > svg{ width: 16px !important; height: 16px !important; }
-          /* ให้ปุ่มควบคุมอยู่แถวเดียวกับโลโก้เสมอ (ไม่ตกบรรทัด) */
-          .krok-controls{ flex: 0 0 auto; gap: 6px !important; }
+          .krok-topbar{ flex-wrap: nowrap !important; gap: 8px !important; }
+          .krok-nav, .krok-ws-slot, .krok-desk-only{ display: none !important; }
           .krok-brand{ flex: 1 1 auto; min-width: 0; }
+          .krok-controls{ flex: 0 0 auto; gap: 6px !important; }
           .krok-profile-name{ display: none !important; }
-          /* มือถือ: ปุ่ม workspace แถวที่ 2 เต็มความกว้าง (ชื่อเต็ม ▾ ชิดขวา) · เมนูหลักแถวที่ 3 */
-          .krok-ws-slot{ order: 2; flex-basis: 100%; margin-left: 0 !important; }
-          .krok-ws-slot > div, .krok-ws-slot .krok-ws-chip{ width: 100%; }
-          .krok-ws-slot .krok-ws-name{ flex: 1 1 auto; max-width: none !important; }
-          .krok-nav{ order: 3; }
-          .krok-ws-menu{ left: 0; }
         }
+        @media (min-width: 641px){
+          .krok-tabbar, .krok-mobile-only{ display: none !important; }
+        }
+        .krok-desk-only{ display: contents; }
+        /* workspace ในเมนูข้าง: ปุ่มเต็มความกว้าง รายการกางในเมนูเลย (ไม่ลอยทับ) */
+        .krok-drawer-ws .krok-ws-chip{ width: 100%; }
+        .krok-drawer-ws .krok-ws-name{ flex: 1 1 auto; max-width: none !important; }
+        .krok-drawer-ws .krok-ws-menu{ position: static !important; margin-top: 8px; box-shadow: none !important; min-width: 0 !important; }
       `}</style>
       <header
         style={{
@@ -337,8 +341,7 @@ export default function AppShell({
           <div className="krok-controls" style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <OfflineSync />
             <OfflinePrep userId={userId} tenantId={activeTenantId} />
-            <ThemeToggle />
-            <LanguageToggle />
+            <span className="krok-desk-only"><ThemeToggle /><LanguageToggle /></span>
             <TourHelpButton />
             <NotificationBell userId={userId} />
             <div ref={profileRef} data-tour="profile" style={{ position: "relative" }}>
@@ -459,6 +462,33 @@ export default function AppShell({
             </div>
 
             <nav style={{ padding: "8px 8px 24px" }}>
+              {/* มือถือ: workspace + เมนูหลักทั้งหมด (แถบบนไม่มีที่แล้ว) */}
+              <div className="krok-mobile-only">
+                <div className="krok-drawer-ws" style={{ padding: "8px 4px 4px" }}>
+                  {workspaces.length > 1 || canManage ? (
+                    <WorkspaceSwitcher workspaces={workspaces} activeId={activeTenantId} />
+                  ) : (
+                    <WorkspaceChip name={tenantName} />
+                  )}
+                </div>
+                {primary.length > 0 && (
+                  <div style={{ marginTop: 12 }}>
+                    <div style={{ fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
+                      {t("nav.menu")}
+                    </div>
+                    {primary.map((n) => {
+                      const on = isActive(n.href);
+                      return (
+                        <Link key={n.href} href={n.href} onClick={() => setMenuOpen(false)} aria-current={on ? "page" : undefined}
+                          className="inline-flex items-center gap-3"
+                          style={{ width: "100%", padding: "10px 12px", minHeight: 44, borderRadius: 9, fontSize: ".95rem", textDecoration: "none", fontWeight: on ? 600 : 500, color: on ? "var(--accent-text)" : "var(--ink)", background: on ? "var(--accent-soft)" : "transparent" }}>
+                          <Icon icon={n.icon} className="h-[19px] w-[19px]" /> {t(n.key)}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
               {[
                 { labelKey: "grp.settings" as MessageKey, items: hubs as NavEntry[] },
                 { labelKey: "grp.platform" as MessageKey, items: platform },
@@ -509,16 +539,42 @@ export default function AppShell({
                   <Icon icon={LifeBuoy} className="h-[19px] w-[19px]" /> {t("nav.contactTeam")}
                 </Link>
               </div>
+              {/* มือถือ: ธีม/ภาษา (แถบบนไม่มีที่แล้ว) */}
+              <div className="krok-mobile-only" style={{ display: "flex", gap: 10, alignItems: "center", padding: "16px 12px 0" }}>
+                <ThemeToggle />
+                <LanguageToggle />
+              </div>
             </nav>
           </aside>
         </div>
       )}
 
+      {/* มือถือ: แถบเมนูล่างจอ (นิ้วโป้งถึง) — ซ่อนในหน้ากรอก (โหมดเต็มจอมีแถบปุ่มของตัวเอง) */}
+      {!focusMode && (
+        <nav className="krok-tabbar no-print" aria-label={t("nav.menu")}
+          style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "var(--surface)", borderTop: "1px solid var(--line)", paddingBottom: "env(safe-area-inset-bottom, 0px)", display: "flex" }}>
+          {tabItems.map((n) => {
+            const on = isActive(n.href);
+            return (
+              <Link key={n.href} href={n.href} aria-current={on ? "page" : undefined}
+                style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, textDecoration: "none", fontSize: ".72rem", fontWeight: on ? 700 : 500, color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
+                <Icon icon={n.icon} className="h-[22px] w-[22px]" />
+                <span style={{ maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", padding: "0 2px" }}>{t(NAV_SHORT[n.key] ?? n.key)}</span>
+              </Link>
+            );
+          })}
+          <button type="button" onClick={() => setMenuOpen(true)} aria-haspopup="dialog" aria-expanded={menuOpen}
+            style={{ flex: "1 1 0", minWidth: 0, minHeight: 56, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 2, border: "none", background: "transparent", cursor: "pointer", fontFamily: "inherit", fontSize: ".72rem", fontWeight: moreActive ? 700 : 500, color: moreActive ? "var(--accent-text)" : "var(--ink-2)" }}>
+            <Icon icon={LayoutGrid} className="h-[22px] w-[22px]" />
+            <span>{t("nav.more")}</span>
+          </button>
+        </nav>
+      )}
       <TourGuide userId={userId} />
       <main style={focusMode
         // โหมดเต็มจอ: ไม่จำกัดความกว้าง (หน้ากรอกจัดคอลัมน์กลางจอเอง + แถบบนชิดขอบจอ) ไม่เว้นที่บน
         ? { margin: "0 auto", padding: "0 var(--krok-gutter) 24px" }
-        : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) 90px" }}>{children}</main>
+        : { maxWidth: "var(--krok-page-w)", margin: "0 auto", padding: "20px var(--krok-gutter) calc(90px + env(safe-area-inset-bottom, 0px))" }}>{children}</main>
     </>
   );
 }

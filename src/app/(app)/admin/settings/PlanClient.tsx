@@ -227,7 +227,7 @@ export default function PlanClient({ plans, configured, tenantCounts = {} }: {
       </Card>
 
       {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
-      <div style={{ position: "sticky", bottom: 12, display: "flex", gap: 10, alignItems: "center" }}>
+      <div style={{ position: "sticky", bottom: "calc(12px + var(--krok-tabbar-h))", display: "flex", gap: 10, alignItems: "center" }}>
         <Button variant="primary" onClick={save} disabled={busy || !configured}>{busy ? "กำลังบันทึก..." : "บันทึกแพ็กเกจทั้งหมด"}</Button>
         {dirty && <span style={{ fontSize: ".82rem", color: "var(--amber, #b45309)", background: "var(--surface)", padding: "2px 8px", borderRadius: 8 }}>มีการแก้ไขที่ยังไม่บันทึก</span>}
       </div>
