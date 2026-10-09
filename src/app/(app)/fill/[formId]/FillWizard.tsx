@@ -671,6 +671,8 @@ export default function FillWizard(props: Props) {
       return undefined;
     }
     if (f.type === "pass_fail" && a.value === "fail" && f.on_fail_require_note && !a.note?.trim()) return t("fw.failNoteRequired");
+    // ช่องรูปที่ต้องแนบเมื่อใบนี้มีข้อไม่ผ่าน (เช่น รูปสินค้าชำรุด)
+    if (f.type === "photo" && f.required_if_fail && !f.required && filledPhotoKeys(f, (k) => !!ph[k]).length === 0 && answerIssues(answers.current)) return t("fw.err.photoIfFail");
     if (!f.required) return undefined;
     switch (f.type) {
       case "photo": {

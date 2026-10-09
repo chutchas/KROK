@@ -416,7 +416,7 @@ export default function FieldSettingsPanel({
           </div>
           } />
           {!field.options_source && (
-            <FailOptionsPicker options={field.options || []} value={field.fail_options} onChange={(fail_options) => patchField({ fail_options })} />
+            <FailOptionsPicker name={field.label} options={field.options || []} value={field.fail_options} onChange={(fail_options) => patchField({ fail_options })} />
           )}
         </div>
       )}
@@ -425,6 +425,12 @@ export default function FieldSettingsPanel({
         <>
           <label style={lbl}>{t("editor.photoHint")}</label>
           <Field value={field.photo_hint || ""} onChange={(e) => patchField({ photo_hint: e.target.value })} placeholder={t("editor.photoHint")} />
+          {!field.required && (
+            <label style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: ".86rem", color: "var(--ink-2)", cursor: "pointer", marginTop: 10 }}>
+              <input type="checkbox" checked={!!field.required_if_fail} onChange={(e) => patchField({ required_if_fail: e.target.checked ? true : undefined })} style={{ width: 17, height: 17, accentColor: "var(--accent)", marginTop: 2 }} />
+              <span>{t("editor.photoIfFail")}<small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{t("editor.photoIfFailHint")}</small></span>
+            </label>
+          )}
           <div style={{ display: "grid", gridTemplateColumns: field.required ? "1fr 1fr" : "1fr", gap: 8 }}>
             <div>
               <label style={lbl}>{t("editor.maxPhotos")}</label>
@@ -553,7 +559,7 @@ export default function FieldSettingsPanel({
                       <ColumnOptionsInput options={c.options || []} onChange={(options) => patchCol(i, { options })} placeholder={t("editor.colOptionsPh")} />
                     } />
                     {!c.options_source && (
-                      <FailOptionsPicker options={c.options || []} value={c.fail_options} onChange={(fail_options) => patchCol(i, { fail_options })} />
+                      <FailOptionsPicker name={c.label} options={c.options || []} value={c.fail_options} onChange={(fail_options) => patchCol(i, { fail_options })} />
                     )}
                   </div>
                 )}
@@ -680,18 +686,28 @@ function PasteOptions({ current, onApply }: { current: string[]; onApply: (o: st
 }
 
 /** เลือกตัวเลือกที่นับเป็นข้อบกพร่อง (เช่น ชำรุด, ขาด) — เลือกแล้วใบ/แถวนั้นไม่ผ่าน เหมือนกด "ไม่ผ่าน" */
-function FailOptionsPicker({ options, value, onChange }: { options: string[]; value?: string[]; onChange: (v: string[] | undefined) => void }) {
-  const { t } = useT();
+function FailOptionsPicker({ name, options, value, onChange }: { name: string; options: string[]; value?: string[]; onChange: (v: string[] | undefined) => void }) {
+  const { t, tt } = useT();
   const opts = [...new Set(options.map((o) => o.trim()).filter(Boolean))];
-  if (!opts.length) return null;
   const on = new Set((value || []).filter((v) => opts.includes(v)));
+  // พับไว้จนกว่าจะกด (ลดการติ๊กผิดในคอลัมน์อย่าง "หน่วย") · ตั้งไว้แล้ว = กางเอง
+  const [open, setOpen] = useState(false);
+  if (!opts.length) return null;
+  if (!open && !on.size) {
+    return (
+      <button type="button" onClick={() => setOpen(true)} aria-label={tt("editor.failOptionsOpenFor", { name })} className="krok-touch44"
+        style={{ marginTop: 6, padding: "4px 0", border: "none", background: "none", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer", textDecoration: "underline" }}>
+        {t("editor.failOptionsOpen")}
+      </button>
+    );
+  }
   const toggle = (o: string) => {
     const next = new Set(on);
     if (next.has(o)) next.delete(o); else next.add(o);
     onChange(next.size ? opts.filter((x) => next.has(x)) : undefined);
   };
   return (
-    <div role="group" aria-label={t("editor.failOptions")} style={{ marginTop: 8 }}>
+    <div role="group" aria-label={tt("editor.failOptionsFor", { name })} style={{ marginTop: 8 }}>
       <div style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>{t("editor.failOptions")}</div>
       <div style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "2px 0 6px" }}>{t("editor.failOptionsHint")}</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>

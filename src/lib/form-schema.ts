@@ -117,6 +117,8 @@ export interface FormField {
   min_photos?: number;
   /** ชื่อใต้รูปแต่ละช่อง (แยกจากชื่อฟิลด์) เช่น ["ด้านหน้า","ด้านข้าง"] — ว่าง = "รูปที่ n" */
   photo_labels?: string[];
+  /** ช่องรูปที่ไม่บังคับ แต่ต้องแนบเมื่อใบนี้มีข้อไม่ผ่าน (เช่น รูปสินค้าชำรุด) */
+  required_if_fail?: boolean;
   // text
   /** ข้อความยาวหลายบรรทัด (ไม่ระบุ = ข้อความสั้นบรรทัดเดียว) */
   long_text?: boolean;
@@ -575,6 +577,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
             if (cf) o.child_form = cf;
           }
           if (type === "photo" && fo.photo_hint) o.photo_hint = str(fo.photo_hint, 200);
+          if (type === "photo" && fo.required_if_fail === true && !o.required) o.required_if_fail = true;
           if (type === "photo") {
             const mx = num(fo.max_photos);
             if (mx !== undefined && mx > 1) {

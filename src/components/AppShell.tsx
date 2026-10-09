@@ -356,8 +356,9 @@ export default function AppShell({
                 onClick={() => setProfileOpen((v) => !v)}
                 title={t("nav.profile")}
                 aria-label={t("nav.profile")}
-                aria-haspopup="menu"
+                // แผงเปิด/ปิดธรรมดา (disclosure) — ข้างในเป็นลิงก์/ปุ่มทั่วไป ไม่ใช่เมนูแบบ role=menu
                 aria-expanded={profileOpen}
+                aria-controls="krok-profile-panel"
                 className="inline-flex items-center gap-1.5"
                 style={{
                   fontSize: ".8rem",
@@ -376,6 +377,7 @@ export default function AppShell({
               </button>
               {profileOpen && (
                 <div
+                  id="krok-profile-panel"
                   style={{
                     position: "absolute",
                     top: "calc(100% + 8px)",

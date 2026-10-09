@@ -68,8 +68,8 @@ export default async function ProfilePage() {
             <p style={{ color: "var(--ink-3)", fontSize: ".82rem", margin: "0 0 12px" }}><T k="legal.noEmail" /></p>
           )}
           <DeleteAccountCard email={session.email} />
-          <div style={{ marginTop: 10, fontSize: ".82rem" }}>
-            <Link href="/privacy" target="_blank"><T k="legal.privacy" /></Link> · <Link href="/terms" target="_blank"><T k="legal.terms" /></Link>
+          <div style={{ marginTop: 6, fontSize: ".82rem", display: "flex", alignItems: "center", gap: 6 }}>
+            <Link href="/privacy" target="_blank" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}><T k="legal.privacy" /></Link> · <Link href="/terms" target="_blank" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}><T k="legal.terms" /></Link>
           </div>
         </Card>
       </div>
