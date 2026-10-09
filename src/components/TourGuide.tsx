@@ -220,7 +220,8 @@ const ghost: React.CSSProperties = {
 
 
 /** ปุ่ม ? ในแถบบน — แสดงเฉพาะหน้าที่มีทัวร์ให้ดู (ตรวจซ้ำเป็นระยะ: บางหน้า element ขึ้นทีหลัง เช่น เปิด editor) */
-export function TourHelpButton() {
+/** row = แถวในเมนูโปรไฟล์ (ไอคอน + ข้อความ) */
+export function TourHelpButton({ row = false }: { row?: boolean } = {}) {
   const path = usePathname();
   const { t } = useT();
   const [has, setHas] = useState(false);
@@ -239,6 +240,12 @@ export function TourHelpButton() {
     return () => { clearTimeout(first); if (iv) clearInterval(iv); setHas(false); };
   }, [path]);
   if (!has) return null;
+  if (row) return (
+    <button type="button" onClick={() => window.dispatchEvent(new Event(TOUR_START_EVENT))} className="inline-flex items-center gap-2.5" style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", color: "var(--ink)", background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
+      <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={CircleHelp} className="h-[18px] w-[18px]" /></span>
+      {t("tour.replay")}
+    </button>
+  );
   return (
     <button type="button" onClick={() => window.dispatchEvent(new Event(TOUR_START_EVENT))} aria-label={t("tour.replay")} title={t("tour.replay")}
       className="inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm"

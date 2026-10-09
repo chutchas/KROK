@@ -28,7 +28,7 @@ import { MultiPhotoStrip, PhotoSlots } from "./FillPhotos";
 const MANY_OPTIONS = 8;
 
 export function FieldControl({
-  field: f,
+  field: rawField,
   attachments = [],
   getInitial,
   photo,
@@ -83,6 +83,8 @@ export function FieldControl({
   publicMode?: boolean;
 }) {
   const { t, tt, lang } = useT();
+  // ช่องที่ผู้สร้างฟอร์มไม่ได้ตั้งชื่อ → ใช้ชื่อตามชนิด (เดิมเห็นแค่ "*")
+  const f = useMemo(() => withFallbackLabel(rawField, t), [rawField, t]);
   const [initial] = useState(getInitial);
   const [aiBusy, setAiBusy] = useState(false);
   const [aiResult, setAiResult] = useState(initial.ai || "");
@@ -416,7 +418,7 @@ export function FieldControl({
 
       {!compact && f.photo_hint && (
         <div style={{ fontSize: ".8rem", color: paper ? "#777" : "var(--ink-3)", margin: "4px 0" }}>
-          {t("fw.photoMustShow")} <code style={{ background: paper ? "#f4f5f6" : "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
+          {t("fw.photoMustShow")} <b style={{ color: paper ? "#333" : "var(--ink-2)", fontWeight: 600 }}>{f.photo_hint}</b>
         </div>
       )}
 
@@ -670,3 +672,13 @@ export function numOut(f: FormField, value: string): boolean {
   return Number.isFinite(v) && ((f.min != null && v < f.min) || (f.max != null && v > f.max));
 }
 
+
+type FallbackKey = "fw.fbl.photo" | "fw.fbl.signature" | "fw.fbl.field";
+/** ชื่อแทนของช่องที่ไม่มีชื่อ (ตามชนิดช่อง) */
+export function fallbackFieldLabel(f: FormField, t: (k: FallbackKey) => string): string {
+  return t(f.type === "photo" ? "fw.fbl.photo" : f.type === "signature" ? "fw.fbl.signature" : "fw.fbl.field");
+}
+/** คืนฟิลด์เดิมถ้ามีชื่อ · ไม่มีชื่อ = สำเนาที่ใส่ชื่อแทน */
+export function withFallbackLabel(f: FormField, t: (k: FallbackKey) => string): FormField {
+  return f.label?.trim() ? f : { ...f, label: fallbackFieldLabel(f, t) };
+}
