@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Icon from "@/components/Icon";
-import { Settings, Bot, CreditCard, Package } from "lucide-react";
+import { Bot, CreditCard, Package } from "lucide-react";
 import AdminAiClient, { type AiProfiles } from "../ai/AdminAiClient";
 import PaymentClient from "./PaymentClient";
 import PlanClient from "./PlanClient";
@@ -38,9 +38,7 @@ export default function SystemSettingsClient({
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={Settings} className="h-5 w-5" /> ตั้งค่าระบบ
-        </h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ตั้งค่าระบบ</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           ตั้งค่าระดับแพลตฟอร์ม — เฉพาะ Platform Admin / Developer มีผลกับทุก workspace
         </p>

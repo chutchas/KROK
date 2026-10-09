@@ -27,7 +27,7 @@ export default function ContactsClient({ rows, missing, need0069, showAll }: { r
   return (
     <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
       <Card>
-        <h1 style={{ fontSize: "1.2rem", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 8 }}><Icon icon={Inbox} className="h-5 w-5" /> ลูกค้าติดต่อ</h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ลูกค้าติดต่อ</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}>ข้อความจากหน้า “ติดต่อเรา” (บนเว็บไซต์ และจากเมนู “ติดต่อทีม KROK” ในแอป) — ระบบส่งอีเมลถึงทีมด้วย ถ้าอีเมลไม่ถึง ดูจากหน้านี้ได้เสมอ</p>
         <div style={{ display: "flex", gap: 6 }}>
           {tab("/admin/contacts", !showAll, "ยังไม่ได้ติดต่อกลับ")}

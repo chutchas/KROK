@@ -5,8 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Field, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, Plus, LayoutTemplate, FilePen, Trash2, Clock, ClipboardList, Users, CalendarCheck2 } from "lucide-react";
-import { Button } from "@/components/ui";
+import { ArrowRight, Search as SearchIcon, Smartphone, SearchX, FilePen, Trash2, Clock, ClipboardList, Users, CalendarCheck2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { categoryLabel } from "@/lib/form-categories";
 import { deleteDraftAction, deleteSubmittedDrafts } from "./actions";
@@ -174,23 +173,13 @@ export default function FormsListClient({
         )}
         {forms.length === 0 && canCreate && (
           <Card>
+            {/* หน้าว่างแบบเดียวกับทุกหน้า — ปุ่มเดียว (เทมเพลตเลือกได้ในหน้าสร้างฟอร์ม) */}
             <EmptyState
               icon={<Icon icon={Smartphone} className="h-7 w-7" />}
               title={t("forms.emptyManager")}
               hint={t("forms.emptyManagerHint")}
+              action={{ href: "/studio", label: t("forms.createFirst") }}
             />
-            <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-              <Link href="/studio" style={{ textDecoration: "none" }}>
-                <Button variant="primary" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon icon={Plus} className="h-4 w-4" /> {t("forms.createFirst")}
-                </Button>
-              </Link>
-              <Link href="/studio?mode=template" style={{ textDecoration: "none" }}>
-                <Button variant="ghost" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("templates.browse")}
-                </Button>
-              </Link>
-            </div>
           </Card>
         )}
         {forms.length > 0 && filtered.length === 0 && (

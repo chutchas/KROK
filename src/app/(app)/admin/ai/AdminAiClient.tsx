@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Lock, Plug, TriangleAlert, Globe, Eye, EyeOff } from "lucide-react";
+import { Lock, Plug, TriangleAlert, Eye, EyeOff } from "lucide-react";
 import { savePlatformAi } from "./actions";
 import {
   AI_PURPOSES,
@@ -59,9 +59,7 @@ export default function AdminAiClient({
     <div style={{ display: "grid", gap: 16 }}>
       {!embedded && (
         <div>
-          <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <Icon icon={Globe} className="h-5 w-5" /> ตั้งค่า AI (ระดับแพลตฟอร์ม)
-          </h1>
+          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ตั้งค่า AI (ระดับแพลตฟอร์ม)</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
             คีย์ชุดนี้ใช้ร่วมกันทุก workspace — ตั้งค่าได้เฉพาะ Platform Admin / Developer เปลี่ยนแล้วมีผลทันที
           </p>
