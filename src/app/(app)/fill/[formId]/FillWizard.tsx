@@ -8,7 +8,7 @@ import Icon from "@/components/Icon";
 import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
-import { isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
+import { docNoOf, isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
 import { deleteDraft, loadDraftMedia, saveDraft, type DraftData } from "@/lib/drafts";
 import { PhotoFrame } from "@/components/paper/PaperPhotoGrid";
 import { mmToPx } from "@/lib/paper-layout";
@@ -134,7 +134,7 @@ export default function FillWizard(props: Props) {
   const submitErrRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (submitErr) submitErrRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [submitErr]);
   const [mode, setMode] = useState<"mobile" | "paper">(seed?.mode ?? "mobile");
-  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
+  const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; docNo?: string | null; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
   const [caseModal, setCaseModal] = useState<null | "handoff" | "return" | "release" | "cancel">(null);
   const [caseBusy, setCaseBusy] = useState(false);
   const [caseErr, setCaseErr] = useState<string | undefined>();
@@ -824,6 +824,7 @@ export default function FillWizard(props: Props) {
 
       // โหมดสาธารณะ (ไม่ล็อกอิน) → ส่งผ่าน API ที่ตรวจสิทธิ์ฝั่ง server
       if (props.publicMode) {
+        let publicDocNo: string | null = null;
         try {
           const fd = new FormData();
           fd.append("form_id", props.formId);
@@ -835,17 +836,16 @@ export default function FillWizard(props: Props) {
           if (geoFix) fd.append("geo", JSON.stringify(geoFix));
           for (const p of photoUploads) fd.append(`photo_${p.fieldId}`, dataUrlToBlob(p.dataUrl), `${p.fieldId}.jpg`);
           const res = await fetch("/api/public/submit", { method: "POST", body: fd });
-          if (!res.ok) {
-            const j = await res.json().catch(() => ({}));
-            throw new Error(j.error || t("fw.submitFailed"));
-          }
+          const j = (await res.json().catch(() => ({}))) as { error?: string; id?: string; doc_no?: string | null };
+          if (!res.ok) throw new Error(j.error || t("fw.submitFailed"));
+          publicDocNo = j.doc_no || (j.id ? docNoOf({ id: j.id }) : null);
         } catch (e) {
           setSubmitErr(tt("fw.submitFailedMsg", { msg: e instanceof Error ? localizeServerMsg(e.message, lang) : t("fw.error") }));
           setSubmitting(false);
           submitLock.current = false;
           return;
         }
-        setDone({ result, fails, dur, pending: props.requiresApproval, offline: false });
+        setDone({ result, fails, dur, pending: props.requiresApproval, offline: false, docNo: publicDocNo });
         window.scrollTo(0, 0);
         return;
       }
@@ -877,11 +877,12 @@ export default function FillWizard(props: Props) {
       if (wf) {
         if (!kase) throw new Error(t("fw.caseNotFound"));
         if (typeof navigator !== "undefined" && navigator.onLine === false) throw new Error(t("fw.offlineFinalStep"));
-        try { await pushSubmission(supabase, payload, { caseId: kase.id }); }
+        let wfDocNo: string | null = null;
+        try { wfDocNo = (await pushSubmission(supabase, payload, { caseId: kase.id })).docNo ?? null; }
         catch (err) { throw new Error(cleanQuotaMessage(String((err as { message?: string })?.message ?? err))); }
         const r = await completeCaseAction(kase.id, subId);
         void notifySubmission(subId).catch(() => {});
-        setDone({ result, fails, dur, pending: props.requiresApproval, offline: false, caseWarn: "error" in r ? r.error : undefined });
+        setDone({ result, fails, dur, pending: props.requiresApproval, offline: false, docNo: wfDocNo || docNoOf({ id: subId }), caseWarn: "error" in r ? r.error : undefined });
         window.scrollTo(0, 0);
         return;
       }
@@ -899,7 +900,7 @@ export default function FillWizard(props: Props) {
         return;
       }
 
-      let saved: { result?: "pass" | "fail"; fails?: string[] } = {};
+      let saved: { result?: "pass" | "fail"; fails?: string[]; docNo?: string | null } = {};
       try {
         saved = await pushSubmission(supabase, payload);
       } catch (err) {
@@ -922,7 +923,7 @@ export default function FillWizard(props: Props) {
       void clearDraftAfterSubmit();
 
       // ผลที่ server คำนวณ (เชื่อถือได้) — ไม่มี = ใช้ผลในเครื่อง
-      setDone({ result: saved.result ?? result, fails: saved.fails ?? fails, dur, pending: props.requiresApproval, offline: false });
+      setDone({ result: saved.result ?? result, fails: saved.fails ?? fails, dur, pending: props.requiresApproval, offline: false, docNo: saved.docNo || docNoOf({ id: subId }) });
       window.scrollTo(0, 0);
     } catch (e) {
       setSubmitErr(isQuotaExceeded(e) ? t("fw.deviceFull") : tt("fw.submitFailedMsg", { msg: e instanceof Error ? localizeServerMsg(e.message, lang) : t("fw.error") }));
@@ -1165,6 +1166,12 @@ export default function FillWizard(props: Props) {
             ? t("fill.doneOfflineSub")
             : tt("fw.doneSub", { title: props.title, sec: done.dur, next: done.pending ? t("fw.doneNotifyAppr") : t("fw.doneOnDash") })}
         </p>
+        {!done.offline && done.docNo && (
+          <div style={{ display: "inline-flex", flexDirection: "column", alignItems: "center", gap: 2, margin: "6px 0 4px", padding: "10px 18px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)" }}>
+            <span style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("fill.doneDocNo")}</span>
+            <b className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.25rem", letterSpacing: ".02em", userSelect: "all" }}>{done.docNo}</b>
+          </div>
+        )}
         {done.caseWarn && (
           <p style={{ color: "var(--warn)", fontSize: ".85rem" }}>⚠ {t("wf.completeWarn")} ({done.caseWarn})</p>
         )}
@@ -1181,6 +1188,9 @@ export default function FillWizard(props: Props) {
           ) : (
             <>
               <Button variant="primary" onClick={() => go("/forms")}>{t("fill.backToList")}</Button>
+              {/* โหลดหน้าใหม่ทั้งหน้า (ไม่พก ?draft/?case เดิม) = ใบใหม่ที่ว่างเปล่า — router.push ไปหน้าเดิมไม่ล้าง state ของฟอร์ม */}
+              {/* eslint-disable-next-line @next/next/no-location-assign-relative-destination */}
+              {!props.offlineShell && <Button onClick={() => window.location.assign(`/fill/${props.formId}`)}>{t("fill.submitAgain")}</Button>}
               {!props.offlineShell && <Button onClick={() => go("/dashboard")}>{t("fill.viewDash")}</Button>}
             </>
           )}

@@ -4,6 +4,7 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import type { AnswerItem } from "@/lib/answer-item";
 import { answerPhotoKeys } from "@/lib/photo-slots";
+import { attachmentHeader, docNoFileSafe, docNoOf } from "@/lib/form-schema";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -28,7 +29,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const supabase = await createClient();
   const { data: sub } = await supabase
     .from("submissions")
-    .select("id, answers, tenant_id")
+    .select("*")
     .eq("id", id)
     .eq("tenant_id", session.tenantId)
     .maybeSingle();
@@ -84,12 +85,12 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
 
   // รูปบีบอัดมาแล้ว → เก็บแบบไม่บีบซ้ำ (level 0) เร็วกว่าและขนาดแทบเท่ากัน
   const zip = zipSync(files, { level: 0 });
-  const docNo = String(sub.id).slice(0, 8).toUpperCase();
+  const docNo = docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined });
   return new NextResponse(new Uint8Array(zip), {
     status: 200,
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="KROK-${docNo}-photos.zip"`,
+      "Content-Disposition": attachmentHeader(`KROK-${docNoFileSafe(docNo)}-photos.zip`),
       "Cache-Control": "no-store",
     },
   });

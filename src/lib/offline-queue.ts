@@ -161,7 +161,7 @@ export class PermanentSubmitError extends Error {
 // ส่งจริง — ใช้ทั้งตอนออนไลน์และตอน flush คิว
 //   1) อัปโหลดรูปไป storage (ทีละ 3 ไฟล์)  2) ให้ server ตรวจสิทธิ์/เครื่อง คำนวณผลใหม่ แล้วบันทึก (/api/submit)
 // สำเร็จ = return · throw Error = ลองใหม่ได้ · throw PermanentSubmitError = ลองใหม่ก็ไม่ผ่าน
-export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmission, extra: { caseId?: string | null; deviceKey?: string | null } = {}): Promise<{ result?: "pass" | "fail"; fails?: string[] }> {
+export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmission, extra: { caseId?: string | null; deviceKey?: string | null } = {}): Promise<{ result?: "pass" | "fail"; fails?: string[]; docNo?: string | null }> {
   // ใบที่ส่งสำเร็จไปแล้ว storage จะไม่รับไฟล์เพิ่ม (0057) — error ตรงนี้ไม่ใช่ปัญหา ให้ server ตัดสิน
   // อัปโหลดไม่ขึ้น (ยกเว้นไฟล์มีอยู่แล้วจากรอบก่อน) → หยุด ให้ลองใหม่/เข้าคิว — ไม่ส่งใบที่รูปหาย
   let sent: boolean | null = null;
@@ -209,8 +209,8 @@ export async function pushSubmission(supabase: SupabaseClient, p: PendingSubmiss
   } catch (e) {
     throw e instanceof Error ? e : new Error(String(e)); // เครือข่ายหลุด → ลองใหม่
   }
-  const j = (await res.json().catch(() => ({}))) as { error?: string; result?: "pass" | "fail"; fails?: string[] };
-  if (res.ok) return { result: j.result, fails: j.fails };
+  const j = (await res.json().catch(() => ({}))) as { error?: string; result?: "pass" | "fail"; fails?: string[]; doc_no?: string | null };
+  if (res.ok) return { result: j.result, fails: j.fails, docNo: j.doc_no ?? null };
   const msg = j.error || `HTTP ${res.status}`;
   // 401 = session หมด/ยังไม่ผ่าน 2FA · 402 = โควตาเต็ม (ข้อความมีแท็ก [quota:…]) · 408/429/5xx = ลองใหม่ได้ · 4xx อื่น = ไม่ผ่านถาวร
   if (res.status === 401 || res.status === 402 || res.status === 408 || res.status === 429 || res.status >= 500) throw new Error(msg);

@@ -5,9 +5,10 @@ import { Button } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import { printWhenReady } from "@/lib/print";
+import { docNoFileSafe } from "@/lib/form-schema";
 
 // submissionId ไม่ระบุ = โหมดพิมพ์อย่างเดียว (เช่น หน้าใบแจ้งหนี้) — ไม่มีปุ่มดาวน์โหลด PDF
-export default function PrintButton({ submissionId, hasPhotos = false }: { submissionId?: string; hasPhotos?: boolean }) {
+export default function PrintButton({ submissionId, docNo, hasPhotos = false }: { submissionId?: string; docNo?: string; hasPhotos?: boolean }) {
   const [busy, setBusy] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
   const [zipErr, setZipErr] = useState(false);
@@ -24,7 +25,7 @@ export default function PrintButton({ submissionId, hasPhotos = false }: { submi
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `KROK-${submissionId.slice(0, 8).toUpperCase()}.pdf`;
+      a.download = `KROK-${docNoFileSafe(docNo || (submissionId ?? "").slice(0, 8).toUpperCase())}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -49,7 +50,7 @@ export default function PrintButton({ submissionId, hasPhotos = false }: { submi
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `KROK-${submissionId.slice(0, 8).toUpperCase()}-photos.zip`;
+      a.download = `KROK-${docNoFileSafe(docNo || (submissionId ?? "").slice(0, 8).toUpperCase())}-photos.zip`;
       document.body.appendChild(a);
       a.click();
       a.remove();

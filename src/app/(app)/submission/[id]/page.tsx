@@ -18,6 +18,7 @@ import { answerPhotoKeys } from "@/lib/photo-slots";
 import { mmToPx } from "@/lib/paper-layout";
 import PaperPhotoGrid, { PhotoAppendix } from "@/components/paper/PaperPhotoGrid";
 import type { MessageKey } from "@/i18n/dictionaries";
+import { docNoOf } from "@/lib/form-schema";
 
 export const dynamic = "force-dynamic";
 
@@ -183,7 +184,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
     <div style={{ maxWidth: 720, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <a href="/dashboard" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="sub.backDashboard" /></a>
-        <PrintButton submissionId={String(sub.id)} hasPhotos={hasPhotos} />
+        <PrintButton submissionId={String(sub.id)} docNo={docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined })} hasPhotos={hasPhotos} />
       </div>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
@@ -201,7 +202,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
               </div>
             )}
             <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={24} />{sub.form_title}</h1>
-            <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · <T k="sub.docNo" vars={{ id: String(sub.id).slice(0, 8).toUpperCase() }} /></div>
+            <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · <T k="sub.docNo" vars={{ id: docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }) }} /></div>
           </div>
           <div style={{ textAlign: "right" }}>
             <div style={{ display: "inline-block", border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontFamily: "var(--font-anuphan)" }}>

@@ -302,6 +302,8 @@ export interface FormSchema {
   geo?: "optional" | "required";
   /** ประทับวันเวลา (+พิกัดถ้าเปิด GPS) + ชื่อฟอร์ม ลงรูปถ่ายตอนถ่าย */
   watermark?: boolean;
+  /** เลขที่เอกสารแบบรัน (ออกตอนบันทึกใบ ฝั่งฐานข้อมูล 0077) — ไม่ระบุ = รหัส 8 ตัวจาก id */
+  doc_no?: DocNoConfig;
   // ธีมสี / โลโก้ / ข้อความท้ายเอกสาร ของฟอร์มนี้ (ไม่ระบุ = ใช้ของ workspace) — ดู @/lib/theme
   theme?: FormTheme;
   // รูปประกอบบนกระดาษ (โลโก้ / ตราประทับ / รูปอธิบาย) — วางตำแหน่งใน layout ด้วย key "img:<id>"
@@ -738,6 +740,8 @@ export function sanitizeSchema(raw: unknown): FormSchema {
   if (pn) schema.privacy_notice = pn;
   if (r.geo === "optional" || r.geo === "required") schema.geo = r.geo;
   if (r.watermark === true) schema.watermark = true;
+  const dn = sanitizeDocNo(r.doc_no);
+  if (dn) schema.doc_no = dn;
   const th = sanitizeFormTheme(r.theme);
   if (th) schema.theme = th;
   if (images.length) schema.images = images;
@@ -746,6 +750,56 @@ export function sanitizeSchema(raw: unknown): FormSchema {
     schema.print_photos = printPhotosOf({ print_photos: { mode: pp.mode as PrintPhotoMode, cols: num(pp.cols), height_mm: num(pp.height_mm) } });
   }
   return schema;
+}
+
+// ---------- เลขที่เอกสาร ----------
+export type DocNoReset = "none" | "year" | "month";
+export type DocNoConfig = { prefix: string; reset?: DocNoReset; digits?: number };
+export const DOC_NO_RESETS: DocNoReset[] = ["none", "year", "month"];
+export const DOC_NO_PREFIX_MAX = 20;
+
+/** ตัวอักษรที่ใช้ใน prefix ได้: ไทย อังกฤษ ตัวเลข - _ / . (ไม่มีช่องว่าง) */
+export function cleanDocPrefix(v: unknown): string {
+  return String(v ?? "").replace(/[^0-9A-Za-z\u0E00-\u0E7F\-_/.]/g, "").slice(0, DOC_NO_PREFIX_MAX);
+}
+
+export function sanitizeDocNo(raw: unknown): DocNoConfig | undefined {
+  if (!raw || typeof raw !== "object") return undefined;
+  const r = raw as Record<string, unknown>;
+  const prefix = cleanDocPrefix(r.prefix);
+  if (!prefix) return undefined;
+  const out: DocNoConfig = { prefix };
+  if (r.reset === "year" || r.reset === "month") out.reset = r.reset;
+  const d = Math.round(Number(r.digits));
+  if (Number.isFinite(d) && d >= 3 && d <= 8 && d !== 4) out.digits = d;
+  return out;
+}
+
+/** ตัวอย่างเลข (ตรงกับ next_doc_no ใน 0077: ปี/เดือนเป็น พ.ศ. ตามเวลาไทย) */
+export function docNoPreview(cfg: DocNoConfig, n = 1, at: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).formatToParts(at);
+  const y = Number(parts.find((p) => p.type === "year")?.value ?? at.getFullYear());
+  const mm = parts.find((p) => p.type === "month")?.value ?? "01";
+  const yy = String((y + 543) % 100).padStart(2, "0");
+  const stem = cfg.reset === "year" ? `${cfg.prefix}${yy}-` : cfg.reset === "month" ? `${cfg.prefix}${yy}${mm}-` : cfg.prefix;
+  const digits = Math.min(8, Math.max(3, cfg.digits ?? 4));
+  return stem + String(n).padStart(digits, "0");
+}
+
+/** เลขที่เอกสารที่แสดง: เลขรัน ถ้ามี · ไม่มี (ใบเก่า/ฟอร์มไม่ตั้ง) = 8 ตัวแรกของ id */
+export function docNoOf(sub: { id: string; doc_no?: string | null }): string {
+  return sub.doc_no || String(sub.id).slice(0, 8).toUpperCase();
+}
+
+/** ชื่อไฟล์จากเลขที่เอกสาร — "/" ใช้ในชื่อไฟล์ไม่ได้ */
+export function docNoFileSafe(no: string): string {
+  return no.replace(/[\\/:*?"<>|\s]+/g, "_");
+}
+
+/** Content-Disposition ที่รองรับชื่อไทย (header ต้องเป็น ASCII: ชื่อสำรอง + filename* แบบ UTF-8) */
+export function attachmentHeader(name: string): string {
+  const ascii = name.replace(/[^\x20-\x7E]/g, "_").replace(/"/g, "");
+  return `attachment; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(name)}`;
 }
 
 /** Map ค่า → ชื่อที่แสดง (เฉพาะตัวเลือกที่มีชื่อ) */

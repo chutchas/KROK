@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -16,7 +16,7 @@ import FieldSettingsPanel from "@/components/FieldSettingsPanel";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 import FormDevicePicker from "@/components/FormDevicePicker";
 import type { ShareValue } from "@/components/ShareScopeModal";
-import { countFields, sanitizeSchema, type FormSchema } from "@/lib/form-schema";
+import { cleanDocPrefix, countFields, docNoPreview, sanitizeSchema, type DocNoConfig, type DocNoReset, type FormSchema } from "@/lib/form-schema";
 import { assigneeLabel } from "@/lib/case-flow";
 import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY, buildPrompt } from "@/lib/prompt-library";
 import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
@@ -428,7 +428,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const formTabs: { k: FormTab; label: string; on: boolean }[] = [
     { k: "access", label: t("fs.tab.access"), on: visMode !== "all" || requireDevice },
     { k: "approval", label: t("fs.tab.approval"), on: requiresApproval },
-    { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark },
+    { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark || !!draft?.doc_no },
     { k: "schedule", label: t("fs.tab.schedule"), on: false },
   ];
   const formSettings = draft && (
@@ -632,6 +632,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </span>
               </label>
             </div>
+          <div className="krok-fs-sec">
+            <DocNoSettings key={editingId || "new"} value={draft.doc_no} onChange={(v) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (v) n.doc_no = v; else delete n.doc_no; return n; })} />
+          </div>
           <div className="krok-fs-sec krok-fs-nest"><AttachmentsPanel formId={editingId} tenantId={tenantId} /></div>
       </div>
 
@@ -1130,5 +1133,66 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         }
       `}</style>
     </div>
+  );
+}
+
+/** เลขที่เอกสารแบบรัน: ตัวขึ้นต้น + รอบรีเซ็ต + จำนวนหลัก (ออกเลขตอนบันทึกใบ ฝั่งฐานข้อมูล) */
+function DocNoSettings({ value, onChange }: { value?: DocNoConfig; onChange: (v: DocNoConfig | undefined) => void }) {
+  const { t, tt } = useT();
+  // ช่องตัวขึ้นต้นต้องพิมพ์ว่างได้ระหว่างแก้ — เก็บข้อความไว้เอง แล้วค่อยส่งค่าที่ใช้ได้ออกไป
+  const [prefix, setPrefix] = useState(value?.prefix ?? "");
+  const reset: DocNoReset = value?.reset ?? "none";
+  const digits = value?.digits ?? 4;
+  const set = (p: Partial<DocNoConfig>) => {
+    const next: DocNoConfig = { prefix: value?.prefix ?? prefix, reset, digits, ...p };
+    if (!next.prefix) { onChange(undefined); return; }
+    const out: DocNoConfig = { prefix: next.prefix };
+    if (next.reset && next.reset !== "none") out.reset = next.reset;
+    if (next.digits && next.digits !== 4) out.digits = next.digits;
+    onChange(out);
+  };
+  const pill = (on: boolean): React.CSSProperties => ({
+    padding: "8px 14px", borderRadius: 20, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", minHeight: 40,
+    border: on ? "1px solid var(--accent)" : "1px solid var(--line-strong)", background: on ? "var(--accent-soft)" : "var(--surface)",
+    color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
+  });
+  const preview = prefix ? docNoPreview({ prefix, reset, digits }) : "";
+  return (
+    <>
+      <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={Hash} className="h-4 w-4" /> {t("docno.title")}</b>
+      <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("docno.sub")}</p>
+      <label style={{ display: "block", fontSize: ".85rem", fontWeight: 600, marginBottom: 10 }}>
+        {t("docno.prefix")}
+        <Field value={prefix} placeholder={t("docno.prefixPh")} maxLength={20} autoComplete="off" spellCheck={false}
+          onChange={(e) => { const p = cleanDocPrefix(e.target.value); setPrefix(p); set({ prefix: p }); }}
+          style={{ marginTop: 4, fontFamily: "var(--font-anuphan)", letterSpacing: ".02em" }} />
+      </label>
+      {prefix && (
+        <>
+          <div style={{ fontSize: ".85rem", fontWeight: 600, marginBottom: 6 }} id="docno-reset">{t("docno.reset")}</div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }} role="radiogroup" aria-labelledby="docno-reset">
+            {(["none", "year", "month"] as const).map((r) => (
+              <button key={r} type="button" role="radio" aria-checked={reset === r} onClick={() => set({ reset: r })} style={pill(reset === r)}>
+                {t(`docno.reset.${r}`)}
+              </button>
+            ))}
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".85rem", fontWeight: 600, marginBottom: 12 }}>
+            {t("docno.digits")}
+            <select value={digits} onChange={(e) => set({ digits: Number(e.target.value) })}
+              style={{ minHeight: 40, padding: "6px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }}>
+              {[3, 4, 5, 6].map((d) => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </label>
+          <div style={{ padding: "10px 12px", borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)" }}>
+            <span style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>{t("docno.preview")}</span>
+            <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.1rem" }}>{preview}</div>
+          </div>
+          <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".78rem", marginTop: 8, lineHeight: 1.55 }}>
+            {tt("docno.hint", { prefix })}
+          </small>
+        </>
+      )}
+    </>
   );
 }
