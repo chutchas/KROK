@@ -2,7 +2,7 @@
 import { backdropClose } from "@/lib/backdrop";
 import { useCallback, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { LogIn, X } from "lucide-react";
+import { X } from "lucide-react";
 import Icon from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import LanguageToggle from "@/components/LanguageToggle";
@@ -11,9 +11,8 @@ import { useLp as useT } from "@/i18n/landing";
 import type { AnyKey as MessageKey } from "@/i18n/landing";
 import LoginForm from "./LoginForm";
 import Hero from "./landing/Hero";
-import Flow from "./landing/Flow";
-import Tour from "./landing/Tour";
-import { Capabilities, UseCases } from "./landing/Grids";
+import { How, Jobs, Pain } from "./landing/Story";
+import { UseCases } from "./landing/Grids";
 import Security from "./landing/Security";
 import Pricing from "./landing/Pricing";
 import { Faq, FinalCta } from "./landing/Closing";
@@ -21,11 +20,9 @@ import "./landing.css";
 import type { Plan } from "@/lib/plans";
 
 const NAV: { href: string; k: MessageKey }[] = [
-  { href: "#how", k: "lp.nav.how" },
-  { href: "#product", k: "lp.nav.product" },
-  { href: "#usecases", k: "lp.nav.usecases" },
-  { href: "#security", k: "lp.nav.security" },
+  { href: "#how", k: "lp.nav.features" },
   { href: "#pricing", k: "lp.nav.pricing" },
+  { href: "#faq", k: "lp.nav.faq" },
 ];
 
 export default function HomeClient({ plans }: { plans?: Plan[] }) {
@@ -68,23 +65,20 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
             {NAV.map((n) => (
               <a key={n.href} href={n.href}>{t(n.k)}</a>
             ))}
-            <a href="/privacy">{t("legal.privacy")}</a>
-            <a href="/terms">{t("legal.terms")}</a>
           </nav>
           <span style={{ flex: 1 }} />
           <ThemeToggle />
           <LanguageToggle />
-          <button type="button" onClick={openLogin} className="lp-btn lp-btn-primary lp-btn-sm">
-            <Icon icon={LogIn} className="h-4 w-4" /> {t("lp.nav.login")}
-          </button>
+          <button type="button" onClick={openLogin} className="lp-nav-login">{t("lp.nav.login")}</button>
+          <button type="button" onClick={openLogin} className="lp-btn lp-btn-primary lp-btn-sm lp-nav-start">{t("lp.nav.start")}</button>
         </div>
       </header>
 
       <main id="top">
         <Hero onLogin={openLogin} />
-        <Flow />
-        <Tour />
-        <Capabilities />
+        <Pain />
+        <How />
+        <Jobs />
         <UseCases />
         <Security />
         <Pricing onLogin={openLogin} plans={plans} />
@@ -94,13 +88,15 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
 
       <footer className="lp-foot">
         <div className="lp-wrap lp-foot-in">
-          <span>© {new Date().getFullYear()} KROK · {t("lp.foot.tag")}</span>
+          <span className="lp-foot-brand">
+            <LogoMark size={22} title="KROK" />
+            <b className="brand-text">KROK</b>
+            <span>© {new Date().getFullYear()} · {t("lp.foot.tag")}</span>
+          </span>
           <nav className="lp-foot-links">
-            {NAV.slice(1).map((n) => (
-              <a key={n.href} href={n.href}>{t(n.k)}</a>
-            ))}
             <a href="/privacy">{t("legal.privacy")}</a>
             <a href="/terms">{t("legal.terms")}</a>
+            <a href="/contact">{t("lp.foot.contact")}</a>
           </nav>
         </div>
       </footer>
