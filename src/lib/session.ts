@@ -240,6 +240,23 @@ export const getSession = cache(async (): Promise<KrokSession | null> => {
   };
 });
 
+/**
+ * ผู้ใช้ที่ล็อกอินแล้ว แม้ยังไม่มี workspace (getSession คืน null กรณีนี้)
+ * ใช้ในหน้า /welcome: ถูกเอาออกจากทีม / workspace ถูกลบ / โหลดข้อมูล session ไม่สำเร็จ
+ * loadFailed = อ่านข้อมูล session จากฐานข้อมูลไม่ได้ (ไม่ใช่ "ไม่มี workspace" จริง) → ให้ลองใหม่
+ */
+export const getSignedInUser = cache(async (): Promise<{ id: string; email: string; hasWorkspace: boolean; loadFailed: boolean; mfaPending: boolean } | null> => {
+  const res = await getBundle();
+  if (!res) return null;
+  return {
+    id: res.user.id,
+    email: res.user.email ?? "",
+    hasWorkspace: res.bundle.memberships.length > 0,
+    loadFailed: res.bundle === EMPTY_BUNDLE,
+    mfaPending: res.bundle.mfa === true && res.user.aal !== "aal2",
+  };
+});
+
 /** ล็อกอินด้วยรหัสผ่านแล้ว แต่ยังไม่ได้กรอกรหัส 2FA (ใช้ตัดสินว่าจะพาไป /login?mfa=1) */
 export const isMfaPending = cache(async (): Promise<boolean> => {
   const res = await getBundle();

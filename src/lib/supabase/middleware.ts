@@ -74,8 +74,10 @@ export async function updateSession(request: NextRequest) {
   // ค้างขั้นกรอกรหัส 2FA (/login?mfa=1) → อยู่หน้า login ได้ ไม่เด้งเข้าแดชบอร์ด (กันวนรอบ)
   // มีข้อความจากลิงก์อีเมล (?auth_error=) → แสดงหน้า login ให้เห็นข้อความ ไม่เด้งเข้าแอปด้วยบัญชีที่ค้างอยู่
   if (user && path === "/login" && !request.nextUrl.searchParams.has("mfa") && !request.nextUrl.searchParams.has("auth_error")) {
+    // ไป /welcome (ไม่ใช่ /dashboard ตรงๆ): ถ้ามี workspace หน้า welcome ส่งต่อเข้าแอปเอง
+    // ถ้าไม่มี (ถูกเอาออก/ถูกลบ) จะได้หน้าที่สร้าง workspace / รับคำเชิญ / ออกจากระบบได้ ไม่วน /login ↔ /dashboard
     const url = request.nextUrl.clone();
-    url.pathname = "/dashboard";
+    url.pathname = "/welcome";
     url.search = "";
     return NextResponse.redirect(url);
   }
