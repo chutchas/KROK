@@ -266,14 +266,14 @@ export const getAllowedMenus = cache(async (
   tenantId: string,
   roleKey: string
 ): Promise<MenuKey[]> => {
-  const { ALL_MENU_KEYS, cleanMenus } = await import("@/lib/menus");
+  const { ALL_MENU_KEYS, cleanMenus, withAlwaysMenus } = await import("@/lib/menus");
   if (roleKey === "owner") return ALL_MENU_KEYS;
 
   // fast path: ถ้าถามถึง workspace ที่ active อยู่ → ใช้ menus จาก bundle (ไม่ยิงเพิ่ม)
   const res = await getBundle();
   const a = res?.bundle.active;
   if (a && a.tenant_id === tenantId && a.role_key === roleKey) {
-    return a.menus === null ? ALL_MENU_KEYS : cleanMenus(a.menus);
+    return a.menus === null ? ALL_MENU_KEYS : withAlwaysMenus(cleanMenus(a.menus));
   }
 
   // fallback: workspace อื่น (พบไม่บ่อย) → query ตรง
@@ -284,8 +284,8 @@ export const getAllowedMenus = cache(async (
     .eq("tenant_id", tenantId)
     .eq("key", roleKey)
     .maybeSingle();
-  if (!data) return ["forms", "dashboard"];
-  return cleanMenus(data.menus);
+  if (!data) return withAlwaysMenus(["forms", "dashboard"]);
+  return withAlwaysMenus(cleanMenus(data.menus));
 });
 
 /** รายชื่อ workspace ทั้งหมดที่ผู้ใช้ปัจจุบันเป็นสมาชิก (เรียงตามเวลาที่เข้าร่วม) */

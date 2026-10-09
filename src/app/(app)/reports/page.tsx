@@ -1,4 +1,4 @@
-import { enforceMenu } from "@/lib/session";
+import { canManage, enforceMenu } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import ReportsClient, { type ReportFormOpt } from "./ReportsClient";
 
@@ -21,5 +21,6 @@ export default async function ReportsPage() {
     icon: (f.icon as string) || "📋",
   }));
 
-  return <ReportsClient forms={forms} />;
+  // สมาชิกทั่วไป: รายงาน = ประวัติการส่งของตัวเอง (RLS) · owner/admin: มีถังขยะเอกสารที่ลบ
+  return <ReportsClient forms={forms} mine={!canManage(session.role)} canTrash={session.role === "owner" || session.role === "admin"} />;
 }

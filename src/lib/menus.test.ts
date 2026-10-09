@@ -17,3 +17,11 @@ describe("cleanMenus", () => {
     expect(cleanMenus(["reports"])).toEqual(["reports"]);
   });
 });
+
+import { withAlwaysMenus } from "@/lib/menus";
+describe("withAlwaysMenus", () => {
+  it("always grants reports (members see only their own submissions)", () => {
+    expect(withAlwaysMenus(["forms", "dashboard"])).toEqual(["forms", "dashboard", "reports"]);
+    expect(withAlwaysMenus(["reports"])).toEqual(["reports"]);
+  });
+});

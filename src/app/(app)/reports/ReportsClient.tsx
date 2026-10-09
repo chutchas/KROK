@@ -1,9 +1,10 @@
 "use client";
 import { InlineFormIcon } from "@/components/FormIcon";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { FileSpreadsheet, Download, Search, CalendarDays } from "lucide-react";
+import { FileSpreadsheet, Download, Search, CalendarDays, Trash2, ChevronRight } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { previewReport, type PreviewRow } from "./actions";
 
@@ -13,8 +14,10 @@ type Preset = "7d" | "30d" | "month" | "all" | "custom";
 
 function ymd(d: Date) { return d.toLocaleDateString("sv"); }
 
-export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
+export default function ReportsClient({ forms, mine = false, canTrash = false }: { forms: ReportFormOpt[]; mine?: boolean; canTrash?: boolean }) {
   const { t, tt, lang } = useT();
+  const router = useRouter();
+  const [more, setMore] = useState(false);
   const fmtWhen = (iso: string) => {
     const d = new Date(iso);
     return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
@@ -51,6 +54,16 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
     setPreview(res);
   }
 
+  // แสดงแถวถัดไป (ทีละ 100)
+  async function loadMore() {
+    if (!preview) return;
+    setMore(true);
+    const res = await previewReport(filters(), preview.rows.length);
+    setMore(false);
+    if ("error" in res) { setMsg({ t: res.error, err: true }); return; }
+    setPreview({ rows: [...preview.rows, ...res.rows], total: res.total });
+  }
+
   function exportXlsx() {
     const p = new URLSearchParams();
     const f = filters();
@@ -76,11 +89,18 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16, minWidth: 0 }}>
-      <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={FileSpreadsheet} className="h-5 w-5" /> {t("report.title")}
-        </h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("report.subtitle")}</p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ minWidth: 0 }}>
+          <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <Icon icon={FileSpreadsheet} className="h-5 w-5" /> {mine ? t("rep.mineTitle") : t("report.title")}
+          </h1>
+          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{mine ? t("rep.mineSub") : t("report.subtitle")}</p>
+        </div>
+        {canTrash && (
+          <a href="/reports/trash" style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, fontSize: ".86rem" }}>
+            <Icon icon={Trash2} className="h-4 w-4" /> {t("trash.title")}
+          </a>
+        )}
       </div>
 
       <Card>
@@ -173,13 +193,16 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
                     <th style={th}>{t("report.result")}</th>
                     <th style={th}>{t("rep.colApproval")}</th>
                     <th style={{ ...th, textAlign: "right" }}>{t("rep.colIssues")}</th>
+                    <th style={{ ...th, width: 28 }} aria-hidden />
                   </tr>
                 </thead>
                 <tbody>
                   {preview.rows.map((r) => (
-                    <tr key={r.id} style={{ borderBottom: "1px solid var(--line)" }}>
+                    // ทั้งแถวกดเปิดเอกสารได้ · ลิงก์ที่ชื่อฟอร์มสำหรับคีย์บอร์ด/โปรแกรมอ่านหน้าจอ/เปิดแท็บใหม่
+                    <tr key={r.id} className="krok-rep-row" onClick={(e) => { if ((e.target as HTMLElement).closest("a")) return; router.push(`/submission/${r.id}`); }}
+                      style={{ borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
                       <td style={td}>{fmtWhen(r.when)}</td>
-                      <td style={td}><InlineFormIcon value={r.icon} size={15} />{r.form}</td>
+                      <td style={td}><a href={`/submission/${r.id}`} style={{ color: "inherit", textDecoration: "none" }}><InlineFormIcon value={r.icon} size={15} />{r.form}</a></td>
                       <td style={td}>{r.user}</td>
                       <td style={td}>
                         {r.result === "fail"
@@ -188,12 +211,19 @@ export default function ReportsClient({ forms }: { forms: ReportFormOpt[] }) {
                       </td>
                       <td style={td}>{r.approval === "none" ? "-" : approvalLabel(r.approval)}</td>
                       <td style={{ ...td, textAlign: "right", color: r.failCount ? "var(--fail)" : "var(--ink-3)" }}>{r.failCount || "-"}</td>
+                      <td style={{ ...td, color: "var(--ink-3)", paddingLeft: 0 }} aria-hidden><Icon icon={ChevronRight} className="h-4 w-4" /></td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {preview.total > preview.rows.length && (
+              <div style={{ marginTop: 12, textAlign: "center" }}>
+                <Button onClick={loadMore} disabled={more}>{more ? t("rep.searching") : tt("rep.loadMore", { n: (preview.total - preview.rows.length).toLocaleString() })}</Button>
+              </div>
+            )}
             <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "10px 0 0" }}>{t("report.hint")}</p>
+            <style>{`.krok-rep-row:hover{background:var(--surface-2)}`}</style>
           </Card>
         )
       )}

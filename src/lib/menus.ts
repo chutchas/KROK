@@ -35,6 +35,13 @@ export const MENUS: MenuDef[] = [
 
 export const ALL_MENU_KEYS: MenuKey[] = MENUS.map((m) => m.key);
 
+/**
+ * เมนูที่ทุกคนใน workspace มีเสมอ (ตั้งปิดใน role ไม่ได้)
+ * รายงาน: สมาชิกทั่วไปเห็นเฉพาะเอกสารที่ตัวเองส่ง (RLS 0079) = ประวัติการส่งของตัวเอง · ผู้จัดการเห็นทั้ง workspace
+ */
+export const ALWAYS_MENUS: MenuKey[] = ["reports"];
+export const withAlwaysMenus = (m: MenuKey[]): MenuKey[] => Array.from(new Set([...m, ...ALWAYS_MENUS]));
+
 /** normalize ค่า menus จาก DB ให้เหลือเฉพาะคีย์ที่ถูกต้อง */
 export function cleanMenus(raw: unknown): MenuKey[] {
   if (!Array.isArray(raw)) return [];
