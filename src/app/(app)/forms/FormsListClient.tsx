@@ -118,7 +118,7 @@ export default function FormsListClient({
 
   return (
     <Card>
-      <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("forms.title")}</h2>
+      <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("forms.title")}</h1>
       <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("forms.subtitle")}</p>
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
@@ -138,7 +138,7 @@ export default function FormsListClient({
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}
               {x.label}
-              <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent-text)" : "var(--ink-3)" }}>{x.n}</span>
+              <span style={{ fontSize: ".72rem", minWidth: 20, padding: "1px 6px", borderRadius: 999, background: on ? "var(--accent-soft)" : "var(--code-bg)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>{x.n}</span>
             </button>
           );
         })}

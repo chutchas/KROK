@@ -1317,7 +1317,7 @@ export default function FillWizard(props: Props) {
         const on = mode === v.m;
         return (
           <button key={v.m} onClick={() => setMode(v.m)}
-            style={{ padding: "6px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: on ? 600 : 400, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent)" : "var(--ink-2)" }}>
+            style={{ padding: "6px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: on ? 600 : 400, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
             {v.label}
           </button>
         );
@@ -1526,7 +1526,7 @@ export default function FillWizard(props: Props) {
             {tt("fw.stepOf", { n: idx + 1, total: schema.steps.length })}
           </span>
         )}
-        <h3 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: "1.05rem", scrollMarginTop: 72 }}>{step.title}</h3>
+        <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: "1.05rem", scrollMarginTop: 72 }}>{step.title}</h2>
       </div>
 
       {wf && lockedStep(idx) && !viewOnly && (

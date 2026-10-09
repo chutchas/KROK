@@ -203,7 +203,7 @@ export default function DashboardClient({
               {(["ws", "mine"] as const).map((k) => (
                 <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); }}
                   style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
-                    color: tab === k ? "var(--accent)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
+                    color: tab === k ? "var(--accent-text)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
                   {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
                 </button>
               ))}

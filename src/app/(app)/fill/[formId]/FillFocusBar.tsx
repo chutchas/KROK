@@ -136,7 +136,7 @@ function OverflowMenu({ items }: { items: FocusMenuItem[] }) {
         aria-controls={open ? menuId : undefined}
         aria-label={t("fill.focus.more")}
         title={t("fill.focus.more")}
-        style={{ ...iconBtn, background: open ? "var(--accent-soft)" : "transparent", color: open ? "var(--accent)" : "var(--ink-2)" }}
+        style={{ ...iconBtn, background: open ? "var(--accent-soft)" : "transparent", color: open ? "var(--accent-text)" : "var(--ink-2)" }}
       >
         <Icon icon={MoreHorizontal} className="h-6 w-6" />
       </button>
