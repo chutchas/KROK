@@ -15,7 +15,15 @@
       <stop offset="0.45" class="s2"/>
       <stop offset="1" class="s3"/>
     </linearGradient>
+    <mask id="km" maskUnits="userSpaceOnUse" x="0" y="0" width="64" height="64">
+      <rect width="64" height="64" fill="#fff"/>
+      <g fill="#000" transform="rotate(45 32 32)">
+        <rect x="29.5" y="-6" width="5" height="76"/>
+        <rect x="-6" y="29.5" width="76" height="5"/>
+      </g>
+    </mask>
   </defs>
-  <path fill="url(#kg)" fill-rule="evenodd" d="M21 4H43A17 17 0 0 1 60 21V43A17 17 0 0 1 43 60H21A17 17 0 0 1 4 43V21A17 17 0 0 1 21 4ZM27 19H37A8 8 0 0 1 45 27V37A8 8 0 0 1 37 45H27A8 8 0 0 1 19 37V27A8 8 0 0 1 27 19Z"/>
-  <path d="M25 32.5L30.5 38L39.5 26.5" fill="none" class="ink" stroke-width="6.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- มาร์คแบบเต็ม (มีร่องผ่าสี่ด้าน) เหมือนหน้า landing -->
+  <path mask="url(#km)" fill="url(#kg)" fill-rule="evenodd" d="M20 5H44A15 15 0 0 1 59 20V44A15 15 0 0 1 44 59H20A15 15 0 0 1 5 44V20A15 15 0 0 1 20 5ZM26 18H38A8 8 0 0 1 46 26V38A8 8 0 0 1 38 46H26A8 8 0 0 1 18 38V26A8 8 0 0 1 26 18Z"/>
+  <path d="M25.5 32.5L30.5 37.5L39 26.5" fill="none" class="ink" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
