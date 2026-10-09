@@ -22,6 +22,17 @@ import { docNoOf } from "@/lib/form-schema";
 
 export const dynamic = "force-dynamic";
 
+/** ชื่อแท็บ = ชื่อเอกสาร (เบราว์เซอร์ใช้เป็นหัวกระดาษ/ชื่อไฟล์ตอนพิมพ์ — ไม่ใช่ชื่อแพลตฟอร์ม) */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await getSession();
+  if (!session) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.from("submissions").select("id, form_title, doc_no").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+  if (!data) return {};
+  return { title: `${data.form_title || ""} ${docNoOf({ id: String(data.id), doc_no: data.doc_no as string | null | undefined })}`.trim() };
+}
+
 
 
 const STATUS_LABEL: Record<string, { k: MessageKey; c: string }> = {
@@ -191,24 +202,25 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         {/* header */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: `2px solid ${theme.custom ? theme.header : "var(--ink)"}`, paddingBottom: 14, marginBottom: 6, gap: 12, flexWrap: "wrap" }}>
           <div style={{ minWidth: 0 }}>
+            {/* เอกสารของลูกค้า: โลโก้ของ workspace หรือชื่อ workspace — ไม่แสดงชื่อ/เครื่องหมายแพลตฟอร์ม */}
             {theme.logo ? (
               <span style={{ display: "inline-flex", background: "#fff", borderRadius: 6, padding: 3 }}>
-                <img src={theme.logo} alt="" style={{ height: 34, maxWidth: 160, objectFit: "contain", display: "block" }} />
+                <img src={theme.logo} alt={session.tenantName} style={{ height: 34, maxWidth: 160, objectFit: "contain", display: "block" }} />
               </span>
             ) : (
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <div className="hazard" style={{ width: 22, height: 22, borderRadius: 4 }} />
-                <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, letterSpacing: ".03em" }}>KROK</span>
-              </div>
+              <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.05rem", color: theme.custom ? theme.header : "var(--ink)" }}>{session.tenantName}</span>
             )}
             <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={24} />{sub.form_title}</h1>
-            <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{session.tenantName} · <T k="sub.docNo" vars={{ id: docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }) }} /></div>
+            <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{theme.logo ? <>{session.tenantName} · </> : null}<T k="sub.docNo" vars={{ id: docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }) }} /></div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ display: "inline-block", border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontFamily: "var(--font-anuphan)" }}>
-              <T k={status.k} />
-            </div>
-            <div style={{ marginTop: 8, fontSize: ".8rem", color: sub.result === "fail" ? "var(--fail)" : "var(--pass)", fontWeight: 600 }}>
+            {/* ป้ายสถานะเฉพาะฟอร์มที่มีการอนุมัติ — "ส่งแล้ว" ไม่ให้ข้อมูลอะไร (เอกสารนี้ส่งแล้วอยู่แล้ว) */}
+            {sub.approval_status && sub.approval_status !== "none" && (
+              <div style={{ display: "inline-block", border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "6px 14px", fontWeight: 700, fontFamily: "var(--font-anuphan)", marginBottom: 8 }}>
+                <T k={status.k} />
+              </div>
+            )}
+            <div style={{ fontSize: ".8rem", color: sub.result === "fail" ? "var(--fail)" : "var(--pass)", fontWeight: 600 }}>
               {sub.result === "fail" ? <T k="sub.issues" vars={{ n: (sub.fails as string[])?.length || 0 }} /> : <T k="sub.complete" />}
             </div>
           </div>

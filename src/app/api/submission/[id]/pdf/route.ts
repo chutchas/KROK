@@ -10,7 +10,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   const { id } = await params;
   const r = await renderSubmissionPdf(id);
   if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
-  const filename = `KROK-${docNoFileSafe(r.docNo)}.pdf`;
+  const filename = `${docNoFileSafe(r.docNo)}.pdf`;
 
   return new NextResponse(new Uint8Array(r.pdf), {
     status: 200,
