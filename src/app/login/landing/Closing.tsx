@@ -31,7 +31,7 @@ export function Faq() {
   );
 }
 
-export function FinalCta({ onLogin }: { onLogin: () => void }) {
+export function FinalCta({ onLogin, onSignup }: { onLogin: () => void; onSignup: () => void }) {
   const { t } = useT();
   return (
     <section className="lp-cta" id="cta">
@@ -41,7 +41,7 @@ export function FinalCta({ onLogin }: { onLogin: () => void }) {
           <p className="lp-lead" style={{ marginTop: 12, maxWidth: 600 }}>{t("lp.cta.p")}</p>
         </div>
         <div className="lp-cta-btns">
-          <button type="button" onClick={onLogin} className="lp-btn lp-btn-primary">
+          <button type="button" onClick={onSignup} className="lp-btn lp-btn-primary">
             {t("lp.cta.b1")} <Icon icon={ArrowRight} className="h-[18px] w-[18px]" />
           </button>
           <button type="button" onClick={onLogin} className="lp-btn lp-btn-ghost">{t("lp.cta.b2")}</button>
