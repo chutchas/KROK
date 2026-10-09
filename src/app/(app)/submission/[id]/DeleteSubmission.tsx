@@ -44,7 +44,9 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
         {t("trash.reason")}
         <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} autoFocus
           placeholder={t("trash.reasonPh")}
+          aria-describedby="del-reason-hint"
           style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }} />
+        <span id="del-reason-hint" style={{ fontSize: ".76rem", color: reason.trim().length >= 3 ? "var(--ink-3)" : "var(--ink-2)" }}>{t("trash.reasonMin")}</span>
       </label>
       {err && <Notice kind="error">{err}</Notice>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>

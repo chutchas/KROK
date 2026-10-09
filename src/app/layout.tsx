@@ -16,7 +16,8 @@ import PrintReady from "@/components/PrintReady";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 
 export const metadata: Metadata = {
-  title: "KROK — ฟอร์มดิจิทัลหน้างาน",
+  // หน้าในแอปตั้งชื่อของตัวเอง → "<ชื่อหน้า> · KROK" (แยกแท็บได้ · โปรแกรมอ่านหน้าจอบอกว่าอยู่หน้าไหน)
+  title: { default: "KROK — ฟอร์มดิจิทัลหน้างาน", template: "%s · KROK" },
   description: "แพลตฟอร์มฟอร์ม/checklist หน้างานสำหรับคลังสินค้าและโรงงาน สร้างฟอร์มด้วย AI กรอกจากมือถือ ข้อมูล realtime",
   manifest: "/manifest.webmanifest",
 };

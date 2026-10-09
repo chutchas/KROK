@@ -4,6 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import HistoryClient, { type PlanEvent, type InvoiceRow } from "./HistoryClient";
 import { getEffectivePlans } from "@/lib/plans-server";
 
+export const metadata = { title: "ประวัติการชำระเงิน" };
+
 export const dynamic = "force-dynamic";
 
 export default async function BillingHistoryPage() {

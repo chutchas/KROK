@@ -42,7 +42,7 @@ export default function WelcomeClient({ email, invites }: { email: string; invit
 
   const box: React.CSSProperties = { display: "grid", gap: 10 };
   return (
-    <main style={{ minHeight: "100dvh", display: "flex", justifyContent: "center", padding: "40px 16px", background: "var(--bg)" }}>
+    <main style={{ minHeight: "100dvh", display: "flex", justifyContent: "center", padding: "40px 16px", background: "var(--ground)" }}>
       <div style={{ width: "100%", maxWidth: 480, display: "grid", gap: 16, alignContent: "start" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <LogoMark size={32} title="KROK" />

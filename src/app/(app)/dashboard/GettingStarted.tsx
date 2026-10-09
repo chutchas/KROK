@@ -49,7 +49,7 @@ export default function GettingStarted({ hasForms, firstSubId, canCreate }: { ha
                 <b style={{ display: "block", fontSize: ".92rem", color: s.done ? "var(--ink-3)" : "var(--ink)", textDecoration: s.done ? "line-through" : "none" }}>
                   {s.title}<span className="sr-only">{s.done ? ` (${t("onb.doneSr")})` : ""}</span>
                 </b>
-                {!s.done && <small style={{ color: "var(--ink-3)", fontSize: ".78rem" }}>{s.hint}</small>}
+                {!s.done && <small style={{ color: "var(--ink-2)", fontSize: ".78rem" }}>{s.hint}</small>}
               </div>
               {!s.done && s.href && (
                 <Link href={s.href} onClick={s.onClick} className="inline-flex items-center gap-1.5"

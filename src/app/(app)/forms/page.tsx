@@ -10,6 +10,8 @@ import type { CaseListItem } from "./CasesList";
 import { lastReturn, type CaseHistoryItem } from "@/lib/case-flow";
 import { loadTodayRounds } from "@/lib/schedule-server";
 
+export const metadata = { title: "กรอกฟอร์ม" };
+
 export const dynamic = "force-dynamic";
 
 interface FormRow {

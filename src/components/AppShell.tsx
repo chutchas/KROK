@@ -242,6 +242,13 @@ export default function AppShell({
         @media (min-width: 641px) and (max-width: 1280px){
           .krok-ws-slot .krok-ws-name{ max-width: 120px !important; }
         }
+        /* จอโน้ตบุ๊ก/แท็บเล็ต (641–1199px): เมนูหลักเหลือไอคอน (ยกเว้นหน้าที่อยู่) — ทุกเมนูเห็นครบ ไม่ไปซ่อนใต้ปุ่ม workspace
+           เมนูหมวดตั้งค่าที่ต่อท้ายตามหน้า (ทีม/แพ็กเกจ/Workspace) ไม่แสดง — อยู่ในเมนู ☰ แล้ว */
+        @media (min-width: 641px) and (max-width: 1199px){
+          .krok-nav a:not([aria-current="page"]) .krok-nav-label{ display: none; }
+          .krok-nav a.krok-nav-extra{ display: none !important; }
+          .krok-ws-slot .krok-ws-name{ max-width: 96px !important; }
+        }
         /* มือถือ: แถบบนเหลือแถวเดียว (เมนู · โลโก้ · สถานะ/แจ้งเตือน/โปรไฟล์) — เมนูหลักไปอยู่แถบล่างจอ
            workspace + ธีม/ภาษา ย้ายไปอยู่ในเมนูข้าง (☰ / "เมนูเพิ่มเติม") */
         @media (max-width: 640px){
@@ -319,7 +326,8 @@ export default function AppShell({
                   href={n.href}
                   aria-current={on ? "page" : undefined}
                   title={t(n.key)}
-                  className="inline-flex items-center gap-1.5"
+                  aria-label={t(n.key)}
+                  className={`inline-flex items-center gap-1.5${activeSecondary && n.href === activeSecondary.href && !primary.includes(n) ? " krok-nav-extra" : ""}`}
                   style={{
                     padding: "7px 9px",
                     borderRadius: 8,

@@ -33,7 +33,7 @@ export async function openChildForm(parentCaseId: string, fieldId: string): Prom
   if (await rateLimited(`child-open:${session.userId}`, 20, 60)) return { error: await sm("กดถี่เกินไป — รอสักครู่แล้วลองใหม่") };
   const supabase = await createClient();
   const { data, error } = await supabase.rpc("child_form_open", { p_parent: parentCaseId, p_field: fieldId });
-  if (error) return { error: missing(error.message || "") ? await sm("ยังไม่ได้รัน migration 0074") : await sm(dbError(error)) };
+  if (error) return { error: missing(error.message || "") ? await sm("ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK") : await sm(dbError(error)) };
   const r = (data || {}) as { child_case_id?: string; child_form_id?: string; mine?: boolean };
   if (!r.child_case_id || !r.child_form_id) return { error: await sm("เปิดฟอร์มลูกไม่สำเร็จ") };
   return { ok: true, childCaseId: r.child_case_id, childFormId: r.child_form_id, mine: !!r.mine };

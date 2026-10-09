@@ -8,6 +8,8 @@ import type { FormSchema } from "@/lib/form-schema";
 import { readSummary, summaryOf, type FormSummary } from "@/lib/form-summary";
 import { getTemplate } from "@/lib/form-templates";
 
+export const metadata = { title: "สร้างฟอร์ม" };
+
 export const dynamic = "force-dynamic";
 
 export interface FormRow {

@@ -7,6 +7,8 @@ import { getSession, redirectNoSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import TrashClient, { type TrashRow } from "./TrashClient";
 
+export const metadata = { title: "ถังขยะ" };
+
 export const dynamic = "force-dynamic";
 
 // ถังขยะเอกสาร — owner/admin · เอกสารที่ลบภายใน 30 วัน กู้คืนได้ (เลยกำหนด = cron cleanup ลบจริงพร้อมรูป)
@@ -29,7 +31,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
     reason: (r.delete_reason as string) || "",
   }));
   return (
-    <div style={{ maxWidth: 900, margin: "0 auto", display: "grid", gap: 14 }}>
+    <div style={{ display: "grid", gap: 14 }}>
       <a href="/reports" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="report.title" /></a>
       <div>
         <h1 style={{ fontSize: "1.4rem", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}><Icon icon={Trash2} className="h-5 w-5" /> <T k="trash.title" /></h1>

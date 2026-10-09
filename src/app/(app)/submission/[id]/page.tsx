@@ -11,6 +11,7 @@ import Icon from "@/components/Icon";
 import PrintButton from "./PrintButton";
 import DeleteSubmission from "./DeleteSubmission";
 import BackLink from "./BackLink";
+import TrashedNotice from "./TrashedNotice";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
 import { getFormPrintInfo } from "@/lib/print-photos-server";
@@ -35,7 +36,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const supabase = await createClient();
   const { data } = await supabase.from("submissions").select("id, form_title, doc_no").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
   if (!data) return {};
-  return { title: `${data.form_title || ""} ${docNoOf({ id: String(data.id), doc_no: data.doc_no as string | null | undefined })}`.trim() };
+  return { title: { absolute: `${data.form_title || ""} ${docNoOf({ id: String(data.id), doc_no: data.doc_no as string | null | undefined })}`.trim() } };
 }
 
 
@@ -129,7 +130,18 @@ export default async function SubmissionPage({ params, searchParams }: { params:
     .select("*")
     .eq("id", id)
     .maybeSingle();
-  if (!sub) notFound();
+  if (!sub) {
+    // owner/admin เปิดลิงก์ของเอกสารที่อยู่ในถังขยะ → บอกสถานะ + กู้คืนได้ (คนอื่น = หน้า "ไม่พบ")
+    const adm = session.role === "owner" || session.role === "admin" ? getAdminClient() : null;
+    const { data: gone } = adm
+      ? await adm.from("submissions").select("id, form_title, doc_no, deleted_at, deleted_by_name, delete_reason").eq("id", id).eq("tenant_id", session.tenantId).not("deleted_at", "is", null).maybeSingle()
+      : { data: null };
+    if (gone) {
+      return <TrashedNotice id={String(gone.id)} title={String(gone.form_title || "")} docNo={docNoOf({ id: String(gone.id), doc_no: gone.doc_no as string | null | undefined })}
+        by={String(gone.deleted_by_name || "-")} reason={String(gone.delete_reason || "")} deletedAt={String(gone.deleted_at)} />;
+    }
+    notFound();
+  }
 
   // งาน (ผู้กรอกแต่ละขั้น) + รูป + หลักฐาน AI อ่านเอกสาร — ดึงพร้อมกัน แล้วขอ signed URL ครั้งเดียวทั้งชุด
   // งาน: อ่านด้วย service role เพราะผู้ดูเอกสารอาจไม่เคยเกี่ยวกับงานนั้น (สิทธิ์ดูเอกสารตรวจจาก RLS ของ submissions แล้ว)
@@ -213,8 +225,9 @@ export default async function SubmissionPage({ params, searchParams }: { params:
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <BackLink from={sp.from} mine={!canManage(session.role)} />
         <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+          <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} showDetail={session.role === "owner" || session.role === "admin"} />
+          {/* ลบไว้ท้ายสุด — ไม่ให้ปุ่มทำลายอยู่ตำแหน่งแรก (มือถือ = ใกล้นิ้วโป้ง) */}
           {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}
-          <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} />
         </div>
       </div>
 

@@ -4,6 +4,8 @@ import { getSession, redirectNoSession } from "@/lib/session";
 import { listAreas } from "./actions";
 import AreasClient from "./AreasClient";
 
+export const metadata = { title: "พื้นที่" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AreasPage() {

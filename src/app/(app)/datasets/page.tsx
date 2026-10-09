@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { DATASET_SELECT, rowToMeta } from "@/lib/datasets";
 import DatasetsClient from "./DatasetsClient";
 
+export const metadata = { title: "ชุดข้อมูล" };
+
 export const dynamic = "force-dynamic";
 
 export default async function DatasetsPage() {

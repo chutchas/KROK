@@ -6,6 +6,8 @@ import AuditClient, { type AuditRow } from "./AuditClient";
 import { getTenantPlan } from "@/lib/quota";
 import { daysAgoIso } from "@/lib/quota-msg";
 
+export const metadata = { title: "ประวัติการใช้งาน" };
+
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {

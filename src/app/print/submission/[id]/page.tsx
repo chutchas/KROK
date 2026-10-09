@@ -26,7 +26,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const supabase = await createClient();
   const { data } = await supabase.from("submissions").select("id, form_title, doc_no").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
   if (!data) return {};
-  return { title: `${data.form_title || ""} ${docNoOf({ id: String(data.id), doc_no: data.doc_no as string | null | undefined })}`.trim(), robots: { index: false } };
+  return { title: { absolute: `${data.form_title || ""} ${docNoOf({ id: String(data.id), doc_no: data.doc_no as string | null | undefined })}`.trim() }, robots: { index: false } };
 }
 
 export default async function PrintSubmissionPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ auto?: string }> }) {

@@ -5,6 +5,8 @@ import { sanitizeSchema, type FormSchema } from "@/lib/form-schema";
 import { diffForms } from "@/lib/form-diff";
 import HistoryClient, { type VersionItem } from "./HistoryClient";
 
+export const metadata = { title: "ประวัติเวอร์ชัน" };
+
 export const dynamic = "force-dynamic";
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;

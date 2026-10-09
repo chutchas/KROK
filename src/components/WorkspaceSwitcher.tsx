@@ -58,6 +58,20 @@ export default function WorkspaceSwitcher({
   const [name, setName] = useState("");
   const [busy, setBusy] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+
+  // Esc ปิดรายการ แล้วโฟกัสกลับปุ่ม (แผงเปิด/ปิดธรรมดา — ข้างในมีฟอร์มสร้าง workspace จึงไม่ใช่ role=menu)
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      setCreating(false);
+      btnRef.current?.focus();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [open]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -105,9 +119,9 @@ export default function WorkspaceSwitcher({
   return (
     <div ref={boxRef} style={{ position: "relative", minWidth: 0 }}>
       <button
+        ref={btnRef}
         onClick={() => setOpen((v) => !v)}
         className="krok-ws-chip"
-        aria-haspopup="menu"
         aria-expanded={open}
         title={`${t("ws.switch")} · ${active?.tenantName ?? ""}`}
         style={{ ...chipStyle, cursor: "pointer" }}

@@ -15,7 +15,6 @@ import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
   ChevronUp, ChevronDown, MapPin, Settings2, Smartphone,
-  PenSquare,
 } from "lucide-react";
 import { confirmDialog } from "@/components/dialogs";
 import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
@@ -297,15 +296,8 @@ export default function DashboardClient({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        {forms.length === 0 ? (
-          // ยังไม่มีฟอร์ม: "เริ่มกรอกฟอร์ม" ทำไม่ได้ → ชวนสร้างฟอร์มแรกแทน (คนที่สร้างไม่ได้ = ไม่มีปุ่ม)
-          canCreate && (
-            <Link href="/studio" className="inline-flex items-center gap-1.5"
-              style={{ minHeight: 44, padding: "10px 18px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".95rem", fontWeight: 600, textDecoration: "none" }}>
-              <Icon icon={PenSquare} className="h-[18px] w-[18px]" /> {t("onb.firstForm")}
-            </Link>
-          )
-        ) : canFill && (
+        {/* ยังไม่มีฟอร์ม: ปุ่ม "สร้างฟอร์มแรก" อยู่ในการ์ดเริ่มต้นใช้งานด้านล่างแล้ว — ไม่ซ้ำที่หัวหน้า */}
+        {forms.length > 0 && canFill && (
           <Link href="/forms" className="inline-flex items-center gap-1.5"
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".95rem", fontWeight: 600, textDecoration: "none" }}>
             <Icon icon={Smartphone} className="h-[18px] w-[18px]" /> {t("dash.startFill")}

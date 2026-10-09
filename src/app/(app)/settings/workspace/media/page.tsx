@@ -5,6 +5,8 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { getBrandLibrary } from "@/lib/branding-library";
 import MediaClient from "./MediaClient";
 
+export const metadata = { title: "คลังรูป" };
+
 export const dynamic = "force-dynamic";
 
 // ตั้งค่า Workspace › คลังรูปภาพ (owner/admin)

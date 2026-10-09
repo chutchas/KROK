@@ -89,9 +89,9 @@ export default function WorkspaceClient({
 
       <Card>
         <h2 style={{ fontSize: "1.05rem", marginBottom: 8 }}>{t("ws.general")}</h2>
-        <label style={{ display: "block", fontSize: ".85rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("ws.name")}</label>
+        <label htmlFor="ws-name" style={{ display: "block", fontSize: ".85rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("ws.name")}</label>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Field value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 200 }} maxLength={80} />
+          <Field id="ws-name" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 200 }} maxLength={80} />
           <Button variant="primary" onClick={save} loading={busy} disabled={!name.trim() || name.trim() === tenantName}>
             <Icon icon={Save} className="h-4 w-4" /> {t("common.save")}
           </Button>

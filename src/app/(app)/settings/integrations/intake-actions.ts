@@ -29,8 +29,8 @@ async function guard(formId: string) {
 }
 
 function migrationMsg(m: string) {
-  if (/key_expires_at/.test(m)) return "ยังไม่ได้รัน migration 0042_intake_key_expiry.sql";
-  return /form_intake/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ยังไม่ได้รัน migration 0034_form_intake.sql" : m;
+  if (/key_expires_at/.test(m)) return "ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK";
+  return /form_intake/.test(m) && /does not exist|schema cache|not find/i.test(m) ? "ฟีเจอร์นี้ยังไม่พร้อมใช้งานในระบบ — ติดต่อผู้ดูแลระบบ KROK" : m;
 }
 
 /** อายุ key ที่เลือกได้ (วัน) · null = ไม่หมดอายุ */
