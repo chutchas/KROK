@@ -15,6 +15,7 @@ import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
   ChevronUp, ChevronDown, MapPin, Settings2, Smartphone,
+  PenSquare,
 } from "lucide-react";
 import { confirmDialog } from "@/components/dialogs";
 import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
@@ -26,6 +27,7 @@ import {
   formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS,
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
+import GettingStarted from "./GettingStarted";
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
 
 // รวมคำขอของทุก widget ที่ขอพร้อมกันเป็นการเรียก server ครั้งเดียว
@@ -88,10 +90,12 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 export default function DashboardClient({
   tenantId, initial, forms, summary, initialWidgets, hasSchedules = false, areas = [],
   workspaceWidgets = [], workspaceReady = false, isWsAdmin = false, seesAllForms = false,
-  attention, sections = DEFAULT_DASH_SECTIONS, canFill = false,
+  attention, sections = DEFAULT_DASH_SECTIONS, canFill = false, canCreate = false,
 }: {
   /** มีสิทธิ์เมนูกรอกฟอร์ม → ปุ่มหลักของหน้า = "เริ่มกรอกฟอร์ม" (งานจริง) แทน "เพิ่มการ์ด" */
   canFill?: boolean;
+  /** สร้างฟอร์มได้ (เมนูสร้างฟอร์ม) — ผู้ใช้ใหม่ที่ยังไม่มีฟอร์ม: ปุ่มหลัก = สร้างฟอร์มแรก */
+  canCreate?: boolean;
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
   /** พื้นที่ที่เปิดใช้ (widget "ตามพื้นที่") */
   areas?: AreaOpt[];
@@ -293,13 +297,23 @@ export default function DashboardClient({
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dash.title")}</h1>
-        {canFill && (
+        {forms.length === 0 ? (
+          // ยังไม่มีฟอร์ม: "เริ่มกรอกฟอร์ม" ทำไม่ได้ → ชวนสร้างฟอร์มแรกแทน (คนที่สร้างไม่ได้ = ไม่มีปุ่ม)
+          canCreate && (
+            <Link href="/studio" className="inline-flex items-center gap-1.5"
+              style={{ minHeight: 44, padding: "10px 18px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".95rem", fontWeight: 600, textDecoration: "none" }}>
+              <Icon icon={PenSquare} className="h-[18px] w-[18px]" /> {t("onb.firstForm")}
+            </Link>
+          )
+        ) : canFill && (
           <Link href="/forms" className="inline-flex items-center gap-1.5"
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 10, background: "var(--accent)", color: "var(--accent-ink)", fontSize: ".95rem", fontWeight: 600, textDecoration: "none" }}>
             <Icon icon={Smartphone} className="h-[18px] w-[18px]" /> {t("dash.startFill")}
           </Link>
         )}
       </div>
+
+      <GettingStarted hasForms={forms.length > 0} firstSubId={subs[0]?.id ?? null} canCreate={canCreate} />
 
       {before.map(renderSection)}
 
@@ -311,7 +325,7 @@ export default function DashboardClient({
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("dash.latestSub")}</p>
         <div>
-          {subs.length === 0 && <span style={{ color: "var(--ink-3)" }}>{t("dash.empty")}</span>}
+          {subs.length === 0 && <span style={{ color: "var(--ink-3)" }}>{forms.length ? t("dash.empty") : t("dash.emptyNoForms")}</span>}
           {subs.map((s) => (
             // เปิดรายละเอียดใน popup — role=button + Enter/Space ให้ใช้คีย์บอร์ดได้
             <div key={s.id} role="button" tabIndex={0} onClick={() => setOpen(s)}

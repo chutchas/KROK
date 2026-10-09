@@ -76,7 +76,7 @@ export default async function DashboardPage() {
   const initialWidgets = (layoutRes.data?.widgets as DashWidget[]) ?? [];
   const wsWidgets = wsRes.error ? [] : ((wsRes.data?.widgets as DashWidget[] | undefined) ?? []);
   const isWsAdmin = session.role === "owner" || session.role === "admin";
-  const canFill = await hasMenu(session, "forms");
+  const [canFill, canCreate] = await Promise.all([hasMenu(session, "forms"), hasMenu(session, "studio")]);
 
   return (<>
     <QuotaBanner warnings={quotaWarnings(snap)} canUpgrade={snap.ownerId ? snap.ownerId === session.userId : session.role === "owner"} />
@@ -94,6 +94,7 @@ export default async function DashboardPage() {
       seesAllForms={canManage(session.role)}
       attention={attention}
       canFill={canFill}
+      canCreate={canCreate}
     />
   </>);
 }
