@@ -32,7 +32,10 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
   // มาจากลิงก์เชิญ / ลิงก์ยืนยันอีเมล → เปิดหน้าต่างเข้าสู่ระบบทันที
   const [open, setOpen] = useState(() => sp.has("invite") || sp.has("confirmed") || sp.has("auth_error") || sp.has("mfa") || sp.has("deleted") || sp.has("pwreset") || (sp.has("next") && sp.get("next") !== "/"));
   const [stuck, setStuck] = useState(false);
-  const openLogin = useCallback(() => setOpen(true), []);
+  // ปุ่ม "เข้าสู่ระบบ" = หน้าเข้าสู่ระบบ · ปุ่ม "เริ่มใช้งานฟรี/สร้าง workspace" = หน้าสร้างองค์กรใหม่
+  const [startMode, setStartMode] = useState<"signin" | "signup">("signin");
+  const openLogin = useCallback(() => { setStartMode("signin"); setOpen(true); }, []);
+  const openSignup = useCallback(() => { setStartMode("signup"); setOpen(true); }, []);
 
   // เงาใต้แถบบนจะโผล่เมื่อเริ่มเลื่อน
   useEffect(() => {
@@ -67,20 +70,20 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
           <ThemeToggle />
           <LanguageToggle />
           <button type="button" onClick={openLogin} className="lp-nav-login">{t("lp.nav.login")}</button>
-          <button type="button" onClick={openLogin} className="lp-btn lp-btn-primary lp-btn-sm lp-nav-start">{t("lp.nav.start")}</button>
+          <button type="button" onClick={openSignup} className="lp-btn lp-btn-primary lp-btn-sm lp-nav-start">{t("lp.nav.start")}</button>
         </div>
       </header>
 
       <main id="top">
-        <Hero onLogin={openLogin} />
+        <Hero onLogin={openSignup} />
         <Pain />
         <How />
         <Jobs />
         <UseCases />
         <Security />
-        <Pricing onLogin={openLogin} plans={plans} />
+        <Pricing onLogin={openSignup} plans={plans} />
         <Faq />
-        <FinalCta onLogin={openLogin} />
+        <FinalCta onLogin={openLogin} onSignup={openSignup} />
       </main>
 
       <footer className="lp-foot">
@@ -103,7 +106,7 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
           {...backdropClose(() => setOpen(false))}
           role="dialog"
           aria-modal="true"
-          aria-label={t("login.signin")}
+          aria-label={startMode === "signup" ? t("login.signupTitle") : t("login.signin")}
           style={{
             position: "fixed", inset: 0, zIndex: 80, background: "rgba(6,10,14,.55)",
             display: "flex", justifyContent: "center", padding: 16, overflowY: "auto", overscrollBehavior: "contain",
@@ -111,7 +114,7 @@ export default function HomeClient({ plans }: { plans?: Plan[] }) {
         >
           {/* margin auto = อยู่กลางจอเมื่อพอที่ แต่ไม่กระโดดตามความสูงคีย์บอร์ดมือถือ (align-items:center ทำให้กล่องขยับทุกครั้งที่คีย์บอร์ดเปลี่ยนขนาด) */}
           <div ref={dialogRef} onClick={(e) => e.stopPropagation()} style={{ width: "100%", maxWidth: 400, position: "relative", margin: "auto 0" }}>
-            <LoginForm embedded />
+            <LoginForm embedded initialMode={startMode} key={startMode} />
             {/* ปุ่มปิดอยู่ในกรอบ (เดิมล้นขอบครึ่งปุ่ม) · อยู่หลังฟอร์มใน DOM → โฟกัสแรกตกที่ช่องกรอก */}
             <button
               type="button"

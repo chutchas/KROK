@@ -13,13 +13,13 @@ import GoogleSignInButton, { googleClientId } from "@/components/GoogleSignInBut
 import { emailIssue, hasNonAscii, passwordIssue, PASSWORD_MIN } from "@/lib/auth-validate";
 import { clearBundles } from "@/lib/offline-store";
 
-export default function LoginForm({ embedded = false }: { embedded?: boolean }) {
+export default function LoginForm({ embedded = false, initialMode = "signin" }: { embedded?: boolean; /** ปุ่ม "เริ่มใช้งานฟรี" = เปิดที่หน้าสร้างองค์กรใหม่ */ initialMode?: "signin" | "signup" }) {
   const router = useRouter();
   const { t, tt, lang } = useT();
   const sp = useSearchParams();
   // ลิงก์จากอีเมลเชิญ: /login?invite=<email> → เปิดหน้าสมัครพร้อมอีเมล ไม่ต้องตั้งชื่อองค์กร (เข้า workspace ที่เชิญ)
   const invited = (sp.get("invite") || "").trim().toLowerCase();
-  const [mode, setMode] = useState<"signin" | "signup" | "reset" | "mfa">(invited ? "signup" : "signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "reset" | "mfa">(invited ? "signup" : initialMode);
   // ยืนยันตัวตน 2 ขั้น: factor TOTP ที่ต้องกรอกรหัส
   const [factorId, setFactorId] = useState<string | null>(null);
   const [code, setCode] = useState("");
