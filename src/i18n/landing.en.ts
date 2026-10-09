@@ -8,11 +8,11 @@ export const lpEn: Record<LpKey, string> = {
   "lp.nav.login": "Log in",
   "lp.nav.start": "Start free",
 
-  "lp.hero.eyebrow": "For factories, warehouses and field teams",
+  "lp.hero.eyebrow": "For any work still done on paper",
   "lp.hero.title1": "Take paper off the floor.",
   "lp.hero.title2": "Get data ",
   "lp.hero.title3": "you can use right away.",
-  "lp.hero.sub": "Inspections, check-ins and shop-floor forms filled on a phone, even without signal. Approved in order, then printed as the same A4 sheet everyone already knows.",
+  "lp.hero.sub": "Inspection checklists, approval requests, daily logs or any form still on paper, filled on a phone, even without signal. Approved in order, then printed as the same A4 sheet everyone already knows.",
   "lp.hero.ctaStart": "Start free",
   "lp.hero.ctaHow": "See how it works",
   "lp.trust1": "No card required",
@@ -68,9 +68,9 @@ export const lpEn: Record<LpKey, string> = {
   "lp.how.s3ok": "Approved 08:10",
 
   "lp.jobs.t": "Three jobs in one place",
-  "lp.jobs.1t": "Inspect",
-  "lp.jobs.1d": "Step-by-step filling, photos stamped with time and location, on-screen signatures, barcode scanning, and child sheets for safety to finish from the main one.",
-  "lp.jobs.1b": "Keeps working without signal,Hands off to the next team or person,Scheduled rounds with reminders",
+  "lp.jobs.1t": "Fill",
+  "lp.jobs.1d": "Step-by-step filling, photos stamped with time and location, on-screen signatures, barcode scanning, and child forms another team or owner can finish from the main sheet.",
+  "lp.jobs.1b": "Keeps working without signal,Hands off to the next team or person,Scheduled rounds with reminders when due",
   "lp.jobs.2t": "Approve",
   "lp.jobs.2d": "Approvers see failed items and photos the moment they open a sheet. Clean sheets can be approved several at a time.",
   "lp.jobs.2f": "Failed items (1)",
@@ -140,11 +140,11 @@ export const lpEn: Record<LpKey, string> = {
   "lp.faq.q4": "Can approvals match the route we use on paper?",
   "lp.faq.a4": "Yes. Set several approval steps in order, and decide which team or person owns each step of the sheet.",
 
-  "lp.cta.t": "Pick one inspection sheet and move it tomorrow",
+  "lp.cta.t": "Pick one paper form and move it to phones tomorrow",
   "lp.cta.p": "Most teams start with the form they retype the most, and have it running on the floor within the same week.",
   "lp.cta.b1": "Create a free workspace",
   "lp.cta.b2": "Log in",
 
-  "lp.foot.tag": "Shop-floor inspections on a phone",
+  "lp.foot.tag": "Digital forms that replace paper",
   "lp.foot.contact": "Contact",
 };
