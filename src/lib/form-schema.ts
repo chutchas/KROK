@@ -754,7 +754,9 @@ export function sanitizeSchema(raw: unknown): FormSchema {
 
 // ---------- เลขที่เอกสาร ----------
 export type DocNoReset = "none" | "year" | "month";
-export type DocNoConfig = { prefix: string; reset?: DocNoReset; digits?: number };
+/** ปีในเลข: be = พ.ศ. (ค่าเริ่มต้น) · ce = ค.ศ. */
+export type DocNoEra = "be" | "ce";
+export type DocNoConfig = { prefix: string; reset?: DocNoReset; digits?: number; era?: DocNoEra };
 export const DOC_NO_RESETS: DocNoReset[] = ["none", "year", "month"];
 export const DOC_NO_PREFIX_MAX = 20;
 
@@ -772,15 +774,16 @@ export function sanitizeDocNo(raw: unknown): DocNoConfig | undefined {
   if (r.reset === "year" || r.reset === "month") out.reset = r.reset;
   const d = Math.round(Number(r.digits));
   if (Number.isFinite(d) && d >= 3 && d <= 8 && d !== 4) out.digits = d;
+  if (r.era === "ce") out.era = "ce";
   return out;
 }
 
-/** ตัวอย่างเลข (ตรงกับ next_doc_no ใน 0077: ปี/เดือนเป็น พ.ศ. ตามเวลาไทย) */
+/** ตัวอย่างเลข (ตรงกับ next_doc_no ใน 0077: ปี/เดือนตามเวลาไทย · พ.ศ. หรือ ค.ศ.) */
 export function docNoPreview(cfg: DocNoConfig, n = 1, at: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Bangkok", year: "numeric", month: "2-digit" }).formatToParts(at);
   const y = Number(parts.find((p) => p.type === "year")?.value ?? at.getFullYear());
   const mm = parts.find((p) => p.type === "month")?.value ?? "01";
-  const yy = String((y + 543) % 100).padStart(2, "0");
+  const yy = String((y + (cfg.era === "ce" ? 0 : 543)) % 100).padStart(2, "0");
   const stem = cfg.reset === "year" ? `${cfg.prefix}${yy}-` : cfg.reset === "month" ? `${cfg.prefix}${yy}${mm}-` : cfg.prefix;
   const digits = Math.min(8, Math.max(3, cfg.digits ?? 4));
   return stem + String(n).padStart(digits, "0");

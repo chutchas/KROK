@@ -16,7 +16,7 @@ import FieldSettingsPanel from "@/components/FieldSettingsPanel";
 import { resolveTheme, type WorkspaceBranding } from "@/lib/theme";
 import FormDevicePicker from "@/components/FormDevicePicker";
 import type { ShareValue } from "@/components/ShareScopeModal";
-import { cleanDocPrefix, countFields, docNoPreview, sanitizeSchema, type DocNoConfig, type DocNoReset, type FormSchema } from "@/lib/form-schema";
+import { cleanDocPrefix, countFields, docNoPreview, sanitizeSchema, type DocNoConfig, type DocNoEra, type DocNoReset, type FormSchema } from "@/lib/form-schema";
 import { assigneeLabel } from "@/lib/case-flow";
 import { PROMPTS_BY_TASK, PROMPTS_BY_INDUSTRY, buildPrompt } from "@/lib/prompt-library";
 import { FORM_CATEGORIES, isPresetCategory, categoryLabel } from "@/lib/form-categories";
@@ -1143,12 +1143,14 @@ function DocNoSettings({ value, onChange }: { value?: DocNoConfig; onChange: (v:
   const [prefix, setPrefix] = useState(value?.prefix ?? "");
   const reset: DocNoReset = value?.reset ?? "none";
   const digits = value?.digits ?? 4;
+  const era: DocNoEra = value?.era ?? "be";
   const set = (p: Partial<DocNoConfig>) => {
-    const next: DocNoConfig = { prefix: value?.prefix ?? prefix, reset, digits, ...p };
+    const next: DocNoConfig = { prefix: value?.prefix ?? prefix, reset, digits, era, ...p };
     if (!next.prefix) { onChange(undefined); return; }
     const out: DocNoConfig = { prefix: next.prefix };
     if (next.reset && next.reset !== "none") out.reset = next.reset;
     if (next.digits && next.digits !== 4) out.digits = next.digits;
+    if (next.era === "ce") out.era = "ce";
     onChange(out);
   };
   const pill = (on: boolean): React.CSSProperties => ({
@@ -1156,7 +1158,7 @@ function DocNoSettings({ value, onChange }: { value?: DocNoConfig; onChange: (v:
     border: on ? "1px solid var(--accent)" : "1px solid var(--line-strong)", background: on ? "var(--accent-soft)" : "var(--surface)",
     color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
   });
-  const preview = prefix ? docNoPreview({ prefix, reset, digits }) : "";
+  const preview = prefix ? docNoPreview({ prefix, reset, digits, era }) : "";
   return (
     <>
       <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={Hash} className="h-4 w-4" /> {t("docno.title")}</b>
@@ -1177,6 +1179,18 @@ function DocNoSettings({ value, onChange }: { value?: DocNoConfig; onChange: (v:
               </button>
             ))}
           </div>
+          {reset !== "none" && (
+            <>
+              <div style={{ fontSize: ".85rem", fontWeight: 600, marginBottom: 6 }} id="docno-era">{t("docno.era")}</div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }} role="radiogroup" aria-labelledby="docno-era">
+                {(["be", "ce"] as const).map((e) => (
+                  <button key={e} type="button" role="radio" aria-checked={era === e} onClick={() => set({ era: e })} style={pill(era === e)}>
+                    {t(`docno.era.${e}`)}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           <label style={{ display: "flex", alignItems: "center", gap: 10, fontSize: ".85rem", fontWeight: 600, marginBottom: 12 }}>
             {t("docno.digits")}
             <select value={digits} onChange={(e) => set({ digits: Number(e.target.value) })}

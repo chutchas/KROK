@@ -9,6 +9,8 @@ describe("doc number", () => {
     expect(docNoPreview({ prefix: "FL-" }, 1, AT)).toBe("FL-0001");
     expect(docNoPreview({ prefix: "FL-", reset: "year" }, 12, AT)).toBe("FL-69-0012");
     expect(docNoPreview({ prefix: "QC", reset: "month", digits: 6 }, 3, AT)).toBe("QC6910-000003");
+    expect(docNoPreview({ prefix: "FL-", reset: "year", era: "ce" }, 1, AT)).toBe("FL-26-0001");
+    expect(docNoPreview({ prefix: "FL-", reset: "month", era: "ce" }, 1, AT)).toBe("FL-2610-0001");
   });
 
   it("uses Bangkok time at the year boundary", () => {
@@ -21,6 +23,8 @@ describe("doc number", () => {
     expect(sanitizeDocNo({ prefix: "" })).toBeUndefined();
     expect(sanitizeDocNo({ prefix: "ตรวจ/", reset: "weekly", digits: 99 })).toEqual({ prefix: "ตรวจ/" });
     expect(sanitizeDocNo({ prefix: "FL", reset: "year", digits: 6 })).toEqual({ prefix: "FL", reset: "year", digits: 6 });
+    expect(sanitizeDocNo({ prefix: "FL", reset: "year", era: "ce" })).toEqual({ prefix: "FL", reset: "year", era: "ce" });
+    expect(sanitizeDocNo({ prefix: "FL", era: "be" })).toEqual({ prefix: "FL" });
     expect(cleanDocPrefix("A".repeat(40))).toHaveLength(20);
     const s = sanitizeSchema({ title: "x", steps: [{ title: "s", fields: [{ id: "a", type: "text", label: "A" }] }], doc_no: { prefix: "FL-" } });
     expect(s.doc_no).toEqual({ prefix: "FL-" });

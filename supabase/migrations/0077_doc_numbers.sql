@@ -1,6 +1,6 @@
 -- ============================================================
 -- 0077 · เลขที่เอกสารแบบรัน (ตั้งต่อฟอร์ม)
--- ฟอร์มตั้ง schema.doc_no = { prefix, reset: none|year|month, digits }
+-- ฟอร์มตั้ง schema.doc_no = { prefix, reset: none|year|month, digits, era: be|ce }
 -- เลขออกตอนบันทึกใบ (trigger ก่อน insert) — ทุกช่องทาง: /api/submit, /api/public/submit, intake
 -- ฟอร์มที่ prefix เดียวกันใช้ตัวนับร่วมกัน (ไม่ชนกันใน workspace) · ใบเก่าไม่มีเลข = แสดงรหัส 8 ตัวเหมือนเดิม
 -- insert ล้ม (เช่น id ซ้ำ) = ตัวนับย้อนตามทั้ง transaction → ไม่มีเลขข้าม
@@ -18,7 +18,7 @@ create table if not exists public.doc_counters (
 alter table public.doc_counters enable row level security;
 -- ไม่มี policy: อ่าน/เขียนผ่าน function ด้านล่างเท่านั้น
 
--- เลขถัดไปของ stem (prefix + งวด) · ปี/เดือนเป็น พ.ศ. ตามเวลาไทย
+-- เลขถัดไปของ stem (prefix + งวด) · ปี 2 หลักตามเวลาไทย: พ.ศ. (ค่าเริ่มต้น) หรือ ค.ศ. (era = 'ce')
 create or replace function public.next_doc_no(p_tenant uuid, p_cfg jsonb, p_at timestamptz)
 returns text
 language plpgsql
@@ -30,7 +30,7 @@ declare
   v_reset  text := coalesce(p_cfg->>'reset', 'none');
   v_digits int;
   v_t    timestamp := (coalesce(p_at, now()) at time zone 'Asia/Bangkok');
-  v_yy   text := lpad(((extract(year from v_t)::int + 543) % 100)::text, 2, '0');
+  v_yy   text := lpad(((extract(year from v_t)::int + case when p_cfg->>'era' = 'ce' then 0 else 543 end) % 100)::text, 2, '0');
   v_stem   text;
   v_n    int;
 begin
