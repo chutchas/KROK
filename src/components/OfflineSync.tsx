@@ -18,6 +18,10 @@ async function currentUserId(): Promise<string | null> {
 /** รายการที่ติดโควตาแพ็กเกจ: พักไว้ 10 นาทีก่อนลองใหม่ (ไม่ยิงซ้ำทุก 30 วิ และไม่บังรายการอื่น) */
 const QUOTA_RETRY_MS = 10 * 60_000;
 
+// ใช้ร่วมกันทุก instance (แถบเมนูหลัก + แถบบนของหน้ากรอก) — ไม่ส่งคิวซ้ำพร้อมกัน
+const lock = { busy: false };
+const blockedUntilShared = new Map<string, number>();
+
 // ตัวบ่งชี้สถานะออฟไลน์ + sync คิวฟอร์มที่ค้างเมื่อกลับมาออนไลน์
 export default function OfflineSync() {
   const { t, tt, lang } = useT();
@@ -32,8 +36,7 @@ export default function OfflineSync() {
   /** quota = โควตาเต็ม · blocked = server ไม่รับ (ฟอร์มปิด/ไม่มีสิทธิ์/เครื่องไม่ได้อนุมัติ) */
   const [msgKind, setMsgKind] = useState<"quota" | "blocked">("quota");
   const [showMsg, setShowMsg] = useState(false);
-  const busy = useRef(false);
-  const blockedUntil = useRef<Map<string, number>>(new Map());
+  const blockedUntil = useRef(blockedUntilShared);
 
   const refreshCount = useCallback(async () => {
     const me = await currentUserId();
@@ -41,8 +44,8 @@ export default function OfflineSync() {
   }, []);
 
   const flush = useCallback(async () => {
-    if (busy.current || typeof navigator === "undefined" || !navigator.onLine) return;
-    busy.current = true;
+    if (lock.busy || typeof navigator === "undefined" || !navigator.onLine) return;
+    lock.busy = true;
     setSyncing(true);
     let done = 0;
     let quota: string | null = null;
@@ -81,10 +84,12 @@ export default function OfflineSync() {
       }
     } finally {
       if (quota !== "quota") { setQuotaMsg(quota ? localizeServerMsg(quota, langRef.current) : quota); setMsgKind(kind); } // "quota" = ยังอยู่ในช่วงพัก ใช้ข้อความเดิม
-      busy.current = false;
+      lock.busy = false;
       setSyncing(false);
       if (done > 0) { setJustSynced(done); setTimeout(() => setJustSynced(0), 4000); }
       await refreshCount();
+      // instance อื่น (ถ้ามี) อัปเดตตัวเลขตาม — ไม่สั่ง flush ซ้ำ
+      window.dispatchEvent(new Event("krok-queue-synced"));
     }
   }, [refreshCount]);
 
@@ -99,11 +104,13 @@ export default function OfflineSync() {
     window.addEventListener("online", onOnline);
     window.addEventListener("offline", onOffline);
     window.addEventListener("krok-queue-changed", onChanged);
+    window.addEventListener("krok-queue-synced", refreshCount);
     const iv = setInterval(() => { if (navigator.onLine) flush(); }, 30000);
     return () => {
       window.removeEventListener("online", onOnline);
       window.removeEventListener("offline", onOffline);
       window.removeEventListener("krok-queue-changed", onChanged);
+      window.removeEventListener("krok-queue-synced", refreshCount);
       clearInterval(iv);
     };
   }, [flush, refreshCount]);

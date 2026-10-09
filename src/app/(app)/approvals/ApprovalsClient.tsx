@@ -70,7 +70,7 @@ function chainOf(s: PendingSub): ApprovalStep[] {
 const failCount = (s: PendingSub) => s.fails?.length || s.evidence?.failed.length || 0;
 
 const selectStyle: React.CSSProperties = {
-  minHeight: TAP, padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8,
+  minHeight: TAP, padding: "8px 10px", border: "1px solid var(--line-strong)", borderRadius: 8,
   background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".92rem", maxWidth: "100%",
 };
 

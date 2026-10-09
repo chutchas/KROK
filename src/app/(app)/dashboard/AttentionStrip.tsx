@@ -56,7 +56,7 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
           </Tile>
         )}
         {approvals && (
-          <Tile icon={ClipboardCheck} tone="var(--accent)" label={t("dash.attnApprovals")} count={approvals.count} capped={approvals.capped} none={t("dash.attnNone")}
+          <Tile icon={ClipboardCheck} tone="var(--accent-text)" label={t("dash.attnApprovals")} count={approvals.count} capped={approvals.capped} none={t("dash.attnNone")}
             footer={approvals.count > 0 ? { href: "/approvals", text: t("dash.attnOpenApprovals") } : undefined} />
         )}
       </div>

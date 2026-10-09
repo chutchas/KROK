@@ -3,6 +3,7 @@ import { useEffect, useId, useRef, useState } from "react";
 import Icon, { type IconType } from "@/components/Icon";
 import { X, MoreHorizontal, Check } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
+import OfflineSync from "@/components/OfflineSync";
 
 /** ความกว้างคอลัมน์ของหน้ากรอกแบบเต็มจอ (จอคอม) — มือถือเต็มจอ */
 export const FOCUS_COL_W = 720;
@@ -60,6 +61,8 @@ export function FillTopBar({
             </div>
           )}
         </div>
+        {/* สถานะออฟไลน์/คิวรอส่ง — แถบเมนูหลักถูกซ่อนในโหมดโฟกัส หน้ากรอกจึงต้องแสดงเอง (ซ่อนตัวเองเมื่อออนไลน์และไม่มีคิว) */}
+        <OfflineSync />
         {menu.length > 0 && <OverflowMenu items={menu} />}
         <button
           type="button"
@@ -185,7 +188,12 @@ function OverflowMenu({ items }: { items: FocusMenuItem[] }) {
  * แถบปุ่มล่าง (ก่อนหน้า / ถัดไป / ส่ง) ติดขอบล่างจอ — อยู่ในระยะนิ้วโป้งเสมอ แม้ขั้นจะยาว
  * วางตัวเว้นที่ (spacer) ไว้ท้ายเนื้อหาด้วย เนื้อหาสุดท้ายจะได้ไม่ถูกแถบบัง
  */
-export function FillActionBar({ children, colWidth = FOCUS_COL_W }: { children: React.ReactNode; colWidth?: number | string }) {
+export function FillActionBar({ children, colWidth = FOCUS_COL_W, themeScope }: {
+  children: React.ReactNode;
+  colWidth?: number | string;
+  /** className ของธีมฟอร์ม — แถบนี้ fixed อยู่นอกกล่องฟอร์ม ต้องใส่ scope เองให้ปุ่มได้สีธีม */
+  themeScope?: string;
+}) {
   const { t } = useT();
   return (
     <>
@@ -193,7 +201,7 @@ export function FillActionBar({ children, colWidth = FOCUS_COL_W }: { children: 
       <div
         role="region"
         aria-label={t("fill.focus.actions")}
-        className="no-print"
+        className={themeScope ? `no-print ${themeScope}` : "no-print"}
         style={{
           position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30,
           background: "var(--surface)", borderTop: "1px solid var(--line)",
