@@ -1147,6 +1147,7 @@ export const en: Record<MessageKey, string> = {
   "appr.none": "Nothing pending",
   "appr.noneSetTitle": "No forms need approval yet",
   "appr.noneSetBody": "Turn on “Requires approval” in a form's settings on the Create form page — submissions from that form will wait here",
+  "appr.goStudio": "Go to Create form →",
   "appr.cleared": "All cleared",
   "appr.viewAll": "View all answers",
   "appr.openDoc": "Open document view (with photos) →",

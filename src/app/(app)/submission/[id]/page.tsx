@@ -35,7 +35,7 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   if (!session) return {};
   const supabase = await createClient();
   const { data } = await supabase.from("submissions").select("id, form_title, doc_no").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
-  if (!data) return {};
+  if (!data) return { title: "ไม่พบหน้านี้" };
   return { title: { absolute: `${data.form_title || ""} ${docNoOf({ id: String(data.id), doc_no: data.doc_no as string | null | undefined })}`.trim() } };
 }
 

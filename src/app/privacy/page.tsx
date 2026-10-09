@@ -4,7 +4,7 @@ import LegalContact from "@/components/LegalContact";
 import LegalDoc, { type LegalSection } from "@/components/LegalDoc";
 import { LEGAL } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "นโยบายความเป็นส่วนตัว · KROK" };
+export const metadata: Metadata = { title: "นโยบายความเป็นส่วนตัว" };
 
 // ร่างนโยบายความเป็นส่วนตัวตาม พ.ร.บ.คุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (มาตรา 23) — ควรให้ที่ปรึกษากฎหมายตรวจก่อนใช้จริง
 export default function PrivacyPage() {

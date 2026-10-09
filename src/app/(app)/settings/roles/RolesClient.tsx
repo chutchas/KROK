@@ -77,8 +77,8 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
         {creating ? (
           <div style={{ display: "grid", gap: 10 }}>
             <Field value={newName} onChange={(e) => setNewName(e.target.value)} placeholder={t("roles.namePlaceholder")} />
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".9rem", cursor: "pointer" }}>
-              <input type="checkbox" checked={newManage} onChange={(e) => setNewManage(e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".9rem", cursor: "pointer", minHeight: 44 }}>
+              <input type="checkbox" checked={newManage} onChange={(e) => setNewManage(e.target.checked)} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
               {t("roles.canManage")}
             </label>
             <div>
@@ -88,7 +88,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                   const on = newMenus.includes(m.key);
                   return (
                     <button key={m.key} type="button" onClick={() => setNewMenus((s) => (on ? s.filter((x) => x !== m.key) : [...s, m.key]))}
-                      style={{ padding: "6px 11px", borderRadius: 20, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                      style={{ padding: "6px 12px", minHeight: 36, borderRadius: 20, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                       {menuLabel(m.key)}
                     </button>
                   );
@@ -132,8 +132,8 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
               ) : (
                 <>
                   {!r.isSystem || r.key === "admin" ? (
-                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".85rem", cursor: "pointer", marginBottom: 10 }}>
-                      <input type="checkbox" checked={r.canManage} disabled={busy} onChange={() => toggleManage(r)} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".85rem", cursor: "pointer", marginBottom: 6, minHeight: 44 }}>
+                      <input type="checkbox" checked={r.canManage} disabled={busy} onChange={() => toggleManage(r)} style={{ width: 20, height: 20, accentColor: "var(--accent)" }} />
                       {t("roles.canManage")}
                     </label>
                   ) : null}
@@ -143,7 +143,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                       const on = r.menus.includes(m.key);
                       return (
                         <button key={m.key} type="button" disabled={busy} onClick={() => toggleMenu(r, m.key)}
-                          style={{ padding: "6px 11px", borderRadius: 20, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                          style={{ padding: "6px 12px", minHeight: 36, borderRadius: 20, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                           {menuLabel(m.key)}
                         </button>
                       );

@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { enforceMenu, canManage } from "@/lib/session";
+import { enforceMenu, canManage, getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { DATASET_SELECT, rowToMeta, type DatasetRecord } from "@/lib/datasets";
 import { formsUsingDataset } from "@/lib/datasets-server";
@@ -7,7 +7,15 @@ import DatasetDetailClient, { type SyncRun } from "./DatasetDetailClient";
 import { getTenantPlan } from "@/lib/quota";
 import { MAX_DATASET_ROWS } from "@/lib/datasets";
 
-export const metadata = { title: "ชุดข้อมูล" };
+/** ชื่อแท็บ = ชื่อชุดข้อมูล (ไม่พบ = "ไม่พบหน้านี้") */
+export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const session = await getSession();
+  if (!session) return { title: "ชุดข้อมูล" };
+  const supabase = await createClient();
+  const { data } = await supabase.from("datasets").select("name").eq("id", id).eq("tenant_id", session.tenantId).maybeSingle();
+  return { title: (data?.name as string | undefined) || "ไม่พบหน้านี้" };
+}
 
 export const dynamic = "force-dynamic";
 

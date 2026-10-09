@@ -74,8 +74,10 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
               fontFamily: "inherit",
               fontSize: ".9rem",
               fontWeight: 600,
-              color: "#fff",
-              background: "var(--brand-gradient-50, var(--accent))",
+              minHeight: 44,
+              // สีหลักทึบ (เดิม gradient โปร่ง 50% = ตัวขาวบนพื้นอ่อน 1.2–1.9:1 ดูเหมือนปุ่มกดไม่ได้)
+              color: "var(--accent-ink)",
+              background: "var(--accent)",
             }}
           >
             {t("err.retry")}

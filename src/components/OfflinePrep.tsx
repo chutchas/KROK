@@ -58,7 +58,10 @@ export default function OfflinePrep({ userId, tenantId }: { userId: string; tena
   useEffect(() => {
     let last = 0;
     let busy = false;
+    // ถูกจำกัดความถี่ → จำไว้ข้ามการโหลดหน้าใหม่ (เดิมอยู่ในหน่วยความจำ = โหลดหน้าใหม่แล้วยิงซ้ำ)
+    const BLOCK_KEY = `krok_offline_block:${userId}`;
     let blockedUntil = 0;
+    try { blockedUntil = Number(localStorage.getItem(BLOCK_KEY)) || 0; } catch { /* ไม่มี storage */ }
     type Why = "load" | "interval" | "online";
     const gapOf: Record<Why, number> = { load: LOAD_GAP_MS, interval: REFRESH_MS, online: ONLINE_GAP_MS };
     const sync = async (why: Why) => {
@@ -75,6 +78,7 @@ export default function OfflinePrep({ userId, tenantId }: { userId: string; tena
         if (res.status === 429) {
           const ra = Number(res.headers.get("retry-after"));
           blockedUntil = Date.now() + (Number.isFinite(ra) && ra > 0 ? ra * 1000 : BACKOFF_MS);
+          try { localStorage.setItem(BLOCK_KEY, String(blockedUntil)); } catch { /* ไม่มี storage */ }
           return;
         }
         if (!res.ok) return;

@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
 import ContactClient from "./ContactClient";
 
-export const metadata: Metadata = { title: "ติดต่อเรา · KROK" };
+export const metadata: Metadata = { title: "ติดต่อเรา" };
 export const dynamic = "force-dynamic";
 
 // หน้าสาธารณะสำหรับคนนอก · ล็อกอินอยู่ = ไปหน้าในแอป (มี navbar เดิม)

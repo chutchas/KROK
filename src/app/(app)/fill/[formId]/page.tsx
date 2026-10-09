@@ -13,6 +13,16 @@ import FillWithLocalDraft from "./FillWithLocalDraft";
 
 export const dynamic = "force-dynamic";
 
+/** ชื่อแท็บ = ชื่อฟอร์ม (ลิงก์/QR ของฟอร์มที่ไม่มีแล้ว = "ไม่พบหน้านี้") */
+export async function generateMetadata({ params }: { params: Promise<{ formId: string }> }) {
+  const { formId } = await params;
+  const session = await getSession();
+  if (!session) return {};
+  const supabase = await createClient();
+  const { data } = await supabase.from("forms").select("title").eq("id", formId).eq("tenant_id", session.tenantId).is("deleted_at", null).maybeSingle();
+  return { title: (data?.title as string | undefined) || "ไม่พบหน้านี้" };
+}
+
 export default async function FillPage({
   params,
   searchParams,
