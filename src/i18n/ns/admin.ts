@@ -28,6 +28,19 @@ const th = {
   "admin.planConfirm": "เปลี่ยนแพ็กเกจของ {who} เป็น {plan}? — มีผลทันทีกับ {n} workspace ที่เขาเป็นเจ้าของ (ไม่ออกใบแจ้งหนี้)",
   "admin.planSaved": "{who} ใช้แพ็กเกจ {plan} แล้ว",
   "admin.saved": "บันทึกแล้ว",
+  "admin.deleteUser": "ลบผู้ใช้",
+  "admin.deleteAdminHint": "ต้องลดสิทธิ์ platform admin ก่อนจึงจะลบได้",
+  "admin.deleteTitle": "ลบบัญชีของ {who} — ลบแล้วกู้คืนไม่ได้",
+  "admin.deleteWsGone": "workspace ที่จะถูกลบทั้งหมดพร้อมไฟล์ (มีแค่ผู้ใช้นี้)",
+  "admin.deleteWsLeave": "จะออกจาก workspace เหล่านี้ (ข้อมูลที่ส่งไว้ยังอยู่กับ workspace)",
+  "admin.deletePlanDrop": "workspace ที่จะเปลี่ยนไปใช้แพ็กเกจของ owner คนถัดไป",
+  "admin.deleteBlocked": "ลบไม่ได้ — เป็น owner คนเดียวของ workspace ที่ยังมีสมาชิก ให้ตั้ง owner คนใหม่ก่อน",
+  "admin.deleteMembers": "{n} สมาชิก",
+  "admin.deleteNothing": "ไม่มี workspace ผูกอยู่ — ลบเฉพาะบัญชี",
+  "admin.deleteTypeEmail": "พิมพ์อีเมล {email} เพื่อยืนยัน",
+  "admin.deleteConfirmBtn": "ลบถาวร",
+  "admin.cancel": "ยกเลิก",
+  "admin.deleted": "ลบ {who} แล้ว",
 } as const;
 export type AdminKey = keyof typeof th;
 export type AdminAnyKey = MessageKey | AdminKey;
@@ -57,6 +70,19 @@ const en: Record<AdminKey, string> = {
   "admin.planConfirm": "Change {who} to {plan}? It applies immediately to the {n} workspace(s) they own (no invoice is issued).",
   "admin.planSaved": "{who} is now on {plan}",
   "admin.saved": "Saved",
+  "admin.deleteUser": "Delete user",
+  "admin.deleteAdminHint": "Remove their platform admin role before deleting",
+  "admin.deleteTitle": "Delete {who}'s account — this can't be undone",
+  "admin.deleteWsGone": "Workspaces that will be deleted with all files (this user is the only member)",
+  "admin.deleteWsLeave": "Will leave these workspaces (submitted data stays with the workspace)",
+  "admin.deletePlanDrop": "Workspaces that will switch to the next owner's plan",
+  "admin.deleteBlocked": "Can't delete — they are the only owner of workspaces that still have members. Assign a new owner first",
+  "admin.deleteMembers": "{n} members",
+  "admin.deleteNothing": "No workspaces attached — only the account will be deleted",
+  "admin.deleteTypeEmail": "Type {email} to confirm",
+  "admin.deleteConfirmBtn": "Delete permanently",
+  "admin.cancel": "Cancel",
+  "admin.deleted": "Deleted {who}",
 };
 
 export const useAdminT = createNsHook<AdminKey>(th, en);

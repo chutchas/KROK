@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/session";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { getEffectivePlans } from "@/lib/plans-server";
+import { planDeletion, executeDeletion, type DeletionPlan } from "@/lib/account-deletion";
 
 type PlatformRole = "platform_admin" | "developer" | "user";
 const PLATFORM_ROLES: PlatformRole[] = ["platform_admin", "developer", "user"];
@@ -106,4 +107,44 @@ export async function resetUserMfa(userId: string): Promise<{ ok: true; removed:
     tenant_id: null, actor_id: a.session.userId, action: "user.mfa_reset", target_type: "user", target_id: userId, meta: { removed },
   });
   return { ok: true, removed };
+}
+
+/** ตรวจผู้ใช้ที่จะลบ (Platform Admin) — ห้ามลบตัวเอง · ห้ามลบ platform admin (ต้องลดสิทธิ์ก่อน) */
+async function deletionTarget(a: { session: { userId: string }; admin: NonNullable<ReturnType<typeof getAdminClient>> }, userId: string): Promise<{ error: string } | { email: string }> {
+  if (typeof userId !== "string" || !userId) return { error: await sm("ไม่พบผู้ใช้") };
+  if (userId === a.session.userId) return { error: await sm("ลบบัญชีของตัวเองจากหน้านี้ไม่ได้ — ใช้เมนูลบบัญชีในโปรไฟล์") };
+  const { data: prof } = await a.admin.from("profiles").select("platform_role").eq("user_id", userId).maybeSingle();
+  if (prof?.platform_role === "platform_admin") return { error: await sm("ต้องลดสิทธิ์ platform admin ของผู้ใช้นี้ก่อนจึงจะลบได้") };
+  const { data, error } = await a.admin.auth.admin.getUserById(userId);
+  if (error || !data?.user) return { error: await sm("ไม่พบผู้ใช้") };
+  return { email: data.user.email || "" };
+}
+
+/** ดูก่อนลบ (Platform Admin) — workspace ไหนจะถูกลบ / ออก / ติดอะไร */
+export async function previewUserDeletion(userId: string): Promise<{ plan: DeletionPlan; email: string } | { error: string }> {
+  const a = await requirePlatform();
+  if (!a.ok) return { error: a.error };
+  const t = await deletionTarget(a, userId);
+  if ("error" in t) return { error: t.error };
+  return { plan: await planDeletion(a.admin, userId), email: t.email };
+}
+
+/** ลบผู้ใช้ทั้งบัญชี (Platform Admin) — กติกาเดียวกับผู้ใช้ลบเอง · ต้องพิมพ์อีเมลของผู้ใช้ยืนยัน · ลบแล้วกู้คืนไม่ได้ */
+export async function deleteUserAccount(userId: string, confirmEmail: string): Promise<{ ok: true } | { error: string; blockers?: DeletionPlan["blockers"] }> {
+  const a = await requirePlatform();
+  if (!a.ok) return { error: a.error };
+  const t = await deletionTarget(a, userId);
+  if ("error" in t) return { error: t.error };
+  if (!t.email || typeof confirmEmail !== "string" || confirmEmail.trim().toLowerCase() !== t.email.toLowerCase())
+    return { error: await sm("อีเมลยืนยันไม่ตรงกับบัญชี") };
+
+  const res = await executeDeletion(a.admin, { userId, email: t.email }, { actorId: a.session.userId, by: "platform_admin" });
+  if ("error" in res) return res;
+
+  await a.admin.from("audit_log").insert({
+    tenant_id: null, actor_id: a.session.userId, action: "user.delete", target_type: "user", target_id: userId,
+    meta: { email: t.email, deletedWorkspaces: res.plan.deleteTenants.map((w) => w.name), leftWorkspaces: res.plan.leaveTenants.map((w) => w.name) },
+  });
+  revalidatePath("/admin/users");
+  return { ok: true };
 }

@@ -220,4 +220,7 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "กรุณากรอกข้อมูลให้ครบและถูกต้อง": "Please fill in all required fields correctly",
   "ส่งข้อความหลายครั้งเกินไป — ลองใหม่ภายหลัง หรือโทรหาเราโดยตรง": "Too many messages — try again later, or call us directly",
   "ส่งข้อความไม่สำเร็จ — โปรดโทรหรืออีเมลหาเราโดยตรง": "Couldn't send your message — please call or email us directly",
+  "ลบบัญชีของตัวเองจากหน้านี้ไม่ได้ — ใช้เมนูลบบัญชีในโปรไฟล์": "You can't delete your own account here — use Delete account in your profile",
+  "ต้องลดสิทธิ์ platform admin ของผู้ใช้นี้ก่อนจึงจะลบได้": "Remove this user's platform admin role before deleting them",
+  "ไม่พบผู้ใช้": "User not found",
 };

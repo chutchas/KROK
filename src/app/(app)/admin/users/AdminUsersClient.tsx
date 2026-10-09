@@ -3,9 +3,9 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Field, Notice, Pill, Button, EmptyState } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Crown, Code2, UserRound, Package } from "lucide-react";
+import { Crown, Code2, UserRound, Package, Trash2 } from "lucide-react";
 import { useAdminT as useT } from "@/i18n/ns/admin";
-import { setPlatformRole, removeFromWorkspace, setUserPlan, resetUserMfa } from "./actions";
+import { setPlatformRole, removeFromWorkspace, setUserPlan, resetUserMfa, previewUserDeletion, deleteUserAccount } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
 
 type PlatformRole = "platform_admin" | "developer" | "user";
@@ -23,6 +23,8 @@ export interface SysUser {
 
 const PR_ICON = { platform_admin: Crown, developer: Code2, user: UserRound } as const;
 
+type DeletionPreview = Extract<Awaited<ReturnType<typeof previewUserDeletion>>, { plan: unknown }>;
+
 export interface PlanOpt { key: string; name: string; priceThb: number; visible: boolean }
 
 export default function AdminUsersClient({ users, meId, plans = [] }: { users: SysUser[]; meId: string; plans?: PlanOpt[] }) {
@@ -31,6 +33,9 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  /** แผงยืนยันการลบผู้ใช้ — เปิดได้ทีละคน */
+  const [del, setDel] = useState<(DeletionPreview & { userId: string }) | null>(null);
+  const [delEmail, setDelEmail] = useState("");
 
   const prLabel = (r: PlatformRole) =>
     r === "platform_admin" ? t("admin.prAdmin") : r === "developer" ? t("admin.prDev") : t("admin.prUser");
@@ -68,6 +73,27 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
     setBusy(null);
     if ("error" in res) setMsg({ t: res.error, err: true });
     else { setMsg({ t: t("admin.saved") }); router.refresh(); }
+  }
+
+  async function openDelete(u: SysUser) {
+    setBusy(u.userId);
+    const res = await previewUserDeletion(u.userId);
+    setBusy(null);
+    if ("error" in res) { setMsg({ t: res.error, err: true }); return; }
+    setMsg(null);
+    setDelEmail("");
+    setDel({ ...res, userId: u.userId });
+  }
+
+  async function confirmDelete(u: SysUser) {
+    if (!del) return;
+    setBusy(u.userId);
+    const res = await deleteUserAccount(u.userId, delEmail);
+    setBusy(null);
+    if ("error" in res) { setMsg({ t: res.error, err: true }); return; }
+    setDel(null);
+    setMsg({ t: tt("admin.deleted", { who: u.name || del.email }) });
+    router.refresh();
   }
 
   const counts = useMemo(() => ({
@@ -129,6 +155,17 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                 >
                   {t("mfa.adminReset")}
                 </Button>
+                {u.userId !== meId && (
+                  <Button
+                    variant="danger"
+                    onClick={() => (del?.userId === u.userId ? setDel(null) : openDelete(u))}
+                    disabled={busy === u.userId || u.platformRole === "platform_admin"}
+                    title={u.platformRole === "platform_admin" ? t("admin.deleteAdminHint") : undefined}
+                    style={{ padding: "5px 10px", fontSize: ".78rem", display: "inline-flex", alignItems: "center", gap: 4 }}
+                  >
+                    <Icon icon={Trash2} className="h-3.5 w-3.5" />{t("admin.deleteUser")}
+                  </Button>
+                )}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{t("admin.platformRole")}</span>
                   <select value={u.platformRole} disabled={busy === u.userId} onChange={(e) => changeRole(u, e.target.value as PlatformRole)} style={sel}>
@@ -138,6 +175,18 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                   </select>
                 </div>
               </div>
+
+              {del?.userId === u.userId && (
+                <DeletePanel
+                  who={u.name || del.email}
+                  preview={del}
+                  email={delEmail}
+                  onEmail={setDelEmail}
+                  busy={busy === u.userId}
+                  onCancel={() => setDel(null)}
+                  onConfirm={() => confirmDelete(u)}
+                />
+              )}
 
               {u.workspaces.length > 0 && (
                 <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--line)", display: "grid", gap: 6 }}>
@@ -176,6 +225,54 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
           {filtered.length === 0 && <EmptyState icon={<Icon icon={UserRound} className="h-7 w-7" />} title={t("admin.noneFound")} />}
         </div>
       </Card>
+    </div>
+  );
+}
+
+function DeletePanel({ who, preview, email, onEmail, busy, onCancel, onConfirm }: {
+  who: string; preview: DeletionPreview; email: string; onEmail: (v: string) => void;
+  busy: boolean; onCancel: () => void; onConfirm: () => void;
+}) {
+  const { t, tt } = useT();
+  const { plan } = preview;
+  const blocked = plan.blockers.length > 0;
+  const empty = !plan.deleteTenants.length && !plan.leaveTenants.length && !blocked;
+  const matches = !!preview.email && email.trim().toLowerCase() === preview.email.toLowerCase();
+  const list = (title: string, items: { tenantId: string; name: string; members?: number }[]) =>
+    items.length > 0 && (
+      <div>
+        {title && <div style={{ fontSize: ".76rem", color: "var(--ink-3)", fontWeight: 600, marginBottom: 2 }}>{title}</div>}
+        <ul style={{ margin: 0, paddingLeft: 18, fontSize: ".85rem" }}>
+          {items.map((w) => <li key={w.tenantId}>{w.name}{w.members != null && ` · ${tt("admin.deleteMembers", { n: w.members })}`}</li>)}
+        </ul>
+      </div>
+    );
+  return (
+    <div style={{ marginTop: 10, padding: 12, border: "1px solid var(--fail)", borderRadius: 10, display: "grid", gap: 10 }}>
+      <b style={{ fontSize: ".9rem", color: "var(--fail)" }}>{tt("admin.deleteTitle", { who })}</b>
+      {blocked && <Notice kind="error">{t("admin.deleteBlocked")}</Notice>}
+      {list("", plan.blockers)}
+      {list(t("admin.deleteWsGone"), plan.deleteTenants)}
+      {list(t("admin.deleteWsLeave"), plan.leaveTenants)}
+      {list(t("admin.deletePlanDrop"), plan.planDrops)}
+      {empty && <div style={{ fontSize: ".85rem", color: "var(--ink-2)" }}>{t("admin.deleteNothing")}</div>}
+      {!blocked && (
+        <Field
+          value={email}
+          onChange={(e) => onEmail(e.target.value)}
+          placeholder={tt("admin.deleteTypeEmail", { email: preview.email })}
+          aria-label={tt("admin.deleteTypeEmail", { email: preview.email })}
+          autoComplete="off"
+        />
+      )}
+      <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
+        <Button onClick={onCancel} disabled={busy} style={{ padding: "5px 12px", fontSize: ".82rem" }}>{t("admin.cancel")}</Button>
+        {!blocked && (
+          <Button variant="danger" onClick={onConfirm} disabled={busy || !matches} style={{ padding: "5px 12px", fontSize: ".82rem" }}>
+            {t("admin.deleteConfirmBtn")}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
