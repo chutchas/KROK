@@ -41,6 +41,10 @@ ENV PORT=3000
 # ต้องเป็น 0.0.0.0 ไม่งั้นรับ request จากนอก container ไม่ได้
 ENV HOSTNAME=0.0.0.0
 
+# Chromium สำหรับทำ PDF เอกสาร A4 (หน้าพิมพ์ → PDF) — ไม่มีก็ยังทำงานได้ แต่ PDF จะเป็นแบบรายการ
+# ฟอนต์ในเอกสารโหลดจากเว็บเอง (Anuphan/Sarabun) · noto-thai/emoji สำรองสำหรับอักษรที่ไม่มีในฟอนต์เว็บ
+RUN apk add --no-cache chromium nss freetype harfbuzz ttf-freefont font-noto-thai font-noto-emoji
+
 # ไม่รันด้วย root — best practice ด้านความปลอดภัย
 RUN addgroup -g 1001 -S nodejs && adduser -S nextjs -u 1001
 

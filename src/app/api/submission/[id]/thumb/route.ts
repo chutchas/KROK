@@ -4,13 +4,14 @@ import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { renderSubmissionPdf } from "@/lib/pdf/submission-pdf-render";
 import { pdfFirstPagePng } from "@/lib/pdf/pdf-thumb";
+import { renderDocWithChromium } from "@/lib/pdf/doc-chromium";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 /** เปลี่ยนเมื่อหน้าตาภาพย่อเปลี่ยน (ขนาด/วิธีวาด) → ETag เก่าใช้ไม่ได้ */
-const THUMB_REV = "2"; // 2: หัวเอกสารไม่มีชื่อแพลตฟอร์ม
+const THUMB_REV = "3"; // 2: หัวเอกสารไม่มีชื่อแพลตฟอร์ม · 3: หน้าแรกของเอกสาร A4 (แบบกระดาษ)
 
 /**
  * ภาพย่อหน้าแรกของเอกสาร (PNG ~20–40KB) สำหรับหน้าส่งเสร็จ — มือถือไม่ต้องโหลดตัวอ่าน PDF
@@ -37,14 +38,20 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const cacheHeaders = { ETag: etag, "Cache-Control": "private, no-cache" };
   if (req.headers.get("if-none-match") === etag) return new NextResponse(null, { status: 304, headers: cacheHeaders });
 
-  const r = await renderSubmissionPdf(id);
-  if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
+  // หน้าแรกของเอกสาร A4 (ภาพจาก Chromium ตรง ๆ) — ใช้ไม่ได้ = หน้าแรกของ PDF แบบรายการ
   let png: Buffer;
   try {
-    png = await pdfFirstPagePng(new Uint8Array(r.pdf));
+    png = await renderDocWithChromium(id, "png");
   } catch (e) {
-    console.error("[krok] PDF thumbnail failed:", e);
-    return NextResponse.json({ error: "thumbnail failed" }, { status: 500 });
+    console.error("[krok] A4 thumbnail (chromium) failed — falling back:", e);
+    const r = await renderSubmissionPdf(id);
+    if (!r.ok) return NextResponse.json({ error: r.error }, { status: r.status });
+    try {
+      png = await pdfFirstPagePng(new Uint8Array(r.pdf));
+    } catch (e2) {
+      console.error("[krok] PDF thumbnail failed:", e2);
+      return NextResponse.json({ error: "thumbnail failed" }, { status: 500 });
+    }
   }
   return new NextResponse(new Uint8Array(png), {
     status: 200,

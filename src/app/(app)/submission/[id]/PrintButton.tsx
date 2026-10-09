@@ -8,11 +8,22 @@ import { printWhenReady } from "@/lib/print";
 import { docNoFileSafe } from "@/lib/form-schema";
 
 // submissionId ไม่ระบุ = โหมดพิมพ์อย่างเดียว (เช่น หน้าใบแจ้งหนี้) — ไม่มีปุ่มดาวน์โหลด PDF
-export default function PrintButton({ submissionId, docNo, hasPhotos = false }: { submissionId?: string; docNo?: string; hasPhotos?: boolean }) {
+// printHref = หน้าพิมพ์เอกสาร A4 (กระดาษแผ่นเดียวกับตอนกรอก) — มี = ปุ่มพิมพ์เปิดหน้านั้นแล้วสั่งพิมพ์
+export default function PrintButton({ submissionId, docNo, hasPhotos = false, printHref }: { submissionId?: string; docNo?: string; hasPhotos?: boolean; printHref?: string }) {
   const [busy, setBusy] = useState(false);
   const [zipBusy, setZipBusy] = useState(false);
   const [zipErr, setZipErr] = useState(false);
   const { t } = useT();
+
+  // พิมพ์เอกสาร A4: เปิดหน้าพิมพ์ (หน้าเดียวกับที่ server ใช้ทำ PDF) → หน้าตาตรงกับ PDF ทุกอย่าง
+  // เปิดไม่ได้ (บล็อกป๊อปอัป) → พิมพ์หน้าปัจจุบันแทน
+  function print() {
+    if (printHref) {
+      const w = window.open(`${printHref}?auto=1`, "_blank");
+      if (w) return;
+    }
+    void printWhenReady();
+  }
 
   // ดาวน์โหลด PDF จริงจาก server (ฟอนต์ไทยฝัง, พร้อมแนบ/ส่งต่อ)
   async function downloadPdf() {
@@ -32,7 +43,7 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false }: 
       setTimeout(() => URL.revokeObjectURL(url), 4000);
     } catch {
       // fallback: พิมพ์ผ่านเบราว์เซอร์
-      void printWhenReady();
+      print();
     } finally {
       setBusy(false);
     }
@@ -79,7 +90,7 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false }: 
           <Icon icon={Images} className="h-4 w-4" /> {zipBusy ? t("print.photos.downloading") : t("print.photos.download")}
         </Button>
       )}
-      <Button variant="ghost" onClick={() => void printWhenReady()}>
+      <Button variant="ghost" onClick={print}>
         <Icon icon={Printer} className="h-4 w-4" /> {t("sub.print")}
       </Button>
       <Button variant="primary" onClick={downloadPdf} disabled={busy}>
