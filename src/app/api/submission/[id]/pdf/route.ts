@@ -9,6 +9,7 @@ import { getFormPrintInfo } from "@/lib/print-photos-server";
 import { getWorkspaceBranding } from "@/lib/branding";
 import { BRANDING_PATH, resolveTheme } from "@/lib/theme";
 import { answerPhotoKeys } from "@/lib/photo-slots";
+import { attachmentHeader, docNoFileSafe, docNoOf } from "@/lib/form-schema";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -130,7 +131,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     tenantName: session.tenantName,
     formTitle: (sub.form_title as string) || "ฟอร์ม",
     formIcon: (sub.form_icon as string) || "",
-    docNo: String(sub.id).slice(0, 8).toUpperCase(),
+    docNo: docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }),
     fullId: String(sub.id),
     statusLabel: st.label,
     statusColor: st.color,
@@ -154,13 +155,13 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     console.error("[krok] PDF generation failed:", e);
     return NextResponse.json({ error: await sm("สร้าง PDF ไม่สำเร็จ") }, { status: 500 });
   }
-  const filename = `KROK-${data.docNo}.pdf`;
+  const filename = `KROK-${docNoFileSafe(data.docNo)}.pdf`;
 
   return new NextResponse(new Uint8Array(pdf), {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${filename}"`,
+      "Content-Disposition": attachmentHeader(filename),
       "Cache-Control": "no-store",
     },
   });

@@ -36,6 +36,8 @@ export interface NotifyInfo {
   result?: "pass" | "fail";
   failCount?: number;
   submissionId: string;
+  /** เลขที่เอกสารแบบรัน (0077) — ไม่มี = 8 ตัวแรกของ id */
+  docNo?: string | null;
   reviewer?: string;
   note?: string;
   appUrl?: string; // ลิงก์ไปหน้ารายละเอียด (ถ้ามี)
@@ -161,7 +163,7 @@ function buildMessage(ev: NotifyEvent, info: NotifyInfo): { subject: string; tex
   }
   if (info.reviewer) lines.push(`ผู้ตรวจ: ${info.reviewer}`);
   if (info.note) lines.push(`หมายเหตุ: ${info.note}`);
-  lines.push(`${isCase ? "เลขที่งาน" : "เลขที่"}: ${info.submissionId.slice(0, 8).toUpperCase()}`);
+  lines.push(`${isCase ? "เลขที่งาน" : "เลขที่"}: ${!isCase && info.docNo ? info.docNo : info.submissionId.slice(0, 8).toUpperCase()}`);
   if (info.appUrl) lines.push(info.appUrl);
   const text = lines.join("\n");
   return { subject: `[KROK] ${head} — ${info.formTitle}`, text };

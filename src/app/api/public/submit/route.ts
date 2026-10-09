@@ -213,6 +213,8 @@ export async function POST(req: Request) {
       submissionId: subId,
     }));
 
-  return NextResponse.json({ ok: true, id: subId });
+  // เลขที่เอกสาร (0077) — ยังไม่รัน migration = ไม่มี
+  const { data: dn } = await admin.from("submissions").select("doc_no").eq("id", subId).maybeSingle();
+  return NextResponse.json({ ok: true, id: subId, doc_no: (dn as { doc_no?: string | null } | null)?.doc_no ?? null });
 }
 

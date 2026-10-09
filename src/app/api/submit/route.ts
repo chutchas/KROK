@@ -108,7 +108,7 @@ export async function POST(req: Request) {
     if (dup.submitted_by !== session.userId) return fail(409, await sm("รหัสเอกสารซ้ำ"));
     // รอบก่อนบันทึกใบสำเร็จแต่แถวรูปยังไม่ครบ (เน็ตหลุดกลางทาง) → เติมแถวรูปที่ขาด
     await backfillPhotos(admin, tenantId, subId, folder, body.photos);
-    return NextResponse.json({ ok: true, duplicate: true, result: dup.result, fails: dup.fails });
+    return NextResponse.json({ ok: true, duplicate: true, result: dup.result, fails: dup.fails, doc_no: await readDocNo(admin, subId) });
   }
 
   const f = formRes.data;
@@ -218,7 +218,7 @@ export async function POST(req: Request) {
     }
   }
   if (insErr) {
-    if (insErr.code === "23505") return NextResponse.json({ ok: true, duplicate: true, result, fails });
+    if (insErr.code === "23505") return NextResponse.json({ ok: true, duplicate: true, result, fails, doc_no: await readDocNo(admin, subId) });
     // โควตาแพ็กเกจเต็ม: ข้อความมีแท็ก [quota:…] ให้หน้ากรอกแสดงตรง ๆ
     if (/\[quota:[a-z_]+\]/.test(insErr.message)) return fail(402, insErr.message, { quota: true });
     console.error("[krok] submit insert failed:", insErr.message);
@@ -268,7 +268,14 @@ export async function POST(req: Request) {
     meta: { form_id: formId, result, fails: fails.length, offline: body.offline === true, case_id: caseId },
   }));
 
-  return NextResponse.json({ ok: true, result, fails });
+  return NextResponse.json({ ok: true, result, fails, doc_no: await readDocNo(admin, subId) });
+}
+
+/** เลขที่เอกสารที่ trigger 0077 ออกให้ — ยังไม่รัน migration / อ่านไม่ได้ = null (หน้าจอใช้รหัส 8 ตัวแทน) */
+async function readDocNo(admin: SupabaseClient, subId: string): Promise<string | null> {
+  const { data, error } = await admin.from("submissions").select("doc_no").eq("id", subId).maybeSingle();
+  if (error) return null;
+  return (data as { doc_no?: string | null } | null)?.doc_no ?? null;
 }
 
 async function listNames(admin: SupabaseClient, folder: string): Promise<Set<string> | null> {

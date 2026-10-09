@@ -19,7 +19,8 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
   const supabase = await createClient();
   const { data: sub } = await supabase
     .from("submissions")
-    .select("id, tenant_id, form_id, form_title, user_name, result, fails, answers, approval_status, submitted_at")
+    // "*" = มี doc_no เมื่อรัน 0077 แล้ว (ยังไม่รัน ก็ไม่ error)
+    .select("*")
     .eq("id", submissionId)
     .maybeSingle();
 
@@ -40,6 +41,7 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
   const tenantId = session.tenantId;
   runLater(() => dispatchWebhooks(tenantId, "submission.created", {
     submission_id: sub.id,
+    doc_no: (sub.doc_no as string | null | undefined) ?? null,
     form_id: sub.form_id,
     form_title: sub.form_title,
     user_name: sub.user_name,
@@ -56,6 +58,7 @@ export async function notifySubmission(submissionId: string): Promise<{ ok: bool
     result: sub.result as "pass" | "fail",
     failCount: Array.isArray(sub.fails) ? (sub.fails as unknown[]).length : 0,
     submissionId: sub.id as string,
+    docNo: (sub.doc_no as string | null | undefined) ?? null,
   }));
 
   return { ok: true };
