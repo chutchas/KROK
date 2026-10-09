@@ -96,3 +96,22 @@ async function reencode(f: File, edge: number, q: number): Promise<File> {
     return f;
   }
 }
+
+/** หน้าแรกของ PDF → รูป (data URL) ขนาดกว้าง cssWidth px (คมตามจอ) — ใช้เป็นภาพย่อเอกสาร */
+export async function pdfFirstPageImage(buf: ArrayBuffer, cssWidth: number): Promise<string> {
+  const pdf = await pdfjs.getDocument({ data: buf }).promise;
+  const page = await pdf.getPage(1);
+  const v1 = page.getViewport({ scale: 1 });
+  const dpr = typeof window !== "undefined" ? Math.min(3, window.devicePixelRatio || 1) : 2;
+  const viewport = page.getViewport({ scale: (cssWidth * dpr) / v1.width });
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.ceil(viewport.width);
+  canvas.height = Math.ceil(viewport.height);
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("canvas");
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  void pdf.destroy();
+  return canvas.toDataURL("image/jpeg", 0.85);
+}

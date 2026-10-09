@@ -35,7 +35,8 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
           </span>
         )}
       </h2>
-      <div style={GRID}>
+      {/* ไม่มีเรื่องค้าง = บรรทัดเดียวพอ (ไม่ต้องมีการ์ด "ไม่มี" ซ้ำ ๆ) */}
+      {!allClear && <div style={GRID}>
         {failed && (
           <Tile icon={CircleX} tone="var(--fail)" label={t("dash.attnFailed")} count={failed.count} none={t("dash.attnNone")}>
             {failed.items.map((s) => (
@@ -59,7 +60,7 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
           <Tile icon={ClipboardCheck} tone="var(--accent-text)" label={t("dash.attnApprovals")} count={approvals.count} capped={approvals.capped} none={t("dash.attnNone")}
             footer={approvals.count > 0 ? { href: "/approvals", text: t("dash.attnOpenApprovals") } : undefined} />
         )}
-      </div>
+      </div>}
     </section>
   );
 }

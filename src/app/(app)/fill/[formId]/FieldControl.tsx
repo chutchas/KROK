@@ -546,7 +546,11 @@ export function FieldControl({
               )}
             </div>
             {pf === "fail" && (
-              <textarea style={{ ...input, minHeight: 56, marginTop: 10, resize: "vertical" }} rows={2} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} aria-label={`${f.label} — ${t("fw.failNotePh")}`} onChange={(e) => onPatch({ note: e.target.value })} />
+              // ป้ายเห็นตลอด (placeholder หายทันทีที่เริ่มพิมพ์)
+              <label style={{ display: "block", marginTop: 10, fontSize: ".86rem", fontWeight: 600, color: "var(--ink-2)" }}>
+                {t("fw.failNote")}
+                <textarea style={{ ...input, minHeight: 56, marginTop: 4, resize: "vertical", fontWeight: 400 }} rows={2} defaultValue={initial.note || ""} placeholder={t("fw.failNotePh")} onChange={(e) => onPatch({ note: e.target.value })} />
+              </label>
             )}
           </>
         )}
@@ -619,7 +623,7 @@ export function NumHint({ field: f, value }: { field: FormField; value?: string 
   const { t, tt } = useT();
   return (
     <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
-      {t("fw.rangeLabel")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{tt("fw.rangeVal", { min: f.min ?? "–", max: f.max ?? "–" })} {f.unit || ""}</code>
+      {t("fw.rangeLabel")} <b className="tabnum" style={{ color: "var(--ink-2)", fontWeight: 600 }}>{tt("fw.rangeVal", { min: f.min ?? "–", max: f.max ?? "–" })} {f.unit || ""}</b>
       {out && <span style={{ color: "var(--fail)", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3, marginLeft: 4 }}><Icon icon={AlertTriangle} className="h-3.5 w-3.5" /> {t("fw.outOfRange")}</span>}
     </div>
   );
