@@ -246,8 +246,8 @@ export function FieldControl({
       </div>
       {!small && (
         <button type="button" onClick={() => scanRef.current?.click()}
-          style={{ marginTop: 6, background: "none", border: "none", padding: 0, color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
-          <Icon icon={Camera} className="h-3.5 w-3.5" /> {t("fw.scan.fromPhoto")}
+          style={{ marginTop: 2, background: "none", border: "none", padding: "0 4px", marginLeft: -4, minHeight: 44, color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".85rem", cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Icon icon={Camera} className="h-4 w-4" /> {t("fw.scan.fromPhoto")}
         </button>
       )}
       <input ref={scanRef} type="file" accept="image/*" capture="environment" hidden onChange={onScan} />
@@ -444,8 +444,9 @@ export function FieldControl({
         )}
         {f.type === "datetime" && (
           <>
-            <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-              <input type={dtInputType} aria-label={f.label} style={{ ...input, flex: 1 }} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
+            {/* จอแคบ: ช่องวันเวลาของ iOS กว้างขั้นต่ำเอง → ให้ปุ่ม "ตอนนี้" ขึ้นบรรทัดใหม่แทนการล้นการ์ด */}
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <input type={dtInputType} aria-label={f.label} style={{ ...input, flex: "1 1 180px", minWidth: 0, maxWidth: "100%", boxSizing: "border-box" }} value={dtValue} onChange={(e) => { setDtValue(e.target.value); onPatch({ value: e.target.value }); }} />
               <Button onClick={() => { const v = dtNowValue(dtMode); setDtValue(v); onPatch({ value: v }); }} style={{ whiteSpace: "nowrap" }}>{dtMode === "date" ? t("fw.dt.today") : t("fw.dt.now")}</Button>
             </div>
             {dtValue && <div style={{ fontSize: ".8rem", color: paper ? "#666" : "var(--ink-3)", marginTop: 4 }}>{formatDtThai(dtValue, dtMode, lang === "en" ? "en" : "th")}</div>}

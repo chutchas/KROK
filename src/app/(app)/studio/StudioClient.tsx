@@ -681,7 +681,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       <>
       <Card>
         <div>
-          <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h2>
+          <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.subtitle")}</p>
         </div>
 
@@ -834,9 +834,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         <Card>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
             <div>
-              <h2 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
+              <h1 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
                 {editingId && <Icon icon={Pencil} className="h-4 w-4" />}<InlineFormIcon value={draft.icon} size={20} />{draft.title}
-              </h2>
+              </h1>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
@@ -967,7 +967,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         <Card>
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-2)" }}>
             <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)", marginBottom: 10 }}><Icon icon={Pencil} className="h-10 w-10" strokeWidth={1.4} /></div>
-            <h2 style={{ fontSize: "1.1rem", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h2>
+            <h1 style={{ fontSize: "1.1rem", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h1>
             <p style={{ fontSize: ".9rem", color: "var(--ink-3)", margin: "0 0 16px" }}>{t("studio.editEmptySub")}</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <Button variant="primary" onClick={() => setTab("new")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.tabNew")}</Button>
@@ -979,7 +979,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
       {tab === "all" && (
       <Card>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h2>
+        <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.allFormsTitle")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
 
         {/* ค้นหา + กรองประเภท */}

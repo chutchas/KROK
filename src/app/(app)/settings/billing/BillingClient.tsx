@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Card, Button, Notice } from "@/components/ui";
@@ -143,7 +143,8 @@ export default function BillingClient({
 
   const head = (title: string) => (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
-      <div style={{ flex: 1, minWidth: 220 }}>
+      {/* ชื่อ workspace ยาวไม่มีช่องว่าง (เช่นชื่อบริษัทภาษาอังกฤษ) ต้องตัดบรรทัดได้ ไม่งั้นดันปุ่ม/ทั้งหน้าล้นจอมือถือ */}
+      <div style={{ flex: "1 1 220px", minWidth: 0, overflowWrap: "anywhere" }}>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{title}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent-text)" }}>{en ? plan.nameEn : plan.name}</b>
@@ -191,7 +192,7 @@ export default function BillingClient({
   </>);
 
   if (view === "quota") return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
       {head(t("plan.titleQuota"))}
       {notices}
       {cardReturn && <Notice>{t("sub.cardReturn")}</Notice>}
@@ -225,7 +226,8 @@ export default function BillingClient({
         {unlimited.length > 0 && (
           <p style={{ margin: "16px 0 0", paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: ".84rem", color: "var(--ink-2)", lineHeight: 1.7 }}>
             <b>{t("plan.unlimited")}:</b>{" "}
-            {unlimited.map((r, i) => <span key={r.label} style={{ whiteSpace: "nowrap" }}>{i > 0 && " · "}{r.label} <span className="tabnum" style={{ color: "var(--ink-3)" }}>({r.used.toLocaleString("en-US")}{r.unit ? ` ${r.unit}` : ""})</span></span>)}
+            {/* ตัวคั่นอยู่นอก span ที่ห้ามตัดบรรทัด → ขึ้นบรรทัดใหม่ระหว่างรายการได้ */}
+            {unlimited.map((r, i) => <Fragment key={r.label}>{i > 0 && " · "}<span style={{ whiteSpace: "nowrap" }}>{r.label} <span className="tabnum" style={{ color: "var(--ink-3)" }}>({r.used.toLocaleString("en-US")}{r.unit ? ` ${r.unit}` : ""})</span></span></Fragment>)}
           </p>
         )}
       </Card>
@@ -238,7 +240,7 @@ export default function BillingClient({
   );
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16 }}>
       {head(t("plan.titlePlans"))}
       {notices}
       {buying && (

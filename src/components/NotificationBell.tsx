@@ -31,7 +31,20 @@ export default function NotificationBell({ userId }: { userId: string }) {
   const { t, lang } = useT();
   const [items, setItems] = useState<Notif[]>([]);
   const [open, setOpen] = useState(false);
+  /** ตำแหน่งกล่อง (fixed) คำนวณจากปุ่มตอนเปิด — กระดิ่งอยู่ซ้ายหรือขวาของจอก็ไม่หลุดขอบ */
+  const [pos, setPos] = useState<{ top: number; left: number; width: number } | null>(null);
   const ref = useRef<HTMLDivElement>(null);
+
+  function toggle(e: React.MouseEvent<HTMLButtonElement>) {
+    if (open) { setOpen(false); return; }
+    const r = e.currentTarget.getBoundingClientRect();
+    const vw = document.documentElement.clientWidth;
+    const width = Math.min(320, vw - 16);
+    // ชิดขวาของปุ่มเป็นหลัก แล้วบีบให้อยู่ในจอ (ขอบซ้าย-ขวา 8px)
+    const left = Math.max(8, Math.min(r.right - width, vw - 8 - width));
+    setPos({ top: r.bottom + 8, left, width });
+    setOpen(true);
+  }
 
   useEffect(() => {
     const supabase = createClient();
@@ -62,8 +75,13 @@ export default function NotificationBell({ userId }: { userId: string }) {
     function onDoc(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
+    // กล่องเป็น fixed ตามตำแหน่งปุ่มตอนเปิด → จอหมุน/เปลี่ยนขนาดแล้วปิดไป (ไม่ค้างผิดที่)
+    // (เช็กเฉพาะความกว้าง — มือถือยิง resize ตอนแถบที่อยู่ของเบราว์เซอร์ยุบ/ขยาย)
+    let w = window.innerWidth;
+    const onResize = () => { if (window.innerWidth !== w) { w = window.innerWidth; setOpen(false); } };
     document.addEventListener("click", onDoc);
-    return () => document.removeEventListener("click", onDoc);
+    window.addEventListener("resize", onResize);
+    return () => { document.removeEventListener("click", onDoc); window.removeEventListener("resize", onResize); };
   }, []);
 
   const unread = items.filter((i) => !i.read_at).length;
@@ -89,8 +107,9 @@ export default function NotificationBell({ userId }: { userId: string }) {
   return (
     <div ref={ref} style={{ position: "relative" }}>
       <button
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         aria-label={t("bell.title")}
+        aria-expanded={open}
         className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border text-rose-400 shadow-sm"
         style={{ borderColor: "var(--line)", background: "var(--surface)", cursor: "pointer" }}
       >
@@ -102,8 +121,8 @@ export default function NotificationBell({ userId }: { userId: string }) {
         )}
       </button>
 
-      {open && (
-        <div style={{ position: "absolute", right: 0, top: 42, width: 320, maxWidth: "85vw", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow)", zIndex: 40, overflow: "hidden" }}>
+      {open && pos && (
+        <div style={{ position: "fixed", top: pos.top, left: pos.left, width: pos.width, maxHeight: `calc(100dvh - ${pos.top + 8}px)`, display: "flex", flexDirection: "column", background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow)", zIndex: 40, overflow: "hidden" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 14px", borderBottom: "1px solid var(--line)" }}>
             <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".95rem" }}>{t("bell.title")}</b>
             {unread > 0 && (
@@ -112,7 +131,7 @@ export default function NotificationBell({ userId }: { userId: string }) {
               </button>
             )}
           </div>
-          <div style={{ maxHeight: 380, overflowY: "auto" }}>
+          <div style={{ maxHeight: 380, overflowY: "auto", minHeight: 0 }}>
             {items.length === 0 && <div style={{ padding: 20, textAlign: "center", color: "var(--ink-3)", fontSize: ".85rem" }}>{t("bell.empty")}</div>}
             {items.map((n) => (
               <button
