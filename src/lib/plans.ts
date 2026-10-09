@@ -225,7 +225,7 @@ export function planFeatures(p: Plan, en: boolean): FeatureLine[] {
   const n = fmtLimit;
   const out: FeatureLine[] = [
     L(`ฟอร์ม ${n(p.maxForms)} แบบ`, `${n(p.maxForms)} forms`),
-    L(`ผู้ใช้ ${n(p.maxMembers)} คน · ${n(p.maxWorkspaces)} workspace`, `${n(p.maxMembers)} users · ${n(p.maxWorkspaces)} workspace${p.maxWorkspaces === 1 ? "" : "s"}`),
+    L(`สมาชิก ${n(p.maxMembers)} คน · ${n(p.maxWorkspaces)} workspace`, `${n(p.maxMembers)} members · ${n(p.maxWorkspaces)} workspace${p.maxWorkspaces === 1 ? "" : "s"}`),
     L(`ส่งฟอร์ม ${n(p.maxSubmissionsMonth)} ครั้ง/เดือน`, `${n(p.maxSubmissionsMonth)} submissions / month`),
     L(`พื้นที่ไฟล์ ${gb(p.storageMb)}`, `${gb(p.storageMb)} file storage`),
     L(`AI ${n(p.aiCreditsPerMonth)} ครั้ง/เดือน`, `${n(p.aiCreditsPerMonth)} AI credits / month`),

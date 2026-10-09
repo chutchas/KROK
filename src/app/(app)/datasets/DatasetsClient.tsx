@@ -52,7 +52,7 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
       </div>
 
       {missingTable && (
-        <Notice kind="error">{t("ds.missingTable1")}<code>0030_datasets.sql</code>{t("ds.missingTable2")}</Notice>
+        <Notice kind="error">{t("ds.notReady")}</Notice>
       )}
 
       {creating && (
@@ -82,7 +82,8 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
       )}
 
       {items.length === 0 && !creating ? (
-        <Card><EmptyState icon={<Icon icon={Database} className="h-8 w-8" />} title={t("ds.emptyTitle")} hint={t("ds.emptyHint")} /></Card>
+        <Card><EmptyState icon={<Icon icon={Database} className="h-7 w-7" />} title={t("ds.emptyTitle")} hint={t("ds.emptyHint")}
+          action={canEdit && !missingTable ? { label: t("ds.create"), onClick: () => setCreating(true) } : undefined} /></Card>
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {items.map((d) => (

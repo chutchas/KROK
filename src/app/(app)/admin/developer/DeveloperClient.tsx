@@ -1,7 +1,7 @@
 "use client";
 import { Card } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Terminal, Database, Webhook, Code2, ShieldAlert } from "lucide-react";
+import { Database, Webhook, Code2, ShieldAlert } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 
 export interface PlatformStats {
@@ -48,9 +48,7 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <Icon icon={Terminal} className="h-6 w-6" /> {t("dev.title")}
-        </h1>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("dev.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("dev.sub")}</p>
       </div>
 
