@@ -428,7 +428,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const formTabs: { k: FormTab; label: string; on: boolean }[] = [
     { k: "access", label: t("fs.tab.access"), on: visMode !== "all" || requireDevice },
     { k: "approval", label: t("fs.tab.approval"), on: requiresApproval },
-    { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark || !!draft?.doc_no },
+    { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark || !!draft?.doc_no || !!draft?.review },
     { k: "schedule", label: t("fs.tab.schedule"), on: false },
   ];
   const formSettings = draft && (
@@ -632,6 +632,17 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </span>
               </label>
             </div>
+          <div className="krok-fs-sec">
+            <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
+              <input type="checkbox" checked={!!draft.review}
+                onChange={(e) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (e.target.checked) n.review = true; else delete n.review; return n; })}
+                style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
+              <span>
+                <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".92rem" }}>{t("review.setting")}</b>
+                <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".82rem" }}>{t("review.settingSub")}</span>
+              </span>
+            </label>
+          </div>
           <div className="krok-fs-sec">
             <DocNoSettings key={editingId || "new"} value={draft.doc_no} onChange={(v) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (v) n.doc_no = v; else delete n.doc_no; return n; })} />
           </div>

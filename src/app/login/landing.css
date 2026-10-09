@@ -92,6 +92,8 @@
 /* ---------- reveal ---------- */
 .lp-rv { opacity: 0; transform: translateY(14px); transition: opacity 0.6s var(--lp-ease), transform 0.6s var(--lp-ease); }
 .lp-rv.is-in { opacity: 1; transform: none; }
+/* ไม่มี JS / สั่งพิมพ์: ไม่ต้องรอ reveal (เนื้อหาต้องเห็นเสมอ) */
+@media print { .lp-rv { opacity: 1 !important; transform: none !important; } }
 @media (prefers-reduced-motion: reduce) {
   .lp-rv { opacity: 1; transform: none; transition: none; }
   .lp *, .lp *::before, .lp *::after { animation: none !important; transition-duration: 0.01ms !important; }

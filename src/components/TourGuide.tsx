@@ -241,7 +241,7 @@ export function TourHelpButton() {
   if (!has) return null;
   return (
     <button type="button" onClick={() => window.dispatchEvent(new Event(TOUR_START_EVENT))} aria-label={t("tour.replay")} title={t("tour.replay")}
-      className="inline-flex h-8 w-8 items-center justify-center rounded-full border shadow-sm"
+      className="inline-flex h-10 w-10 items-center justify-center rounded-full border shadow-sm"
       style={{ borderColor: "var(--line)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer" }}>
       <Icon icon={CircleHelp} className="h-4 w-4" />
     </button>
