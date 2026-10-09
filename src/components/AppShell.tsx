@@ -251,6 +251,8 @@ export default function AppShell({
         /* เมนูหมวดตั้งค่าที่ต่อท้ายตามหน้า (ทีม/แพ็กเกจ/Workspace): ซ่อนถึง 1279px (1200–1279 เมนูเต็มชื่อ + ตัวนี้ = ล้นซ้าย) — อยู่ในเมนู ☰ */
         @media (min-width: 641px) and (max-width: 1279px){
           .krok-nav a.krok-nav-extra{ display: none !important; }
+          /* หน้าที่อยู่ไม่มีในแถบเมนู (ตั้งค่า) → ไฮไลต์ปุ่ม ☰ แทน ให้รู้ว่าอยู่ในเมนูนั้น */
+          .krok-menu-btn.is-current{ background: var(--accent-soft) !important; color: var(--accent-text) !important; }
         }
         /* มือถือ: แถบบนเหลือแถวเดียว (เมนู · โลโก้ · สถานะ/แจ้งเตือน/โปรไฟล์) — เมนูหลักไปอยู่แถบล่างจอ
            workspace + ธีม/ภาษา ย้ายไปอยู่ในเมนูข้าง (☰ / "เมนูเพิ่มเติม") */
@@ -305,7 +307,7 @@ export default function AppShell({
           <button
             onClick={() => setMenuOpen(true)}
             data-tour="menu"
-            className="krok-desk-only-btn inline-flex h-9 w-9 items-center justify-center rounded-xl"
+            className={`krok-desk-only-btn krok-menu-btn inline-flex h-9 w-9 items-center justify-center rounded-xl${activeSecondary && !primary.some((n) => n.href === activeSecondary.href) ? " is-current" : ""}`}
             aria-label={t("nav.menu")}
             title={t("nav.menu")}
             style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", flex: "0 0 auto" }}

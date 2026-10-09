@@ -709,7 +709,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
           { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
           { k: "all" as const, icon: FileText, label: `${t("studio.tabAll")} (${initialForms.length})` },
-        ]).map((tb) => {
+        // ซ่อนแท็บที่ยังไม่มีอะไร: "แก้ไข" เมื่อยังไม่ได้เปิดฟอร์มไหน · "ทั้งหมด" เมื่อยังไม่มีฟอร์ม (แท็บที่เปิดอยู่แสดงเสมอ)
+        ]).filter((tb) => tb.k === tab || tb.k === "new" || (tb.k === "edit" ? !!draft : initialForms.length > 0)).map((tb) => {
           const on = tab === tb.k;
           return (
             <button
@@ -731,8 +732,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       <>
       <Card>
         <div>
-          <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t("studio.title")}</h1>
-          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.subtitle")}</p>
+          {/* หัวข้อตามโหมดที่เลือก (AI / จากไฟล์ / จากเทมเพลต) */}
+          <h1 style={{ fontSize: "1.15rem", marginBottom: 4 }}>{t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}</h1>
+          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}</p>
         </div>
 
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}

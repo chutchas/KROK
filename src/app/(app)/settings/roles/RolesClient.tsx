@@ -87,8 +87,8 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                 {MENUS.map((m) => {
                   const on = newMenus.includes(m.key);
                   return (
-                    <button key={m.key} type="button" onClick={() => setNewMenus((s) => (on ? s.filter((x) => x !== m.key) : [...s, m.key]))}
-                      style={{ padding: "6px 12px", minHeight: 36, borderRadius: 20, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                    <button key={m.key} type="button" aria-pressed={on} onClick={() => setNewMenus((s) => (on ? s.filter((x) => x !== m.key) : [...s, m.key]))}
+                      style={{ padding: "6px 12px", minHeight: 44, borderRadius: 22, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                       {menuLabel(m.key)}
                     </button>
                   );
@@ -142,8 +142,8 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                     {MENUS.map((m) => {
                       const on = r.menus.includes(m.key);
                       return (
-                        <button key={m.key} type="button" disabled={busy} onClick={() => toggleMenu(r, m.key)}
-                          style={{ padding: "6px 12px", minHeight: 36, borderRadius: 20, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                        <button key={m.key} type="button" aria-pressed={on} disabled={busy} onClick={() => toggleMenu(r, m.key)}
+                          style={{ padding: "6px 12px", minHeight: 44, borderRadius: 22, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                           {menuLabel(m.key)}
                         </button>
                       );
