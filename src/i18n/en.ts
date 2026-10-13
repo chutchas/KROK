@@ -426,6 +426,7 @@ export const en: Record<MessageKey, string> = {
   "welcome.retry": "Try again",
   "welcome.signOut": "Sign out",
   "welcome.netError": "Couldn't reach the server. Check your connection and try again.",
+  "onb.dismiss": "Hide getting started",
   "onb.title": "Get started in 3 steps",
   "onb.sub": "Do these three and you'll see paper on the floor turn into data, then back into the same A4 sheet.",
   "onb.subNoCreate": "Your workspace admin hasn't created a form yet. Once there is one, fill it from the Forms menu.",

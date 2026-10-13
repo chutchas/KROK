@@ -176,6 +176,8 @@ export function PaperChoices({
               checked={on}
               disabled={disabled}
               readOnly={!onChange}
+              // เอกสารที่ส่งแล้ว (อ่านอย่างเดียว) = ไม่ให้แท็บไปโดนช่องเล็ก ๆ บนกระดาษ
+              tabIndex={onChange ? undefined : -1}
               onChange={() => {
                 if (!onChange) return;
                 if (multiple) onChange(on ? sel.filter((x) => x !== o) : [...sel, o]);

@@ -221,7 +221,7 @@ export default function DashboardClient({
         return (
           <Fragment key={key}>
             {/* Workspace (owner/admin จัด) / ของฉัน */}
-            <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", marginBottom: 14, overflowX: "auto" }}>
+            <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "22px 0 14px", overflowX: "auto" }}>
               {(["ws", "mine"] as const).map((k) => (
                 <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); setManaging(false); }}
                   style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,

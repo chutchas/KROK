@@ -239,8 +239,8 @@ export default async function SubmissionPage({ params, searchParams }: { params:
 
       {docSchema && (
         <div className="no-print" role="tablist" aria-label={docNo} style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)", marginBottom: 12 }}>
-          <a role="tab" aria-selected={view === "doc"} href={`/submission/${sub.id}?view=doc${fromQ("&")}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
-          <a role="tab" aria-selected={view === "summary"} href={`/submission/${sub.id}?view=summary${fromQ("&")}`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
+          <a role="tab" aria-selected={view === "doc"} aria-controls={view === "doc" ? "sub-panel" : undefined} href={`/submission/${sub.id}?view=doc${fromQ("&")}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
+          <a role="tab" aria-selected={view === "summary"} aria-controls={view === "summary" ? "sub-panel" : undefined} href={`/submission/${sub.id}?view=summary${fromQ("&")}`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
         </div>
       )}
 
@@ -261,7 +261,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
       )}
 
       {view === "doc" && docSchema ? (
-        <div role="tabpanel">
+        <div role="tabpanel" id="sub-panel">
           <h1 className="sr-only">{sub.form_title} {docNo}</h1>
           {sub.approval_status && sub.approval_status !== "none" && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: ".86rem" }}>
@@ -282,7 +282,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
             docNo={docNo}
           />
         </div>
-      ) : (<div role={docSchema ? "tabpanel" : undefined}>
+      ) : (<div role={docSchema ? "tabpanel" : undefined} id={docSchema ? "sub-panel" : undefined}>
 
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "clamp(18px, 5vw, 30px)", boxShadow: "var(--shadow)" }}>
         {/* header */}

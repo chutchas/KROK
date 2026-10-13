@@ -1630,7 +1630,7 @@ export default function FillWizard(props: Props) {
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) — โหมดเต็มจอ: ปุ่มย้ายไปเมนู ⋯ บนแถบบน */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-            <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+            <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
             {formDesc}
           </div>
           {!focus && (
@@ -1698,7 +1698,7 @@ export default function FillWizard(props: Props) {
         <div style={{ display: "flex", justifyContent: branded ? "flex-end" : "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
           {!branded && (
             <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-              <h1 style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
               {formDesc}
             </div>
           )}
