@@ -72,10 +72,10 @@ export default async function PrintSubmissionPage({ params, searchParams }: { pa
         submittedAt={sub.submitted_at as string | null}
         docNo={docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined })}
       />
-      {/* ใบไม่ผ่านที่ปิดเรื่องแล้ว: บันทึกการปิดเรื่องเป็นกล่องแยกท้ายเอกสาร (หลักฐานว่าแก้แล้ว) */}
-      {sub.result === "fail" && sub.fail_closed_at && (
+      {/* ใบไม่ผ่าน: บันทึกการปิดเรื่อง (หรือ "ยังไม่ปิดเรื่อง") เป็นกล่องแยกท้ายเอกสาร — ยังไม่รัน 0080 = ไม่แสดง */}
+      {sub.result === "fail" && "fail_closed_at" in sub && (
         <FailureCloseRecord
-          closedAt={String(sub.fail_closed_at)}
+          closedAt={sub.fail_closed_at ? String(sub.fail_closed_at) : null}
           closedBy={(sub.fail_closed_by_name as string | null) ?? null}
           note={(sub.fail_close_note as string | null) ?? null}
           items={failItemsOf(sub.answers, sub.fails)}
