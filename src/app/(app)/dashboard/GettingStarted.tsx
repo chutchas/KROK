@@ -1,27 +1,35 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Check, PenSquare, Smartphone, FileText } from "lucide-react";
+import { Check, PenSquare, Smartphone, FileText, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 
 const PDF_SEEN_KEY = "krok_onb_pdf";
+/** ผู้ใช้กดปิดการ์ดเอง (จำในเครื่องนี้) */
+const DISMISS_KEY = "krok_onb_hide";
 
 /**
  * เริ่มต้นใช้งาน 3 ขั้น (ผู้ใช้ใหม่): สร้างฟอร์ม → ลองกรอกบนมือถือ → ดูเอกสาร A4
- * ติ๊กเองตามข้อมูลจริง · ซ่อนเมื่อครบ 3 ขั้น (ขั้น 3 = เคยกดเปิดเอกสาร จำไว้ในเครื่อง)
+ * ติ๊กเองตามข้อมูลจริง · ซ่อนเมื่อครบ 3 ขั้น (ขั้น 3 = เคยกดเปิดเอกสาร จำไว้ในเครื่อง) หรือเมื่อกดปิด
  */
 export default function GettingStarted({ hasForms, firstSubId, canCreate }: { hasForms: boolean; firstSubId: string | null; canCreate: boolean }) {
   const { t } = useT();
   const [pdfSeen, setPdfSeen] = useState(false);
+  const [hidden, setHidden] = useState(false);
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่าน localStorage หลัง mount (SSR ไม่มี)
       setPdfSeen(localStorage.getItem(PDF_SEEN_KEY) === "1");
+      setHidden(localStorage.getItem(DISMISS_KEY) === "1");
     } catch { /* โหมดส่วนตัว = แสดงต่อ */ }
   }, []);
   const filled = !!firstSubId;
-  if (hasForms && filled && pdfSeen) return null;
+  if (hidden || (hasForms && filled && pdfSeen)) return null;
+  const dismiss = () => {
+    setHidden(true);
+    try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ปิดได้แค่รอบนี้ */ }
+  };
 
   const steps = [
     { done: hasForms, icon: PenSquare, title: t("onb.s1"), hint: t("onb.s1h"), href: canCreate ? "/studio" : undefined, cta: t("onb.s1c") },
@@ -34,7 +42,13 @@ export default function GettingStarted({ hasForms, firstSubId, canCreate }: { ha
 
   return (
     <section data-tour="dash-start-new" aria-labelledby="onb-h" style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 16, marginBottom: 16 }}>
-      <h2 id="onb-h" style={{ fontSize: "1.1rem", margin: "0 0 2px" }}>{t("onb.title")}</h2>
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+        <h2 id="onb-h" style={{ fontSize: "1.1rem", margin: "0 0 2px" }}>{t("onb.title")}</h2>
+        <button type="button" onClick={dismiss} aria-label={t("onb.dismiss")} title={t("onb.dismiss")}
+          style={{ flex: "0 0 auto", width: 44, height: 44, margin: "-10px -10px 0 0", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 10, background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
+          <Icon icon={X} className="h-[18px] w-[18px]" />
+        </button>
+      </div>
       <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "0 0 12px" }}>{canCreate ? t("onb.sub") : t("onb.subNoCreate")}</p>
       <ol style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
         {steps.map((s, i) => {

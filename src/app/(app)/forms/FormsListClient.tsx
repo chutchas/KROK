@@ -224,7 +224,7 @@ export default function FormsListClient({
 function fmtWhen(s: string, lang: string): string {
   const d = new Date(s);
   if (Number.isNaN(d.getTime())) return "—";
-  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
+  return d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
 }
 
 type DraftSort = "updated" | "expiry" | "progress" | "form";

@@ -26,7 +26,7 @@ export default function ContactsClient({ rows, missing, need0069, showAll }: { r
   );
   return (
     <div style={{ display: "grid", gap: 12, minWidth: 0 }}>
-      <Card>
+      <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ลูกค้าติดต่อ</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}>ข้อความจากหน้า “ติดต่อเรา” (บนเว็บไซต์ และจากเมนู “ติดต่อทีม KROK” ในแอป) — ระบบส่งอีเมลถึงทีมด้วย ถ้าอีเมลไม่ถึง ดูจากหน้านี้ได้เสมอ</p>
         <div style={{ display: "flex", gap: 6 }}>
@@ -35,7 +35,7 @@ export default function ContactsClient({ rows, missing, need0069, showAll }: { r
         </div>
         {need0069 && <Notice>ยังไม่ได้รัน migration 0069_contact_requests_user — ข้อความยังเข้าได้ แต่จะไม่เห็นประเภทเรื่องและ workspace ของผู้ใช้</Notice>}
         {missing && <Notice kind="error">ยังไม่ได้รัน migration 0068_contact_requests — ข้อความจะถูกส่งทางอีเมลอย่างเดียว</Notice>}
-      </Card>
+      </div>
 
       {!missing && rows.length === 0 && <Card><EmptyState icon={<Icon icon={Inbox} className="h-7 w-7" />} title={showAll ? "ยังไม่มีข้อความ" : "ติดต่อกลับครบแล้ว"} /></Card>}
 

@@ -14,6 +14,16 @@ const timeOf = (iso: string, lang: string) => {
     return new Date(iso).toLocaleTimeString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" });
   } catch { return ""; }
 };
+/** วันนี้ = เวลาอย่างเดียว · วันอื่น = "9 ต.ค. 14:30" */
+const whenOf = (iso: string, lang: string) => {
+  try {
+    const loc = lang === "en" ? "en-GB" : "th-TH";
+    const day = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" });
+    const d = new Date(iso);
+    if (day(d) === day(new Date())) return timeOf(iso, lang);
+    return `${d.toLocaleDateString(loc, { timeZone: "Asia/Bangkok", day: "numeric", month: "short" })} ${timeOf(iso, lang)}`;
+  } catch { return ""; }
+};
 
 const GRID: CSSProperties = { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(240px, 100%), 1fr))", gap: 12, marginBottom: 18 };
 
@@ -31,17 +41,18 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
         {t("dash.attnTitle")}
         {allClear && (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--pass)", fontSize: ".82rem", fontWeight: 500 }}>
-            <Icon icon={CircleCheck} className="h-4 w-4" /> {t("dash.attnAllClear")}
+            <Icon icon={CircleCheck} className="h-4 w-4" /> {failed?.scope === "open" ? t("dash.attnAllClearOpen") : t("dash.attnAllClear")}
           </span>
         )}
       </h2>
       {/* ไม่มีเรื่องค้าง = บรรทัดเดียวพอ (ไม่ต้องมีการ์ด "ไม่มี" ซ้ำ ๆ) */}
       {!allClear && <div style={GRID}>
         {failed && (
-          <Tile icon={CircleX} tone="var(--fail)" label={t("dash.attnFailed")} count={failed.count} none={t("dash.attnNone")}>
+          <Tile icon={CircleX} tone="var(--fail)" label={failed.scope === "open" ? t("dash.attnOpenFails") : t("dash.attnFailed")}
+            hint={failed.scope === "open" ? t("dash.attnOpenFailsHint") : undefined} count={failed.count} none={t("dash.attnNone")}>
             {failed.items.map((s) => (
               <Row key={s.id} href={`/submission/${s.id}`} icon={s.form_icon} title={s.form_title}
-                sub={`${s.user_name || "—"} · ${timeOf(s.submitted_at, lang)}${s.fails ? ` · ${tt("dash.failN", { n: s.fails })}` : ""}`} />
+                sub={`${s.user_name || "—"} · ${whenOf(s.submitted_at, lang)}${s.fails ? ` · ${tt("dash.failN", { n: s.fails })}` : ""}`} />
             ))}
             {failed.count > failed.items.length && <More text={tt("dash.attnMore", { n: failed.count - failed.items.length })} />}
           </Tile>
@@ -65,8 +76,8 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
   );
 }
 
-function Tile({ icon, tone, label, count, capped, none, footer, children }: {
-  icon: IconType; tone: string; label: string; count: number; capped?: boolean; none: string;
+function Tile({ icon, tone, label, hint, count, capped, none, footer, children }: {
+  icon: IconType; tone: string; label: string; hint?: string; count: number; capped?: boolean; none: string;
   footer?: { href: string; text: string }; children?: ReactNode;
 }) {
   const hot = count > 0;
@@ -76,6 +87,7 @@ function Tile({ icon, tone, label, count, capped, none, footer, children }: {
         {/* จุดสี = มีเรื่องต้องดู (แทนแถบซ้าย) · ไอคอน+ชื่อบอกชนิด */}
         <span aria-hidden style={{ width: 8, height: 8, borderRadius: "50%", flex: "0 0 auto", background: hot ? tone : "var(--line-strong)" }} />
         <Icon icon={icon} className="h-4 w-4" /> {label}
+        {hint && <span style={{ color: "var(--ink-3)", fontWeight: 400, fontSize: ".74rem" }}>· {hint}</span>}
       </div>
       <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.7rem", lineHeight: 1.2, margin: "4px 0 2px", color: hot ? "var(--ink)" : "var(--ink-3)" }}>
         {hot ? `${count.toLocaleString()}${capped ? "+" : ""}` : <span style={{ fontSize: ".95rem", fontWeight: 500 }}>{none}</span>}

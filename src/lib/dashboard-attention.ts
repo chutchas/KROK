@@ -5,7 +5,8 @@ import { loadTodayRounds } from "@/lib/schedule-server";
 import { sanitizeChain } from "@/lib/approval";
 
 // ============================================================
-// แถบ "ต้องดูตอนนี้" บนแดชบอร์ด — ใบไม่ผ่านวันนี้ · รอบตรวจเลยกำหนด · งานรออนุมัติ
+// แถบ "ต้องดูตอนนี้" บนแดชบอร์ด — ใบไม่ผ่านที่ยังไม่ปิดเรื่อง (30 วัน · 0080) · รอบตรวจเลยกำหนด · งานรออนุมัติ
+// ยังไม่รัน 0080 = นับใบไม่ผ่านวันนี้แบบเดิม (scope "today")
 // ใช้ client ของผู้ใช้ (RLS 0054 กรองฟอร์ม/ใบที่ไม่มีสิทธิ์เห็นให้แล้ว) · ทุกส่วนโหลดขนานกัน
 // ส่วนไหนพลาด/ยังไม่รัน migration = null (ไม่แสดงส่วนนั้น) — ไม่ทำให้ทั้งหน้าพัง
 // ============================================================
@@ -25,8 +26,8 @@ export interface AttentionFailedItem {
 export interface AttentionRoundItem { formId: string; title: string; icon: string; time: string; due: string }
 
 export interface AttentionData {
-  /** ใบที่ไม่ผ่านวันนี้ (เวลาไทย) */
-  failedToday: { count: number; items: AttentionFailedItem[] } | null;
+  /** ใบไม่ผ่าน — scope "open" = ยังไม่ปิดเรื่องใน 30 วัน · "today" = ไม่ผ่านวันนี้ (ยังไม่รัน 0080) */
+  failedToday: { count: number; items: AttentionFailedItem[]; scope: "open" | "today" } | null;
   /** รอบตรวจที่เลยกำหนด (ยังทำทัน) · null = ไม่มีตาราง/ยังไม่รัน 0064 */
   overdueRounds: { count: number; items: AttentionRoundItem[] } | null;
   /** ใบรออนุมัติที่ถึงคิวฉัน · null = ไม่ใช่ผู้อนุมัติ */
@@ -47,16 +48,30 @@ export interface AttentionOpts {
   visibleFormIds: Promise<Set<string>>;
 }
 
+/** ใบไม่ผ่านที่ยังไม่ปิดเรื่อง ย้อนหลังกี่วัน */
+const OPEN_FAIL_DAYS = 30;
+
 async function loadFailedToday(supabase: SupabaseClient, tenantId: string): Promise<AttentionData["failedToday"]> {
-  // นับ + ดึง 5 ใบล่าสุดในคำขอเดียว · ใช้ index (tenant_id, submitted_at desc)
-  const { data, count, error } = await supabase
+  // นับ + ดึง 5 ใบล่าสุดในคำขอเดียว · index idx_submissions_open_fail (0080)
+  const base = () => supabase
     .from("submissions")
     .select("id, form_title, form_icon, user_name, submitted_at, fails", { count: "exact" })
     .eq("tenant_id", tenantId)
-    .eq("result", "fail")
-    .gte("submitted_at", new Date(bkkDayStart(Date.now())).toISOString())
+    .eq("result", "fail");
+  let scope: "open" | "today" = "open";
+  let res = await base()
+    .is("fail_closed_at", null)
+    .gte("submitted_at", new Date(Date.now() - OPEN_FAIL_DAYS * 86_400_000).toISOString())
     .order("submitted_at", { ascending: false })
     .limit(LIST_N);
+  if (res.error && /fail_closed_at/.test(res.error.message)) {
+    scope = "today";
+    res = await base()
+      .gte("submitted_at", new Date(bkkDayStart(Date.now())).toISOString())
+      .order("submitted_at", { ascending: false })
+      .limit(LIST_N);
+  }
+  const { data, count, error } = res;
   if (error) return null;
   const items = ((data || []) as Record<string, unknown>[]).map((r) => ({
     id: r.id as string,
@@ -66,7 +81,7 @@ async function loadFailedToday(supabase: SupabaseClient, tenantId: string): Prom
     submitted_at: r.submitted_at as string,
     fails: Array.isArray(r.fails) ? r.fails.length : 0,
   }));
-  return { count: count ?? items.length, items };
+  return { count: count ?? items.length, items, scope };
 }
 
 async function loadOverdueRounds(supabase: SupabaseClient, o: AttentionOpts): Promise<AttentionData["overdueRounds"]> {

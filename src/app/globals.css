@@ -412,3 +412,6 @@ a {
 
 /* ความกว้างหน้าแอป — ทุกหน้าใช้ค่าเดียวกัน (แถบบน + เนื้อหา) · ขอบซ้าย-ขวายืดตามจอ 16–32px */
 :root { --krok-page-w: 1360px; --krok-gutter: clamp(16px, 2.5vw, 32px); }
+
+/* ป้ายข้อความที่ซ่อนบนจอแคบ (ปุ่มเหลือไอคอน + aria-label) */
+@media (max-width: 480px) { .krok-narrow-hide { display: none; } }
