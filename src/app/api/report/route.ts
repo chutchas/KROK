@@ -30,7 +30,7 @@ export async function GET(req: Request) {
   const formId = url.searchParams.get("form_id"); // uuid หรือ "all"/ว่าง
   const from = url.searchParams.get("from"); // YYYY-MM-DD
   const to = url.searchParams.get("to");
-  const result = url.searchParams.get("result"); // pass | fail | all
+  const result = url.searchParams.get("result"); // pass | fail | fail_open | fail_closed | all
   const approval = url.searchParams.get("approval"); // none|pending|approved|rejected|all
 
   const supabase = await createClient();
@@ -52,9 +52,10 @@ export async function GET(req: Request) {
     form_title: string; user_name: string | null; result: "pass" | "fail";
     approval_status: string; fails: string[] | null; duration_s: number | null;
     submitted_at: string; filled_at?: string | null; geo?: unknown; id: string; answers?: AnswerItem[] | null;
+    fail_closed_at?: string | null; fail_closed_by_name?: string | null; fail_close_note?: string | null;
   };
   const rows: Row[] = [];
-  let selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, filled_at, geo, id${withAnswers ? ", answers" : ""}`;
+  let selectCols: string = `form_title, user_name, result, approval_status, fails, duration_s, submitted_at, filled_at, geo, id, fail_closed_at, fail_closed_by_name, fail_close_note${withAnswers ? ", answers" : ""}`;
   // keyset pagination (submitted_at, id) — offset ลึก ๆ ช้าลงเรื่อย ๆ เพราะ DB ต้องข้ามแถวก่อนหน้าทุกครั้ง
   let cursor: { at: string; id: string } | null = null;
   while (rows.length < MAX_ROWS) {
@@ -72,9 +73,15 @@ export async function GET(req: Request) {
     if (from) q = q.gte("submitted_at", from + "T00:00:00+07:00");
     if (to) q = q.lte("submitted_at", to + "T23:59:59.999+07:00");
     if (result === "pass" || result === "fail") q = q.eq("result", result);
+    else if (result === "fail_open") q = q.eq("result", "fail").is("fail_closed_at", null);
+    else if (result === "fail_closed") q = q.eq("result", "fail").not("fail_closed_at", "is", null);
     if (approval && approval !== "all") q = q.eq("approval_status", approval);
 
     const { data, error } = await q;
+    // ยังไม่รัน 0080 (ไม่มีคอลัมน์ปิดเรื่อง) → ดึงแบบเดิม (ตัวกรองยังไม่ปิด/ปิดแล้วใช้ไม่ได้)
+    if (error && /fail_clos/.test(error.message) && selectCols.includes("fail_closed_at") && result !== "fail_open" && result !== "fail_closed") {
+      selectCols = selectCols.replace(", fail_closed_at, fail_closed_by_name, fail_close_note", ""); continue;
+    }
     // ยังไม่รัน 0059 (ไม่มี filled_at) → ดึงแบบเดิม
     if (error && /filled_at/.test(error.message) && selectCols.includes("filled_at")) { selectCols = selectCols.replace(", filled_at", ""); continue; }
     // ยังไม่รัน 0066 (ไม่มี geo) → ดึงแบบเดิม
@@ -105,6 +112,10 @@ export async function GET(req: Request) {
     { header: "ใช้เวลา(วินาที)", key: "duration", width: 14 },
     // พิกัดตอนส่ง — มีคอลัมน์เมื่อมีใบที่เก็บพิกัด
     ...(rows.some((r) => readGeo(r.geo)) ? [{ header: "พิกัด (lat, lng)", key: "geo", width: 24 }, { header: "แผนที่", key: "geoUrl", width: 30 }] : []),
+    // การปิดเรื่องใบไม่ผ่าน (0080) — มีคอลัมน์เมื่อมีใบไม่ผ่าน
+    ...(selectCols.includes("fail_closed_at") && rows.some((r) => r.result === "fail")
+      ? [{ header: "สถานะเรื่อง", key: "closeStatus", width: 14 }, { header: "ปิดเรื่องโดย", key: "closedBy", width: 20 }, { header: "ปิดเมื่อ", key: "closedAt", width: 20 }, { header: "การแก้ไข", key: "closeNote", width: 40 }]
+      : []),
     { header: "ลิงก์เอกสาร", key: "link", width: 42 },
   ];
   ws.columns = baseCols;
@@ -162,6 +173,14 @@ export async function GET(req: Request) {
       fails: fails.join(" | "),
       duration: s.duration_s ?? "",
       ...(() => { const g = readGeo(s.geo); return g ? { geo: fmtCoords(g), geoUrl: mapUrl(g) } : {}; })(),
+      ...(s.result === "fail" && "fail_closed_at" in s
+        ? {
+            closeStatus: s.fail_closed_at ? "ปิดแล้ว" : "ยังไม่ปิด",
+            closedBy: s.fail_closed_by_name || "",
+            closedAt: s.fail_closed_at ? new Date(s.fail_closed_at).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }) : "",
+            closeNote: s.fail_close_note || "",
+          }
+        : {}),
       link: `${origin}/submission/${s.id}`,
     });
     // เน้นสีผลลัพธ์

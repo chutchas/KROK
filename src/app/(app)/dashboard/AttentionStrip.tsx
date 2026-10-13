@@ -54,7 +54,8 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
               <Row key={s.id} href={`/submission/${s.id}`} icon={s.form_icon} title={s.form_title}
                 sub={`${s.user_name || "—"} · ${whenOf(s.submitted_at, lang)}${s.fails ? ` · ${tt("dash.failN", { n: s.fails })}` : ""}`} />
             ))}
-            {failed.count > failed.items.length && <More text={tt("dash.attnMore", { n: failed.count - failed.items.length })} />}
+            {failed.count > failed.items.length && <More text={tt("dash.attnMore", { n: failed.count - failed.items.length })}
+              href={failed.scope === "open" ? "/reports?result=fail_open" : "/reports?result=fail"} />}
           </Tile>
         )}
         {rounds && (
@@ -114,7 +115,14 @@ function Row({ href, icon, title, sub }: { href: string; icon: string; title: st
   );
 }
 
-function More({ text }: { text: string }) {
+function More({ text, href }: { text: string; href?: string }) {
+  if (href) {
+    return (
+      <Link href={href} style={{ display: "inline-flex", alignItems: "center", gap: 2, minHeight: 36, paddingTop: 6, borderTop: "1px solid var(--line)", fontSize: ".8rem", color: "var(--accent-text)", fontWeight: 600 }}>
+        {text} <Icon icon={ChevronRight} className="h-4 w-4" />
+      </Link>
+    );
+  }
   return <small style={{ color: "var(--ink-3)", fontSize: ".76rem", paddingTop: 6, borderTop: "1px solid var(--line)" }}>{text}</small>;
 }
 

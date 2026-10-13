@@ -231,4 +231,6 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "เอกสารนี้ไม่มีข้อที่ไม่ผ่าน": "This submission has no failed items",
   "ปิดเรื่องไปแล้ว": "Already closed",
   "เรื่องนี้ยังไม่ได้ปิด": "This issue isn't closed",
+  "ต้องยืนยันตัวตนสองขั้น (2FA) ก่อนจึงจะทำรายการนี้ได้": "Verify with two-factor authentication (2FA) first",
+  "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่": "Your session expired — please sign in again",
 };
