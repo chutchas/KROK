@@ -80,7 +80,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [search, setSearch] = useState("");
   const [catFilter, setCatFilter] = useState("all");
   const [customCat, setCustomCat] = useState(false);
-  const [tab, setTab] = useState<"new" | "edit" | "all">(template ? "edit" : "new");
+  // ?edit=<id> ที่เจอฟอร์ม → เริ่มที่แท็บแก้ไขเลย (ไม่ให้หน้าสร้างใหม่โผล่ขึ้นก่อนระหว่างโหลดฟอร์ม)
+  const urlEditForm = initialEditId ? initialForms.find((x) => x.id === initialEditId) : undefined;
+  const [tab, setTab] = useState<"new" | "edit" | "all">(template || urlEditForm ? "edit" : "new");
+  const [openingFromUrl, setOpeningFromUrl] = useState(!!urlEditForm);
   const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
   const [showAllPrompts, setShowAllPrompts] = useState(false);
   const [qrForm, setQrForm] = useState<FormRow | null>(null);
@@ -445,7 +448,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     if (openedFromUrl.current || !initialEditId) return;
     openedFromUrl.current = true;
     const f = initialForms.find((x) => x.id === initialEditId);
-    if (f) void Promise.resolve().then(() => editExisting(f));
+    if (f) void Promise.resolve().then(() => editExisting(f)).finally(() => setOpeningFromUrl(false));
   });
 
   async function onDelete(id: string, title: string) {
@@ -1042,6 +1045,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         </aside>
         </div>
         </div>
+      ) : openingFromUrl ? (
+        <Card>
+          <div role="status" style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-3)", fontSize: ".9rem" }}>{t("common.loading")}</div>
+        </Card>
       ) : (
         <Card>
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-2)" }}>

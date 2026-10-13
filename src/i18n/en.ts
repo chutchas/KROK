@@ -1969,7 +1969,7 @@ export const en: Record<MessageKey, string> = {
   "dash.moveUp": "Move up",
   "dash.moveDown": "Move down",
   "dash.attnTitle": "Needs attention",
-  "dash.attnAllClear": "All clear",
+  "dash.attnAllClear": "Nothing needs attention today",
   "dash.attnFailed": "Failed today",
   "dash.attnOverdue": "Overdue rounds",
   "dash.attnApprovals": "Awaiting approval",

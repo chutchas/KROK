@@ -132,7 +132,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                 {plans.length > 0 && (
                   <div style={{ display: "flex", alignItems: "center", gap: 8 }} title={t("admin.planHint")}>
                     <span style={{ fontSize: ".72rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 4, whiteSpace: "nowrap" }}><Icon icon={Package} className="h-3.5 w-3.5" />{t("admin.plan")}</span>
-                    <select value={u.plan} disabled={busy === u.userId} aria-label={t("admin.plan")} onChange={(e) => changePlan(u, e.target.value)} style={sel}>
+                    <select value={u.plan} disabled={busy === u.userId} aria-label={`${t("admin.plan")} — ${u.name || u.email}`} onChange={(e) => changePlan(u, e.target.value)} style={sel}>
                       {!plans.some((p) => p.key === u.plan) && <option value={u.plan}>{u.plan}</option>}
                       {plans.map((p) => (
                         <option key={p.key} value={p.key}>
@@ -168,7 +168,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                 )}
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <span style={{ fontSize: ".72rem", color: "var(--ink-3)" }}>{t("admin.platformRole")}</span>
-                  <select value={u.platformRole} disabled={busy === u.userId} onChange={(e) => changeRole(u, e.target.value as PlatformRole)} style={sel}>
+                  <select value={u.platformRole} disabled={busy === u.userId} aria-label={`${t("admin.platformRole")} — ${u.name || u.email}`} onChange={(e) => changeRole(u, e.target.value as PlatformRole)} style={sel}>
                     <option value="platform_admin">{prLabel("platform_admin")}</option>
                     <option value="developer">{prLabel("developer")}</option>
                     <option value="user">{prLabel("user")}</option>

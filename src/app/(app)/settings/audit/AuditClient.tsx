@@ -5,6 +5,7 @@ import Icon from "@/components/Icon";
 import { ScrollText, Search } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { actionKind, actionLabel, describeAudit } from "@/lib/audit-labels";
+import { roleLabel } from "@/lib/role-label";
 
 export interface AuditRow {
   id: number;
@@ -26,15 +27,22 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
   const [q, setQ] = useState("");
   const [action, setAction] = useState("all");
 
+  // ชื่อบทบาทระบบที่ยังเป็นชื่อตั้งต้น (Owner/Admin/User) → แสดงตามภาษาที่เลือก
+  const roleLabels = useMemo(() => {
+    const m: Record<string, string> = {};
+    for (const k of new Set(["owner", "admin", "user", ...Object.keys(roleNames)])) m[k] = roleLabel(k, roleNames[k] || "", t);
+    return m;
+  }, [roleNames, t]);
+
   // แปลทุกแถวครั้งเดียว — ใช้ทั้งแสดงผลและค้นหา (ค้นด้วยคำที่ผู้ใช้เห็นได้)
   const view = useMemo(
     () => rows.map((r) => {
       const label = actionLabel(r.action, lang);
-      const details = describeAudit(r, lang, { targetName: r.targetName, formName: r.formName, roleNames });
+      const details = describeAudit(r, lang, { targetName: r.targetName, formName: r.formName, roleNames: roleLabels });
       const hay = `${label} ${r.actorName} ${details.map((d) => `${d.k} ${d.v}`).join(" ")}`.toLowerCase();
       return { r, label, details, hay };
     }),
-    [rows, lang, roleNames],
+    [rows, lang, roleLabels],
   );
 
   const actions = useMemo(() => {
