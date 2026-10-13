@@ -217,25 +217,28 @@ export function toStored(list: Plan[]): CatalogV2 {
 
 export interface FeatureLine { text: string; off?: boolean }
 
-const gb = (mb: number) => (mb >= UNLIMITED ? "∞" : mb >= 1024 ? `${+(mb / 1024).toFixed(1)} GB` : `${mb} MB`);
+const gb = (mb: number, unl: string) => (mb >= UNLIMITED ? unl : mb >= 1024 ? `${+(mb / 1024).toFixed(1)} GB` : `${mb} MB`);
 
 /** รายการสิทธิ์ของแพ็กเกจ เรียงตามความสำคัญ — off = ไม่มีสิทธิ์ (แสดงขีดฆ่า) */
 export function planFeatures(p: Plan, en: boolean): FeatureLine[] {
   const L = (th: string, eng: string, off = false): FeatureLine => ({ text: en ? eng : th, off });
-  const n = fmtLimit;
+  // ไม่จำกัด = เขียนเป็นคำ (ไม่ใช้ ∞) · ภาษาไทยตัดหน่วยออก ("ฟอร์ม ไม่จำกัด" ไม่ใช่ "ฟอร์ม ไม่จำกัด แบบ")
+  const unl = en ? "Unlimited" : "ไม่จำกัด";
+  const n = (v: number) => (v >= UNLIMITED ? unl : fmtLimit(v));
+  const q = (v: number, unit: string) => (v >= UNLIMITED ? unl : `${fmtLimit(v)} ${unit}`);
   const out: FeatureLine[] = [
-    L(`ฟอร์ม ${n(p.maxForms)} แบบ`, `${n(p.maxForms)} forms`),
-    L(`สมาชิก ${n(p.maxMembers)} คน · ${n(p.maxWorkspaces)} workspace`, `${n(p.maxMembers)} members · ${n(p.maxWorkspaces)} workspace${p.maxWorkspaces === 1 ? "" : "s"}`),
-    L(`ส่งฟอร์ม ${n(p.maxSubmissionsMonth)} ครั้ง/เดือน`, `${n(p.maxSubmissionsMonth)} submissions / month`),
-    L(`พื้นที่ไฟล์ ${gb(p.storageMb)}`, `${gb(p.storageMb)} file storage`),
-    L(`AI ${n(p.aiCreditsPerMonth)} ครั้ง/เดือน`, `${n(p.aiCreditsPerMonth)} AI credits / month`),
-    L(`ชุดข้อมูล ${n(p.maxDatasets)} ชุด (ชุดละ ${n(p.maxDatasetRows)} แถว)`, `${n(p.maxDatasets)} datasets (${n(p.maxDatasetRows)} rows each)`),
-    L(`ขั้นอนุมัติ ${n(p.maxApprovalSteps)} ขั้น`, `${n(p.maxApprovalSteps)} approval step${p.maxApprovalSteps === 1 ? "" : "s"}`),
+    L(`ฟอร์ม ${q(p.maxForms, "แบบ")}`, `${n(p.maxForms)} forms`),
+    L(`สมาชิก ${q(p.maxMembers, "คน")} · ${p.maxWorkspaces >= UNLIMITED ? "workspace ไม่จำกัด" : `${n(p.maxWorkspaces)} workspace`}`, `${n(p.maxMembers)} members · ${n(p.maxWorkspaces)} workspace${p.maxWorkspaces === 1 ? "" : "s"}`),
+    L(`ส่งฟอร์ม ${q(p.maxSubmissionsMonth, "ครั้ง/เดือน")}`, `${n(p.maxSubmissionsMonth)} submissions / month`),
+    L(`พื้นที่ไฟล์ ${gb(p.storageMb, unl)}`, `${gb(p.storageMb, unl)} file storage`),
+    L(`AI ${q(p.aiCreditsPerMonth, "ครั้ง/เดือน")}`, `${n(p.aiCreditsPerMonth)} AI credits / month`),
+    L(`ชุดข้อมูล ${q(p.maxDatasets, "ชุด")} (ชุดละ ${q(p.maxDatasetRows, "แถว")})`, `${n(p.maxDatasets)} datasets (${n(p.maxDatasetRows).toLowerCase()} rows each)`),
+    L(`ขั้นอนุมัติ ${q(p.maxApprovalSteps, "ขั้น")}`, `${n(p.maxApprovalSteps)} approval step${p.maxApprovalSteps === 1 ? "" : "s"}`),
     L("ฟอร์มกรอกหลายคน (ส่งต่องาน)", "Multi-person workflow", !p.workflow),
     L("แจ้งเตือน LINE / อีเมล", "LINE / email notifications", !p.notify),
-    L(p.maxWebhooks ? `Webhook ${n(p.maxWebhooks)} เส้น` : "Webhook", p.maxWebhooks ? `${n(p.maxWebhooks)} webhooks` : "Webhooks", !p.maxWebhooks),
-    L(p.maxIntakeForms ? `API รับข้อมูล ${n(p.maxIntakeForms)} ฟอร์ม` : "API รับข้อมูลเข้า", p.maxIntakeForms ? `Intake API on ${n(p.maxIntakeForms)} forms` : "Intake API", !p.maxIntakeForms),
-    L(p.maxDevices ? `ล็อกอุปกรณ์ ${n(p.maxDevices)} เครื่อง` : "ล็อกอุปกรณ์", p.maxDevices ? `${n(p.maxDevices)} locked devices` : "Device lock", !p.maxDevices),
+    L(p.maxWebhooks ? `Webhook ${q(p.maxWebhooks, "เส้น")}` : "Webhook", p.maxWebhooks ? `${n(p.maxWebhooks)} webhooks` : "Webhooks", !p.maxWebhooks),
+    L(p.maxIntakeForms ? `API รับข้อมูล ${q(p.maxIntakeForms, "ฟอร์ม")}` : "API รับข้อมูลเข้า", p.maxIntakeForms ? `Intake API on ${n(p.maxIntakeForms)} forms` : "Intake API", !p.maxIntakeForms),
+    L(p.maxDevices ? `ล็อกอุปกรณ์ ${q(p.maxDevices, "เครื่อง")}` : "ล็อกอุปกรณ์", p.maxDevices ? `${n(p.maxDevices)} locked devices` : "Device lock", !p.maxDevices),
     L(`ประวัติการใช้งาน ${p.auditDays} วัน`, `${p.auditDays}-day audit log`),
   ];
   for (const x of en ? p.extrasEn : p.extras) out.push({ text: x });

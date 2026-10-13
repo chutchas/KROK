@@ -57,6 +57,7 @@ export default async function PrintSubmissionPage({ params, searchParams }: { pa
 
   return (
     <div className="krok-doc-page">
+      <h1 className="sr-only">{String(sub.form_title || "")} {docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined })}</h1>
       <SubmissionDoc
         variant="print"
         schema={schema}
@@ -74,7 +75,9 @@ export default async function PrintSubmissionPage({ params, searchParams }: { pa
       <style>{`
         @page { size: A4; margin: 0; }
         html, body { margin: 0; padding: 0; background: #e5e7eb; }
-        .krok-doc-page { display: flex; flex-direction: column; align-items: center; gap: 16px; padding: 16px 0; }
+        /* กระดาษกว้างกว่าจอ (มือถือ) → ชิดซ้ายแล้วเลื่อนดูได้ · align-items:center จะดันขอบซ้ายออกนอกจอจนเลื่อนไม่ถึง */
+        .krok-doc-page { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 16px 0; }
+        .krok-doc-page > * { margin-inline: auto; }
         .krok-doc-page .krok-pl-canvas { box-shadow: 0 2px 16px rgba(0,0,0,.18); }
         @media print {
           html, body { background: #fff !important; }

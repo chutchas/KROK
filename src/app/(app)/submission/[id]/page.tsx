@@ -2,6 +2,8 @@ import { isLateSync } from "@/lib/filled-at";
 import { fmtCoords, mapUrl, readGeo } from "@/lib/geo";
 import StoredText from "@/i18n/StoredText";
 import { notFound, redirect } from "next/navigation";
+import { headers } from "next/headers";
+import { userAgent } from "next/server";
 import { InlineFormIcon } from "@/components/FormIcon";
 import { TriangleAlert, Check, Undo2, Clock } from "lucide-react";
 import { getSession, canManage, redirectNoSession } from "@/lib/session";
@@ -208,7 +210,9 @@ export default async function SubmissionPage({ params, searchParams }: { params:
   const subGeo = readGeo(sub.geo);
 
   // แท็บ: "เอกสาร A4" (ค่าเริ่มต้น — หน้าตาเดียวกับตอนกรอกแบบกระดาษ/ตอนพิมพ์/PDF) · "สรุป" (รายการคำตอบ + ประวัติ)
-  const view: "doc" | "summary" = sp.view === "summary" || !docSchema ? "summary" : "doc";
+  // มือถือ: กระดาษ A4 ย่อจนอ่านไม่ออก → เปิดแท็บสรุปก่อน (ยังกดดู A4 ได้) · ?view=doc บังคับแท็บเอกสาร
+  const isPhone = userAgent({ headers: await headers() }).device.type === "mobile";
+  const view: "doc" | "summary" = !docSchema || sp.view === "summary" || (sp.view !== "doc" && isPhone) ? "summary" : "doc";
   const docNo = docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined });
   // สลับแท็บแล้วยังจำที่มา (ปุ่มกลับยังพาไปหน้าเดิม)
   const fromQ = (sep: "?" | "&") => (sp.from && /^[a-z]{1,20}$/.test(sp.from) ? `${sep}from=${sp.from}` : "");
@@ -221,7 +225,8 @@ export default async function SubmissionPage({ params, searchParams }: { params:
   const row: React.CSSProperties = { display: "flex", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)", alignItems: "flex-start" };
 
   return (
-    <div style={{ maxWidth: view === "doc" ? 900 : 720, margin: "0 auto" }}>
+    // ความกว้างเดียวกันทั้งสองแท็บ — สลับแท็บแล้วหน้าไม่กระโดด
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <BackLink from={sp.from} mine={!canManage(session.role)} />
         <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
@@ -233,13 +238,14 @@ export default async function SubmissionPage({ params, searchParams }: { params:
 
       {docSchema && (
         <div className="no-print" role="tablist" aria-label={docNo} style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)", marginBottom: 12 }}>
-          <a role="tab" aria-selected={view === "doc"} href={`/submission/${sub.id}${fromQ("?")}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
+          <a role="tab" aria-selected={view === "doc"} href={`/submission/${sub.id}?view=doc${fromQ("&")}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
           <a role="tab" aria-selected={view === "summary"} href={`/submission/${sub.id}?view=summary${fromQ("&")}`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
         </div>
       )}
 
       {view === "doc" && docSchema ? (
         <div role="tabpanel">
+          <h1 className="sr-only">{sub.form_title} {docNo}</h1>
           {sub.approval_status && sub.approval_status !== "none" && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: ".86rem" }}>
               <span style={{ border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "2px 10px", fontWeight: 700 }}><T k={status.k} /></span>

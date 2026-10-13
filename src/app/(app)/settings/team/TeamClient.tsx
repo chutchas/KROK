@@ -82,7 +82,8 @@ export default function TeamClient({
 
   const canOwner = myRole === "owner";
   const inviteOptions = canOwner ? roleOptions : roleOptions.filter((r) => r.key !== "owner");
-  const selectedRoleName = roleOptions.find((r) => r.key === roleKey)?.name || roleKey;
+  const selectedRole = roleOptions.find((r) => r.key === roleKey);
+  const selectedRoleName = roleLabel(roleKey, selectedRole?.name || "", t);
 
   async function doInvite(e: React.FormEvent) {
     e.preventDefault();

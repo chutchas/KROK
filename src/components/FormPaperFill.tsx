@@ -216,6 +216,7 @@ export default function FormPaperFill({
         </button>
         <span style={{ fontSize: ".76rem", color: "var(--ink-3)" }}>{t("paper.zoom")}</span>
         <input type="range" min={0.35} max={1.4} step={0.05} value={scale}
+          aria-label={t("paper.zoom")} aria-valuetext={`${Math.round(scale * 100)}%`}
           onChange={(e) => { userZoomed.current = true; setScale(parseFloat(e.target.value)); }}
           style={{ accentColor: "var(--accent)" }} />
         <span className="tabnum" style={{ fontSize: ".76rem", color: "var(--ink-2)", width: 42 }}>{Math.round(scale * 100)}%</span>
