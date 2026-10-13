@@ -46,7 +46,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
   const closeBtnRef = useRef<HTMLButtonElement>(null);
   const reopenBtnRef = useRef<HTMLButtonElement>(null);
   /** กดยกเลิกแล้วคืนโฟกัสให้ปุ่มที่เปิดฟอร์ม (ไม่หลุดไปที่ body) */
-  const [refocus, setRefocus] = useState<"close" | "reopen" | null>(null);
+  const refocus = useRef<"close" | "reopen" | null>(null);
   const closed = !!state.closedAt;
   const days = closed ? 0 : daysSince(submittedAt);
 
@@ -54,10 +54,10 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
     if (done) headRef.current?.focus();
   }, [done, closed]);
   useEffect(() => {
-    if (!refocus) return;
-    (refocus === "close" ? closeBtnRef : reopenBtnRef).current?.focus();
-    setRefocus(null);
-  }, [refocus]);
+    if (!refocus.current || open || reopening) return;
+    (refocus.current === "close" ? closeBtnRef : reopenBtnRef).current?.focus();
+    refocus.current = null;
+  }, [open, reopening]);
 
   async function run(fn: () => Promise<{ ok: true } | { error: string }>, okMsg: string) {
     setBusy(true); setErr(null); setDone(null);
@@ -134,7 +134,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: reopening ? "flex-end" : "flex-start" }}>
             {reopening ? (
               <>
-                <Button onClick={() => { setReopening(false); setErr(null); setRefocus("reopen"); }} disabled={busy}>{t("common.cancel")}</Button>
+                <Button onClick={() => { setReopening(false); setErr(null); refocus.current = "reopen"; }} disabled={busy}>{t("common.cancel")}</Button>
                 <Button variant="danger" onClick={() => run(() => reopenFailure(id, reason), t("fc.reopened"))} disabled={busy || reason.trim().length < 3} loading={busy}>
                   <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
                 </Button>
@@ -178,7 +178,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
           </label>
           {err && <Notice kind="error">{err}</Notice>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Button onClick={() => { setOpen(false); setErr(null); setRefocus("close"); }} disabled={busy}>{t("common.cancel")}</Button>
+            <Button onClick={() => { setOpen(false); setErr(null); refocus.current = "close"; }} disabled={busy}>{t("common.cancel")}</Button>
             <Button variant="primary" onClick={() => run(() => closeFailure(id, note), t("fc.closedDone"))} disabled={busy || note.trim().length < 3} loading={busy}>
               <Icon icon={CircleCheck} className="h-4 w-4" /> {t("fc.closeConfirm")}
             </Button>
