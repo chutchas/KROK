@@ -15,7 +15,7 @@ import DeleteSubmission from "./DeleteSubmission";
 import BackLink from "./BackLink";
 import TrashedNotice from "./TrashedNotice";
 import FailureClose from "./FailureClose";
-import { failItemsOf } from "@/lib/fail-items";
+import { failItemsOf, historyOf } from "@/lib/fail-items";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
 import { getFormPrintInfo } from "@/lib/print-photos-server";
@@ -257,6 +257,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
             closedAt: (sub.fail_closed_at as string | null) ?? null,
             closedBy: (sub.fail_closed_by_name as string | null) ?? null,
             note: (sub.fail_close_note as string | null) ?? null,
+            history: historyOf(sub.fail_close_history),
           }}
         />
       )}

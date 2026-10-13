@@ -233,4 +233,5 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "เรื่องนี้ยังไม่ได้ปิด": "This issue isn't closed",
   "ต้องยืนยันตัวตนสองขั้น (2FA) ก่อนจึงจะทำรายการนี้ได้": "Verify with two-factor authentication (2FA) first",
   "เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่": "Your session expired — please sign in again",
+  "กรุณาระบุเหตุผลที่เปิดเรื่องกลับ": "Please give a reason for reopening",
 };

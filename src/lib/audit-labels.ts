@@ -104,6 +104,7 @@ const K: Record<string, L> = {
   ref: { th: "เลขอ้างอิง", en: "Reference" }, step: { th: "ขั้นที่", en: "Step" }, note: { th: "หมายเหตุ", en: "Note" }, name: { th: "ชื่อใหม่", en: "New name" },
   plan: { th: "แพ็กเกจ", en: "Plan" }, teams: { th: "ทีม", en: "Teams" }, mailed: { th: "อีเมลเชิญ", en: "Invite email" }, key: { th: "กุญแจ", en: "Key" },
 expiry: { th: "อายุ key", en: "Key lifetime" },   provider: { th: "ผู้ให้บริการ", en: "Provider" }, model: { th: "โมเดล", en: "Model" }, enabled: { th: "เปิดใช้", en: "Enabled" }, purpose: { th: "ใช้สำหรับ", en: "Purpose" },
+  reason: { th: "เหตุผล", en: "Reason" },
 };
 
 export interface AuditCtx {
@@ -167,6 +168,7 @@ export function describeAudit(
   if (m.ref) push("ref", str(m.ref));
   if (typeof m.step === "number") push("step", str(m.step + 1));
   if (m.note) push("note", str(m.note));
+  if (m.reason) push("reason", str(m.reason));
   if (m.plan) push("plan", str(m.plan));
   if (m.prefix) push("key", `${str(m.prefix)}…`);
   if ("expires_days" in m) push("expiry", m.expires_days == null ? (lang === "en" ? "Never expires" : "ไม่หมดอายุ") : (lang === "en" ? `${str(m.expires_days)} days` : `${str(m.expires_days)} วัน`));

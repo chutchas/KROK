@@ -10,3 +10,19 @@ export function failItemsOf(answers: unknown, fails: unknown): { label: string; 
   if (flagged.length) return flagged;
   return (Array.isArray(fails) ? fails : []).map((f) => ({ label: String(f) }));
 }
+
+/** ประวัติปิด/เปิดเรื่อง (0081: submissions.fail_close_history) → รูปที่หน้าจอใช้ · ข้อมูลผิดรูปถูกข้าม */
+export function historyOf(raw: unknown): { action: "close" | "reopen"; at: string; byName: string; note?: string; reason?: string }[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((e) => {
+    const r = (e || {}) as Record<string, unknown>;
+    if ((r.action !== "close" && r.action !== "reopen") || typeof r.at !== "string") return [];
+    return [{
+      action: r.action,
+      at: r.at,
+      byName: typeof r.by_name === "string" ? r.by_name : "",
+      note: typeof r.note === "string" && r.note ? r.note : undefined,
+      reason: typeof r.reason === "string" && r.reason ? r.reason : undefined,
+    }];
+  });
+}

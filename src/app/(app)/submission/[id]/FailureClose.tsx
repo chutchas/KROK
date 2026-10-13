@@ -6,7 +6,6 @@ import { Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import { LocalDate } from "@/i18n/T";
-import { confirmDialog } from "@/components/dialogs";
 import { closeFailure, reopenFailure } from "@/lib/failure-close-actions";
 
 export interface FailureState {
@@ -15,7 +14,11 @@ export interface FailureState {
   closedAt: string | null;
   closedBy: string | null;
   note: string | null;
+  /** ประวัติปิด/เปิดกลับ (0081) — เก่าไปใหม่ */
+  history: FailureEvent[];
 }
+
+export interface FailureEvent { action: "close" | "reopen"; at: string; byName: string; note?: string; reason?: string }
 
 /**
  * สถานะเรื่องของใบไม่ผ่าน — ยังไม่ปิด (ผู้จัดการกดปิดพร้อมหมายเหตุการแก้ไข) / ปิดแล้ว (ใคร เมื่อไร แก้อย่างไร)
@@ -28,6 +31,9 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [note, setNote] = useState("");
+  /** ฟอร์มเปิดเรื่องกลับ (ต้องมีเหตุผล) */
+  const [reopening, setReopening] = useState(false);
+  const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   /** ข้อความประกาศผล (screen reader) + ย้ายโฟกัสกลับหัวแผงหลังเปลี่ยนสถานะ */
@@ -44,7 +50,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
     try {
       const r = await fn();
       if ("error" in r) { setErr(r.error); return; }
-      setOpen(false); setNote("");
+      setOpen(false); setNote(""); setReopening(false); setReason("");
       setDone(okMsg);
       router.refresh();
     } catch {
@@ -54,13 +60,25 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
     }
   }
 
-  async function reopen() {
-    if (!(await confirmDialog({ title: t("fc.reopen"), message: t("fc.reopenConfirm"), confirmLabel: t("fc.reopen"), danger: true }))) return;
-    await run(() => reopenFailure(id), t("fc.reopened"));
-  }
 
   const box: React.CSSProperties = { display: "grid", gap: 8, padding: "12px 14px", borderRadius: 10, marginBottom: 12, fontSize: ".88rem" };
   const h: React.CSSProperties = { fontSize: ".95rem", margin: 0, outline: "none", display: "inline-flex", alignItems: "center", gap: 8 };
+  const textarea: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
+  // ประวัติแสดงเมื่อมีการเปิดกลับอย่างน้อยครั้งเดียว (ปิดครั้งเดียว = ข้อมูลซ้ำกับหัวแผง)
+  const history = state.history.some((e) => e.action === "reopen") && (
+    <details style={{ fontSize: ".82rem" }}>
+      <summary style={{ cursor: "pointer", color: "var(--ink-2)", minHeight: 32, display: "flex", alignItems: "center" }}>{tt("fc.historyN", { n: state.history.length })}</summary>
+      <ol style={{ margin: "4px 0 0", paddingLeft: 20, display: "grid", gap: 4, color: "var(--ink-2)" }}>
+        {state.history.map((e, i) => (
+          <li key={i}>
+            <b style={{ color: "var(--ink)" }}>{e.action === "close" ? t("fc.evClose") : t("fc.evReopen")}</b> · {e.byName || "—"} · <LocalDate iso={e.at} />
+            {e.note && <div style={{ whiteSpace: "pre-wrap" }}>{t("fc.fixLabel")} {e.note}</div>}
+            {e.reason && <div style={{ whiteSpace: "pre-wrap" }}>{t("fc.reasonLabel")} {e.reason}</div>}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
   const live = <div role="status" aria-live="polite" className="sr-only">{done || ""}</div>;
   const list = state.items.length > 0 && (
     <ul style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 2 }}>
@@ -85,12 +103,33 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
         </div>
         {list}
         {state.note && <div style={{ whiteSpace: "pre-wrap" }}><span style={{ color: "var(--ink-3)" }}>{t("fc.fixLabel")} </span>{state.note}</div>}
+        {history}
+        {reopening && (
+          <>
+            <div style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{t("fc.reopenConfirm")}</div>
+            <label style={{ display: "grid", gap: 4 }}>
+              {t("fc.reopenReason")}
+              <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} autoFocus
+                placeholder={t("fc.reopenReasonPh")} aria-describedby="fc-reason-hint" style={textarea} />
+              <span id="fc-reason-hint" style={{ fontSize: ".76rem", color: "var(--ink-3)" }}>{t("trash.reasonMin")}</span>
+            </label>
+          </>
+        )}
         {err && <Notice kind="error">{err}</Notice>}
         {canReopen && (
-          <div>
-            <Button variant="ghost" onClick={reopen} disabled={busy} loading={busy} style={{ fontSize: ".82rem" }}>
-              <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
-            </Button>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: reopening ? "flex-end" : "flex-start" }}>
+            {reopening ? (
+              <>
+                <Button onClick={() => { setReopening(false); setErr(null); }} disabled={busy}>{t("common.cancel")}</Button>
+                <Button variant="danger" onClick={() => run(() => reopenFailure(id, reason), t("fc.reopened"))} disabled={busy || reason.trim().length < 3} loading={busy}>
+                  <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
+                </Button>
+              </>
+            ) : (
+              <Button variant="ghost" onClick={() => setReopening(true)} style={{ fontSize: ".82rem" }}>
+                <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
+              </Button>
+            )}
           </div>
         )}
       </section>
@@ -113,13 +152,13 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
       </div>
       {list}
       {supported && <div style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{canClose ? t("fc.openSub") : t("fc.openSubMember")}</div>}
+      {history}
       {open && (
         <>
           <label style={{ display: "grid", gap: 4 }}>
             {t("fc.noteLabel")}
             <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} rows={3} autoFocus
-              placeholder={t("fc.notePh")} aria-describedby="fc-note-hint"
-              style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }} />
+              placeholder={t("fc.notePh")} aria-describedby="fc-note-hint" style={textarea} />
             <span id="fc-note-hint" style={{ fontSize: ".76rem", color: "var(--ink-3)" }}>{t("trash.reasonMin")}</span>
           </label>
           {err && <Notice kind="error">{err}</Notice>}

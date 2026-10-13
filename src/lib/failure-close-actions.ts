@@ -38,12 +38,18 @@ export async function closeFailure(id: string, note: string): Promise<R> {
   return { ok: true };
 }
 
-export async function reopenFailure(id: string): Promise<R> {
+export async function reopenFailure(id: string, reason: string): Promise<R> {
   const session = await getSession();
   if (!session) return { error: await sm("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่") };
   if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะเจ้าของหรือผู้ดูแล workspace ที่เปิดเรื่องกลับได้") };
+  const r = String(reason || "").trim();
+  if (r.length < 3) return { error: await sm("กรุณาระบุเหตุผลที่เปิดเรื่องกลับ") };
   const supabase = await createClient();
-  const { error } = await supabase.rpc("reopen_submission_failure", { p_id: id });
+  let { error } = await supabase.rpc("reopen_submission_failure", { p_id: id, p_reason: r.slice(0, 500) });
+  // ยังไม่รัน 0081 (ยังเป็นตัวเดิมที่ไม่มีเหตุผล) → เรียกแบบเดิม เหตุผลไม่ถูกบันทึก
+  if (error && (error.code === "PGRST202" || /reopen_submission_failure/.test(error.message || ""))) {
+    ({ error } = await supabase.rpc("reopen_submission_failure", { p_id: id }));
+  }
   if (error) return { error: await rpcMsg(error) };
   refresh(id);
   return { ok: true };
