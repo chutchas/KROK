@@ -55,6 +55,8 @@ export type { AnswerItem };
 export interface SubRow {
   id: string; form_title: string; form_icon: string; user_name: string;
   result: "pass" | "fail"; fails: string[];
+  /** ปิดเรื่องใบไม่ผ่านแล้ว (0080) */
+  fail_closed_at?: string | null;
   /** ไม่มี = ยังไม่ได้โหลด (หน้าต่างรายละเอียดโหลดเองตอนเปิด) */
   answers?: AnswerItem[];
   duration_s: number | null; submitted_at: string;
@@ -336,7 +338,9 @@ export default function DashboardClient({
                 {s.approval_status === "pending" && <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Clock} className="h-3 w-3" /> {t("dash.pending")}</span></Pill>}
                 {s.approval_status === "approved" && <Pill kind="pass">{t("dash.approved")}</Pill>}
                 {s.approval_status === "rejected" && <Pill kind="fail">{t("dash.rejected")}</Pill>}
-                {s.fails?.length ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("dash.failN", { n: s.fails.length })}</span></Pill> : s.result === "pass" ? <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
+                {s.fails?.length ? (s.fail_closed_at
+                  ? <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {tt("dash.failNClosed", { n: s.fails.length })}</span></Pill>
+                  : <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("dash.failN", { n: s.fails.length })}</span></Pill>) : s.result === "pass" ? <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
               </div>
             </div>
           ))}

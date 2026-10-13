@@ -9,6 +9,8 @@ import { getDocSchema } from "@/lib/submission-doc-server";
 import type { StoredAnswer } from "@/lib/doc-answers";
 import SubmissionDoc from "@/components/SubmissionDoc";
 import AutoPrint from "./AutoPrint";
+import { FailureCloseRecord } from "@/app/(app)/submission/[id]/FailureClose";
+import { failItemsOf } from "@/lib/fail-items";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +72,15 @@ export default async function PrintSubmissionPage({ params, searchParams }: { pa
         submittedAt={sub.submitted_at as string | null}
         docNo={docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined })}
       />
+      {/* ใบไม่ผ่านที่ปิดเรื่องแล้ว: บันทึกการปิดเรื่องเป็นกล่องแยกท้ายเอกสาร (หลักฐานว่าแก้แล้ว) */}
+      {sub.result === "fail" && sub.fail_closed_at && (
+        <FailureCloseRecord
+          closedAt={String(sub.fail_closed_at)}
+          closedBy={(sub.fail_closed_by_name as string | null) ?? null}
+          note={(sub.fail_close_note as string | null) ?? null}
+          items={failItemsOf(sub.answers, sub.fails)}
+        />
+      )}
       {sp.auto === "1" && <AutoPrint />}
       {/* กระดาษ A4 ไม่มีขอบ — ระยะขอบอยู่ในแคนวาสแล้ว (ตรงกับที่ออกแบบ) */}
       <style>{`
@@ -78,11 +89,11 @@ export default async function PrintSubmissionPage({ params, searchParams }: { pa
         /* กระดาษกว้างกว่าจอ (มือถือ) → ชิดซ้ายแล้วเลื่อนดูได้ · align-items:center จะดันขอบซ้ายออกนอกจอจนเลื่อนไม่ถึง */
         .krok-doc-page { display: flex; flex-direction: column; align-items: flex-start; gap: 16px; padding: 16px 0; }
         .krok-doc-page > * { margin-inline: auto; }
-        .krok-doc-page .krok-pl-canvas { box-shadow: 0 2px 16px rgba(0,0,0,.18); }
+        .krok-doc-page .krok-pl-canvas, .krok-doc-page .krok-close-record { box-shadow: 0 2px 16px rgba(0,0,0,.18); }
         @media print {
           html, body { background: #fff !important; }
           .krok-doc-page { display: block; padding: 0; }
-          .krok-doc-page .krok-pl-canvas { box-shadow: none; }
+          .krok-doc-page .krok-pl-canvas, .krok-doc-page .krok-close-record { box-shadow: none; }
           .krok-doc-print button:not([data-print-keep]) { display: none !important; }
         }
       `}</style>

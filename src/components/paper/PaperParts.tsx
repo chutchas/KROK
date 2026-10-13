@@ -209,6 +209,7 @@ export function PaperPassFail({ value, onChange, disabled = false, passLabel, fa
         type="button"
         data-print-keep={on || !value ? "" : undefined}
         disabled={disabled}
+        aria-pressed={on}
         onClick={() => onChange?.(kind)}
         style={{
           height: CONTROL_H, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,

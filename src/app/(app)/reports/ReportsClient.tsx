@@ -14,13 +14,13 @@ type Preset = "7d" | "30d" | "month" | "all" | "custom";
 
 function ymd(d: Date) { return d.toLocaleDateString("sv"); }
 
-export default function ReportsClient({ forms, mine = false, canTrash = false }: { forms: ReportFormOpt[]; mine?: boolean; canTrash?: boolean }) {
+export default function ReportsClient({ forms, mine = false, canTrash = false, initialResult = null }: { forms: ReportFormOpt[]; mine?: boolean; canTrash?: boolean; initialResult?: string | null }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [more, setMore] = useState(false);
   const fmtWhen = (iso: string) => {
     const d = new Date(iso);
-    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "short", timeStyle: "short", timeZone: "Asia/Bangkok" });
+    return Number.isNaN(d.getTime()) ? iso : d.toLocaleString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" });
   };
   const [formId, setFormId] = useState("all");
   const [preset, setPreset] = useState<Preset>("30d");
@@ -76,6 +76,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
     restored.current = true;
     let saved: { formId?: string; preset?: Preset; from?: string; to?: string; result?: string; approval?: string } | null = null;
     try { saved = JSON.parse(sessionStorage.getItem(KEY) || "null"); } catch { saved = null; }
+    // ลิงก์จากแดชบอร์ด (?result=fail_open) → ไม่ผ่าน·ยังไม่ปิดเรื่อง 30 วัน (ช่วงเดียวกับแถบ "ต้องดูตอนนี้") แทนตัวกรองที่จำไว้
+    if (initialResult) saved = { formId: "all", preset: "30d", result: initialResult, approval: "all" };
     if (!saved) return;
     const f = { formId: saved.formId && (saved.formId === "all" || forms.some((x) => x.id === saved!.formId)) ? saved.formId : "all", preset: saved.preset || "30d", from: saved.from || "", to: saved.to || "", result: saved.result || "all", approval: saved.approval || "all" };
     /* eslint-disable react-hooks/set-state-in-effect -- คืนค่าจาก sessionStorage ได้หลัง mount เท่านั้น */
@@ -164,6 +166,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
               <option value="all">{t("studio.stAll")}</option>
               <option value="pass">{t("rep.pass")}</option>
               <option value="fail">{t("rep.fail")}</option>
+              <option value="fail_open">{t("rep.failOpen")}</option>
+              <option value="fail_closed">{t("rep.failClosed")}</option>
             </select>
           </Selectable>
 
@@ -242,7 +246,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false }:
                       <td style={td}>{r.user}</td>
                       <td style={td}>
                         {r.result === "fail"
-                          ? <Pill kind="fail">{t("rep.fail")}</Pill>
+                          ? r.closed ? <Pill kind="na">{t("rep.failClosedShort")}</Pill> : <Pill kind="fail">{t("rep.fail")}</Pill>
                           : <Pill kind="pass">{t("rep.pass")}</Pill>}
                       </td>
                       <td style={td}>{r.approval === "none" ? "-" : approvalLabel(r.approval)}</td>

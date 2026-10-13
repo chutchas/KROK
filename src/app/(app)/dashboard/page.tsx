@@ -41,12 +41,18 @@ export default async function DashboardPage() {
   const [snap, recentRes, formsRes, layoutRes, schedRes, wsRes, areasRes] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
-    supabase
-      .from("submissions")
-      .select("id, form_title, form_icon, user_name, result, fails, duration_s, submitted_at, approval_status")
-      .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่
-      .order("submitted_at", { ascending: false })
-      .limit(100),
+    // + สถานะปิดเรื่อง (0080) · ยังไม่รันก็ดึงแบบเดิม
+    (async () => {
+      const recent = (cols: string) => supabase
+        .from("submissions")
+        .select(cols)
+        .eq("tenant_id", session.tenantId) // เฉพาะ workspace ที่เปิดอยู่
+        .order("submitted_at", { ascending: false })
+        .limit(100);
+      const base = "id, form_title, form_icon, user_name, result, fails, duration_s, submitted_at, approval_status";
+      const r = await recent(`${base}, fail_closed_at`);
+      return r.error && /fail_closed_at/.test(r.error.message) ? recent(base) : r;
+    })(),
     formsP,
     // layout ที่บันทึกไว้
     supabase
@@ -84,7 +90,7 @@ export default async function DashboardPage() {
     <QuotaBanner warnings={quotaWarnings(snap)} canUpgrade={snap.ownerId ? snap.ownerId === session.userId : session.role === "owner"} />
     <DashboardClient
       tenantId={session.tenantId}
-      initial={(recentRes.data || []) as SubRow[]}
+      initial={(recentRes.data || []) as unknown as SubRow[]}
       forms={forms}
       summary={summary}
       hasSchedules={!schedRes.error && (schedRes.count ?? 0) > 0}

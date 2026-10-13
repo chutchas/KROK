@@ -6,8 +6,11 @@ export const metadata = { title: "รายงาน" };
 
 export const dynamic = "force-dynamic";
 
-export default async function ReportsPage() {
+const RESULT_LINKS = ["fail", "fail_open", "fail_closed"];
+
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ result?: string }> }) {
   const session = await enforceMenu("reports");
+  const sp = await searchParams;
   const supabase = await createClient();
 
   const { data } = await supabase
@@ -24,5 +27,6 @@ export default async function ReportsPage() {
   }));
 
   // สมาชิกทั่วไป: รายงาน = ประวัติการส่งของตัวเอง (RLS) · owner/admin: มีถังขยะเอกสารที่ลบ
-  return <ReportsClient forms={forms} mine={!canManage(session.role)} canTrash={session.role === "owner" || session.role === "admin"} />;
+  return <ReportsClient forms={forms} mine={!canManage(session.role)} canTrash={session.role === "owner" || session.role === "admin"}
+    initialResult={sp.result && RESULT_LINKS.includes(sp.result) ? sp.result : null} />;
 }

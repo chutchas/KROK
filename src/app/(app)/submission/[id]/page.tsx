@@ -15,6 +15,7 @@ import DeleteSubmission from "./DeleteSubmission";
 import BackLink from "./BackLink";
 import TrashedNotice from "./TrashedNotice";
 import FailureClose from "./FailureClose";
+import { failItemsOf, historyOf } from "@/lib/fail-items";
 import { type AnswerItem } from "@/lib/answer-item";
 import { T, LocalDate } from "@/i18n/T";
 import { getFormPrintInfo } from "@/lib/print-photos-server";
@@ -252,10 +253,11 @@ export default async function SubmissionPage({ params, searchParams }: { params:
           canClose={canManage(session.role)}
           canReopen={session.role === "owner" || session.role === "admin"}
           state={{
-            fails: Array.isArray(sub.fails) ? (sub.fails as unknown[]).length : 0,
+            items: failItemsOf(allAnswers, sub.fails),
             closedAt: (sub.fail_closed_at as string | null) ?? null,
             closedBy: (sub.fail_closed_by_name as string | null) ?? null,
             note: (sub.fail_close_note as string | null) ?? null,
+            history: historyOf(sub.fail_close_history),
           }}
         />
       )}
