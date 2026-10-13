@@ -224,4 +224,11 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ลบบัญชีของตัวเองจากหน้านี้ไม่ได้ — ใช้เมนูลบบัญชีในโปรไฟล์": "You can't delete your own account here — use Delete account in your profile",
   "ต้องลดสิทธิ์ platform admin ของผู้ใช้นี้ก่อนจึงจะลบได้": "Remove this user's platform admin role before deleting them",
   "ไม่พบผู้ใช้": "User not found",
+  "เฉพาะผู้จัดการ workspace ที่ปิดเรื่องได้": "Only workspace managers can close issues",
+  "เฉพาะเจ้าของหรือผู้ดูแล workspace ที่เปิดเรื่องกลับได้": "Only the workspace owner or admins can reopen issues",
+  "กรุณาระบุว่าแก้ไขอย่างไร": "Please describe how it was fixed",
+  "ระบบยังไม่พร้อมปิดเรื่อง (ผู้ดูแลต้องรัน migration 0080)": "Closing issues isn't ready yet (run migration 0080)",
+  "เอกสารนี้ไม่มีข้อที่ไม่ผ่าน": "This submission has no failed items",
+  "ปิดเรื่องไปแล้ว": "Already closed",
+  "เรื่องนี้ยังไม่ได้ปิด": "This issue isn't closed",
 };

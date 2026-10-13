@@ -26,6 +26,8 @@ const ACTIONS: Record<string, L> = {
   "dataset.push_key_revoke": { th: "ยกเลิกกุญแจรับข้อมูล (ชุดข้อมูล)", en: "Revoked the data-push key" },
   "submission.create": { th: "ส่งฟอร์ม", en: "Submitted a form" },
   "submission.delete": { th: "ลบเอกสาร (ย้ายไปถังขยะ)", en: "Deleted a submission (to trash)" },
+  "submission.fail_close": { th: "ปิดเรื่องใบไม่ผ่าน", en: "Closed a failed submission" },
+  "submission.fail_reopen": { th: "เปิดเรื่องใบไม่ผ่านกลับ", en: "Reopened a failed submission" },
   "submission.restore": { th: "กู้คืนเอกสารจากถังขยะ", en: "Restored a submission" },
   "submission.approved": { th: "อนุมัติเอกสาร", en: "Approved a submission" },
   "submission.rejected": { th: "ตีกลับเอกสาร", en: "Rejected a submission" },
