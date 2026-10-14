@@ -443,3 +443,10 @@ a {
   .krok-sb-short { display: inline !important; }
 }
 .krok-sb-short { display: none; }
+
+/* ที่จับลากฟิลด์บนจอสัมผัส: กว้าง 36px (เดิม 24px นิ้วแตะพลาดง่าย) */
+@media (pointer: coarse) {
+  .krok-grip { width: 36px !important; }
+  :root { --krok-grip-pad: 42px; }
+}
+.krok-touch-min { min-height: 44px; }

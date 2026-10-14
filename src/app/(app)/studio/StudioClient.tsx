@@ -90,6 +90,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   // มุมมองมือถือ: ทั้งหมด (แก้ง่าย) / ทีละขั้น (เหมือนหน้ากรอกจริง)
   const [previewPaged, setPreviewPaged] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  /** schema ตอนเปิดฟอร์มเดิม — draft คนละตัว = มีการแก้ (ใช้ตัดสินว่าต้องเก็บงานค้างไหม) */
+  const [loadedSchema, setLoadedSchema] = useState<FormSchema | null>(null);
+  const draftKey = `krok_studio_draft:${tenantId}`;
+  const [pendingRestore, setPendingRestore] = useState<SavedDraft | null>(null);
+  const clearSavedDraft = () => { try { sessionStorage.removeItem(draftKey); } catch { /* ไม่มีก็ไม่เป็นไร */ } };
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
@@ -320,6 +325,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }
 
   function resetDraft() {
+    clearSavedDraft();
+    setLoadedSchema(null);
     setDraft(null);
     setVersionNote("");
     setPrompt("");
@@ -506,14 +513,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }, [selKey]);
 
   // ค่าตั้งที่อยู่นอก schema (สายอนุมัติ/การมองเห็น/อุปกรณ์) — undo ไม่ได้จับ จึงเทียบกับตอนเปิดฟอร์มเอง
-  const settingsBase = useRef<string | null>(null);
+  const [settingsBase, setSettingsBase] = useState<string | null>(null);
   const settingsSnap = () => JSON.stringify([requiresApproval, requireDevice, deviceScope, chain, visMode, visTeams, visUsers, versionNote.trim()]);
 
   // ยกเลิก/ปิดการแก้ไข → กลับไปแท็บที่เหมาะสม
   async function cancelDraft() {
     const wasEditing = !!editingId;
     // มีงานที่ยังไม่บันทึก (ฟอร์มใหม่ทั้งฟอร์ม หรือแก้ฟอร์มเดิมไปแล้ว) → ถามก่อน (ปุ่มนี้อยู่ติดปุ่มบันทึก)
-    const unsaved = !wasEditing || history.canUndo() || settingsBase.current !== settingsSnap();
+    const unsaved = !wasEditing || history.canUndo() || settingsBase !== settingsSnap();
     if (unsaved && !(await confirmDialog({
       title: wasEditing ? t("studio.cancelConfirmTitle") : t("studio.discardConfirmTitle"),
       message: wasEditing ? t("studio.cancelConfirm") : t("studio.discardConfirm"),
@@ -544,6 +551,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     }
     setDraft(schema);
     history.reset(schema); // ไม่ให้ Ctrl+Z ย้อนไปเป็นฟอร์มที่เปิดก่อนหน้า
+    setLoadedSchema(schema);
     setEditingId(f.id);
     setView("mobile");
     setSelKey(null);
@@ -555,11 +563,54 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setVisTeams(f.visible_teams || []);
     setVisUsers(f.visible_users || []);
     setVersionNote("");
-    settingsBase.current = JSON.stringify([f.requires_approval, !!f.require_approved_device, f.device_scope === "selected" ? "selected" : "any", f.approval_chain || [], f.visibility || "all", f.visible_teams || [], f.visible_users || [], ""]);
+    setSettingsBase(JSON.stringify([f.requires_approval, !!f.require_approved_device, f.device_scope === "selected" ? "selected" : "any", f.approval_chain || [], f.visibility || "all", f.visible_teams || [], f.visible_users || [], ""]));
     setStatus(null);
     setView("mobile");
     setTab("edit");
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  // ---- งานที่ยังไม่บันทึก: เก็บไว้ในแท็บนี้ (sessionStorage) — refresh/ปิดเปิดหน้าแล้วกู้คืนได้ ----
+  // เดิม refresh = draft ใหม่/การแก้ที่ยังไม่บันทึกหายเงียบ ๆ (ตอนนี้มี URL จริงแล้ว คนกด refresh/Back บ่อยขึ้น)
+  const dirty = tab === "edit" && !!draft && !openingFromUrl && (!editingId || draft !== loadedSchema || settingsBase !== settingsSnap());
+  useEffect(() => {
+    if (!dirty || !draft) return;
+    const t = window.setTimeout(() => {
+      const saved: SavedDraft = { v: 1, at: Date.now(), editingId, draft, settings: { requiresApproval, requireDevice, deviceScope, chain, visMode, visTeams, visUsers, versionNote } };
+      try { sessionStorage.setItem(draftKey, JSON.stringify(saved)); } catch { /* เต็ม/ปิดใช้ — เตือนก่อนออกยังทำงาน */ }
+    }, 400);
+    return () => window.clearTimeout(t);
+  }, [dirty, draft, editingId, requiresApproval, requireDevice, deviceScope, chain, visMode, visTeams, visUsers, versionNote, draftKey]);
+  // คอม: เตือนก่อนปิดแท็บ/refresh (Safari บน iPhone มักไม่ถาม — ตัวกันงานหายจริงคือที่เก็บไว้ด้านบน)
+  useEffect(() => {
+    if (!dirty) return;
+    const onBefore = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", onBefore);
+    return () => window.removeEventListener("beforeunload", onBefore);
+  }, [dirty]);
+  // เปิดหน้าใหม่แล้วเจองานค้าง → ถามก่อน (ไม่กู้คืนเงียบ ๆ — อาจมีคนบันทึกฟอร์มนี้จากเครื่องอื่นไปแล้ว)
+  useEffect(() => {
+    let saved: SavedDraft | null = null;
+    try { saved = JSON.parse(sessionStorage.getItem(draftKey) || "null"); } catch { saved = null; }
+    if (!saved || saved.v !== 1 || !saved.draft) return;
+    const found = saved;
+    void Promise.resolve().then(() => setPendingRestore(found));
+  }, [draftKey]);
+  function restoreSaved(saved: SavedDraft) {
+    const f = saved.editingId ? initialForms.find((x) => x.id === saved.editingId) : undefined;
+    const schema = sanitizeSchema(saved.draft);
+    setDraft(schema);
+    history.reset(schema);
+    setLoadedSchema(null); // งานที่กู้มา = ยังไม่บันทึก
+    setEditingId(f ? f.id : null);
+    setSettingsBase(f ? JSON.stringify([f.requires_approval, !!f.require_approved_device, f.device_scope === "selected" ? "selected" : "any", f.approval_chain || [], f.visibility || "all", f.visible_teams || [], f.visible_users || [], ""]) : null);
+    const st = saved.settings;
+    setRequiresApproval(st.requiresApproval); setRequireDevice(st.requireDevice); setDeviceScope(st.deviceScope);
+    setChain(st.chain); setVisMode(st.visMode); setVisTeams(st.visTeams); setVisUsers(st.visUsers); setVersionNote(st.versionNote);
+    setView("mobile"); setSelKey(null); setStatus(null);
+    setPendingRestore(null);
+    setOpeningFromUrl(false);
+    setTab("edit");
   }
 
   // ?edit=<id> (ลิงก์จากคลังรูป ฯลฯ) → เปิดฟอร์มนั้นในหน้าแก้ไขครั้งเดียว
@@ -883,6 +934,16 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
+      {/* ซ่อนเมื่อเริ่มแก้ต่อแล้ว (งานใหม่ทับที่เก็บไว้) */}
+      {pendingRestore && !dirty && (
+        <div role="status" style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", padding: "12px 14px", borderRadius: 12, border: "1px solid color-mix(in srgb, var(--warn) 40%, transparent)", background: "var(--warn-soft, var(--surface-2))" }}>
+          <span style={{ flex: "1 1 220px", fontSize: ".9rem" }}>
+            {tt("studio.restoreMsg", { title: pendingRestore.draft.title || t("editor.formTitle"), time: new Date(pendingRestore.at).toLocaleTimeString(lang === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" }) })}
+          </span>
+          <Button variant="primary" onClick={() => restoreSaved(pendingRestore)} style={{ minHeight: 44 }}>{t("studio.restoreBtn")}</Button>
+          <Button onClick={() => { clearSavedDraft(); setPendingRestore(null); }} style={{ minHeight: 44 }}>{t("studio.restoreDiscard")}</Button>
+        </div>
+      )}
       {toast && (!toast.base || toast.base === draft) && (
         <div role="status" data-krok-keep="" style={{ position: "fixed", left: "50%", bottom: "calc(24px + var(--krok-tabbar-h))", transform: "translateX(-50%)", zIndex: 95, display: "flex", alignItems: "center", gap: 12, background: "var(--ink)", color: "var(--surface)", borderRadius: 10, padding: "10px 14px", boxShadow: "0 8px 24px rgba(0,0,0,.25)", fontSize: ".88rem", maxWidth: "calc(100vw - 32px)" }}>
           <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: toast.base ? "normal" : "nowrap" }}>{toast.msg}</span>
@@ -1032,8 +1093,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               ]).map((g, i) => {
                 const on = promptGroupBy === g.k;
                 return (
-                  <button key={g.k} onClick={() => setPromptGroupBy(g.k)} className="inline-flex items-center gap-1.5 krok-seg-btn"
-                    style={{ padding: "8px 14px", border: "none", borderLeft: i === 1 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
+                  <button key={g.k} onClick={() => setPromptGroupBy(g.k)} aria-pressed={on} className="inline-flex items-center gap-1.5 krok-seg-btn"
+                    style={{ minHeight: 44, padding: "0 14px", border: "none", borderLeft: i === 1 ? "1px solid var(--line)" : "none", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", fontWeight: on ? 600 : 500, background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)" }}>
                     <Icon icon={g.icon} className="h-4 w-4" /> {g.label}
                   </button>
                 );
@@ -1069,7 +1130,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                         });
                       }}
                       className="krok-touch44"
-                      style={{ fontSize: ".82rem", padding: "7px 13px", borderRadius: 20, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", lineHeight: 1.35 }}
+                      style={{ fontSize: ".82rem", minHeight: 44, padding: "7px 14px", borderRadius: 22, background: "var(--code-bg)", border: "1px solid var(--line)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", textAlign: "left", lineHeight: 1.35 }}
                     >
                       {lang === "en" ? it.en : it.th}
                     </button>
@@ -1190,7 +1251,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <form onSubmit={(e) => { e.preventDefault(); if (!busy && refine.trim()) void refineDraft(); }} title={t("studio.refineSub")}
             style={{ position: "relative", marginTop: 10 }}>
             <span aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--accent-text)", display: "inline-flex", pointerEvents: "none" }}><Icon icon={Sparkles} className="h-4 w-4" /></span>
-            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={narrow ? t("studio.refinePlaceholderShort") : t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} aria-describedby="krok-refine-hint" maxLength={500} enterKeyHint="send"
+            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholderShort")} title={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} aria-describedby="krok-refine-hint" maxLength={500} enterKeyHint="send"
               style={{ width: "100%", boxSizing: "border-box", minHeight: 52, paddingLeft: 38, paddingRight: 56 }} />
             <span id="krok-refine-hint" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{t("studio.refineHint")}</span>
             <button type="submit" disabled={!!busy || !refine.trim()} aria-label={t("studio.refineBtn")} title={t("studio.refineBtn")}
@@ -1207,7 +1268,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 onDeleteKey={deleteKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} theme={resolveTheme(branding, draft.theme)} tenantId={tenantId} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 8 }}>
-                <div role="radiogroup" aria-label={t("studio.viewMobile")} style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
+                <div role="radiogroup" aria-label={t("studio.prevMode")} style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden" }}>
                   {([[false, t("studio.prevAll")], [true, t("studio.prevPaged")]] as const).map(([v, label], i) => {
                     const on = previewPaged === v;
                     return (
@@ -1318,7 +1379,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               <FormIcon value={f.icon} size={40} />
               <div style={{ flex: 1, minWidth: 140 }}>
                 <b style={{ fontFamily: "var(--font-anuphan)" }}>{f.title}</b>{" "}
-                {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="fail">{t("studio.stArchived")}</Pill>}
+                {f.status === "published" ? <Pill kind="pass">{t("studio.stPublished")}</Pill> : f.status === "draft" ? <Pill kind="na">{t("studio.stDraft")}</Pill> : <Pill kind="na">{t("studio.stArchived")}</Pill>}
                 {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง → ชวนเปิดแก้ (แถบเสนอจะขึ้นในหน้าแก้ไข) */}
                 {f.summary.defect_hint && f.status !== "archived" && (
                   <button type="button" onClick={() => void editExisting(f)} title={t("defect.listHint")}
@@ -1586,3 +1647,8 @@ function diffFields(before: FormSchema, after: FormSchema) {
   for (const id of a.keys()) if (!b.has(id)) removed++;
   return { added, removed, changed };
 }
+
+type SavedDraft = {
+  v: 1; at: number; editingId: string | null; draft: FormSchema;
+  settings: { requiresApproval: boolean; requireDevice: boolean; deviceScope: "any" | "selected"; chain: ApprovalStep[]; visMode: VisMode; visTeams: string[]; visUsers: string[]; versionNote: string };
+};
