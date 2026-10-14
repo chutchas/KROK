@@ -431,7 +431,15 @@ a {
   .krok-subbar { flex-direction: column; align-items: stretch !important; }
   .krok-subactions { display: flex !important; width: 100%; justify-content: stretch !important; }
   .krok-subbtns { display: contents !important; }
-  .krok-subactions > *, .krok-subbtns > button { flex: 1 1 0; min-width: 0; min-height: 44px; }
-  .krok-subactions .krok-sb-pdf { flex: 1 1 100%; order: -1; min-height: 48px; }
-  .krok-subactions .krok-sb-del { flex: 0 0 44px; order: 5; }
+  /* ปุ่มรอง 2–3 ปุ่ม: กว้างเท่ากัน มีกรอบ ไอคอนบน ป้ายสั้นล่าง (เดิมปุ่มโปร่งไม่มีกรอบ กว้างไม่เท่ากัน ไอคอนลบเล็กจนมองไม่เห็น) */
+  .krok-subactions > button, .krok-subbtns > button { flex: 1 1 0; min-width: 0; min-height: 60px; flex-direction: column; gap: 4px !important;
+    padding: 8px 4px !important; border: 1px solid var(--line) !important; background: var(--surface) !important; border-radius: 10px !important; font-size: .82rem !important; line-height: 1.2; }
+  .krok-subactions > button svg, .krok-subbtns > button svg { width: 20px !important; height: 20px !important; flex: 0 0 auto; }
+  .krok-subactions .krok-sb-pdf { flex: 1 1 100%; order: -1; min-height: 52px; flex-direction: row; font-size: 1rem !important;
+    background: var(--accent) !important; border-color: var(--accent) !important; }
+  .krok-subactions .krok-sb-del { order: 5; color: var(--fail-text) !important; }
+  .krok-subactions .krok-sb-del .krok-narrow-hide { display: inline !important; }
+  .krok-sb-long { display: none; }
+  .krok-sb-short { display: inline !important; }
 }
+.krok-sb-short { display: none; }

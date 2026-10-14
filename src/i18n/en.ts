@@ -1064,6 +1064,7 @@ export const en: Record<MessageKey, string> = {
   "print.photos.hiddenHint": "Photos are still taken and stored, but their boxes print blank — move photo fields to the end on the paper view to avoid gaps mid-page",
   "print.photos.noPhotoFields": "This form has no photo fields yet",
   "print.photos.download": "Download all photos",
+  "print.photos.short": "Photos",
   "print.photos.downloading": "Preparing file…",
   "print.photos.downloadFail": "Couldn't download photos",
   "login.emailInvalid": "Please enter a valid email address",

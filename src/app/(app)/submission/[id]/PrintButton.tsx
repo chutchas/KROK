@@ -117,7 +117,7 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false, pr
       {zipErr && <span role="alert" style={{ flexBasis: "100%", order: 11, fontSize: ".85rem", color: "var(--fail-text)" }}>{t("print.photos.downloadFail")}</span>}
       {hasPhotos && (
         <Button variant="ghost" onClick={downloadPhotos} disabled={zipBusy}>
-          <Icon icon={Images} className="h-4 w-4" /> {zipBusy ? t("print.photos.downloading") : t("print.photos.download")}
+          <Icon icon={Images} className="h-4 w-4" /> {zipBusy ? t("print.photos.downloading") : <><span className="krok-sb-long">{t("print.photos.download")}</span><span className="krok-sb-short">{t("print.photos.short")}</span></>}
         </Button>
       )}
       <Button variant="ghost" onClick={print}>
