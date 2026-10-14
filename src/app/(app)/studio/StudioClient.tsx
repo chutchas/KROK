@@ -1293,7 +1293,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
           /* ปุ่ม action 5 ปุ่มในการ์ดฟอร์ม: กว้างเท่ากันเต็มแถว */
-          .krok-row-actions>button{flex:1 1 0;min-width:0}
+          /* ปุ่มจัดการฟอร์ม 5–6 ปุ่ม: ไอคอนเต็มขนาด (เดิมหดจนเหลือจุด) + ชื่อสั้นใต้ไอคอน — รู้ว่าปุ่มไหนคืออะไร */
+          .krok-row-actions>button{flex:1 1 0;min-width:0;flex-direction:column;gap:3px !important;min-height:56px !important;padding:6px 2px !important;font-size:.72rem !important;line-height:1.2}
+          .krok-row-actions>button svg{flex:0 0 auto;width:18px;height:18px}
+          .krok-row-actions .krok-btn-label{display:block !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           /* toggle แบบแบ่งครึ่ง: เต็มแถว */
           .krok-seg{display:flex !important;width:100%;flex-basis:100%}
           .krok-seg-btn{flex:1;justify-content:center}
