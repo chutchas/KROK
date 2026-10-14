@@ -90,7 +90,7 @@ const CAP = 50000; // เพดานแถวต่อการคำนวณ�
 type SRow = MetricRow & { form_id: string | null; form_title: string; form_icon: string; submitted_at: string };
 
 export type WidgetResult =
-  | { kind: "stat"; value: number; pass?: number; fail?: number }
+  | { kind: "stat"; value: number; pass?: number; fail?: number; empty?: boolean }
   | { kind: "trend"; total: number; series: { key: string; v: number }[] }
   | { kind: "ranking"; items: { title: string; icon: string; v: number }[] }
   | { kind: "area"; items: OpenItem[] }
@@ -293,7 +293,7 @@ async function computeCloseout(supabase: Sb, tenantId: string, w: DashWidget): P
     .map((r) => (Date.parse(r.fail_closed_at) - Date.parse(r.submitted_at)) / 86_400_000)
     .filter((d) => Number.isFinite(d) && d >= 0)
     .sort((a, b) => a - b);
-  if (!ds.length) return { kind: "stat", value: 0 };
+  if (!ds.length) return { kind: "stat", value: 0, empty: true };
   const mid = Math.floor(ds.length / 2);
   const med = ds.length % 2 ? ds[mid] : (ds[mid - 1] + ds[mid]) / 2;
   return { kind: "stat", value: Math.round(med * 10) / 10 };

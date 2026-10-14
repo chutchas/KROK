@@ -1,14 +1,13 @@
 // แม่แบบแดชบอร์ด — ชุดการ์ดตั้งต้นตามลักษณะงาน (ผู้ใช้แก้/เพิ่ม/ลบต่อได้เหมือนการ์ดปกติ)
-import type { DashWidget, WidgetFormat, WidgetMetric, WidgetRange } from "./dashboard-meta";
+import { formatLabel, metricLabel, rangeLabel, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange } from "./dashboard-meta";
 
 export type DashTemplateKey = "inspect" | "log" | "approve" | "area";
 
-type W = [WidgetFormat, WidgetMetric, WidgetRange];
+export type W = [WidgetFormat, WidgetMetric, WidgetRange];
 type L = { th: string; en: string };
 
 export interface DashTemplate {
   key: DashTemplateKey;
-  emoji: string;
   name: L;
   desc: L;
   /** การ์ดในชุด (ลำดับตามที่แสดง) */
@@ -18,17 +17,16 @@ export interface DashTemplate {
 export const DASH_TEMPLATES: DashTemplate[] = [
   {
     key: "inspect",
-    emoji: "🛡️",
     name: { th: "งานตรวจ / ความปลอดภัย", en: "Inspection / safety" },
     desc: { th: "ใบไม่ผ่าน เรื่องที่ยังไม่ปิด เวลาปิดเรื่อง และข้อที่ไม่ผ่านบ่อย", en: "Failures, open items, time to close and repeat failures" },
     widgets: [
-      ["stat", "usage", "7d"], ["stat", "fail", "7d"], ["stat", "openfail", "all"], ["stat", "closetime", "30d"],
+      // จำนวนใบค้างอยู่ในแถบ "ต้องดูตอนนี้" แล้ว — ไม่ทำการ์ดตัวเลขซ้ำ
+      ["stat", "usage", "7d"], ["stat", "fail", "7d"], ["stat", "closetime", "30d"],
       ["trend", "fail", "30d"], ["openlist", "usage", "all"], ["topfails", "usage", "7d"], ["ranking", "passrate", "30d"],
     ],
   },
   {
     key: "log",
-    emoji: "📒",
     name: { th: "บันทึกข้อมูลประจำวัน", en: "Daily records" },
     desc: { th: "จำนวนที่บันทึก คนกรอก และแนวโน้มรายวัน — ไม่มีผ่าน/ไม่ผ่าน", en: "Entries, submitters and daily trend — no pass/fail" },
     widgets: [
@@ -38,7 +36,6 @@ export const DASH_TEMPLATES: DashTemplate[] = [
   },
   {
     key: "approve",
-    emoji: "✅",
     name: { th: "งานอนุมัติ / เอกสาร", en: "Approvals / documents" },
     desc: { th: "รายการรออนุมัติ แยกตามฟอร์ม และปริมาณเอกสาร", en: "Pending approvals by form and document volume" },
     widgets: [
@@ -47,11 +44,10 @@ export const DASH_TEMPLATES: DashTemplate[] = [
   },
   {
     key: "area",
-    emoji: "📍",
     name: { th: "ตามพื้นที่ / สาขา", en: "By area / branch" },
     desc: { th: "ใบที่ยังไม่จบในแต่ละพื้นที่ พร้อมปริมาณงาน", en: "Open work per area plus volume" },
     widgets: [
-      ["area", "usage", "all"], ["stat", "usage", "7d"], ["ranking", "usage", "7d"], ["stat", "openfail", "all"],
+      ["area", "usage", "all"], ["stat", "usage", "7d"], ["ranking", "usage", "7d"], ["stat", "openfail", "30d"],
     ],
   },
 ];
@@ -79,4 +75,12 @@ export function recommendTemplate(s: TemplateSignals): { key: DashTemplateKey; w
   if (s.hasApproval) return { key: "approve", why: { th: "มีฟอร์มที่ต้องอนุมัติ", en: "Some forms require approval" } };
   if (s.areaCount >= 2) return { key: "area", why: { th: `มี ${s.areaCount} พื้นที่`, en: `${s.areaCount} areas set up` } };
   return { key: "log", why: { th: "ยังไม่พบผลตรวจผ่าน/ไม่ผ่าน", en: "No pass/fail results yet" } };
+}
+
+/** คำอธิบายการ์ดหนึ่งใบในตัวเลือกแม่แบบ: "ตัวเลขใหญ่ · ใบไม่ผ่าน · 7 วัน" */
+export function templateCardLabel([format, metric, range]: W, en = false): string {
+  const parts = [formatLabel(format, en)];
+  if (format === "stat" || format === "trend" || format === "ranking") parts.push(metricLabel(metric, en));
+  if (format !== "area" && format !== "openlist") parts.push(rangeLabel(range, en));
+  return parts.join(" · ");
 }

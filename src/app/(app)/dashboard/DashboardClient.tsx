@@ -5,7 +5,8 @@ import ComplianceCard from "./ComplianceCard";
 import StoredText from "@/i18n/StoredText";
 import { backdropClose } from "@/lib/backdrop";
 import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
-import { Fragment, Suspense, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, Suspense, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import AttentionStrip, { AttentionSkeleton } from "./AttentionStrip";
 import type { AttentionData } from "@/lib/dashboard-attention";
 import { createClient } from "@/lib/supabase/client";
@@ -16,7 +17,7 @@ import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
   ChevronUp, ChevronDown, MapPin, Settings2, Smartphone,
-  AlertTriangle, ListOrdered, LayoutTemplate,
+  AlertTriangle, ListOrdered, LayoutTemplate, ShieldCheck, ClipboardList, FileCheck2, Undo2,
 } from "lucide-react";
 import { confirmDialog } from "@/components/dialogs";
 import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
@@ -29,7 +30,8 @@ import {
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
-import { DASH_TEMPLATES, templateWidgets, type DashTemplateKey } from "@/lib/dashboard-templates";
+import { DASH_TEMPLATES, templateWidgets, templateCardLabel, type DashTemplateKey } from "@/lib/dashboard-templates";
+const TPL_ICON: Record<DashTemplateKey, typeof Hash> = { inspect: ShieldCheck, log: ClipboardList, approve: FileCheck2, area: MapPin };
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
 
 // รวมคำขอของทุก widget ที่ขอพร้อมกันเป็นการเรียก server ครั้งเดียว
@@ -158,10 +160,22 @@ export default function DashboardClient({
       <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("dash.useTemplate")}
     </button>
   );
+  // เลิกทำหลังใช้แม่แบบ — เก็บชุดเดิมไว้ในหน่วยความจำ 8 วินาที (ออกจากหน้า/สลับแท็บ = หมดสิทธิ์)
+  const [undo, setUndo] = useState<{ prev: DashWidget[]; tab: "ws" | "mine" } | null>(null);
+  useEffect(() => {
+    if (!undo) return;
+    const id = setTimeout(() => setUndo(null), 8000);
+    return () => clearTimeout(id);
+  }, [undo]);
   async function applyTemplate(key: DashTemplateKey, mode: "append" | "replace") {
-    if (mode === "replace" && widgets.length && !(await confirmDialog({ message: tt("dash.tplReplaceConfirm", { n: widgets.length }), confirmLabel: t("dash.tplReplace"), danger: true }))) return;
+    if (mode === "replace" && widgets.length && !(await confirmDialog({
+      message: tt(tab === "ws" ? "dash.tplReplaceConfirmWs" : "dash.tplReplaceConfirm", { n: widgets.length }),
+      confirmLabel: t("dash.tplReplace"), danger: true,
+    }))) return;
     const add = templateWidgets(key);
+    const prev = widgets;
     persist(mode === "replace" ? add : [...widgets, ...add]);
+    setUndo({ prev, tab });
     setPicking(false);
     setManaging(false);
   }
@@ -245,7 +259,7 @@ export default function DashboardClient({
             {/* Workspace (owner/admin จัด) / ของฉัน */}
             <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "22px 0 14px", overflowX: "auto" }}>
               {(["ws", "mine"] as const).map((k) => (
-                <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); setManaging(false); }}
+                <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); setManaging(false); setUndo(null); }}
                   style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
                     color: tab === k ? "var(--accent-text)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
                   {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
@@ -373,9 +387,21 @@ export default function DashboardClient({
 
       {open && <DetailModal sub={open} tenantId={tenantId} onClose={() => setOpen(null)} />}
       {picking && (
-        <TemplatePicker recommended={recommended} hasCards={widgets.length > 0} en={en}
+        <TemplatePicker recommended={recommended} hasCards={widgets.length > 0} en={en} scope={tab} areaCount={areas.length}
           onCancel={() => setPicking(false)} onApply={(k, m) => void applyTemplate(k, m)}
           onEmpty={() => { setPicking(false); setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" }); }} />
+      )}
+      {undo && undo.tab === tab && (
+        <div role="status" className="no-print"
+          style={{ position: "fixed", left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
+            padding: "8px 8px 8px 16px", borderRadius: 12, background: "var(--ink)", color: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.2)", fontSize: ".88rem" }}>
+          <span>{t(undo.tab === "ws" ? "dash.tplAppliedWs" : "dash.tplApplied")}</span>
+          <button type="button" onClick={() => { persist(undo.prev); setUndo(null); }}
+            className="inline-flex items-center gap-1.5"
+            style={{ minHeight: 40, padding: "0 12px", border: "none", borderRadius: 8, background: "transparent", color: "inherit", textDecoration: "underline", fontFamily: "inherit", fontSize: ".88rem", fontWeight: 700, cursor: "pointer" }}>
+            <Icon icon={Undo2} className="h-4 w-4" /> {t("dash.undo")}
+          </button>
+        </div>
       )}
       {builder && (
         <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t}
@@ -485,7 +511,9 @@ const iconBtn: React.CSSProperties = {
 };
 
 function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "stat" }>; metric: WidgetMetric; en: boolean }) {
-  const { tt } = useT();
+  const { t, tt } = useT();
+  // ยังไม่มีข้อมูลให้คำนวณ (เช่น ยังไม่มีเรื่องที่ปิด) — ไม่แสดง "0 วัน" ที่ดูเหมือนปิดทันที
+  if (res.empty) return <div style={{ color: "var(--ink-3)", fontSize: ".88rem" }}>{t("dash.closeNone")}</div>;
   const extra = metric === "passrate" && res.pass != null
     ? tt("dash.passFail", { pass: res.pass, fail: res.fail ?? 0 })
     : "";
@@ -598,26 +626,32 @@ function TopFailsView({ res }: { res: Extract<WidgetResult, { kind: "topfails" }
 }
 
 // ---------- ตัวเลือกแม่แบบ ----------
-function TemplatePicker({ recommended, hasCards, en, onCancel, onApply, onEmpty }: {
+function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel, onApply, onEmpty }: {
   recommended?: { key: DashTemplateKey; why: { th: string; en: string } };
   hasCards: boolean; en: boolean;
+  /** แท็บที่จะถูกเปลี่ยน — ส่วนกลาง = สมาชิกทุกคนเห็น */
+  scope: "ws" | "mine";
+  /** ไม่มีพื้นที่ = ไม่เสนอแม่แบบ "ตามพื้นที่" */
+  areaCount: number;
   onCancel: () => void; onApply: (k: DashTemplateKey, mode: "append" | "replace") => void; onEmpty: () => void;
 }) {
   const { t, tt } = useT();
-  const order = recommended ? [...DASH_TEMPLATES].sort((a, b) => Number(b.key === recommended.key) - Number(a.key === recommended.key)) : DASH_TEMPLATES;
+  const boxRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(boxRef, onCancel);
+  const list = DASH_TEMPLATES.filter((x) => x.key !== "area" || areaCount > 0);
+  const order = recommended ? [...list].sort((a, b) => Number(b.key === recommended.key) - Number(a.key === recommended.key)) : list;
   const [sel, setSel] = useState<DashTemplateKey>(order[0].key);
   const [mode, setMode] = useState<"append" | "replace">("append");
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
   return (
-    <div {...backdropClose(onCancel)} role="dialog" aria-modal="true" aria-labelledby="tpl-h"
+    <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-      <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 760, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 22 }}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="tpl-h" aria-describedby="tpl-scope"
+        style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 760, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 22px 0" }}>
         <h2 id="tpl-h" style={{ fontSize: "1.2rem", margin: 0 }}>{t("dash.tplTitle")}</h2>
-        <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 14px" }}>{t("dash.tplSub")}</p>
+        <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 6px" }}>{t("dash.tplSub")}</p>
+        <p id="tpl-scope" style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 14px", fontSize: ".84rem", fontWeight: 600, color: scope === "ws" ? "var(--warn)" : "var(--ink-2)" }}>
+          <Icon icon={scope === "ws" ? Users : Settings2} className="h-4 w-4" /> {t(scope === "ws" ? "dash.tplScopeWs" : "dash.tplScopeMine")}
+        </p>
         <div role="radiogroup" aria-labelledby="tpl-h" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: 10 }}>
           {order.map((tp) => {
             const on = sel === tp.key;
@@ -627,20 +661,18 @@ function TemplatePicker({ recommended, hasCards, en, onCancel, onApply, onEmpty 
                 style={{ textAlign: "left", padding: 14, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)",
                   border: on ? "2px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", display: "flex", flexDirection: "column", gap: 6 }}>
                 <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  <span aria-hidden style={{ fontSize: "1.2rem" }}>{tp.emoji}</span>
+                  <span aria-hidden style={{ width: 30, height: 30, borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <Icon icon={TPL_ICON[tp.key]} className="h-[18px] w-[18px]" />
+                  </span>
                   <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".98rem" }}>{en ? tp.name.en : tp.name.th}</b>
-                  {rec && <span style={{ fontSize: ".72rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "var(--brand-gradient)", color: "#0f1d2e" }}>{t("dash.tplRecommended")}</span>}
+                  {rec && <span style={{ fontSize: ".72rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "var(--accent)", color: "var(--accent-ink)" }}>{t("dash.tplRecommended")}</span>}
                 </span>
-                <span style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{en ? tp.desc.en : tp.desc.th}</span>
-                {rec && recommended && <span style={{ color: "var(--accent-text)", fontSize: ".76rem", fontWeight: 600 }}>{en ? recommended.why.en : recommended.why.th}</span>}
-                <span style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
-                  {tp.widgets.map(([f, m], i) => (
-                    <span key={i} style={{ fontSize: ".7rem", padding: "2px 7px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)" }}>
-                      {f === "stat" || f === "trend" || f === "ranking" ? metricLabel(m, en) : formatLabel(f, en)}
-                    </span>
-                  ))}
-                </span>
-                <span style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tt("dash.tplCards", { n: tp.widgets.length })}</span>
+                <span style={{ color: "var(--ink-2)", fontSize: ".84rem" }}>{en ? tp.desc.en : tp.desc.th}</span>
+                {rec && recommended && <span style={{ color: "var(--accent-text)", fontSize: ".8rem", fontWeight: 600 }}>{en ? recommended.why.en : recommended.why.th}</span>}
+                <span style={{ color: "var(--ink-3)", fontSize: ".76rem", marginTop: 2 }}>{tt("dash.tplCards", { n: tp.widgets.length })}</span>
+                <ul style={{ margin: 0, paddingLeft: 18, listStyle: "disc", color: "var(--ink-2)", fontSize: ".8rem", display: "grid", gap: 2 }}>
+                  {tp.widgets.map((w, i) => <li key={i}>{templateCardLabel(w, en)}</li>)}
+                </ul>
               </button>
             );
           })}
@@ -648,13 +680,14 @@ function TemplatePicker({ recommended, hasCards, en, onCancel, onApply, onEmpty 
         {hasCards && (
           <div role="radiogroup" aria-label={t("dash.useTemplate")} style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
             {(["append", "replace"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} style={{ ...chip(mode === m), minHeight: 40 }}>
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} style={chip(mode === m)}>
                 {m === "append" ? t("dash.tplAppend") : t("dash.tplReplace")}
               </button>
             ))}
           </div>
         )}
-        <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap", alignItems: "center" }}>
+        {/* ปุ่มติดล่างกล่อง — มือถือไม่ต้องเลื่อนหา */}
+        <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 10, marginTop: 14, padding: "12px 0 calc(16px + env(safe-area-inset-bottom))", flexWrap: "wrap", alignItems: "center", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
           <button type="button" onClick={() => onApply(sel, hasCards ? mode : "replace")}
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
             {t("dash.tplApply")}
@@ -691,29 +724,26 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
   const effMetric = metrics.length && !metrics.includes(metric) ? metrics[0] : metric;
   const noMetric = metrics.length === 0; // area / openlist / topfails
   const showRange = format !== "area" && format !== "openlist";
+  const boxRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(boxRef, onCancel);
   const metricN = format === "ranking" ? 2 : 3;
   const rangeN = noMetric ? metricN : metricN + 1;
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onCancel]);
 
   return (
-    <div {...backdropClose(onCancel)} role="dialog" aria-modal="true" aria-label={t("dash.widgetBuilder" as never)}
+    <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-      <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
-        <h2 style={{ fontSize: "1.15rem", marginBottom: 12 }}>{t("dash.widgetBuilder" as never)}</h2>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="wb-h" style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
+        <h2 id="wb-h" style={{ fontSize: "1.15rem", marginBottom: 12 }}>{t("dash.widgetBuilder" as never)}</h2>
 
         {/* 1. รูปแบบ */}
         <Section n={1} label={t("dash.stepFormat" as never)} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
           {WIDGET_FORMATS.map((f) => (
-            <button key={f} onClick={() => setFormat(f)}
+            <button key={f} type="button" aria-pressed={format === f} onClick={() => setFormat(f)}
               style={pickBtn(format === f)}>
               <b style={{ fontSize: ".86rem", fontFamily: "var(--font-anuphan)" }}>{formatLabel(f, en)}</b>
-              <span style={{ display: "block", color: "var(--ink-3)", fontSize: ".7rem", marginTop: 2 }}>{formatHint(f, en)}</span>
+              <span style={{ display: "block", color: "var(--ink-2)", fontSize: ".78rem", marginTop: 2 }}>{formatHint(f, en)}</span>
             </button>
           ))}
         </div>
@@ -725,7 +755,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
         {format !== "ranking" && format !== "area" && (
           <>
             <Section n={2} label={t("dash.stepForm" as never)} />
-            <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
+            <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle} aria-label={t("dash.stepForm" as never)}>
               <option value="all">{t("report.allForms" as never)}</option>
               {forms.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
             </select>
@@ -737,7 +767,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
         <Section n={metricN} label={t("dash.stepMetric" as never)} />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {metrics.map((m) => (
-            <button key={m} onClick={() => setMetric(m)} style={chip(effMetric === m)}>{metricLabel(m, en)}</button>
+            <button key={m} type="button" aria-pressed={effMetric === m} onClick={() => setMetric(m)} style={chip(effMetric === m)}>{metricLabel(m, en)}</button>
           ))}
         </div>
         </>}
@@ -746,7 +776,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
         <Section n={rangeN} label={t("dash.stepRange" as never)} />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {ranges.map((r) => (
-            <button key={r} onClick={() => setRange(r)} style={chip(effRange === r)}>{rangeLabel(r, en)}</button>
+            <button key={r} type="button" aria-pressed={effRange === r} onClick={() => setRange(r)} style={chip(effRange === r)}>{rangeLabel(r, en)}</button>
           ))}
         </div>
         </>}
@@ -788,7 +818,7 @@ function pickBtn(on: boolean): React.CSSProperties {
 }
 function chip(on: boolean): React.CSSProperties {
   return {
-    padding: "7px 12px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit",
+    minHeight: 44, padding: "7px 14px", borderRadius: 22, fontSize: ".84rem", cursor: "pointer", fontFamily: "inherit",
     border: on ? "1px solid var(--accent)" : "1px solid var(--line)",
     background: on ? "var(--accent-soft)" : "var(--surface)",
     color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500,
@@ -823,19 +853,16 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
     return () => { cancelled = true; };
   }, [sub.id, sub.answers, tenantId]);
 
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  const boxRef = useRef<HTMLDivElement>(null);
+  useDialogA11y(boxRef, onClose);
 
   return (
-    <div {...backdropClose(onClose)} role="dialog" aria-modal="true" aria-label={sub.form_title}
+    <div {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }} className="no-print">
-      <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-label={sub.form_title} style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
           <h2 style={{ fontSize: "1.1rem" }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
-          {sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
+          {sub.result === "fail" && sub.fail_closed_at ? <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.closedOut")}</span></Pill> : sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
           {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at, lang)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
