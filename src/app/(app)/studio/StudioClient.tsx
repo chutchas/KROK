@@ -381,7 +381,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     const target = steps[toStep].fields;
     steps[toStep] = { ...steps[toStep], fields: [...target.slice(0, idx), field, ...target.slice(idx)] };
     setDraft({ ...draft, steps });
-    setSelKey(fieldId);
+    // จอ ≥900: เลือกช่องที่เพิ่งย้าย (แผงขวาแสดงตาม) · จอ <900 การเลือก = เปิดแผ่นตั้งค่าบังจอ → ไม่เลือก ไม่ต้องคอยปิดหลังลากทุกครั้ง
+    if (!narrow) setSelKey(fieldId);
   }
 
   function addStep() {

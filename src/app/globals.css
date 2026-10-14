@@ -176,6 +176,9 @@ body {
 }
 /* สปินเนอร์ของ Button/Spinner ใน ui.tsx — ประกาศครั้งเดียวที่นี่ (เดิมฉีด <style> ทุกครั้งที่ render) */
 @keyframes krok-spin { to { transform: rotate(360deg); } }
+/* ไฮไลต์แว้บหนึ่งหลังลากย้ายฟิลด์/บล็อก — บอกว่าไปอยู่ตรงไหน (สีเท่านั้น ไม่ขยับ) */
+@keyframes krok-flash { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 12%, 60% { box-shadow: 0 0 0 3px var(--accent); background-color: var(--accent-soft); } }
+.krok-flash { animation: krok-flash 1.1s ease-out; }
 @keyframes krok-sp {
   to {
     transform: rotate(360deg);

@@ -98,8 +98,8 @@ function MockControl({ f, scan }: { f: FormField; scan: boolean }) {
   }
 }
 
-function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = false, dropFid, scan = false }: {
-  f: FormField; selected?: boolean; onSelect?: () => void; schemaFields?: FormField[]; scan?: boolean;
+function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = false, dropFid, scan = false, flash = false }: {
+  f: FormField; selected?: boolean; onSelect?: () => void; schemaFields?: FormField[]; scan?: boolean; flash?: boolean;
   /** ที่จับลากเรียงลำดับ (มุมมองมือถือในหน้าสร้างฟอร์ม) */
   grip?: React.ReactNode; dragging?: boolean; dropFid?: string;
 }) {
@@ -107,6 +107,7 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
   return (
     <div
       id={`fp-${f.id}`}
+      className={flash ? "krok-flash" : undefined}
       data-krok-keep=""
       data-drop-fid={dropFid}
       onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : undefined}
@@ -214,6 +215,9 @@ export default function FormPreview({
   const [drag, setDragState] = useState<Drag>(null);
   const dragRef = useRef<Drag>(null);
   const setDrag = (d: Drag) => { dragRef.current = d; setDragState(d); };
+  // ลากเสร็จ → ไฮไลต์การ์ดที่ย้ายแว้บหนึ่ง (บนมือถือไม่เลือกให้หลังลาก จึงไม่มีกรอบบอกตำแหน่งใหม่)
+  const [flashFid, setFlashFid] = useState<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
   const dropAt = (x: number, y: number, fid: string) => {
     const el = document.elementFromPoint(x, y) as HTMLElement | null;
     const card = el?.closest<HTMLElement>("[data-drop-fid]");
@@ -244,7 +248,14 @@ export default function FormPreview({
       onPointerUp={() => {
         const d = dragRef.current;
         setDrag(null);
-        if (d) onMoveField(d.fid, d.step, d.index);
+        if (!d) return;
+        onMoveField(d.fid, d.step, d.index);
+        // วางก่อน/หลังตัวเองในขั้นเดิม = ไม่ได้ย้าย → ไม่ไฮไลต์
+        const own = schema.steps[d.step]?.fields.findIndex((x) => x.id === d.fid) ?? -1;
+        if (own >= 0 && (d.index === own || d.index === own + 1)) return;
+        if (flashTimer.current) window.clearTimeout(flashTimer.current);
+        setFlashFid(d.fid);
+        flashTimer.current = window.setTimeout(() => setFlashFid(null), 1200);
       }}
       onPointerCancel={() => setDrag(null)}
       style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-3)", cursor: drag ? "grabbing" : "grab", touchAction: "none", borderRadius: "10px 0 0 10px", background: "var(--code-bg)" }}
@@ -335,7 +346,7 @@ export default function FormPreview({
                 {drag && drag.step === i && drag.index === fi && dropLine}
                 <FieldCard f={f} schemaFields={allFields} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined}
                   scan={(s.fill_sources ?? []).some((src) => src.kind === "scan" && src.map.length === 1 && src.map[0].field_id === f.id)}
-                  grip={gripFor(f.id)} dragging={drag?.fid === f.id} dropFid={onMoveField ? `${i}:${fi}` : undefined} />
+                  grip={gripFor(f.id)} dragging={drag?.fid === f.id} flash={flashFid === f.id} dropFid={onMoveField ? `${i}:${fi}` : undefined} />
                 {fieldActions && selectedKey === f.id && (
                   <div role="toolbar" aria-label={tt("editor.fieldActionsFor", { name: f.label || t("fw.noName") })} data-krok-keep=""
                     style={{ display: "flex", gap: 6, margin: "-4px 0 12px", flexWrap: "wrap" }}>
