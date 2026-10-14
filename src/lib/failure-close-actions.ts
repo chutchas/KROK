@@ -5,6 +5,9 @@ import { dbError } from "@/lib/db-error";
 import { getSession, canManage } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
+import { sendWorkspaceEmailTo } from "@/lib/notify";
+import { runLater } from "@/lib/background";
+import { headers } from "next/headers";
 
 // ปิดเรื่อง / เปิดเรื่องกลับ ของใบไม่ผ่าน (0080) — ฐานข้อมูลตรวจสิทธิ์ซ้ำ (close_submission_failure / reopen_submission_failure)
 // ปิด: ผู้จัดการ (owner/admin/designer) + หมายเหตุว่าแก้อย่างไร · เปิดกลับ: owner/admin · บันทึก audit_log ทุกครั้ง
@@ -22,8 +25,8 @@ async function rpcMsg(e: { message?: string; code?: string }): Promise<string> {
 }
 
 /**
- * แจ้งในกระดิ่งของ workspace (notifications) — ปิดเรื่อง: คนกรอก · เปิดกลับ: คนกรอก + คนที่ปิดไว้
- * ไม่แจ้งตัวเอง · best-effort (แจ้งไม่ได้ไม่ทำให้การปิด/เปิดล้ม) · LINE/อีเมลยังไม่ส่ง
+ * แจ้งในกระดิ่งของ workspace (notifications) + อีเมลถึงคนเดียวกันผ่าน SMTP ของ workspace (ถ้าตั้งไว้)
+ * ปิดเรื่อง: คนกรอก · เปิดกลับ: คนกรอก + คนที่ปิดไว้ · ไม่แจ้งตัวเอง · best-effort (แจ้งไม่ได้ไม่ทำให้การปิด/เปิดล้ม) · LINE ยังไม่ส่ง
  */
 async function notifyFailure(id: string, kind: "close" | "reopen", actorId: string, text: string, prevCloserId: string | null) {
   try {
@@ -36,6 +39,23 @@ async function notifyFailure(id: string, kind: "close" | "reopen", actorId: stri
     if (!to.length) return;
     const doc = [s.form_title, s.doc_no].filter(Boolean).join(" · ");
     const t = text.length > 140 ? `${text.slice(0, 140)}…` : text;
+    // อีเมล: อ่านจากสมาชิกภาพของ workspace นี้ · ส่งหลังตอบผู้ใช้แล้ว (SMTP ช้าได้ถึง 15 วินาที)
+    const { data: mem } = await admin.from("memberships").select("user_id, email").eq("tenant_id", s.tenant_id).in("user_id", to);
+    const emails = ((mem || []) as { email: string | null }[]).map((m) => m.email || "").filter(Boolean);
+    if (emails.length) {
+      const h = await headers();
+      const host = h.get("x-forwarded-host") || h.get("host");
+      const url = host ? `${h.get("x-forwarded-proto") || "https"}://${host}/submission/${id}` : "";
+      const head = kind === "close" ? "ปิดเรื่องแล้ว" : "เปิดเรื่องกลับ";
+      const body = [
+        head,
+        `เอกสาร: ${doc}`,
+        kind === "close" ? `การแก้ไข: ${text}` : `เหตุผล: ${text}`,
+        url,
+      ].filter(Boolean).join("\n");
+      const tenantId = s.tenant_id as string;
+      runLater(() => sendWorkspaceEmailTo(tenantId, emails, `${head} — ${doc}`, body));
+    }
     await admin.from("notifications").insert(to.map((uid) => ({
       tenant_id: s.tenant_id,
       user_id: uid,

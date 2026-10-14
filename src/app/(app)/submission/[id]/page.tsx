@@ -14,6 +14,7 @@ import PrintButton from "./PrintButton";
 import DeleteSubmission from "./DeleteSubmission";
 import BackLink from "./BackLink";
 import TrashedNotice from "./TrashedNotice";
+import OnboardingSeen from "./OnboardingSeen";
 import FailureClose from "./FailureClose";
 import { failItemsOf, historyOf } from "@/lib/fail-items";
 import { type AnswerItem } from "@/lib/answer-item";
@@ -248,6 +249,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
   return (
     // ความกว้างเดียวกันทั้งสองแท็บ — สลับแท็บแล้วหน้าไม่กระโดด
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <OnboardingSeen />
       <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <BackLink from={sp.from} mine={!canManage(session.role)} />
         <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
@@ -311,8 +313,11 @@ export default async function SubmissionPage({ params, searchParams }: { params:
                 <T k={status.k} />
               </div>
             )}
-            <div style={{ fontSize: ".8rem", color: sub.result === "fail" ? "var(--fail)" : "var(--pass)", fontWeight: 600 }}>
-              {sub.result === "fail" ? <T k="sub.issues" vars={{ n: (sub.fails as string[])?.length || 0 }} /> : <T k="sub.complete" />}
+            {/* ไม่ผ่านแต่ปิดเรื่องแล้ว = สีกลาง + บอกสถานะ (ไม่ใช่แดงอย่างเดียว) */}
+            <div style={{ fontSize: ".8rem", color: sub.result === "fail" ? (sub.fail_closed_at ? "var(--ink-2)" : "var(--fail)") : "var(--pass)", fontWeight: 600 }}>
+              {sub.result === "fail"
+                ? <T k={sub.fail_closed_at ? "dash.failNClosed" : "sub.issues"} vars={{ n: (sub.fails as string[])?.length || 0 }} />
+                : <T k="sub.complete" />}
             </div>
           </div>
         </div>

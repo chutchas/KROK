@@ -79,6 +79,10 @@ export default async function PrintSubmissionPage({ params, searchParams }: { pa
           closedBy={(sub.fail_closed_by_name as string | null) ?? null}
           note={(sub.fail_close_note as string | null) ?? null}
           items={failItemsOf(sub.answers, sub.fails)}
+          formTitle={String(sub.form_title || "")}
+          docNo={docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined })}
+          submittedAt={sub.submitted_at as string | null}
+          filler={String(sub.user_name || "")}
         />
       )}
       {sp.auto === "1" && <AutoPrint />}

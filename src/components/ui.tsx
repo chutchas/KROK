@@ -193,7 +193,7 @@ export function Pill({ kind, children }: { kind: "pass" | "fail" | "na"; childre
   return (
     <span
       style={{
-        fontSize: ".72rem",
+        fontSize: ".78rem",
         fontWeight: 700,
         borderRadius: 20,
         padding: "3px 11px",
