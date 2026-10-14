@@ -106,6 +106,7 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
   const { t, tt } = useT();
   return (
     <div
+      id={`fp-${f.id}`}
       data-krok-keep=""
       data-drop-fid={dropFid}
       onClick={onSelect ? (e) => { e.stopPropagation(); onSelect(); } : undefined}
@@ -132,8 +133,8 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
         <span
           style={{
             fontFamily: "monospace",
-            fontSize: ".65rem",
-            color: "var(--ink-3)",
+            fontSize: ".75rem",
+            color: "var(--ink-2)",
             border: "1px solid var(--line)",
             borderRadius: 4,
             padding: "1px 6px",
@@ -152,22 +153,22 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
       )}
       <div style={{ marginTop: 8 }}><MockControl f={f} scan={scan} /></div>
       {f.type === "formula" && f.formula && (
-        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
+        <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginTop: 4 }}>
           ƒ <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{toDisplay(f.formula, { fields: schemaFields })}</code>
         </div>
       )}
       {f.type === "formula" && (f.min != null || f.max != null) && (
-        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
+        <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginTop: 4 }}>
           {t("fw.rangeLabel")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{tt("fw.rangeVal", { min: f.min ?? "–", max: f.max ?? "–" })} {f.unit || ""}</code>
         </div>
       )}
       {f.options_source && (
-        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
+        <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginTop: 4 }}>
           {t("fw.prev.options")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{t("fw.prev.fromDataset")} · {f.options_source.label_column ? tt("fw.prev.stores", { label: f.options_source.label_column, col: f.options_source.column }) : f.options_source.column}{f.options_source.parent ? t("fw.prev.filtered") : ""}</code>
         </div>
       )}
       {f.photo_hint && (
-        <div style={{ fontSize: ".8rem", color: "var(--ink-3)", marginTop: 4 }}>
+        <div style={{ fontSize: ".8rem", color: "var(--ink-2)", marginTop: 4 }}>
           {t("fw.photoMustShow")} <code style={{ background: "var(--code-bg)", padding: "1px 6px", borderRadius: 4 }}>{f.photo_hint}</code>
         </div>
       )}
@@ -314,7 +315,7 @@ export default function FormPreview({
               <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
                 {tt("fw.stepOf", { n: i + 1, total: schema.steps.length })}
               </span>
-              <h3 style={{ fontSize: "1.05rem", color: stepSel ? "var(--accent-text)" : "var(--ink)" }}>{s.title}</h3>
+              <h2 style={{ fontSize: "1.05rem", margin: 0, color: stepSel ? "var(--accent-text)" : "var(--ink)" }}>{s.title}</h2>
             </div>
             {curWho && (
               <div style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".76rem", color: "var(--ink-2)", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 999, padding: "2px 9px", margin: "-2px 0 8px" }}>

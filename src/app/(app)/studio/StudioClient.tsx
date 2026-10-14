@@ -1,6 +1,6 @@
 "use client";
 import IconPicker from "@/components/IconPicker";
-import FormIcon, { InlineFormIcon } from "@/components/FormIcon";
+import FormIcon from "@/components/FormIcon";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
@@ -474,7 +474,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     <div className="krok-fs">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <Icon icon={Settings2} className="h-4 w-4" />
-        <b style={{ fontFamily: "var(--font-anuphan)", flex: 1 }}>{t("fs.title")}</b>
+        <h2 style={{ fontFamily: "var(--font-anuphan)", flex: 1, fontSize: "1rem", margin: 0 }}>{t("fs.title")}</h2>
         {formPanel && (
           <button type="button" className="krok-fs-close" onClick={() => setFormPanel(false)} aria-label={t("common.close")}
             style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex", padding: 4 }}><Icon icon={X} className="h-5 w-5" /></button>
@@ -906,13 +906,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {tab === "edit" && (draft ? (
         // จอกว้าง: ฟอร์มซ้าย + แผงตั้งค่าขวาแบบถาวร (ฟอร์มไม่ยืด-หดตอนเลือกฟิลด์) · จอแคบ: แผงลอย/แผ่นเลื่อนขึ้น
         <div>
-        <div className="krok-editgrid">
-        <Card>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+                  <div className="krok-edithead" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             <div>
-              <h1 style={{ fontSize: "1.15rem", margin: 0, display: "inline-flex", alignItems: "center", gap: 6 }}>
-                {editingId && <Icon icon={Pencil} className="h-4 w-4" />}<InlineFormIcon value={draft.icon} size={20} />{draft.title}
-              </h1>
+              {/* หัวหน้าเหมือนหน้าอื่น: h1 อยู่นอกการ์ด ไม่มีไอคอน (ไอคอนฟอร์มอยู่ในช่องชื่อด้านล่าง) */}
+              <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{draft.title || t("editor.formTitle")}</h1>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
@@ -920,7 +917,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button type="button" data-krok-keep onClick={() => { setSelKey(null); setFormPanel(true); }}
                 className="inline-flex items-center gap-1.5"
-                style={{ padding: "7px 13px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent-text)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
+                style={{ minHeight: 44, padding: "0 14px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent-text)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
                 <Icon icon={Settings2} className="h-4 w-4" /> {t("fs.title")}
               </button>
               <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
@@ -934,7 +931,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                       key={v.m}
                       onClick={() => setView(v.m)}
                       className="inline-flex items-center gap-1.5"
-                      style={{ padding: "7px 13px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
+                      style={{ minHeight: 44, padding: "0 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
                     >
                       <Icon icon={v.icon} className="h-4 w-4" /> {v.label}
                     </button>
@@ -943,7 +940,28 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </div>
             </div>
           </div>
-
+        <div className="krok-editgrid">
+        {/* โครงฟอร์ม (จอกว้าง ≥1280): รายชื่อขั้น/ช่อง กดเพื่อเลือกและเลื่อนไปที่ช่องนั้น */}
+        <nav className="krok-outline" aria-labelledby="krok-outline-h">
+          <h2 id="krok-outline-h" style={{ fontSize: "1rem", margin: "0 0 8px" }}>{t("studio.outline")}</h2>
+          {draft.steps.map((st, si) => (
+            <div key={st.id} style={{ marginBottom: 6 }}>
+              <button type="button" data-krok-keep="" onClick={() => setSelKey(`s:${st.id}`)} aria-current={selKey === `s:${st.id}` ? "true" : undefined}
+                className={selKey === `s:${st.id}` ? "krok-ol-item krok-ol-on" : "krok-ol-item"} style={{ fontWeight: 600, color: "var(--ink-2)" }}>
+                {si + 1}. {st.title || t("editor.stepTitle")}
+              </button>
+              {st.fields.map((f) => (
+                <button key={f.id} type="button" data-krok-keep="" aria-current={selKey === f.id ? "true" : undefined}
+                  onClick={() => { setSelKey(f.id); requestAnimationFrame(() => document.getElementById(`fp-${f.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }}
+                  className={selKey === f.id ? "krok-ol-item krok-ol-field krok-ol-on" : "krok-ol-item krok-ol-field"}>
+                  <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label || t("fw.noName")}</span>
+                  {f.required && <span aria-hidden style={{ color: "var(--fail)", flex: "0 0 auto" }}>*</span>}
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <Card>
           {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (ฟอร์มที่สร้างก่อนมีตัวเลือกนี้) → เสนอให้ยืนยัน */}
           <DefectSuggestBanner key={editingId ?? "new"} schema={draft} onApply={(s) => setDraft(s)} />
 
@@ -1172,9 +1190,17 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
       <style>{`
         /* ===== หน้าแก้ไขฟอร์ม =====
-           จอกว้าง (>=1100px): ฟอร์มซ้าย (เต็มที่) + แผงตั้งค่าขวา 380px แบบถาวร — กว้างเท่าหน้าอื่น (--krok-page-w)
-           แผงตรึงตอนเลื่อนหน้า, ไม่ได้เลือกฟิลด์ = แสดงคำแนะนำ · ฟอร์มไม่ยืด-หดตอนเลือก/ปิด */
+           >=1280px: โครงฟอร์มซ้าย 220px + ฟอร์ม + แผงตั้งค่าขวา 360px
+           900–1279px: ฟอร์ม + แผงตั้งค่าขวา 340px แบบถาวร (เดิมลอยทับการ์ดที่เลือกที่ 1024)
+           641–899px: แผงลอยด้านขวาเฉพาะตอนเลือก · <=640px: แผ่นเลื่อนขึ้นจากด้านล่าง
+           แผงตรึงตอนเลื่อนหน้า · ฟอร์มไม่ยืด-หดตอนเลือก/ปิด */
         .krok-editgrid{ display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
+        .krok-outline{ display:none; }
+        .krok-ol-item{ display:flex; align-items:center; gap:4px; width:100%; min-height:40px; box-sizing:border-box; padding:6px 10px;
+          border:none; border-radius:8px; background:none; color:var(--ink); font-family:inherit; font-size:.86rem; text-align:left; cursor:pointer; }
+        .krok-ol-item:hover{ background:var(--surface-2); }
+        .krok-ol-field{ padding-left:22px; }
+        .krok-ol-on{ background:var(--accent-soft) !important; color:var(--accent-text) !important; font-weight:600; box-shadow:inset 3px 0 0 var(--accent); }
         .krok-settings-backdrop{ display:none; }
         /* ตั้งค่าฟอร์ม (แผงขวา): หัวข้อย่อยในแท็บ คั่นด้วยเส้น ไม่ใช่กล่องซ้อนกล่อง */
         .krok-fs{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; }
@@ -1188,12 +1214,17 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         .krok-fs .krok-appr-roleline .krok-appr-role{ flex:1 1 auto !important; width:auto !important; }
         /* แผงย่อยที่มีกรอบของตัวเอง (เอกสาร / ตารางเวลา): ถอดกรอบเมื่ออยู่ในแท็บ */
         .krok-fs-nest > div{ border:none !important; padding:0 !important; margin-top:0 !important; border-radius:0 !important; }
-        @media(min-width:1100px){
-          .krok-editgrid{ grid-template-columns:minmax(0,1fr) 380px; }
+        @media(min-width:900px){
+          .krok-editgrid{ grid-template-columns:minmax(0,1fr) 340px; }
           .krok-aside{ position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto; border-radius:12px; }
         }
-        /* จอกลาง: ไม่มีคอลัมน์ขวา → แผงลอยด้านขวาเฉพาะตอนเลือกฟิลด์ */
-        @media(max-width:1099px){
+        @media(min-width:1280px){
+          .krok-editgrid{ grid-template-columns:220px minmax(0,1fr) 360px; }
+          .krok-outline{ display:block; position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto;
+            background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 8px; }
+        }
+        /* จอกลางแคบ: ไม่มีคอลัมน์ขวา → แผงลอยด้านขวาเฉพาะตอนเลือกฟิลด์ */
+        @media(max-width:899px){
           .krok-aside{ display:none; }
           .krok-fs-close{ display:flex !important; }
           .krok-aside.krok-aside-sel{ display:block; position:fixed; top:74px; right:16px; width:380px; max-width:calc(100vw - 24px);

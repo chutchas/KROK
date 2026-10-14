@@ -71,7 +71,7 @@ export default function FieldSettingsPanel({
     color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", width: "100%",
   };
   const iconBtn: React.CSSProperties = {
-    height: 32, minWidth: 32, padding: "0 8px", borderRadius: 7, border: "1px solid var(--line)", background: "var(--surface)",
+    height: 44, minWidth: 44, padding: "0 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)",
     color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", display: "inline-flex", alignItems: "center", gap: 5, justifyContent: "center", fontSize: ".8rem",
   };
 
@@ -621,8 +621,8 @@ function Shell({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface)", padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".95rem" }}>{title}</b>
-        <button onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "transparent", color: "var(--ink-3)", cursor: "pointer", minWidth: 40, minHeight: 40, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "-8px -8px -8px 0" }}><Icon icon={X} className="h-5 w-5" /></button>
+        <h2 style={{ fontFamily: "var(--font-anuphan)", fontSize: "1rem", margin: 0 }}>{title}</h2>
+        <button onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "-8px -8px -8px 0" }}><Icon icon={X} className="h-5 w-5" /></button>
       </div>
       {children}
     </div>
@@ -709,13 +709,13 @@ function FailOptionsPicker({ name, options, value, onChange }: { name: string; o
   return (
     <div role="group" aria-label={tt("editor.failOptionsFor", { name })} style={{ marginTop: 8 }}>
       <div style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>{t("editor.failOptions")}</div>
-      <div style={{ fontSize: ".74rem", color: "var(--ink-3)", margin: "2px 0 6px" }}>{t("editor.failOptionsHint")}</div>
+      <div style={{ fontSize: ".8rem", color: "var(--ink-2)", margin: "2px 0 6px" }}>{t("editor.failOptionsHint")}</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {opts.map((o) => {
           const sel = on.has(o);
           return (
             <button key={o} type="button" aria-pressed={sel} onClick={() => toggle(o)} className="krok-touch44"
-              style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 999, fontFamily: "inherit", fontSize: ".8rem", cursor: "pointer",
+              style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, padding: "5px 14px", borderRadius: 999, fontFamily: "inherit", fontSize: ".85rem", cursor: "pointer",
                 border: `1px solid ${sel ? "var(--fail-solid)" : "var(--line)"}`, background: sel ? "var(--fail-soft)" : "var(--surface)", color: sel ? "var(--fail-text)" : "var(--ink-2)", fontWeight: sel ? 600 : 400 }}>
               {sel && <Icon icon={X} className="h-3.5 w-3.5" />}{o}
             </button>

@@ -1199,6 +1199,7 @@ export const th = {
   "ws.createBtn": "สร้าง",
   "ws.namePlaceholder": "ชื่อ workspace / บริษัท",
   // studio
+  "studio.outline": "โครงฟอร์ม",
   "studio.title": "สร้างฟอร์มใหม่ด้วย AI",
   "studio.titleFile": "สร้างฟอร์มจากไฟล์ที่มีอยู่",
   "studio.subtitleFile": "ถ่ายรูปหรืออัปโหลด PDF ของฟอร์มกระดาษที่ใช้อยู่ — AI แปลงเป็นฟอร์มดิจิทัลให้ แล้วคุณปรับแก้ก่อนเผยแพร่",
