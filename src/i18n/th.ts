@@ -1152,7 +1152,7 @@ export const th = {
   "dash.show": "แสดง",
   "dash.issues": "ไม่ผ่าน",
   "dash.by": "โดย",
-  "dash.took": "ใช้เวลา {s} วินาที",
+  "dash.took": "ใช้เวลา {s}",
   "dash.photoAlt": "รูปแนบ",
   "dash.loadingPhoto": "กำลังโหลดรูป...",
   // approvals
@@ -1713,6 +1713,7 @@ export const th = {
   "dash.tplApplied": "ใช้แม่แบบกับแดชบอร์ดของฉันแล้ว",
   "dash.tplAppliedWs": "ใช้แม่แบบกับแดชบอร์ดส่วนกลางแล้ว",
   "dash.undo": "เลิกทำ",
+  "dash.noDataRange": "ยังไม่มีข้อมูลในช่วงนี้",
   "dash.durSec": "{s}วิ",
   "dash.deletedForm": "(ฟอร์มถูกลบ)",
   "dash.passFail": "ผ่าน {pass} · ไม่ผ่าน {fail}",

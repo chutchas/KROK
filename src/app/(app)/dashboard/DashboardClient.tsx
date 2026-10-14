@@ -148,7 +148,7 @@ export default function DashboardClient({
   const addCardBtn = (
     <button type="button" data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
       className="inline-flex items-center gap-1.5"
-      style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+      style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
       <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
     </button>
   );
@@ -156,7 +156,7 @@ export default function DashboardClient({
   const tplBtn = (primary: boolean) => (
     <button type="button" onClick={() => setPicking(true)}
       className="inline-flex items-center gap-1.5"
-      style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: `1px solid ${primary ? "var(--accent)" : "var(--line-strong)"}`, background: primary ? "var(--accent)" : "var(--surface)", color: primary ? "var(--accent-ink)" : "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+      style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: `1px solid ${primary ? "var(--accent)" : "var(--line-strong)"}`, background: primary ? "var(--accent)" : "var(--surface)", color: primary ? "var(--accent-ink)" : "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
       <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("dash.useTemplate")}
     </button>
   );
@@ -174,10 +174,11 @@ export default function DashboardClient({
     }))) return;
     const add = templateWidgets(key);
     const prev = widgets;
-    persist(mode === "replace" ? add : [...widgets, ...add]);
-    setUndo({ prev, tab });
+    const at = tab;
     setPicking(false);
     setManaging(false);
+    // เลิกทำได้เฉพาะเมื่อบันทึกสำเร็จจริง
+    if (await persist(mode === "replace" ? add : [...widgets, ...add])) setUndo({ prev, tab: at });
   }
 
   const formName = useMemo(() => {
@@ -189,16 +190,19 @@ export default function DashboardClient({
     return (id: string) => (id === "all" ? null : m.get(id) ?? "");
   }, [areas]);
 
-  function persist(next: DashWidget[]) {
+  /** บันทึก (อัปเดตหน้าจอทันที) — คืนผลว่าเก็บลงฐานข้อมูลสำเร็จไหม */
+  async function persist(next: DashWidget[]): Promise<boolean> {
     setSaveErr("");
     if (tab === "ws") {
-      if (!canEdit) return;
+      if (!canEdit) return false;
       setWs(next);
-      saveWorkspaceDashboard(next).then((r) => { if ("error" in r) setSaveErr(r.error); });
-    } else {
-      setMine(next);
-      saveDashboardLayout(next); // best-effort เก็บลง DB
+      const r = await saveWorkspaceDashboard(next).catch(() => ({ error: "บันทึกไม่สำเร็จ" }));
+      if ("error" in r) { setSaveErr(r.error); return false; }
+      return true;
     }
+    setMine(next);
+    const r = await saveDashboardLayout(next).catch(() => ({ error: "บันทึกไม่สำเร็จ" }));
+    return !("error" in r);
   }
   function upsertWidget(w: DashWidget) {
     const exists = widgets.some((x) => x.id === w.id);
@@ -289,7 +293,7 @@ export default function DashboardClient({
                     {managing && addCardBtn}
                     <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
                       className="inline-flex items-center gap-1.5"
-                      style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+                      style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
                       {managing ? <><Icon icon={Check} className="h-4 w-4" /> {t("dash.manageDone")}</> : <><Icon icon={Settings2} className="h-4 w-4" /> {t("dash.manage")}</>}
                     </button>
                     </span>
@@ -363,13 +367,14 @@ export default function DashboardClient({
             // ลิงก์จริงไปหน้าเอกสาร — คลิกปกติ/Enter = เปิด popup รายละเอียด · Ctrl/⌘/กลางเมาส์/กดค้าง = เปิดแท็บใหม่ได้ (เดิม div role=button ทำไม่ได้)
             <a key={s.id} href={`/submission/${s.id}`}
               onClick={(e) => { if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(s); }}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: "1px solid var(--line)", cursor: "pointer", color: "inherit", textDecoration: "none" }}>
+              style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "6px 12px", padding: "12px 4px", borderBottom: "1px solid var(--line)", cursor: "pointer", color: "inherit", textDecoration: "none" }}>
               <FormIcon value={s.form_icon} size={34} />
-              <div style={{ flex: 1, minWidth: 0 }}>
+              {/* ชื่อฟอร์มได้พื้นที่ก่อน — จอแคบ ป้ายสถานะตกลงบรรทัดล่างแทนการบีบชื่อ */}
+              <div style={{ flex: "1 1 170px", minWidth: 0 }}>
                 <b style={{ fontSize: ".93rem" }}>{s.form_title}</b>
                 <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem" }}>{s.user_name || "—"} · {fmt(s.submitted_at, lang)}</small>
               </div>
-              <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+              <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end", marginLeft: "auto", minWidth: 0 }}>
                 {s.approval_status === "pending" && <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Clock} className="h-3 w-3" /> {t("dash.pending")}</span></Pill>}
                 {s.approval_status === "approved" && <Pill kind="pass">{t("dash.approved")}</Pill>}
                 {s.approval_status === "rejected" && <Pill kind="fail">{t("dash.rejected")}</Pill>}
@@ -396,7 +401,7 @@ export default function DashboardClient({
           style={{ position: "fixed", left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
             padding: "8px 8px 8px 16px", borderRadius: 12, background: "var(--ink)", color: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.2)", fontSize: ".88rem" }}>
           <span>{t(undo.tab === "ws" ? "dash.tplAppliedWs" : "dash.tplApplied")}</span>
-          <button type="button" onClick={() => { persist(undo.prev); setUndo(null); }}
+          <button type="button" onClick={() => { void persist(undo.prev); setUndo(null); }}
             className="inline-flex items-center gap-1.5"
             style={{ minHeight: 40, padding: "0 12px", border: "none", borderRadius: 8, background: "transparent", color: "inherit", textDecoration: "underline", fontFamily: "inherit", fontSize: ".88rem", fontWeight: 700, cursor: "pointer" }}>
             <Icon icon={Undo2} className="h-4 w-4" /> {t("dash.undo")}
@@ -528,34 +533,53 @@ function StatView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "sta
 }
 
 function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "trend" }>; metric: WidgetMetric; en: boolean }) {
-  const { tt } = useT();
+  const { tt, lang } = useT();
   const series = res.series;
   const max = Math.max(1, ...series.map((s) => s.v));
+  // แตะ/กดแท่ง = ดูค่าวันนั้นแทนผลรวม (จอสัมผัสไม่มี tooltip)
+  const [pick, setPick] = useState<number | null>(null);
+  const cur = pick != null ? series[pick] : null;
+  const day = (k: string) => dayLabel(k, lang);
   return (
     <div>
-      <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
-        {fmtValue(metric, res.total, en, tt)}
+      <div className="tabnum" aria-live="polite" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
+        {fmtValue(metric, cur ? cur.v : res.total, en, tt)}
+        {cur && <span style={{ fontSize: ".8rem", fontWeight: 500, color: "var(--ink-3)", marginLeft: 8 }}>{day(cur.key)}</span>}
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72 }}>
-        {series.map((s) => (
-          <div key={s.key} title={`${s.key.slice(5)} · ${s.v}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-            <div style={{ height: `${Math.round((s.v / max) * 100)}%`, minHeight: s.v > 0 ? 3 : 0, background: metric === "fail" ? "var(--fail)" : "linear-gradient(180deg, var(--brand-stop-2), var(--brand-stop-3))", borderRadius: 3, opacity: metric === "fail" ? 0.8 : 1 }} />
-          </div>
-        ))}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72, borderBottom: "1px solid var(--line-strong)" }}>
+        {series.map((s, i) => {
+          const label = `${day(s.key)}: ${fmtValue(metric, s.v, en, tt)}`;
+          return (
+            // tabIndex -1: ไม่ให้ 30 แท่งกินลำดับ Tab — screen reader ยังอ่านทีละแท่งได้ (โหมดอ่าน)
+            <button key={s.key} type="button" tabIndex={-1} aria-label={label} title={label} aria-pressed={pick === i}
+              onClick={() => setPick(pick === i ? null : i)}
+              style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%", padding: 0, border: "none", background: pick === i ? "var(--accent-soft)" : "transparent", cursor: "pointer" }}>
+              {s.v > 0
+                ? <span style={{ display: "block", height: `${Math.max(4, Math.round((s.v / max) * 100))}%`, background: metric === "fail" ? "var(--fail)" : "linear-gradient(180deg, var(--brand-stop-2), var(--brand-stop-3))", borderRadius: "3px 3px 0 0", opacity: metric === "fail" ? 0.8 : 1 }} />
+                : <span style={{ display: "block", height: 2, background: "var(--line-strong)" }} />}
+            </button>
+          );
+        })}
       </div>
-      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-3)", fontSize: ".68rem", marginTop: 4 }}>
-        <span>{series[0]?.key.slice(5)}</span>
-        <span>{series[series.length - 1]?.key.slice(5)}</span>
+      <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-3)", fontSize: ".76rem", marginTop: 4 }}>
+        <span>{series[0] && day(series[0].key)}</span>
+        <span>{series[series.length - 1] && day(series[series.length - 1].key)}</span>
       </div>
     </div>
   );
+}
+/** "2026-09-15" → "15 ก.ย." / "15 Sep" */
+function dayLabel(key: string, lang: string): string {
+  const d = new Date(`${key}T00:00:00`);
+  if (Number.isNaN(d.getTime())) return key;
+  return d.toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short" });
 }
 
 function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "ranking" }>; metric: WidgetMetric; en: boolean }) {
   const { t, tt } = useT();
   const items = res.items;
   const max = Math.max(1, ...items.map((r) => r.v));
-  if (items.length === 0) return <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.none")}</div>;
+  if (items.length === 0 || items.every((r) => r.v === 0)) return <div style={{ color: "var(--ink-3)", fontSize: ".86rem" }}>{t("dash.noDataRange")}</div>;
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {items.map((r, i) => (
@@ -641,7 +665,8 @@ function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel,
   const list = DASH_TEMPLATES.filter((x) => x.key !== "area" || areaCount > 0);
   const order = recommended ? [...list].sort((a, b) => Number(b.key === recommended.key) - Number(a.key === recommended.key)) : list;
   const [sel, setSel] = useState<DashTemplateKey>(order[0].key);
-  const [mode, setMode] = useState<"append" | "replace">("append");
+  // มีการ์ดอยู่แล้ว = ส่วนใหญ่อยากเปลี่ยนทั้งชุด (ต่อท้ายทำให้การ์ดซ้ำ) · ยืนยัน + เลิกทำได้
+  const [mode, setMode] = useState<"append" | "replace">(hasCards ? "replace" : "append");
   return (
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
@@ -733,13 +758,13 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
   return (
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
-      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="wb-h" style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
+      <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="wb-h" style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: "22px 22px 0" }}>
         <h2 id="wb-h" style={{ fontSize: "1.15rem", marginBottom: 12 }}>{t("dash.widgetBuilder" as never)}</h2>
 
         {/* 1. รูปแบบ */}
         <Section n={1} label={t("dash.stepFormat" as never)} />
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 8 }}>
-          {WIDGET_FORMATS.map((f) => (
+          {WIDGET_FORMATS.filter((f) => f !== "area" || areas.length > 0 || initial.format === "area").map((f) => (
             <button key={f} type="button" aria-pressed={format === f} onClick={() => setFormat(f)}
               style={pickBtn(format === f)}>
               <b style={{ fontSize: ".86rem", fontFamily: "var(--font-anuphan)" }}>{formatLabel(f, en)}</b>
@@ -781,15 +806,15 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
         </div>
         </>}
 
-        <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
-          <button onClick={() => onSave(format === "area"
+        <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 10, marginTop: 20, padding: "12px 0 calc(16px + env(safe-area-inset-bottom))", flexWrap: "wrap", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
+          <button type="button" onClick={() => onSave(format === "area"
               ? { id: initial.id, format, formId: areas.some((a) => a.id === formId) ? formId : "all", metric: "usage", range: "all" }
               : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric: noMetric ? "usage" : effMetric, range: effRange })}
-            style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+            style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
             {t("common.save" as never)}
           </button>
-          <button onClick={onCancel}
-            style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>
+          <button type="button" onClick={onCancel}
+            style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>
             {t("common.cancel" as never)}
           </button>
         </div>
@@ -854,18 +879,20 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
   }, [sub.id, sub.answers, tenantId]);
 
   const boxRef = useRef<HTMLDivElement>(null);
-  useDialogA11y(boxRef, onClose);
+  const closeBtn = useRef<HTMLButtonElement>(null);
+  useDialogA11y(boxRef, onClose, { initialFocus: closeBtn });
 
   return (
     <div {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }} className="no-print">
       <div ref={boxRef} role="dialog" aria-modal="true" aria-label={sub.form_title} style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <h2 style={{ fontSize: "1.1rem" }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
+          <h2 style={{ fontSize: "1.1rem", flex: 1, minWidth: 0 }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
           {sub.result === "fail" && sub.fail_closed_at ? <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.closedOut")}</span></Pill> : sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
+          <button ref={closeBtn} type="button" onClick={onClose} aria-label={t("common.close")} title={t("common.close")} style={iconBtn}><Icon icon={X} className="h-5 w-5" /></button>
         </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
-          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at, lang)} · {tt("dash.took", { s: sub.duration_s ?? "–" })}
+          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at, lang)} · {tt("dash.took", { s: sub.duration_s == null ? "–" : fmtValue("avgtime", sub.duration_s, lang === "en", tt) })}
         </p>
         {answers === null && <div style={{ padding: "16px 0", color: "var(--ink-3)", fontSize: ".88rem" }}>{t("common.loading")}</div>}
         {(answers ?? []).map((a, i) =>

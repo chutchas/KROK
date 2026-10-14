@@ -150,7 +150,7 @@ export const metricUnit = (m: WidgetMetric, en = false): string => {
   if (m === "avgtime") return en ? "s" : "วิ";
   if (m === "submitters") return en ? "" : "คน";
   if (m === "closetime") return en ? "d" : "วัน";
-  if (m === "fail" || m === "openfail") return en ? "" : "ใบ";
+  if (m === "fail" || m === "openfail" || m === "pending") return en ? "" : "ใบ";
   return en ? "" : "ครั้ง";
 };
 

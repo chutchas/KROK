@@ -47,7 +47,9 @@ export function useDialogA11y(
     const id = Symbol("dialog");
     stack.push(id);
     let prev = document.activeElement as HTMLElement | null;
-    if ((!prev || prev === document.body || !prev.isConnected) && pendingRestore) prev = pendingRestore;
+    // effect รันซ้ำ (StrictMode ใน dev / deps เปลี่ยน) ตอนโฟกัสอยู่ในกล่องแล้ว — ใช้ตัวที่เปิด dialog ที่จำไว้รอบก่อน
+    const inside = !!prev && !!ref.current?.contains(prev);
+    if ((!prev || prev === document.body || !prev.isConnected || inside) && pendingRestore) prev = pendingRestore;
     pendingRestore = null;
 
     // โฟกัสแรก — ถ้าในกล่องมีตัวที่โฟกัสอยู่แล้ว (เช่น autoFocus) ไม่แย่ง

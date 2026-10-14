@@ -39,7 +39,8 @@ export const DASH_TEMPLATES: DashTemplate[] = [
     name: { th: "งานอนุมัติ / เอกสาร", en: "Approvals / documents" },
     desc: { th: "รายการรออนุมัติ แยกตามฟอร์ม และปริมาณเอกสาร", en: "Pending approvals by form and document volume" },
     widgets: [
-      ["stat", "pending", "all"], ["stat", "usage", "7d"], ["ranking", "pending", "all"], ["trend", "usage", "30d"],
+      // จำนวนรออนุมัติรวมอยู่ในแถบ "ต้องดูตอนนี้" แล้ว — การ์ดแยกตามฟอร์มแทน
+      ["ranking", "pending", "all"], ["stat", "usage", "7d"], ["trend", "usage", "30d"],
     ],
   },
   {
