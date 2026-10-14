@@ -64,10 +64,25 @@ function renderOrigin(): string {
   return `http://127.0.0.1:${process.env.PORT || 3000}`;
 }
 
+/** เบราว์เซอร์ที่เก็บไว้ใช้ซ้ำตายไปแล้ว (function ถูกพัก/แช่แข็งระหว่างคำขอ) แต่ยังดูเหมือนต่ออยู่ → "Target closed" */
+const DEAD_BROWSER = /Target closed|Session closed|Connection closed|Protocol error|detached|crashed/i;
+
 export async function renderDocWithChromium(id: string, kind: "pdf" | "png"): Promise<Buffer> {
   const origin = renderOrigin();
   const jar = await cookies();
   const browser = await getBrowser();
+  try {
+    return await renderOnce(browser, id, kind, origin, jar);
+  } catch (e) {
+    if (!(e instanceof Error) || !DEAD_BROWSER.test(e.message)) throw e;
+    // ทิ้งตัวเดิม เปิดใหม่ แล้วลองอีกครั้งเดียว
+    browserP = null;
+    await browser.close().catch(() => {});
+    return renderOnce(await getBrowser(), id, kind, origin, jar);
+  }
+}
+
+async function renderOnce(browser: Browser, id: string, kind: "pdf" | "png", origin: string, jar: Awaited<ReturnType<typeof cookies>>): Promise<Buffer> {
   // context แยกต่อคำขอ: คุกกี้ของผู้ใช้คนนี้ไม่ปนกับคำขอของคนอื่นที่ทำพร้อมกันในเบราว์เซอร์ตัวเดียวกัน
   const ctx = await browser.createBrowserContext();
   try {

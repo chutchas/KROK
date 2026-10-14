@@ -250,9 +250,10 @@ export default async function SubmissionPage({ params, searchParams }: { params:
     // ความกว้างเดียวกันทั้งสองแท็บ — สลับแท็บแล้วหน้าไม่กระโดด
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
       <OnboardingSeen />
-      <div className="no-print" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
+      <div className="no-print krok-subbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         <BackLink from={sp.from} mine={!canManage(session.role)} />
-        <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+        {/* มือถือ (CSS .krok-subactions): ดาวน์โหลด PDF เต็มแถว · พิมพ์/รูปทั้งหมด/ลบ แถวถัดไป · แจ้งปัญหาอยู่ใต้ปุ่ม */}
+        <div className="krok-subactions" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
           <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} showDetail={session.role === "owner" || session.role === "admin"} />
           {/* ลบไว้ท้ายสุด — ไม่ให้ปุ่มทำลายอยู่ตำแหน่งแรก (มือถือ = ใกล้นิ้วโป้ง) */}
           {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}

@@ -32,7 +32,7 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
   if (!open) {
     return (
       // จอแคบ: เหลือไอคอนอย่างเดียว (ไม่ตกบรรทัดใต้ปุ่ม PDF)
-      <Button variant="ghost" onClick={() => setOpen(true)} aria-label={t("trash.delete")} title={t("trash.delete")} style={{ color: "var(--fail)", minHeight: 44, minWidth: 44 }}>
+      <Button variant="ghost" className="krok-sb-del" onClick={() => setOpen(true)} aria-label={t("trash.delete")} title={t("trash.delete")} style={{ color: "var(--fail)", minHeight: 44, minWidth: 44 }}>
         <Icon icon={Trash2} className="h-4 w-4" /> <span className="krok-narrow-hide">{t("trash.delete")}</span>
       </Button>
     );
