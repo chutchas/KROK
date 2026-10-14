@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import { sendWorkspaceEmailTo } from "@/lib/notify";
 import { runLater } from "@/lib/background";
-import { headers } from "next/headers";
+import { siteOrigin } from "@/lib/site-origin";
 
 // ปิดเรื่อง / เปิดเรื่องกลับ ของใบไม่ผ่าน (0080) — ฐานข้อมูลตรวจสิทธิ์ซ้ำ (close_submission_failure / reopen_submission_failure)
 // ปิด: ผู้จัดการ (owner/admin/designer) + หมายเหตุว่าแก้อย่างไร · เปิดกลับ: owner/admin · บันทึก audit_log ทุกครั้ง
@@ -43,9 +43,8 @@ async function notifyFailure(id: string, kind: "close" | "reopen", actorId: stri
     const { data: mem } = await admin.from("memberships").select("user_id, email").eq("tenant_id", s.tenant_id).in("user_id", to);
     const emails = ((mem || []) as { email: string | null }[]).map((m) => m.email || "").filter(Boolean);
     if (emails.length) {
-      const h = await headers();
-      const host = h.get("x-forwarded-host") || h.get("host");
-      const url = host ? `${h.get("x-forwarded-proto") || "https"}://${host}/submission/${id}` : "";
+      // ลิงก์จาก URL ของเว็บที่ตั้งค่าไว้ (ไม่เชื่อ Host ของคำขอ — กันลิงก์ปลอมในอีเมล)
+      const url = `${await siteOrigin()}/submission/${id}`;
       const head = kind === "close" ? "ปิดเรื่องแล้ว" : "เปิดเรื่องกลับ";
       const body = [
         head,

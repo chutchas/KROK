@@ -62,7 +62,7 @@ export default function FieldSettingsPanel({
   members?: { user_id: string; name: string }[];
   /** แบรนด์ของ workspace (ค่าเริ่มต้นของธีมฟอร์ม) */
   branding?: WorkspaceBranding | null;
-  /** ปุ่มขึ้น/ลง/ทำซ้ำ/ลบของช่อง แสดงที่การ์ดในตัวอย่างแล้ว (มุมมองมือถือ) → ไม่ต้องซ้ำในแผง */
+  /** ปุ่มขึ้น/ลง/ทำซ้ำ/ลบของช่อง แสดงที่การ์ดในตัวอย่างแล้ว (มุมมองมือถือ) → ซ่อนในแผงเฉพาะจอ ≥900 (CSS .krok-fa-dup) — จอเล็กแผ่นตั้งค่าบังการ์ด จึงยังแสดงในแผง */
   hideFieldActions?: boolean;
 }) {
   const { t, tt } = useT();
@@ -286,7 +286,7 @@ export default function FieldSettingsPanel({
       <Field value={field.label} onChange={(e) => patchField({ label: e.target.value })} placeholder={t("editor.fieldNamePh")} />
 
       <label style={lbl}>{t("editor.fieldType")}</label>
-      <select value={field.area ? "area" : field.type} onChange={(e) => {
+      <select aria-label={t("editor.fieldType")} value={field.area ? "area" : field.type} onChange={(e) => {
         const v = e.target.value;
         // "พื้นที่" = select ที่ตัวเลือกมาจากรายชื่อพื้นที่ของ workspace (ฟอร์มละ 1 ช่อง)
         if (v === "area") { patchField({ type: "select", area: true, options: undefined, options_source: undefined }); return; }
@@ -308,7 +308,7 @@ export default function FieldSettingsPanel({
       {field.type === "text" && (
         <>
           <label style={lbl}>{t("editor.textKind")}</label>
-          <select style={sel} value={field.text_format ?? (field.long_text ? "long" : "short")}
+          <select aria-label={t("editor.textKind")} style={sel} value={field.text_format ?? (field.long_text ? "long" : "short")}
             onChange={(e) => { const v = e.target.value; patchField({ long_text: v === "long" ? true : undefined, text_format: v === "phone" || v === "email" ? v : undefined }); }}>
             <option value="short">{t("editor.textShort")}</option>
             <option value="long">{t("editor.textLong")}</option>
@@ -377,7 +377,7 @@ export default function FieldSettingsPanel({
       {field.type === "datetime" && (
         <>
           <label style={lbl}>{t("editor.dtMode")}</label>
-          <select style={sel} value={field.dt_mode ?? "datetime"} onChange={(e) => patchField({ dt_mode: e.target.value === "datetime" ? undefined : (e.target.value as "date" | "time") })}>
+          <select aria-label={t("editor.dtMode")} style={sel} value={field.dt_mode ?? "datetime"} onChange={(e) => patchField({ dt_mode: e.target.value === "datetime" ? undefined : (e.target.value as "date" | "time") })}>
             <option value="datetime">{t("editor.dtBoth")}</option>
             <option value="date">{t("editor.dtDate")}</option>
             <option value="time">{t("editor.dtTime")}</option>
@@ -403,7 +403,7 @@ export default function FieldSettingsPanel({
           <div style={{ display: "grid", gap: 6 }}>
             {(field.options || []).map((op, i) => (
               <div key={i} style={{ display: "flex", gap: 6 }}>
-                <Field value={op} onChange={(e) => patchField({ options: (field.options || []).map((x, xi) => (xi === i ? e.target.value : x)) })} style={{ flex: 1 }} />
+                <Field value={op} aria-label={`${t("editor.option")} ${i + 1}`} onChange={(e) => patchField({ options: (field.options || []).map((x, xi) => (xi === i ? e.target.value : x)) })} style={{ flex: 1 }} />
                 <button onClick={() => patchField({ options: (field.options || []).filter((_, xi) => xi !== i) })} aria-label={t("common.delete")} title={t("common.delete")} style={{ ...iconBtn, color: "var(--fail)" }}><Icon icon={X} className="h-4 w-4" /></button>
               </div>
             ))}
@@ -437,7 +437,7 @@ export default function FieldSettingsPanel({
           <div style={{ display: "grid", gridTemplateColumns: field.required ? "1fr 1fr" : "1fr", gap: 8 }}>
             <div>
               <label style={lbl}>{t("editor.maxPhotos")}</label>
-              <select value={field.max_photos ?? 1} style={sel}
+              <select aria-label={t("editor.maxPhotos")} value={field.max_photos ?? 1} style={sel}
                 onChange={(e) => { const mx = Number(e.target.value); patchField({ max_photos: mx > 1 ? mx : undefined, min_photos: mx > 1 && (field.min_photos ?? 1) > 1 ? Math.min(field.min_photos ?? 1, mx) : undefined }); }}>
                 {Array.from({ length: 12 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
               </select>
@@ -445,7 +445,7 @@ export default function FieldSettingsPanel({
             {field.required && (
               <div>
                 <label style={lbl}>{t("editor.minPhotos")}</label>
-                <select value={Math.min(field.min_photos ?? 1, field.max_photos ?? 1)} style={sel} disabled={(field.max_photos ?? 1) <= 1}
+                <select aria-label={t("editor.minPhotos")} value={Math.min(field.min_photos ?? 1, field.max_photos ?? 1)} style={sel} disabled={(field.max_photos ?? 1) <= 1}
                   onChange={(e) => { const mn = Number(e.target.value); patchField({ min_photos: mn > 1 ? mn : undefined }); }}>
                   {Array.from({ length: field.max_photos ?? 1 }, (_, i) => i + 1).map((n) => <option key={n} value={n}>{n}</option>)}
                 </select>
@@ -596,7 +596,7 @@ export default function FieldSettingsPanel({
       <AttachmentsPanel formId={formId} tenantId={tenantId} fieldId={field.id} compact />
 
       {/* ขึ้น/ลง/ทำซ้ำ/ลบ อยู่ใต้การ์ดที่เลือกในตัวอย่างฟอร์ม (มุมมองมือถือ) — ที่นี่เหลือไว้สำหรับมุมมองกระดาษ */}
-      <div style={{ display: hideFieldActions ? "none" : "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+      <div className={hideFieldActions ? "krok-fa-dup" : undefined} style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>
         <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStepFields(move(step.fields, fi, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
         <button style={iconBtn} title={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStepFields(move(step.fields, fi, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
         <button style={iconBtn} title={t("editor.duplicate")} onClick={() => {

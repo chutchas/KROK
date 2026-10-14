@@ -73,6 +73,20 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       if (v === "open" || v === "closed") setOutline(v);
     } catch { /* ไม่มี storage = auto */ }
   }, []);
+  /** เลือกขั้นจากโครงฟอร์ม แล้วเลื่อนตัวอย่างไปที่หัวขั้นนั้น (เหมือนกดชื่อช่อง) */
+  const selectStep = (sid: string) => {
+    setSelKey(`s:${sid}`);
+    requestAnimationFrame(() => document.getElementById(`fp-s-${sid}`)?.scrollIntoView({ block: "start", behavior: "smooth" }));
+  };
+  /** หัวหน้าแก้ไขตรึงบนจอ (≥900) — วัดความสูงจริงให้แผงซ้าย/ขวาตรึงต่อใต้หัว */
+  const editHeadRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = editHeadRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--krok-eh", `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => { ro.disconnect(); document.documentElement.style.removeProperty("--krok-eh"); };
+  });
   const setOutlinePref = (v: "open" | "closed") => {
     setOutline(v);
     try { localStorage.setItem("krok_studio_outline", v); } catch { /* จำไม่ได้ก็ไม่เป็นไร */ }
@@ -421,8 +435,17 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }, [selKey]);
 
   // ยกเลิก/ปิดการแก้ไข → กลับไปแท็บที่เหมาะสม
-  function cancelDraft() {
+  async function cancelDraft() {
     const wasEditing = !!editingId;
+    // มีงานที่ยังไม่บันทึก (ฟอร์มใหม่ทั้งฟอร์ม หรือแก้ฟอร์มเดิมไปแล้ว) → ถามก่อน (ปุ่มนี้อยู่ติดปุ่มบันทึก)
+    const unsaved = !wasEditing || history.canUndo();
+    if (unsaved && !(await confirmDialog({
+      title: wasEditing ? t("studio.cancelConfirmTitle") : t("studio.discardConfirmTitle"),
+      message: wasEditing ? t("studio.cancelConfirm") : t("studio.discardConfirm"),
+      confirmLabel: wasEditing ? t("studio.cancelConfirmBtn") : t("studio.discard"),
+      cancelLabel: t("studio.keepEditing"),
+      danger: true,
+    }))) return;
     resetDraft();
     setTab(wasEditing ? "all" : "new");
   }
@@ -490,6 +513,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark || !!draft?.doc_no || !!draft?.review },
     { k: "schedule", label: t("fs.tab.schedule"), on: false },
   ];
+  // ชื่อแท็บเบราว์เซอร์ตอนแก้ฟอร์ม = ชื่อฟอร์ม (เดิมเป็น "สร้างฟอร์ม" ทุกฟอร์ม)
+  useEffect(() => {
+    if (tab !== "edit" || !draft?.title) return;
+    const prev = document.title;
+    document.title = `${draft.title} — ${editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}`;
+    return () => { document.title = prev; };
+  }, [tab, draft?.title, editingId, t]);
   const formSettings = draft && (
     <div className="krok-fs">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -955,12 +985,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {tab === "edit" && (draft ? (
         // จอกว้าง: ฟอร์มซ้าย + แผงตั้งค่าขวาแบบถาวร (ฟอร์มไม่ยืด-หดตอนเลือกฟิลด์) · จอแคบ: แผงลอย/แผ่นเลื่อนขึ้น
         <div>
-                  <div className="krok-edithead" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
+                  <div ref={editHeadRef} className="krok-edithead" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             <div>
               {/* หัวหน้าเหมือนหน้าอื่น: h1 อยู่นอกการ์ด ไม่มีไอคอน (ไอคอนฟอร์มอยู่ในช่องชื่อด้านล่าง) */}
               <nav aria-label={t("studio.crumbLabel")} style={{ fontSize: ".84rem", color: "var(--ink-2)", marginBottom: 2 }}>
-                <button type="button" onClick={() => setTab("all")} style={{ border: "none", background: "none", padding: "6px 0", minHeight: 32, color: "var(--accent-text)", fontFamily: "inherit", fontSize: "inherit", cursor: "pointer" }}>{t("studio.crumbAll")}</button>
-                <span aria-hidden> / </span>{editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}
+                <button type="button" onClick={() => setTab("all")} style={{ border: "none", background: "none", padding: "0 2px", minHeight: 44, color: "var(--accent-text)", fontFamily: "inherit", fontSize: "inherit", cursor: "pointer" }}>{t("studio.crumbAll")}</button>
+                <span aria-hidden> / </span><span aria-current="page">{editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}</span>
               </nav>
               <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{draft.title || t("editor.formTitle")}</h1>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
@@ -983,6 +1013,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                     <button
                       key={v.m}
                       onClick={() => setView(v.m)}
+                      aria-pressed={view === v.m}
                       className="inline-flex items-center gap-1.5"
                       style={{ minHeight: 44, padding: "0 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
                     >
@@ -1008,7 +1039,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <button type="button" data-krok-keep="" onClick={() => setOutlinePref("open")} aria-label={t("studio.outlineOpen")} title={t("studio.outlineOpen")}
               aria-expanded={false} className="krok-ol-railbtn"><Icon icon={PanelLeftOpen} className="h-5 w-5" /></button>
             {draft.steps.map((st, si) => (
-              <button key={st.id} type="button" data-krok-keep="" onClick={() => setSelKey(`s:${st.id}`)}
+              <button key={st.id} type="button" data-krok-keep="" onClick={() => selectStep(st.id)}
                 aria-label={`${t("editor.step")} ${si + 1} ${st.title}`} title={st.title}
                 aria-current={selKey === `s:${st.id}` || st.fields.some((f) => f.id === selKey) ? "true" : undefined}
                 className={selKey === `s:${st.id}` || st.fields.some((f) => f.id === selKey) ? "krok-ol-railbtn krok-ol-railon" : "krok-ol-railbtn"}>
@@ -1024,7 +1055,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
           {draft.steps.map((st, si) => (
             <div key={st.id} style={{ marginBottom: 6 }}>
-              <button type="button" data-krok-keep="" onClick={() => setSelKey(`s:${st.id}`)} aria-current={selKey === `s:${st.id}` ? "true" : undefined}
+              <button type="button" data-krok-keep="" onClick={() => selectStep(st.id)} aria-current={selKey === `s:${st.id}` ? "true" : undefined}
                 className={selKey === `s:${st.id}` ? "krok-ol-item krok-ol-on" : "krok-ol-item"} style={{ fontWeight: 600, color: "var(--ink-2)" }}>
                 {si + 1}. {st.title || t("editor.stepTitle")}
               </button>
@@ -1271,8 +1302,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         .ol-open .krok-ol-rail{ display:none; }
         @media(min-width:900px){
           .krok-editgrid{ grid-template-columns:var(--ol-w) minmax(0,1fr) 340px; }
-          .krok-aside{ position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto; border-radius:12px; }
-          .krok-outline{ display:block; position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto;
+          .krok-aside{ position:sticky; top:calc(74px + var(--krok-eh, 0px)); max-height:calc(100vh - 90px - var(--krok-eh, 0px)); overflow:auto; border-radius:12px; }
+          /* หัวหน้าแก้ไขตรึงใต้แถบบนของแอป — เลื่อนฟอร์มยาวแล้วปุ่มบันทึกยังอยู่บนจอ */
+          .krok-edithead{ position:sticky; top:64px; z-index:15; background:var(--ground); padding:8px 0 10px; margin-bottom:12px !important;
+            border-bottom:1px solid var(--line); }
+          .krok-outline{ display:block; position:sticky; top:calc(74px + var(--krok-eh, 0px)); max-height:calc(100vh - 90px - var(--krok-eh, 0px)); overflow:auto;
             background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 6px; }
         }
         @media(min-width:1280px){
@@ -1281,14 +1315,21 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .ol-auto .krok-ol-full{ display:block; }
           .ol-auto .krok-ol-rail{ display:none; }
         }
-        /* จอกลางแคบ: ไม่มีคอลัมน์ขวา → แผงลอยด้านขวาเฉพาะตอนเลือกฟิลด์ */
+        /* จอ <900: ไม่มีคอลัมน์ขวา → แผงตั้งค่าเป็นแผ่นเลื่อนขึ้นจากด้านล่างเมื่อเลือกฟิลด์ (เดิม 641–899 ลอยทับการ์ดและปุ่มบันทึก)
+           แผ่นกว้างไม่เกิน 640 ตรงกลางจอ · มีพื้นหลังมืด กดแล้วปิด */
         @media(max-width:899px){
           .krok-aside{ display:none; }
           .krok-fs-close{ display:flex !important; }
-          .krok-aside.krok-aside-sel{ display:block; position:fixed; top:74px; right:16px; width:380px; max-width:calc(100vw - 24px);
-            max-height:calc(100vh - 96px); overflow:auto; z-index:50; border-radius:14px; background:var(--surface);
-            box-shadow:0 14px 44px rgba(10,14,18,.28); }
+          .krok-aside.krok-aside-sel{ display:block; position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:640px; margin:0 auto;
+            max-height:82vh; overflow:auto; z-index:70; box-sizing:border-box; background:var(--surface);
+            border-radius:16px 16px 0 0; box-shadow:0 -10px 40px rgba(10,14,18,.25);
+            padding:18px 12px calc(16px + env(safe-area-inset-bottom)); }
+          /* ขีดจับบนแผ่น — บอกว่าเป็นแผ่นเลื่อนขึ้น (ไม่ใช่หน้าใหม่) และเว้นที่ไม่ให้ปุ่มติดขอบบน */
+          .krok-aside.krok-aside-sel::before{ content:""; position:absolute; top:7px; left:50%; width:40px; height:4px; margin-left:-20px; border-radius:2px; background:var(--line-strong); }
+          .krok-settings-backdrop{ display:block; position:fixed; inset:0; background:rgba(6,10,14,.45); z-index:69; }
         }
+        /* จอ ≥900 (แผงติดขอบ): ปุ่มขึ้น/ลง/ทำซ้ำ/ลบ อยู่ใต้การ์ดในตัวอย่างแล้ว → ไม่ซ้ำในแผง · จอ <900 แผ่นตั้งค่าบังการ์ด จึงแสดงในแผ่น */
+        @media(min-width:900px){ .krok-fa-dup{ display:none !important; } }
         @media(max-width:640px){
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
@@ -1318,13 +1359,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-appr-select{flex:1 1 100% !important;min-width:0 !important}
           .krok-appr-roleline{flex:1 1 100%;width:100%}
           .krok-appr-roleline .krok-appr-role{flex:1 1 auto !important;width:auto !important}
-          /* มือถือ: ตั้งค่าฟิลด์เป็น popup ขึ้นจากด้านล่าง */
-          .krok-aside.krok-aside-sel{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
-            max-height:82vh; border-radius:16px 16px 0 0; z-index:70; box-sizing:border-box;
-            padding:18px 12px calc(16px + env(safe-area-inset-bottom)); }
-          /* ขีดจับบนแผ่น — บอกว่าเป็นแผ่นเลื่อนขึ้น (ไม่ใช่หน้าใหม่) และเว้นที่ไม่ให้ปุ่มติดขอบบน */
-          .krok-aside.krok-aside-sel::before{ content:""; position:absolute; top:7px; left:50%; width:40px; height:4px; margin-left:-20px; border-radius:2px; background:var(--line-strong); }
-          .krok-settings-backdrop{ display:block; position:fixed; inset:0; background:rgba(6,10,14,.45); z-index:69; }
+          /* มือถือ: แผ่นตั้งค่าเต็มความกว้าง (กฎหลักอยู่ที่ <900) */
+          .krok-aside.krok-aside-sel{ max-width:100%; }
         }
       `}</style>
     </div>
