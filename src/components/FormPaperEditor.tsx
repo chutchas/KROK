@@ -215,6 +215,9 @@ export default function FormPaperEditor({
   const drag = useRef<{ key: string; mode: "move" | "resize"; sx: number; sy: number; ox: number; oy: number; ow: number } | null>(null);
   const handleTouch = useRef(false);
   const touchDragEndAt = useRef(0);
+  // ลากด้วยนิ้วเสร็จ (ไม่เลือก = ไม่มีกรอบ) → ไฮไลต์บล็อกแว้บหนึ่งให้เห็นว่าไปอยู่ตรงไหน
+  const [flashKey, setFlashKey] = useState<string | null>(null);
+  const flashTimer = useRef<number | null>(null);
 
   const commit = useCallback(
     (next: Record<string, PaperBox>) => {
@@ -409,12 +412,19 @@ export default function FormPaperEditor({
   }
 
   function onPointerUp(e: React.PointerEvent) {
-    if (drag.current) {
-      (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
-      drag.current = null;
-      if (handleTouch.current) touchDragEndAt.current = e.timeStamp;
-      handleTouch.current = false;
+    const d = drag.current;
+    if (!d) return;
+    (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
+    drag.current = null;
+    if (handleTouch.current) {
+      touchDragEndAt.current = e.timeStamp;
+      if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 6) {
+        if (flashTimer.current) window.clearTimeout(flashTimer.current);
+        setFlashKey(d.key);
+        flashTimer.current = window.setTimeout(() => setFlashKey(null), 1200);
+      }
     }
+    handleTouch.current = false;
   }
   // ปล่อยนิ้วหลังลากด้วยที่จับ เบราว์เซอร์ยิง click ต่อ → เดิมเลือกฟิลด์แล้วแผ่นตั้งค่าเด้งขึ้นทุกครั้ง · ข้าม click ที่ตามมาทันที
   function clickSelect(e: React.MouseEvent, k: string) {
@@ -559,7 +569,7 @@ export default function FormPaperEditor({
             const bx = layout[blk.key];
             const on = active === blk.key;
             return (
-              <div key={blk.key} data-krok-keep="" data-block-key={blk.key}
+              <div key={blk.key} className={flashKey === blk.key ? "krok-flash" : undefined} data-krok-keep="" data-block-key={blk.key}
                 onClick={(e) => clickSelect(e, blk.key)}
                 onPointerDown={(e) => onPointerDown(e, blk.key, "move")}
                 style={{
@@ -589,7 +599,7 @@ export default function FormPaperEditor({
             const isStep = b.kind === "step";
             if (b.kind === "image" && b.image) {
               return (
-                <div key={b.key} data-krok-keep="" data-block-key={b.key}
+                <div key={b.key} className={flashKey === b.key ? "krok-flash" : undefined} data-krok-keep="" data-block-key={b.key}
                   onClick={(e) => clickSelect(e, b.key)}
                   onPointerDown={(e) => onPointerDown(e, b.key, "move")}
                   style={{
@@ -611,6 +621,7 @@ export default function FormPaperEditor({
             return (
               <div
                 key={b.key}
+                className={flashKey === b.key ? "krok-flash" : undefined}
                 ref={isStep ? undefined : measureRef(b.key)}
                 data-krok-keep=""
                 data-block-key={b.key}
