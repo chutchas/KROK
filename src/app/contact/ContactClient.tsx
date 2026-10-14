@@ -176,6 +176,9 @@ export function ContactInApp({ me, defaultTopic }: { me: NonNullable<Me>; defaul
       <div>
         <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("contact.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("contact.subMember")}</p>
+        <p style={{ fontSize: ".88rem", margin: "6px 0 0" }}>
+          {t("contact.tryHelp")} <Link href="/help" style={{ color: "var(--accent-text)", fontWeight: 600 }}>{t("nav.help")}</Link>
+        </p>
       </div>
       <div className="krok-contact-app">
         <ContactForm me={me} defaultTopic={defaultTopic} />

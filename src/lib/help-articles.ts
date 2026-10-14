@@ -10,6 +10,8 @@ export type HelpArticle = {
   steps: { th: string[]; en: string[] };
   /** หมายเหตุที่มักพลาด */
   notes?: { th: string[]; en: string[] };
+  /** ปุ่มวิธีใช้อยู่ตรงจุดนั้นแล้ว → ข้ามขั้นแรก ๆ ที่บอกว่า "ไปที่…" (เริ่มแสดงที่ขั้นนี้) */
+  tipFrom?: number;
   /** หน้าที่ไปทำงานนี้ */
   where?: { href: string; label: L };
   keywords: string;
@@ -18,6 +20,7 @@ export type HelpArticle = {
 export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "approval",
+    tipFrom: 1,
     title: { th: "ตั้งให้ฟอร์มต้องผ่านการอนุมัติ", en: "Require approval for a form" },
     summary: { th: "ใบที่ส่งจะเข้าคิวรออนุมัติ ไหลตามลำดับผู้อนุมัติทีละขั้น", en: "Submissions wait in an approval queue and move through approvers one step at a time." },
     steps: {
@@ -43,6 +46,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "defects",
+    tipFrom: 1,
     title: { th: "ให้ตัวเลือกบางตัวนับเป็นไม่ผ่าน (ข้อบกพร่อง)", en: "Make some choices count as a fail (defects)" },
     summary: { th: "เช่น เลือก \"ชำรุด\" หรือ \"ขาด\" แล้วใบนั้นเป็นผลไม่ผ่านอัตโนมัติ", en: "E.g. picking \"Damaged\" or \"Missing\" marks the whole submission as failed." },
     steps: {
@@ -67,6 +71,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "close-failure",
+    tipFrom: 1,
     title: { th: "ปิดเรื่องใบที่ไม่ผ่าน", en: "Close out a failed submission" },
     summary: { th: "หลังแก้ไขแล้ว บันทึกว่าแก้อย่างไร ใบจะย้ายจาก \"ยังไม่ปิดเรื่อง\" เป็น \"ปิดเรื่องแล้ว\"", en: "After fixing the issue, record what was done; the submission moves from \"open\" to \"closed\"." },
     steps: {
@@ -117,6 +122,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "notify",
+    tipFrom: 1,
     title: { th: "รับแจ้งเตือนทาง LINE หรืออีเมล", en: "Get notified on LINE or email" },
     summary: { th: "แจ้งเมื่อมีการส่งฟอร์ม อนุมัติ หรือตีกลับ — เลือกแจ้งเฉพาะผลไม่ผ่านได้", en: "Alerts when forms are submitted, approved or sent back — optionally only failures." },
     steps: {
@@ -167,6 +173,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "doc-no",
+    tipFrom: 1,
     title: { th: "ตั้งเลขที่เอกสารอัตโนมัติ", en: "Set automatic document numbers" },
     summary: { th: "เช่น FL-6910-0001 — รันเลขเองทุกใบ แสดงบนเอกสารและ PDF", en: "E.g. FL-6910-0001 — numbered automatically, shown on the document and PDF." },
     steps: {
@@ -191,6 +198,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "visibility",
+    tipFrom: 1,
     title: { th: "กำหนดว่าใครเห็นฟอร์ม", en: "Choose who sees a form" },
     summary: { th: "ให้เห็นทั้ง workspace เฉพาะทีม เฉพาะบางคน หรือเปิดให้คนนอกกรอกผ่าน QR/ลิงก์", en: "Everyone, selected teams, selected people, or public via QR/link." },
     steps: {

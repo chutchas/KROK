@@ -989,6 +989,7 @@ export const en: Record<MessageKey, string> = {
   "nav.adminContacts": "Contact requests",
   "contact.backApp": "Back to the app",
   "contact.subMember": "Having trouble, a question about plans, or a feature idea? Tell us — we'll reply by email within 1–2 business days.",
+  "contact.tryHelp": "You may find the answer in the guide:",
   "contact.topic": "Topic",
   "contact.topic.usage": "Problem using KROK",
   "contact.topic.billing": "Plans & billing",

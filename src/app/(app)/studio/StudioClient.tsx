@@ -93,9 +93,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [editingId, setEditingId] = useState<string | null>(null);
   /** schema ตอนเปิดฟอร์มเดิม — draft คนละตัว = มีการแก้ (ใช้ตัดสินว่าต้องเก็บงานค้างไหม) */
   const [loadedSchema, setLoadedSchema] = useState<FormSchema | null>(null);
-  const draftKey = `krok_studio_draft:${tenantId}`;
+  // แยกช่องต่อฟอร์ม (เดิมช่องเดียวต่อ workspace — แก้ฟอร์ม B ค้างแล้วทับงานค้างของฟอร์ม A)
+  const draftPrefix = `krok_studio_draft:${tenantId}:`;
+  const draftKey = draftPrefix + (editingId || "new");
   const [pendingRestore, setPendingRestore] = useState<SavedDraft | null>(null);
-  const clearSavedDraft = () => { try { sessionStorage.removeItem(draftKey); } catch { /* ไม่มีก็ไม่เป็นไร */ } };
+  const clearSavedDraft = (key = draftKey) => { try { sessionStorage.removeItem(key); } catch { /* ไม่มีก็ไม่เป็นไร */ } };
   const [refine, setRefine] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [status, setStatus] = useState<{ t: string; err?: boolean } | null>(null);
@@ -591,12 +593,20 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }, [dirty]);
   // เปิดหน้าใหม่แล้วเจองานค้าง → ถามก่อน (ไม่กู้คืนเงียบ ๆ — อาจมีคนบันทึกฟอร์มนี้จากเครื่องอื่นไปแล้ว)
   useEffect(() => {
-    let saved: SavedDraft | null = null;
-    try { saved = JSON.parse(sessionStorage.getItem(draftKey) || "null"); } catch { saved = null; }
-    if (!saved || saved.v !== 1 || !saved.draft) return;
-    const found = saved;
+    // งานค้างล่าสุดของ workspace นี้ (ทุกฟอร์ม) — เสนอกู้คืนทีละชิ้น
+    let best: SavedDraft | null = null;
+    try {
+      for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i);
+        if (!k || !k.startsWith(draftPrefix)) continue;
+        const v = JSON.parse(sessionStorage.getItem(k) || "null") as SavedDraft | null;
+        if (v && v.v === 1 && v.draft && (!best || v.at > best.at)) best = v;
+      }
+    } catch { best = null; }
+    if (!best) return;
+    const found = best;
     void Promise.resolve().then(() => setPendingRestore(found));
-  }, [draftKey]);
+  }, [draftPrefix]);
   function restoreSaved(saved: SavedDraft) {
     const f = saved.editingId ? initialForms.find((x) => x.id === saved.editingId) : undefined;
     const schema = sanitizeSchema(saved.draft);
@@ -948,7 +958,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             {tt("studio.restoreMsg", { title: pendingRestore.draft.title || t("editor.formTitle"), time: new Date(pendingRestore.at).toLocaleTimeString(lang === "th" ? "th-TH" : "en-GB", { hour: "2-digit", minute: "2-digit" }) })}
           </span>
           <Button variant="primary" onClick={() => restoreSaved(pendingRestore)} style={{ minHeight: 44 }}>{t("studio.restoreBtn")}</Button>
-          <Button onClick={() => { clearSavedDraft(); setPendingRestore(null); }} style={{ minHeight: 44 }}>{t("studio.restoreDiscard")}</Button>
+          <Button onClick={() => { clearSavedDraft(draftPrefix + (pendingRestore.editingId || "new")); setPendingRestore(null); }} style={{ minHeight: 44 }}>{t("studio.restoreDiscard")}</Button>
         </div>
       )}
       {toast && (!toast.base || toast.base === draft) && (

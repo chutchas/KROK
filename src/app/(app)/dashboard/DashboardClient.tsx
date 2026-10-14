@@ -325,10 +325,10 @@ export default function DashboardClient({
         <div>
           {subs.length === 0 && <span style={{ color: "var(--ink-3)" }}>{forms.length ? t("dash.empty") : t("dash.emptyNoForms")}</span>}
           {subs.map((s) => (
-            // เปิดรายละเอียดใน popup — role=button + Enter/Space ให้ใช้คีย์บอร์ดได้
-            <div key={s.id} role="button" tabIndex={0} onClick={() => setOpen(s)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen(s); } }}
-              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: "1px solid var(--line)", cursor: "pointer" }}>
+            // ลิงก์จริงไปหน้าเอกสาร — คลิกปกติ/Enter = เปิด popup รายละเอียด · Ctrl/⌘/กลางเมาส์/กดค้าง = เปิดแท็บใหม่ได้ (เดิม div role=button ทำไม่ได้)
+            <a key={s.id} href={`/submission/${s.id}`}
+              onClick={(e) => { if (e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; e.preventDefault(); setOpen(s); }}
+              style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 4px", borderBottom: "1px solid var(--line)", cursor: "pointer", color: "inherit", textDecoration: "none" }}>
               <FormIcon value={s.form_icon} size={34} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <b style={{ fontSize: ".93rem" }}>{s.form_title}</b>
@@ -342,7 +342,7 @@ export default function DashboardClient({
                   ? <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {tt("dash.failNClosed", { n: s.fails.length })}</span></Pill>
                   : <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {tt("dash.failN", { n: s.fails.length })}</span></Pill>) : s.result === "pass" ? <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill> : <Pill kind="na">{t("dash.submitted")}</Pill>}
               </div>
-            </div>
+            </a>
           ))}
         </div>
       </Card>
