@@ -1581,6 +1581,7 @@ export const en: Record<MessageKey, string> = {
   "sub.a4PdfOpenPrint": "Open A4 print page",
   "sub.creatingPdf": "Creating PDF...",
   "sub.downloadPdf": "Download PDF",
+  "sub.errDetail": "Details for reporting the problem",
   "appr.stepN": "Step {n}",
   "appr.ownerOverride": "owner can override",
   "appr.hasAttachment": "Attachment",

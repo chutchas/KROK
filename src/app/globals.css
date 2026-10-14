@@ -424,3 +424,14 @@ a {
   .krok-paper-add { display: flex !important; gap: 8px; flex: 1 1 100%; }
   .krok-paper-add > button { flex: 1 1 0; min-width: 0; justify-content: center; min-height: 44px; white-space: nowrap; padding-left: 6px !important; padding-right: 6px !important; }
 }
+
+/* หน้าเอกสาร (submission) บนมือถือ: ลิงก์กลับ / ดาวน์โหลด PDF เต็มแถว / พิมพ์ · รูปทั้งหมด · ลบ แบ่งแถวเดียว
+   (เดิมปุ่มชิดขวากระจัดกระจาย ข้อความแจ้งปัญหาแทรกกลางปุ่ม) */
+@media (max-width: 640px) {
+  .krok-subbar { flex-direction: column; align-items: stretch !important; }
+  .krok-subactions { display: flex !important; width: 100%; justify-content: stretch !important; }
+  .krok-subbtns { display: contents !important; }
+  .krok-subactions > *, .krok-subbtns > button { flex: 1 1 0; min-width: 0; min-height: 44px; }
+  .krok-subactions .krok-sb-pdf { flex: 1 1 100%; order: -1; min-height: 48px; }
+  .krok-subactions .krok-sb-del { flex: 0 0 44px; order: 5; }
+}

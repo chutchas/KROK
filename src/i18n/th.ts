@@ -1596,6 +1596,7 @@ export const th = {
   "sub.a4PdfOpenPrint": "เปิดหน้าพิมพ์ A4",
   "sub.creatingPdf": "กำลังสร้าง PDF...",
   "sub.downloadPdf": "ดาวน์โหลด PDF",
+  "sub.errDetail": "รายละเอียดสำหรับแจ้งปัญหา",
   "appr.stepN": "ขั้น {n}",
   "appr.ownerOverride": "เจ้าของ workspace อนุมัติแทนได้",
   "appr.hasAttachment": "มีไฟล์แนบ",

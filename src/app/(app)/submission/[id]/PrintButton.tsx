@@ -99,15 +99,22 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false, pr
   }
 
   return (
-    <div style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+    <div className="krok-subbtns" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
+      {/* ทำ PDF ไม่สำเร็จ: กล่องแจ้งเต็มแถวใต้ปุ่ม (เดิมข้อความแดงชิดขวา + ข้อความ error ดิบโผล่บนจอ) */}
       {a4Err && (
-        <div role="alert" style={{ flexBasis: "100%", order: 10, display: "grid", gap: 4, justifyItems: "end", textAlign: "right", fontSize: ".8rem" }}>
-          <span style={{ color: "var(--fail)" }}>{t("sub.a4PdfFail")}</span>
-          <Button variant="primary" onClick={print}><Icon icon={Printer} className="h-4 w-4" /> {t("sub.a4PdfOpenPrint")}</Button>
-          {showDetail && <span style={{ color: "var(--ink-3)", fontFamily: "monospace", fontSize: ".7rem", overflowWrap: "anywhere", maxWidth: 420 }}>{a4Err}</span>}
+        <div role="alert" style={{ flexBasis: "100%", order: 10, display: "grid", gap: 10, padding: "12px 14px", borderRadius: 10, border: "1px solid color-mix(in srgb, var(--fail) 35%, transparent)", background: "var(--fail-soft)", textAlign: "left", fontSize: ".88rem" }}>
+          <span style={{ color: "var(--fail-text)", fontWeight: 600 }}>{t("sub.a4PdfFail")}</span>
+          <Button onClick={print} style={{ justifySelf: "start", minHeight: 44 }}><Icon icon={Printer} className="h-4 w-4" /> {t("sub.a4PdfOpenPrint")}</Button>
+          {/* สาเหตุทางเทคนิค (owner/admin): พับไว้ — เปิดดูเมื่อจะแจ้งปัญหา */}
+          {showDetail && (
+            <details style={{ fontSize: ".78rem", color: "var(--ink-3)" }}>
+              <summary style={{ cursor: "pointer", minHeight: 32, display: "flex", alignItems: "center" }}>{t("sub.errDetail")}</summary>
+              <code style={{ display: "block", marginTop: 4, fontFamily: "monospace", overflowWrap: "anywhere" }}>{a4Err}</code>
+            </details>
+          )}
         </div>
       )}
-      {zipErr && <span role="alert" style={{ fontSize: ".8rem", color: "var(--fail)" }}>{t("print.photos.downloadFail")}</span>}
+      {zipErr && <span role="alert" style={{ flexBasis: "100%", order: 11, fontSize: ".85rem", color: "var(--fail-text)" }}>{t("print.photos.downloadFail")}</span>}
       {hasPhotos && (
         <Button variant="ghost" onClick={downloadPhotos} disabled={zipBusy}>
           <Icon icon={Images} className="h-4 w-4" /> {zipBusy ? t("print.photos.downloading") : t("print.photos.download")}
@@ -116,7 +123,7 @@ export default function PrintButton({ submissionId, docNo, hasPhotos = false, pr
       <Button variant="ghost" onClick={print}>
         <Icon icon={Printer} className="h-4 w-4" /> {t("sub.print")}
       </Button>
-      <Button variant="primary" onClick={downloadPdf} disabled={busy}>
+      <Button variant="primary" className="krok-sb-pdf" onClick={downloadPdf} disabled={busy}>
         <Icon icon={FileDown} className="h-4 w-4" /> {busy ? t("sub.creatingPdf") : t("sub.downloadPdf")}
       </Button>
     </div>

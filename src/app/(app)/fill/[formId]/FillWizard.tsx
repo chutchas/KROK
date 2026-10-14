@@ -462,9 +462,11 @@ export default function FillWizard(props: Props) {
   const go = useCallback((path: string) => {
     if (props.offlineShell || (typeof navigator !== "undefined" && navigator.onLine === false)) window.location.assign(path);
     else {
-      // หน้ากรอกบันทึกร่าง/ส่งข้อมูลจากฝั่งเบราว์เซอร์ → ล้างหน้าที่จำไว้ (staleTimes) ให้รายการ/แบบร่างเป็นปัจจุบัน
-      router.refresh();
+      // ไปหน้าใหม่ก่อน แล้วค่อย refresh (หน้าปลายทาง — ให้รายการ/แบบร่างเป็นปัจจุบัน)
+      // เดิม refresh ก่อน: refresh หน้ากรอกเดิม → ร่างถูกลบแล้ว key ของ FillWizard เปลี่ยนเป็น "new"
+      // → ฟอร์มเปล่าใบใหม่โผล่ขึ้นมาระหว่างรอเปิดเอกสาร (ดูเหมือนกด "เปิดเอกสาร" แล้วได้ใบกรอกใหม่)
       router.push(path);
+      router.refresh();
     }
   }, [props.offlineShell, router]);
 
