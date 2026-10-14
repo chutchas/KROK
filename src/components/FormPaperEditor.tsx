@@ -491,6 +491,8 @@ export default function FormPaperEditor({
     <div style={{ marginTop: 8 }}>
       {/* แถบเครื่องมือ */}
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+        {/* เพิ่มฟิลด์/ขั้นตอน/รูปภาพ — จอเล็กเต็มแถว แบ่งเท่ากัน (CSS .krok-paper-add ใน globals) */}
+        <div className="krok-paper-add" style={{ display: "contents" }}>
         {onAddField && (
           <button data-krok-keep="" onClick={onAddField} className="inline-flex items-center gap-1.5"
             style={{ padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
@@ -510,6 +512,7 @@ export default function FormPaperEditor({
             <Icon icon={ImagePlus} className="h-4 w-4" /> {t("brand.addImage")}
           </button>
         )}
+        </div>
         <div style={{ flex: 1 }} />
         {notice && <span role="status" style={{ fontSize: ".8rem", color: "var(--pass)", fontWeight: 600 }}>{notice}</span>}
         <button type="button" data-krok-keep="" onClick={() => setShowKeys((v) => !v)} aria-expanded={showKeys} title={t("kb.helpTitle")}
