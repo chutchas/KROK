@@ -121,7 +121,7 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
         position: "relative",
         opacity: dragging ? 0.4 : 1,
         border: selected ? "1.5px solid var(--accent)" : "1px solid var(--line)",
-        borderRadius: 10, padding: grip ? "14px 14px 14px 30px" : 14, margin: "10px 0",
+        borderRadius: 10, padding: grip ? "14px 14px 14px var(--krok-grip-pad, 30px)" : 14, margin: "10px 0",
         background: selected ? "var(--accent-soft)" : "var(--surface)",
         cursor: onSelect ? "pointer" : "default",
         boxShadow: selected ? "0 2px 10px rgba(0,0,0,.08)" : "none",
@@ -258,7 +258,7 @@ export default function FormPreview({
         flashTimer.current = window.setTimeout(() => setFlashFid(null), 1200);
       }}
       onPointerCancel={() => setDrag(null)}
-      style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-3)", cursor: drag ? "grabbing" : "grab", touchAction: "none", borderRadius: "10px 0 0 10px", background: "var(--code-bg)" }}
+      className="krok-grip" style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 24, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--ink-3)", cursor: drag ? "grabbing" : "grab", touchAction: "none", borderRadius: "10px 0 0 10px", background: "var(--code-bg)" }}
     >
       <Icon icon={GripVertical} className="h-4 w-4" />
     </span>
@@ -267,7 +267,7 @@ export default function FormPreview({
   const editable = !!onSelect;
   const allFields = schema.steps.flatMap((st) => st.fields);
   const addBtn: React.CSSProperties = {
-    display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%",
+    display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", minHeight: 44,
     padding: "9px 12px", margin: "6px 0 2px", borderRadius: 9, border: "1px dashed var(--accent)",
     background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit",
     fontSize: ".84rem", fontWeight: 600,

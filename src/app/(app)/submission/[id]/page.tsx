@@ -220,7 +220,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
   // สลับแท็บแล้วยังจำที่มา (ปุ่มกลับยังพาไปหน้าเดิม)
   const fromQ = (sep: "?" | "&") => (sp.from && /^[a-z]{1,20}$/.test(sp.from) ? `${sep}from=${sp.from}` : "");
   const tab = (on: boolean): React.CSSProperties => ({
-    display: "inline-flex", alignItems: "center", minHeight: 40, padding: "0 16px", borderRadius: 8, fontSize: ".9rem", fontWeight: 600, textDecoration: "none",
+    display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 8, fontSize: ".9rem", fontWeight: 600, textDecoration: "none",
     background: on ? "var(--surface)" : "transparent", color: on ? "var(--ink)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none",
   });
 

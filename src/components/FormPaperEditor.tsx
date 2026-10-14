@@ -495,20 +495,20 @@ export default function FormPaperEditor({
         <div className="krok-paper-add" style={{ display: "contents" }}>
         {onAddField && (
           <button data-krok-keep="" onClick={onAddField} className="inline-flex items-center gap-1.5"
-            style={{ padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
+            style={{ minHeight: 44, padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
           </button>
         )}
         {onAddStep && (
           <button data-krok-keep="" onClick={onAddStep} className="inline-flex items-center gap-1.5"
-            style={{ padding: "7px 12px", border: "1px solid var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
+            style={{ minHeight: 44, padding: "7px 12px", border: "1px solid var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addStep")}
           </button>
         )}
         {tenantId && (
           <button data-krok-keep="" onClick={() => pickImageAt(null)} className="inline-flex items-center gap-1.5"
             title={t("brand.addImageHint")}
-            style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+            style={{ minHeight: 44, padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
             <Icon icon={ImagePlus} className="h-4 w-4" /> {t("brand.addImage")}
           </button>
         )}
@@ -517,21 +517,21 @@ export default function FormPaperEditor({
         {notice && <span role="status" style={{ fontSize: ".8rem", color: "var(--pass)", fontWeight: 600 }}>{notice}</span>}
         <button type="button" data-krok-keep="" onClick={() => setShowKeys((v) => !v)} aria-expanded={showKeys} title={t("kb.helpTitle")}
           className="inline-flex items-center gap-1.5"
-          style={{ padding: "7px 10px", border: "1px solid var(--line)", borderRadius: 8, background: showKeys ? "var(--accent-soft)" : "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+          style={{ minHeight: 44, padding: "7px 10px", border: "1px solid var(--line)", borderRadius: 8, background: showKeys ? "var(--accent-soft)" : "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
           <Icon icon={Keyboard} className="h-4 w-4" /> ?
         </button>
         {onPrint && (
           <button onClick={onPrint} className="inline-flex items-center gap-1.5"
-            style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+            style={{ minHeight: 44, padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
             <Icon icon={Printer} className="h-4 w-4" /> {t("paper.print")}
           </button>
         )}
         <button onClick={() => { onCheckpoint?.(); commit(arranged()); }} className="inline-flex items-center gap-1.5"
-          style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+          style={{ minHeight: 44, padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
           <Icon icon={LayoutGrid} className="h-4 w-4" /> {t("paper.autoArrange")}
         </button>
         <button onClick={() => { onCheckpoint?.(); const n = { ...schema }; delete n.layout; onChange(n); }} className="inline-flex items-center gap-1.5"
-          style={{ padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
+          style={{ minHeight: 44, padding: "7px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem" }}>
           <Icon icon={RotateCcw} className="h-4 w-4" /> {t("paper.reset")}
         </button>
       </div>

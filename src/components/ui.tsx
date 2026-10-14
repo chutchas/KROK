@@ -14,7 +14,10 @@ export function Button({ variant = "default", style, loading, disabled, children
     cursor: "pointer",
     borderRadius: 8,
     padding: "10px 18px",
-    border: "1px solid var(--line)",
+    // กรอบแบบแยกส่วน (ไม่ใช้ border ย่อ) — variant เปลี่ยนแค่ borderColor ได้ ไม่ปน shorthand กับ longhand (React เตือนตอน re-render)
+    borderWidth: 1,
+    borderStyle: "solid",
+    borderColor: "var(--line)",
     background: "var(--surface)",
     color: "var(--ink)",
     transition: "opacity .15s",
@@ -26,7 +29,7 @@ export function Button({ variant = "default", style, loading, disabled, children
   const v: Record<string, React.CSSProperties> = {
     primary: { background: "var(--accent)", color: "var(--accent-ink)", borderColor: "var(--accent)", fontWeight: 600 },
     default: {},
-    ghost: { background: "none", border: "none", color: "var(--ink-2)" },
+    ghost: { background: "none", borderColor: "transparent", color: "var(--ink-2)" },
     danger: { color: "var(--fail)" },
   };
   return (

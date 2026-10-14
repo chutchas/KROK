@@ -208,7 +208,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               : t("rep.hintOneForm")}
           </span>
           {preview && (
-            <span style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
+            <span role="status" aria-live="polite" style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
               {tt("rep.found", { n: preview.total.toLocaleString() })}
               {preview.total > preview.rows.length && tt("rep.showingFirst", { n: preview.rows.length })}
             </span>
@@ -223,7 +223,31 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
           <Card><p style={{ color: "var(--ink-3)", margin: 0 }}>{t("rep.noData")}</p></Card>
         ) : (
           <Card>
-            <div style={{ overflowX: "auto" }}>
+            {/* มือถือ: การ์ดแถวละใบ (ตารางกว้างเกินจอ คอลัมน์ผลลัพธ์อยู่นอกจอ) · จอกว้าง: ตาราง */}
+            <ul className="krok-rep-cards" aria-label={t("rep.tableLabel")} style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+              {preview.rows.map((r) => (
+                <li key={r.id}>
+                  <a href={`/submission/${r.id}?from=reports`} style={{ display: "grid", gap: 4, padding: "12px 14px", border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface)", color: "var(--ink)", textDecoration: "none" }}>
+                    <span style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                      <span style={{ fontWeight: 600, fontSize: ".95rem", minWidth: 0 }}><InlineFormIcon value={r.icon} size={15} />{r.form}</span>
+                      <span style={{ flex: "0 0 auto" }}>
+                        {r.result === "fail"
+                          ? r.closed ? <Pill kind="na">{t("rep.failClosedShort")}</Pill> : <Pill kind="fail">{t("rep.fail")}</Pill>
+                          : <Pill kind="pass">{t("rep.pass")}</Pill>}
+                      </span>
+                    </span>
+                    <span style={{ fontSize: ".84rem", color: "var(--ink-2)" }}>{fmtWhen(r.when)} · {r.user}</span>
+                    {(r.approval !== "none" || r.failCount > 0) && (
+                      <span style={{ fontSize: ".82rem", color: "var(--ink-3)", display: "flex", gap: 10, flexWrap: "wrap" }}>
+                        {r.approval !== "none" && <span>{t("rep.colApproval")}: {approvalLabel(r.approval)}</span>}
+                        {r.failCount > 0 && <span style={{ color: "var(--fail-text)" }}>{t("rep.colIssues")}: {r.failCount}</span>}
+                      </span>
+                    )}
+                  </a>
+                </li>
+              ))}
+            </ul>
+            <div className="krok-rep-table" role="region" aria-label={t("rep.tableLabel")} tabIndex={0} style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".85rem", minWidth: 620 }}>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--ink-3)", borderBottom: "1px solid var(--line)" }}>
@@ -263,7 +287,9 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               </div>
             )}
             <p style={{ color: "var(--ink-3)", fontSize: ".78rem", margin: "10px 0 0" }}>{t("report.hint")}</p>
-            <style>{`.krok-rep-row:hover{background:var(--surface-2)}`}</style>
+            <style>{`.krok-rep-row:hover{background:var(--surface-2)}
+              .krok-rep-cards{display:none !important}
+              @media(max-width:640px){ .krok-rep-cards{display:grid !important} .krok-rep-table{display:none} }`}</style>
           </Card>
         )
       )}
