@@ -30,7 +30,7 @@ export interface FormRow {
   device_scope: "any" | "selected";
 }
 
-export default async function StudioPage({ searchParams }: { searchParams: Promise<{ tpl?: string; mode?: string; edit?: string }> }) {
+export default async function StudioPage({ searchParams }: { searchParams: Promise<{ tpl?: string; mode?: string; edit?: string; view?: string }> }) {
   const session = await enforceMenu("studio");
   if (!canManage(session.role))
     return (
@@ -92,7 +92,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
   const teams = ((teamRows || []) as { id: string; name: string }[]).map((tt) => ({ id: tt.id, name: tt.name }));
 
   // ?tpl=<id> จากคลังเทมเพลต → เปิดเป็นร่างในหน้าแก้ไข (ยังไม่บันทึก)
-  const { tpl, mode, edit } = await searchParams;
+  const { tpl, mode, edit, view } = await searchParams;
   const template = tpl ? getTemplate(tpl)?.schema ?? null : null;
 
   return (
@@ -100,7 +100,7 @@ export default async function StudioPage({ searchParams }: { searchParams: Promi
       {/* โควตาใกล้เต็ม/เต็ม — แจ้งก่อนลงมือสร้าง (ไม่บล็อกการโหลดหน้า) */}
       <Suspense fallback={null}><QuotaHint session={session} metrics={["forms", "ai_form_gen", "ai_form_from_image"]} /></Suspense>
       <StudioClient initialForms={forms} members={members} teams={teams} tenantId={session.tenantId} template={template} branding={branding} initialEditId={edit && /^[0-9a-f-]{36}$/i.test(edit) ? edit : null}
-        initialMode={mode === "template" || mode === "file" ? mode : "prompt"} />
+        initialMode={mode === "template" || mode === "file" ? mode : "prompt"} initialView={view === "all" ? "all" : null} />
     </>
   );
 }
