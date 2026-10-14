@@ -1,5 +1,5 @@
 "use client";
-import { FileQuestion, ClipboardList, LayoutDashboard } from "lucide-react";
+import { FileQuestion, ClipboardList, LayoutDashboard, BookOpen } from "lucide-react";
 import Icon from "@/components/Icon";
 import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
@@ -22,6 +22,7 @@ export default function NotFoundView({ bare = false }: { bare?: boolean }) {
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>
         <a href="/forms" style={{ ...btn, background: "var(--accent)", color: "var(--accent-ink)" }}><Icon icon={ClipboardList} className="h-4 w-4" /> {t("nf.toForms")}</a>
         <a href="/dashboard" style={{ ...btn, border: "1px solid var(--line)", color: "var(--ink)", background: "var(--surface)" }}><Icon icon={LayoutDashboard} className="h-4 w-4" /> {t("nf.toDashboard")}</a>
+        <a href="/help" style={{ ...btn, border: "1px solid var(--line)", color: "var(--ink)", background: "var(--surface)" }}><Icon icon={BookOpen} className="h-4 w-4" /> {t("nav.help")}</a>
       </div>
     </div>
   );

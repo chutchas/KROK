@@ -257,6 +257,13 @@ export default function AppShell({
           .krok-nav a:not([aria-current="page"]) .krok-nav-label{ display: none; }
           .krok-ws-slot .krok-ws-name{ max-width: 96px !important; }
         }
+        /* 641–760px: เมนูไอคอน 6 ตัว + ชื่อหน้าที่อยู่ ยังกว้างกว่าที่เหลือ (เมนูท้าย ๆ ไปจางอยู่ใต้ปุ่ม workspace)
+           → ซ่อนตัวอักษร KROK ข้างโลโก้ และชื่อ workspace (เหลือปุ่มสัญลักษณ์ — ชื่อเต็มอยู่ใน title / เมนู ☰) */
+        @media (min-width: 641px) and (max-width: 760px){
+          .krok-brand .brand-text{ display: none; }
+          .krok-ws-slot .krok-ws-name{ display: none !important; }
+          .krok-nav a{ padding-left: 10px !important; padding-right: 10px !important; }
+        }
         /* เมนูหมวดตั้งค่าที่ต่อท้ายตามหน้า (ทีม/แพ็กเกจ/Workspace): ซ่อนถึง 1279px (1200–1279 เมนูเต็มชื่อ + ตัวนี้ = ล้นซ้าย) — อยู่ในเมนู ☰ */
         @media (min-width: 641px) and (max-width: 1279px){
           .krok-nav a.krok-nav-extra{ display: none !important; }

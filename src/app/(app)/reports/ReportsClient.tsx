@@ -240,7 +240,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
                     {(r.approval !== "none" || r.failCount > 0) && (
                       <span style={{ fontSize: ".82rem", color: "var(--ink-3)", display: "flex", gap: 10, flexWrap: "wrap" }}>
                         {r.approval !== "none" && <span>{t("rep.colApproval")}: {approvalLabel(r.approval)}</span>}
-                        {r.failCount > 0 && <span style={{ color: "var(--fail-text)" }}>{t("rep.colIssues")}: {r.failCount}</span>}
+                        {r.failCount > 0 && <span style={{ color: r.closed ? "var(--ink-3)" : "var(--fail-text)" }}>{t("rep.colIssues")}: {r.failCount}</span>}
                       </span>
                     )}
                   </a>
@@ -274,7 +274,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
                           : <Pill kind="pass">{t("rep.pass")}</Pill>}
                       </td>
                       <td style={td}>{r.approval === "none" ? "-" : approvalLabel(r.approval)}</td>
-                      <td style={{ ...td, textAlign: "right", color: r.failCount ? "var(--fail)" : "var(--ink-3)" }}>{r.failCount || "-"}</td>
+                      <td style={{ ...td, textAlign: "right", color: r.failCount && !r.closed ? "var(--fail-text)" : "var(--ink-3)" }}>{r.failCount || "-"}</td>
                       <td style={{ ...td, color: "var(--ink-3)", paddingLeft: 0 }} aria-hidden><Icon icon={ChevronRight} className="h-4 w-4" /></td>
                     </tr>
                   ))}

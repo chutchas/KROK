@@ -994,6 +994,7 @@ export const th = {
   "nav.adminContacts": "ลูกค้าติดต่อ",
   "contact.backApp": "กลับไปที่แอป",
   "contact.subMember": "มีปัญหาการใช้งาน สงสัยเรื่องแพ็กเกจ หรืออยากเสนอฟีเจอร์ — บอกเราได้เลย ทีมงานจะตอบกลับทางอีเมลภายใน 1–2 วันทำการ",
+  "contact.tryHelp": "ลองหาคำตอบในคู่มือก่อนก็ได้:",
   "contact.topic": "ประเภทเรื่อง",
   "contact.topic.usage": "ปัญหาการใช้งาน",
   "contact.topic.billing": "แพ็กเกจและการชำระเงิน",

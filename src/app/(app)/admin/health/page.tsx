@@ -4,6 +4,7 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import { runHealth } from "@/lib/platform-health";
 import HealthClient from "./HealthClient";
 
+export const metadata = { title: "สุขภาพระบบ" };
 export const dynamic = "force-dynamic";
 export const maxDuration = 30;
 
