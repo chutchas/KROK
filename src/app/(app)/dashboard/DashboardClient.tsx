@@ -16,6 +16,7 @@ import {
   Check, Clock, X, Plus, Pencil, Trash2, GripVertical,
   TrendingUp, Hash, Trophy, FileText, Users, Zap,
   ChevronUp, ChevronDown, MapPin, Settings2, Smartphone,
+  AlertTriangle, ListOrdered, LayoutTemplate,
 } from "lucide-react";
 import { confirmDialog } from "@/components/dialogs";
 import { AreaPicker, AreaSubtitle, AreaView, AreaWidgetTitle } from "./AreaWidget";
@@ -23,11 +24,12 @@ import { answerPhotoKeys } from "@/lib/photo-slots";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import {
-  WIDGET_FORMATS, WIDGET_METRICS, RANGES_BY_FORMAT,
+  WIDGET_FORMATS, METRICS_BY_FORMAT, RANGES_BY_FORMAT,
   formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS,
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
+import { DASH_TEMPLATES, templateWidgets, type DashTemplateKey } from "@/lib/dashboard-templates";
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
 
 // รวมคำขอของทุก widget ที่ขอพร้อมกันเป็นการเรียก server ครั้งเดียว
@@ -92,8 +94,10 @@ function fmtValue(metric: WidgetMetric, v: number, en: boolean, tt: TTFn): strin
 export default function DashboardClient({
   tenantId, initial, forms, summary, initialWidgets, hasSchedules = false, areas = [],
   workspaceWidgets = [], workspaceReady = false, isWsAdmin = false, seesAllForms = false,
-  attention, sections = DEFAULT_DASH_SECTIONS, canFill = false, canCreate = false,
+  attention, sections = DEFAULT_DASH_SECTIONS, canFill = false, canCreate = false, recommended,
 }: {
+  /** แม่แบบที่แนะนำ (server ดูจากข้อมูลจริง) + เหตุผล */
+  recommended?: { key: DashTemplateKey; why: { th: string; en: string } };
   /** มีสิทธิ์เมนูกรอกฟอร์ม → ปุ่มหลักของหน้า = "เริ่มกรอกฟอร์ม" (งานจริง) แทน "เพิ่มการ์ด" */
   canFill?: boolean;
   /** สร้างฟอร์มได้ (เมนูสร้างฟอร์ม) — ผู้ใช้ใหม่ที่ยังไม่มีฟอร์ม: ปุ่มหลัก = สร้างฟอร์มแรก */
@@ -133,6 +137,7 @@ export default function DashboardClient({
     [widgets, seesAllForms, formIds]
   );
   const [builder, setBuilder] = useState<DashWidget | null>(null); // widget กำลังสร้าง/แก้
+  const [picking, setPicking] = useState(false); // ตัวเลือกแม่แบบ
   const [dragId, setDragId] = useState<string | null>(null);
   // โหมดจัดการการ์ด: ปุ่มเลื่อน/แก้/ลบ โผล่เฉพาะตอนเปิด (ปกติดูอย่างเดียว ไม่เสี่ยงกดลบพลาด)
   const [managing, setManaging] = useState(false);
@@ -145,6 +150,21 @@ export default function DashboardClient({
       <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
     </button>
   );
+
+  const tplBtn = (primary: boolean) => (
+    <button type="button" onClick={() => setPicking(true)}
+      className="inline-flex items-center gap-1.5"
+      style={{ minHeight: 40, padding: "6px 14px", borderRadius: 8, border: `1px solid ${primary ? "var(--accent)" : "var(--line-strong)"}`, background: primary ? "var(--accent)" : "var(--surface)", color: primary ? "var(--accent-ink)" : "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+      <Icon icon={LayoutTemplate} className="h-4 w-4" /> {t("dash.useTemplate")}
+    </button>
+  );
+  async function applyTemplate(key: DashTemplateKey, mode: "append" | "replace") {
+    if (mode === "replace" && widgets.length && !(await confirmDialog({ message: tt("dash.tplReplaceConfirm", { n: widgets.length }), confirmLabel: t("dash.tplReplace"), danger: true }))) return;
+    const add = templateWidgets(key);
+    persist(mode === "replace" ? add : [...widgets, ...add]);
+    setPicking(false);
+    setManaging(false);
+  }
 
   const formName = useMemo(() => {
     const m = new Map(forms.map((f) => [f.id, f.title]));
@@ -242,7 +262,7 @@ export default function DashboardClient({
                 <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: 0, flex: "1 1 260px" }}>
                   {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
                 </p>
-                {canEdit && addCardBtn}
+                {canEdit && <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>{tplBtn(true)}{addCardBtn}</span>}
               </div>
             )}
             {shown.length > 0 && (
@@ -251,6 +271,7 @@ export default function DashboardClient({
                   <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
                   {canEdit && (
                     <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+                    {managing && tplBtn(false)}
                     {managing && addCardBtn}
                     <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
                       className="inline-flex items-center gap-1.5"
@@ -351,6 +372,11 @@ export default function DashboardClient({
       </>}
 
       {open && <DetailModal sub={open} tenantId={tenantId} onClose={() => setOpen(null)} />}
+      {picking && (
+        <TemplatePicker recommended={recommended} hasCards={widgets.length > 0} en={en}
+          onCancel={() => setPicking(false)} onApply={(k, m) => void applyTemplate(k, m)}
+          onEmpty={() => { setPicking(false); setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" }); }} />
+      )}
       {builder && (
         <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t}
           onCancel={() => setBuilder(null)} onSave={upsertWidget} />
@@ -404,8 +430,10 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
   }, [key, attempt]);
 
   const isArea = w.format === "area";
-  const fIcon = isArea ? MapPin : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
-  const sub = isArea ? <AreaSubtitle name={areaName(w.formId)} /> : `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
+  const noMetric = w.format === "openlist" || w.format === "topfails";
+  const fIcon = isArea ? MapPin : w.format === "openlist" ? AlertTriangle : w.format === "topfails" ? ListOrdered
+    : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
+  const sub = isArea ? <AreaSubtitle name={areaName(w.formId)} /> : w.format === "openlist" ? formName(w.formId) : `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
 
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, height: "100%", display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
@@ -413,7 +441,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
         {onEdit && <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>}
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600 }}>
-            <Icon icon={fIcon} className="h-4 w-4" /> {isArea ? <AreaWidgetTitle /> : metricLabel(w.metric, en)}
+            <Icon icon={fIcon} className="h-4 w-4" /> {isArea ? <AreaWidgetTitle /> : noMetric ? formatLabel(w.format, en) : metricLabel(w.metric, en)}
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".74rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
@@ -443,6 +471,8 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
             {res.kind === "trend" && <TrendView res={res} metric={w.metric} en={en} />}
             {res.kind === "ranking" && <RankingView res={res} metric={w.metric} en={en} />}
             {res.kind === "area" && <AreaView items={res.items} grouped={w.formId === "all"} />}
+            {res.kind === "openlist" && <OpenListView res={res} />}
+            {res.kind === "topfails" && <TopFailsView res={res} />}
           </>
         )}
       </div>
@@ -481,7 +511,7 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
       <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72 }}>
         {series.map((s) => (
           <div key={s.key} title={`${s.key.slice(5)} · ${s.v}`} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
-            <div style={{ height: `${Math.round((s.v / max) * 100)}%`, minHeight: s.v > 0 ? 3 : 0, background: "var(--accent)", borderRadius: 3, opacity: 0.85 }} />
+            <div style={{ height: `${Math.round((s.v / max) * 100)}%`, minHeight: s.v > 0 ? 3 : 0, background: metric === "fail" ? "var(--fail)" : "linear-gradient(180deg, var(--brand-stop-2), var(--brand-stop-3))", borderRadius: 3, opacity: metric === "fail" ? 0.8 : 1 }} />
           </div>
         ))}
       </div>
@@ -509,11 +539,138 @@ function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "
               <span className="tabnum" style={{ color: "var(--ink-2)", flexShrink: 0 }}>{fmtValue(metric, r.v, en, tt)}</span>
             </span>
             <span style={{ display: "block", height: 5, borderRadius: 4, background: "var(--surface-2)", marginTop: 3, overflow: "hidden" }}>
-              <span style={{ display: "block", height: "100%", width: `${Math.round((r.v / max) * 100)}%`, background: "var(--accent)", borderRadius: 4 }} />
+              <span style={{ display: "block", height: "100%", width: `${Math.round((r.v / max) * 100)}%`, background: metric === "fail" || metric === "openfail" ? "var(--fail)" : "var(--brand-gradient)", borderRadius: 4 }} />
             </span>
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+const daysOpen = (ts: string) => Math.max(0, Math.floor((Date.now() - Date.parse(ts)) / 86_400_000));
+function OpenListView({ res }: { res: Extract<WidgetResult, { kind: "openlist" }> }) {
+  const { t, tt } = useT();
+  if (res.items.length === 0) return <div style={{ color: "var(--pass-text)", fontSize: ".86rem", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={Check} className="h-4 w-4" /> {t("dash.openNone")}</div>;
+  return (
+    <div>
+      <div className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.5rem", fontWeight: 700, color: "var(--fail-text)", marginBottom: 6 }}>{res.total.toLocaleString()}</div>
+      <div style={{ display: "grid" }}>
+        {res.items.map((r) => {
+          const d = daysOpen(r.at);
+          return (
+            <a key={r.id} href={`/submission/${r.id}`} style={{ display: "flex", alignItems: "center", gap: 8, minHeight: 44, padding: "6px 0", borderTop: "1px solid var(--line)", color: "inherit", textDecoration: "none", minWidth: 0 }}>
+              <span style={{ flex: 1, minWidth: 0 }}>
+                <b style={{ display: "block", fontSize: ".84rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}><InlineFormIcon value={r.icon} size={14} />{r.docNo ? `${r.docNo} · ` : ""}{r.title}</b>
+                <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".74rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.fail || "—"}{r.who ? ` · ${r.who}` : ""}</small>
+              </span>
+              <span className="tabnum" style={{ flexShrink: 0, fontSize: ".74rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: d >= 3 ? "var(--fail-soft, #fdeceb)" : "var(--warn-soft)", color: d >= 3 ? "var(--fail-text)" : "var(--warn)" }}>
+                {d === 0 ? t("dash.openToday") : tt("dash.openDays", { n: d })}
+              </span>
+            </a>
+          );
+        })}
+      </div>
+      {res.total > res.items.length && <div style={{ color: "var(--ink-3)", fontSize: ".76rem", marginTop: 6 }}>{tt("dash.openMore", { n: res.total - res.items.length })}</div>}
+    </div>
+  );
+}
+function TopFailsView({ res }: { res: Extract<WidgetResult, { kind: "topfails" }> }) {
+  const { t, tt } = useT();
+  if (res.items.length === 0) return <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.none")}</div>;
+  const max = Math.max(1, ...res.items.map((r) => r.v));
+  return (
+    <div style={{ display: "grid", gap: 8 }}>
+      {res.items.map((r, i) => (
+        <div key={i} style={{ minWidth: 0 }}>
+          <span style={{ display: "flex", justifyContent: "space-between", gap: 8, fontSize: ".84rem" }}>
+            <span title={r.label} style={{ flex: "1 1 auto", minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.label}</span>
+            <b className="tabnum" style={{ flexShrink: 0, color: "var(--fail-text)" }}>{r.v.toLocaleString()}</b>
+          </span>
+          <span style={{ display: "block", height: 5, borderRadius: 4, background: "var(--surface-2)", marginTop: 3, overflow: "hidden" }}>
+            <span style={{ display: "block", height: "100%", width: `${Math.round((r.v / max) * 100)}%`, background: "var(--fail)", opacity: 0.75, borderRadius: 4 }} />
+          </span>
+        </div>
+      ))}
+      <div style={{ color: "var(--ink-3)", fontSize: ".74rem" }}>{tt("dash.topFailsOf", { n: res.total.toLocaleString() })}</div>
+    </div>
+  );
+}
+
+// ---------- ตัวเลือกแม่แบบ ----------
+function TemplatePicker({ recommended, hasCards, en, onCancel, onApply, onEmpty }: {
+  recommended?: { key: DashTemplateKey; why: { th: string; en: string } };
+  hasCards: boolean; en: boolean;
+  onCancel: () => void; onApply: (k: DashTemplateKey, mode: "append" | "replace") => void; onEmpty: () => void;
+}) {
+  const { t, tt } = useT();
+  const order = recommended ? [...DASH_TEMPLATES].sort((a, b) => Number(b.key === recommended.key) - Number(a.key === recommended.key)) : DASH_TEMPLATES;
+  const [sel, setSel] = useState<DashTemplateKey>(order[0].key);
+  const [mode, setMode] = useState<"append" | "replace">("append");
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [onCancel]);
+  return (
+    <div {...backdropClose(onCancel)} role="dialog" aria-modal="true" aria-labelledby="tpl-h"
+      style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
+      <div style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 760, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 22 }}>
+        <h2 id="tpl-h" style={{ fontSize: "1.2rem", margin: 0 }}>{t("dash.tplTitle")}</h2>
+        <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 14px" }}>{t("dash.tplSub")}</p>
+        <div role="radiogroup" aria-labelledby="tpl-h" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(320px, 100%), 1fr))", gap: 10 }}>
+          {order.map((tp) => {
+            const on = sel === tp.key;
+            const rec = recommended?.key === tp.key;
+            return (
+              <button key={tp.key} type="button" role="radio" aria-checked={on} onClick={() => setSel(tp.key)}
+                style={{ textAlign: "left", padding: 14, borderRadius: 12, cursor: "pointer", fontFamily: "inherit", color: "var(--ink)",
+                  border: on ? "2px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", display: "flex", flexDirection: "column", gap: 6 }}>
+                <span style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  <span aria-hidden style={{ fontSize: "1.2rem" }}>{tp.emoji}</span>
+                  <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".98rem" }}>{en ? tp.name.en : tp.name.th}</b>
+                  {rec && <span style={{ fontSize: ".72rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "var(--brand-gradient)", color: "#0f1d2e" }}>{t("dash.tplRecommended")}</span>}
+                </span>
+                <span style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{en ? tp.desc.en : tp.desc.th}</span>
+                {rec && recommended && <span style={{ color: "var(--accent-text)", fontSize: ".76rem", fontWeight: 600 }}>{en ? recommended.why.en : recommended.why.th}</span>}
+                <span style={{ display: "flex", gap: 4, flexWrap: "wrap", marginTop: 2 }}>
+                  {tp.widgets.map(([f, m], i) => (
+                    <span key={i} style={{ fontSize: ".7rem", padding: "2px 7px", borderRadius: 10, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink-2)" }}>
+                      {f === "stat" || f === "trend" || f === "ranking" ? metricLabel(m, en) : formatLabel(f, en)}
+                    </span>
+                  ))}
+                </span>
+                <span style={{ color: "var(--ink-3)", fontSize: ".72rem" }}>{tt("dash.tplCards", { n: tp.widgets.length })}</span>
+              </button>
+            );
+          })}
+        </div>
+        {hasCards && (
+          <div role="radiogroup" aria-label={t("dash.useTemplate")} style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
+            {(["append", "replace"] as const).map((m) => (
+              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} style={{ ...chip(mode === m), minHeight: 40 }}>
+                {m === "append" ? t("dash.tplAppend") : t("dash.tplReplace")}
+              </button>
+            ))}
+          </div>
+        )}
+        <div style={{ display: "flex", gap: 10, marginTop: 18, flexWrap: "wrap", alignItems: "center" }}>
+          <button type="button" onClick={() => onApply(sel, hasCards ? mode : "replace")}
+            style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+            {t("dash.tplApply")}
+          </button>
+          <button type="button" onClick={onCancel}
+            style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>
+            {t("common.cancel")}
+          </button>
+          {!hasCards && (
+            <button type="button" onClick={onEmpty}
+              style={{ marginLeft: "auto", minHeight: 44, padding: "10px 4px", border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", textDecoration: "underline" }}>
+              {t("dash.tplEmpty")}
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -530,6 +687,12 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
 
   const ranges = RANGES_BY_FORMAT[format];
   const effRange = ranges.includes(range) ? range : ranges[0];
+  const metrics = METRICS_BY_FORMAT[format];
+  const effMetric = metrics.length && !metrics.includes(metric) ? metrics[0] : metric;
+  const noMetric = metrics.length === 0; // area / openlist / topfails
+  const showRange = format !== "area" && format !== "openlist";
+  const metricN = format === "ranking" ? 2 : 3;
+  const rangeN = noMetric ? metricN : metricN + 1;
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onCancel(); };
@@ -569,17 +732,18 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
           </>
         )}
 
-        {format !== "area" && <>
-        {/* 3. ค่าที่แสดง */}
-        <Section n={format === "ranking" ? 2 : 3} label={t("dash.stepMetric" as never)} />
+        {!noMetric && <>
+        {/* ค่าที่แสดง (เฉพาะค่าที่รูปแบบนี้รองรับ) */}
+        <Section n={metricN} label={t("dash.stepMetric" as never)} />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-          {WIDGET_METRICS.map((m) => (
-            <button key={m} onClick={() => setMetric(m)} style={chip(metric === m)}>{metricLabel(m, en)}</button>
+          {metrics.map((m) => (
+            <button key={m} onClick={() => setMetric(m)} style={chip(effMetric === m)}>{metricLabel(m, en)}</button>
           ))}
         </div>
-
-        {/* 4. ช่วงเวลา */}
-        <Section n={format === "ranking" ? 3 : 4} label={t("dash.stepRange" as never)} />
+        </>}
+        {showRange && <>
+        {/* ช่วงเวลา */}
+        <Section n={rangeN} label={t("dash.stepRange" as never)} />
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {ranges.map((r) => (
             <button key={r} onClick={() => setRange(r)} style={chip(effRange === r)}>{rangeLabel(r, en)}</button>
@@ -590,7 +754,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
         <div style={{ display: "flex", gap: 10, marginTop: 20, flexWrap: "wrap" }}>
           <button onClick={() => onSave(format === "area"
               ? { id: initial.id, format, formId: areas.some((a) => a.id === formId) ? formId : "all", metric: "usage", range: "all" }
-              : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric, range: effRange })}
+              : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric: noMetric ? "usage" : effMetric, range: effRange })}
             style={{ padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
             {t("common.save" as never)}
           </button>
