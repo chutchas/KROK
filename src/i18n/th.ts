@@ -1069,6 +1069,7 @@ export const th = {
   "print.photos.hiddenHint": "ยังถ่ายรูปและเก็บในระบบตามปกติ แต่ตอนพิมพ์ช่องรูปจะเว้นว่าง — ถ้าไม่อยากให้มีช่องว่างกลางหน้า ให้ย้ายช่องรูปไปไว้ท้ายเอกสารในมุมมองกระดาษ",
   "print.photos.noPhotoFields": "ฟอร์มนี้ยังไม่มีฟิลด์รูปถ่าย",
   "print.photos.download": "ดาวน์โหลดรูปทั้งหมด",
+  "print.photos.short": "รูปทั้งหมด",
   "print.photos.downloading": "กำลังเตรียมไฟล์…",
   "print.photos.downloadFail": "ดาวน์โหลดรูปไม่สำเร็จ",
   "login.emailInvalid": "กรุณากรอกอีเมลให้ถูกต้อง",
