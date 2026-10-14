@@ -224,3 +224,23 @@ export async function dispatchNotifications(tenantId: string, ev: NotifyEvent, i
   }
   await Promise.allSettled(jobs);
 }
+
+/**
+ * อีเมลถึงคนเจาะจง (เช่น คนกรอกใบ เมื่อปิด/เปิดเรื่องกลับ) ผ่าน SMTP ของ workspace — best-effort
+ * ส่งเฉพาะเมื่อ workspace เปิดอีเมลไว้และแพ็กเกจมีสิทธิ์แจ้งเตือน · ไม่ตั้ง SMTP = ไม่ส่ง (ยังแจ้งในกระดิ่งตามปกติ)
+ */
+export async function sendWorkspaceEmailTo(tenantId: string, to: string[], subject: string, text: string): Promise<void> {
+  const list = to.map((x) => x.trim()).filter((x) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(x));
+  if (!list.length) return;
+  const admin = getAdminClient();
+  if (!admin) return;
+  const { data } = await admin.from("tenant_notify").select("*").eq("tenant_id", tenantId).maybeSingle();
+  const cfg = data as NotifyConfig | null;
+  if (!cfg?.email_enabled || !cfg.smtp_host || !cfg.smtp_port || !cfg.email_from) return;
+  if (!(await notifyAllowed(tenantId).catch(() => true))) return;
+  await sendEmail(
+    { host: cfg.smtp_host, port: cfg.smtp_port, user: cfg.smtp_user || "", pass: cfg.smtp_pass || "", from: cfg.email_from, to: list },
+    subject,
+    text,
+  );
+}

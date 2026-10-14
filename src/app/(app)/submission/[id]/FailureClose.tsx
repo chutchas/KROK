@@ -111,8 +111,8 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
             <span style={{ display: "inline-flex", color: "var(--pass)" }}><Icon icon={CircleCheck} className="h-[18px] w-[18px]" /></span>
             {tt("fc.closedTitleN", { n: state.items.length })}
           </h2>
-          <span style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>
-            {state.closedBy || "—"} · <LocalDate iso={state.closedAt} />
+          <span style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>
+            {t("fc.closedBy")} {state.closedBy || "—"} · <LocalDate iso={state.closedAt} />
           </span>
         </div>
         {list}
@@ -140,7 +140,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
                 </Button>
               </>
             ) : (
-              <Button ref={reopenBtnRef} variant="ghost" onClick={() => setReopening(true)} style={{ fontSize: ".82rem" }}>
+              <Button ref={reopenBtnRef} variant="ghost" onClick={() => setReopening(true)} aria-expanded={false} style={{ fontSize: ".82rem", minHeight: 44 }}>
                 <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
               </Button>
             )}
@@ -160,7 +160,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
         </h2>
         {supported && days > 0 && <span style={{ color: "var(--fail-text)", fontSize: ".82rem", fontWeight: 600 }}>{tt("fc.daysOpen", { n: days })}</span>}
         {supported && canClose && !open && (
-          <Button ref={closeBtnRef} onClick={() => setOpen(true)} style={{ marginLeft: "auto" }}>
+          <Button ref={closeBtnRef} onClick={() => setOpen(true)} aria-expanded={false} style={{ marginLeft: "auto", minHeight: 44 }}>
             <Icon icon={CircleCheck} className="h-4 w-4" /> {t("fc.close")}
           </Button>
         )}
@@ -190,28 +190,43 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
   );
 }
 
-/** บันทึกการปิดเรื่องบนหน้าพิมพ์/PDF — กล่องแยกท้ายเอกสาร ไม่แตะเนื้อหาที่กรอก (หลักฐานสำหรับผู้ตรวจสอบ) */
-export function FailureCloseRecord({ closedAt, closedBy, note, items }: { closedAt: string | null; closedBy: string | null; note: string | null; items: { label: string }[] }) {
+/**
+ * บันทึกการปิดเรื่องบนหน้าพิมพ์/PDF — กล่องแยกท้ายเอกสาร ไม่แตะเนื้อหาที่กรอก (หลักฐานสำหรับผู้ตรวจสอบ)
+ * มักตกไปหน้าใหม่ (กระดาษเต็ม A4) จึงต้องบอกเองว่าเป็นของเอกสารใบไหน + ช่องลงชื่อผู้ตรวจสอบ
+ */
+export function FailureCloseRecord({ closedAt, closedBy, note, items, formTitle, docNo, submittedAt, filler }: {
+  closedAt: string | null; closedBy: string | null; note: string | null; items: { label: string }[];
+  formTitle: string; docNo: string; submittedAt: string | null; filler: string;
+}) {
   const { t, lang } = useT();
-  // ยังไม่ปิดเรื่อง: บอกบนกระดาษด้วย (ไม่ใช่ไม่มีอะไรเลย — คนอ่าน PDF ไม่รู้ว่ายังค้าง)
-  if (!closedAt) {
-    return (
-      <section className="krok-close-record" style={{ width: "210mm", boxSizing: "border-box", padding: "10mm 14mm", background: "#fff", color: "#111", fontSize: 12, lineHeight: 1.5, breakInside: "avoid" }}>
-        <div style={{ border: "1.5px solid #b91c1c", borderRadius: 4, padding: "8px 12px" }}>
-          <b style={{ display: "block", fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>{t("fc.recordOpenTitle")}</b>
-          {items.length > 0 && <div><span style={{ color: "#555" }}>{t("fc.recordItems")} </span>{items.map((i) => i.label).join(", ")}</div>}
-        </div>
-      </section>
-    );
-  }
-  const when = new Date(closedAt).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" });
+  const fmt = (iso: string) => new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" });
+  const tone = closedAt ? "#166534" : "#b91c1c";
+  const muted = { color: "#555" };
+  const sign = (label: string) => (
+    <div style={{ flex: "1 1 0", minWidth: 0 }}>
+      <div style={{ borderBottom: "1px solid #333", height: 28 }} />
+      <div style={{ ...muted, fontSize: 11, marginTop: 3 }}>{label}</div>
+      <div style={{ ...muted, fontSize: 11, marginTop: 10 }}>{t("fc.recordDate")} ........../........../..........</div>
+    </div>
+  );
   return (
-    <section className="krok-close-record" style={{ width: "210mm", boxSizing: "border-box", padding: "10mm 14mm", background: "#fff", color: "#111", fontSize: 12, lineHeight: 1.5, breakInside: "avoid" }}>
-      <div style={{ border: "1.5px solid #166534", borderRadius: 4, padding: "8px 12px" }}>
-        <b style={{ display: "block", fontSize: 13, color: "#166534", marginBottom: 4 }}>{t("fc.recordTitle")}</b>
-        {items.length > 0 && <div><span style={{ color: "#555" }}>{t("fc.recordItems")} </span>{items.map((i) => i.label).join(", ")}</div>}
-        <div><span style={{ color: "#555" }}>{t("fc.recordBy")} </span>{closedBy || "—"} · {when}</div>
-        {note && <div style={{ whiteSpace: "pre-wrap" }}><span style={{ color: "#555" }}>{t("fc.fixLabel")} </span>{note}</div>}
+    <section className="krok-close-record" aria-labelledby="fc-record-h" style={{ width: "210mm", boxSizing: "border-box", padding: "10mm 14mm", background: "#fff", color: "#111", fontSize: 12, lineHeight: 1.55, breakInside: "avoid" }}>
+      <div style={{ border: `1.5px solid ${tone}`, borderRadius: 4, padding: "10px 14px", display: "grid", gap: 4 }}>
+        <h2 id="fc-record-h" style={{ fontSize: 14, margin: "0 0 2px", color: tone }}>{closedAt ? t("fc.recordTitle") : t("fc.recordOpenTitle")}</h2>
+        {/* เอกสารต้นทาง — แยกแผ่นแล้วยังรู้ว่าเป็นของใบไหน */}
+        <div style={{ paddingBottom: 6, marginBottom: 2, borderBottom: "1px solid #ddd" }}>
+          <div><span style={muted}>{t("fc.recordDoc")} </span><b>{formTitle}</b> · {docNo}</div>
+          <div><span style={muted}>{t("fc.recordFiled")} </span>{filler || "—"}{submittedAt ? ` · ${fmt(submittedAt)}` : ""}</div>
+        </div>
+        {items.length > 0 && <div><span style={muted}>{t("fc.recordItems")} </span>{items.map((i) => i.label).join(", ")}</div>}
+        {closedAt && <div><span style={muted}>{t("fc.recordBy")} </span>{closedBy || "—"} · {fmt(closedAt)}</div>}
+        {closedAt && note && <div style={{ whiteSpace: "pre-wrap" }}><span style={muted}>{t("fc.fixLabel")} </span>{note}</div>}
+        {closedAt && (
+          <div style={{ display: "flex", gap: "12mm", marginTop: 14 }}>
+            {sign(t("fc.recordSignCloser"))}
+            {sign(t("fc.recordSignReviewer"))}
+          </div>
+        )}
       </div>
     </section>
   );

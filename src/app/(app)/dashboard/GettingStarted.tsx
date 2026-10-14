@@ -5,7 +5,8 @@ import { Check, PenSquare, Smartphone, FileText, X } from "lucide-react";
 import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 
-const PDF_SEEN_KEY = "krok_onb_pdf";
+export const ONB_DOC_SEEN_KEY = "krok_onb_pdf";
+const PDF_SEEN_KEY = ONB_DOC_SEEN_KEY;
 /** ผู้ใช้กดปิดการ์ดเอง (จำในเครื่องนี้) */
 const DISMISS_KEY = "krok_onb_hide";
 
