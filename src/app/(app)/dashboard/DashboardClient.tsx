@@ -202,7 +202,8 @@ export default function DashboardClient({
     }
     setMine(next);
     const r = await saveDashboardLayout(next).catch(() => ({ error: "บันทึกไม่สำเร็จ" }));
-    return !("error" in r);
+    if ("error" in r) { setSaveErr(r.error); return false; }
+    return true;
   }
   function upsertWidget(w: DashWidget) {
     const exists = widgets.some((x) => x.id === w.id);
@@ -474,7 +475,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
           <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600 }}>
             <Icon icon={fIcon} className="h-4 w-4" /> {isArea ? <AreaWidgetTitle /> : noMetric ? formatLabel(w.format, en) : metricLabel(w.metric, en)}
           </div>
-          <div style={{ color: "var(--ink-3)", fontSize: ".74rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
+          <div style={{ color: "var(--ink-3)", fontSize: ".82rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
       </div>
       {editing && (
@@ -488,7 +489,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
         </div>
       )}
 
-      <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", minWidth: 0 }}>
+      <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0 }}>
         {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
         {res && "error" in res && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "var(--fail-text)", fontSize: ".82rem" }}>
@@ -500,7 +501,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
           <>
             {res.kind === "stat" && <StatView res={res} metric={w.metric} en={en} />}
             {res.kind === "trend" && <TrendView res={res} metric={w.metric} en={en} />}
-            {res.kind === "ranking" && <RankingView res={res} metric={w.metric} en={en} />}
+            {res.kind === "ranking" && <RankingView res={res} metric={w.metric} range={w.range} en={en} />}
             {res.kind === "area" && <AreaView items={res.items} grouped={w.formId === "all"} />}
             {res.kind === "openlist" && <OpenListView res={res} />}
             {res.kind === "topfails" && <TopFailsView res={res} />}
@@ -546,20 +547,30 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
         {fmtValue(metric, cur ? cur.v : res.total, en, tt)}
         {cur && <span style={{ fontSize: ".8rem", fontWeight: 500, color: "var(--ink-3)", marginLeft: 8 }}>{day(cur.key)}</span>}
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72, borderBottom: "1px solid var(--line-strong)" }}>
-        {series.map((s, i) => {
-          const label = `${day(s.key)}: ${fmtValue(metric, s.v, en, tt)}`;
-          return (
-            // tabIndex -1: ไม่ให้ 30 แท่งกินลำดับ Tab — screen reader ยังอ่านทีละแท่งได้ (โหมดอ่าน)
-            <button key={s.key} type="button" tabIndex={-1} aria-label={label} title={label} aria-pressed={pick === i}
-              onClick={() => setPick(pick === i ? null : i)}
-              style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%", padding: 0, border: "none", background: pick === i ? "var(--accent-soft)" : "transparent", cursor: "pointer" }}>
-              {s.v > 0
-                ? <span style={{ display: "block", height: `${Math.max(4, Math.round((s.v / max) * 100))}%`, background: metric === "fail" ? "var(--fail)" : "linear-gradient(180deg, var(--brand-stop-2), var(--brand-stop-3))", borderRadius: "3px 3px 0 0", opacity: metric === "fail" ? 0.8 : 1 }} />
-                : <span style={{ display: "block", height: 2, background: "var(--line-strong)" }} />}
-            </button>
-          );
-        })}
+      <div style={{ position: "relative" }}>
+        <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72, borderBottom: "1px solid var(--line-strong)" }}>
+          {series.map((s, i) => {
+            const label = `${day(s.key)}: ${fmtValue(metric, s.v, en, tt)}`;
+            const dim = pick != null && pick !== i;
+            return (
+              // แท่ง = ภาพที่มีคำอธิบาย (screen reader อ่านทีละวัน) — การแตะรับที่แผ่นโปร่งใสด้านบน
+              <span key={s.key} role="img" aria-label={label} title={label}
+                style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%", opacity: dim ? 0.4 : 1, transition: "opacity .15s" }}>
+                {s.v > 0
+                  ? <span style={{ display: "block", height: `${Math.max(4, Math.round((s.v / max) * 100))}%`, background: metric === "fail" ? "var(--fail)" : "linear-gradient(180deg, var(--brand-stop-2), var(--brand-stop-3))", borderRadius: "3px 3px 0 0", opacity: metric === "fail" ? 0.8 : 1, outline: pick === i ? "2px solid var(--ink)" : "none", outlineOffset: 1 }} />
+                  : <span style={{ display: "block", height: 2, background: pick === i ? "var(--ink)" : "var(--line-strong)" }} />}
+              </span>
+            );
+          })}
+        </div>
+        {/* พื้นที่แตะเต็มแถบ: คำนวณวันจากตำแหน่งนิ้ว (แท่งแคบ ~8px แตะตรงยาก) */}
+        <div aria-hidden
+          onPointerDown={(e) => {
+            const r = e.currentTarget.getBoundingClientRect();
+            const i = Math.min(series.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * series.length)));
+            setPick(pick === i ? null : i);
+          }}
+          style={{ position: "absolute", inset: "-8px 0 0", cursor: "pointer", touchAction: "manipulation" }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-3)", fontSize: ".76rem", marginTop: 4 }}>
         <span>{series[0] && day(series[0].key)}</span>
@@ -568,6 +579,13 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
     </div>
   );
 }
+/** ข้อความเมื่อไม่มีข้อมูล — บอกตามชนิดค่า · "ในช่วงนี้" เฉพาะเมื่อเลือกช่วงเวลา */
+function emptyText(metric: WidgetMetric, range: WidgetRange, t: (k: MessageKey) => string): string {
+  const base = metric === "pending" ? t("dash.emptyPending")
+    : metric === "fail" || metric === "openfail" ? t("dash.emptyFail")
+    : t("dash.emptyGeneric");
+  return range === "all" ? base : `${base}${t("dash.emptyInRange")}`;
+}
 /** "2026-09-15" → "15 ก.ย." / "15 Sep" */
 function dayLabel(key: string, lang: string): string {
   const d = new Date(`${key}T00:00:00`);
@@ -575,11 +593,11 @@ function dayLabel(key: string, lang: string): string {
   return d.toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { day: "numeric", month: "short" });
 }
 
-function RankingView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "ranking" }>; metric: WidgetMetric; en: boolean }) {
+function RankingView({ res, metric, range, en }: { res: Extract<WidgetResult, { kind: "ranking" }>; metric: WidgetMetric; range: WidgetRange; en: boolean }) {
   const { t, tt } = useT();
   const items = res.items;
   const max = Math.max(1, ...items.map((r) => r.v));
-  if (items.length === 0 || items.every((r) => r.v === 0)) return <div style={{ color: "var(--ink-3)", fontSize: ".86rem" }}>{t("dash.noDataRange")}</div>;
+  if (items.length === 0 || items.every((r) => r.v === 0)) return <div style={{ color: "var(--ink-3)", fontSize: ".86rem" }}>{emptyText(metric, range, t)}</div>;
   return (
     <div style={{ display: "grid", gap: 8 }}>
       {items.map((r, i) => (
@@ -702,20 +720,22 @@ function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel,
             );
           })}
         </div>
-        {hasCards && (
-          <div role="radiogroup" aria-label={t("dash.useTemplate")} style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 14 }}>
-            {(["append", "replace"] as const).map((m) => (
-              <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} style={chip(mode === m)}>
-                {m === "append" ? t("dash.tplAppend") : t("dash.tplReplace")}
-              </button>
-            ))}
-          </div>
-        )}
         {/* ปุ่มติดล่างกล่อง — มือถือไม่ต้องเลื่อนหา */}
         <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 10, marginTop: 14, padding: "12px 0 calc(16px + env(safe-area-inset-bottom))", flexWrap: "wrap", alignItems: "center", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
+          {/* ต่อท้าย/แทนที่ อยู่ติดปุ่ม — เห็นก่อนกดเสมอ */}
+          {hasCards && (
+            <div role="radiogroup" aria-label={t("dash.useTemplate")} style={{ display: "flex", gap: 6, flexWrap: "wrap", flexBasis: "100%" }}>
+              {(["replace", "append"] as const).map((m) => (
+                <button key={m} type="button" role="radio" aria-checked={mode === m} onClick={() => setMode(m)} style={chip(mode === m)}>
+                  {m === "append" ? t("dash.tplAppend") : t("dash.tplReplace")}
+                </button>
+              ))}
+            </div>
+          )}
           <button type="button" onClick={() => onApply(sel, hasCards ? mode : "replace")}
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-            {t("dash.tplApply")}
+            {!hasCards ? t("dash.tplApply")
+              : tt(mode === "replace" ? "dash.tplApplyReplace" : "dash.tplApplyAppend", { n: DASH_TEMPLATES.find((x) => x.key === sel)?.widgets.length ?? 0 })}
           </button>
           <button type="button" onClick={onCancel}
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>
@@ -886,13 +906,16 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
     <div {...backdropClose(onClose)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 50, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }} className="no-print">
       <div ref={boxRef} role="dialog" aria-modal="true" aria-label={sub.form_title} style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-          <h2 style={{ fontSize: "1.1rem", flex: 1, minWidth: 0 }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
-          {sub.result === "fail" && sub.fail_closed_at ? <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.closedOut")}</span></Pill> : sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
+        {/* ชื่อฟอร์ม + ปุ่มปิด แถวเดียว · ป้ายผลตรวจอยู่บรรทัดล่าง (จอแคบไม่บีบชื่อ) */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
+          <h2 style={{ fontSize: "1.1rem", flex: 1, minWidth: 0, overflowWrap: "anywhere", margin: "8px 0 0" }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
           <button ref={closeBtn} type="button" onClick={onClose} aria-label={t("common.close")} title={t("common.close")} style={iconBtn}><Icon icon={X} className="h-5 w-5" /></button>
         </div>
-        <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>
-          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at, lang)} · {tt("dash.took", { s: sub.duration_s == null ? "–" : fmtValue("avgtime", sub.duration_s, lang === "en", tt) })}
+        <div style={{ marginTop: 6 }}>
+          {sub.result === "fail" && sub.fail_closed_at ? <Pill kind="na"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.closedOut")}</span></Pill> : sub.result === "fail" ? <Pill kind="fail"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={X} className="h-3 w-3" /> {t("dash.issues")}</span></Pill> : <Pill kind="pass"><span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><Icon icon={Check} className="h-3 w-3" /> {t("dash.passed")}</span></Pill>}
+        </div>
+        <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 6 }}>
+          {t("dash.by")} {sub.user_name || "—"} · {fmt(sub.submitted_at, lang)} · {tt("dash.took", { s: sub.duration_s == null ? "–" : sub.duration_s >= 60 ? tt("dash.durFullMin", { m: Math.floor(sub.duration_s / 60), s: sub.duration_s % 60 }) : tt("dash.durFullSec", { s: sub.duration_s }) })}
         </p>
         {answers === null && <div style={{ padding: "16px 0", color: "var(--ink-3)", fontSize: ".88rem" }}>{t("common.loading")}</div>}
         {(answers ?? []).map((a, i) =>
