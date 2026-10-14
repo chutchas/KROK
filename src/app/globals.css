@@ -418,3 +418,9 @@ a {
 
 /* ป้ายข้อความที่ซ่อนบนจอแคบ (ปุ่มเหลือไอคอน + aria-label) */
 @media (max-width: 480px) { .krok-narrow-hide { display: none; } }
+
+/* แถบเครื่องมือมุมมองกระดาษบนมือถือ: เพิ่มฟิลด์ / เพิ่มขั้นตอน / รูปภาพ เต็มแถว แบ่งเท่ากัน */
+@media (max-width: 640px) {
+  .krok-paper-add { display: flex !important; gap: 8px; flex: 1 1 100%; }
+  .krok-paper-add > button { flex: 1 1 0; min-width: 0; justify-content: center; min-height: 44px; white-space: nowrap; padding-left: 6px !important; padding-right: 6px !important; }
+}

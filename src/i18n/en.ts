@@ -1210,7 +1210,7 @@ export const en: Record<MessageKey, string> = {
   "studio.generate": "Generate with AI",
   "studio.upload": "Upload existing form (photo/scan)",
   "studio.sample": "Use a sample form",
-  "studio.publish": "Publish this form",
+  "studio.publish": "Publish",
   "studio.discard": "Discard draft",
   "studio.publishedTitle": "Published forms",
   "studio.publishedSub": "On-site staff see these in the Fill tab",

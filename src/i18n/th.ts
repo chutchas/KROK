@@ -1222,7 +1222,7 @@ export const th = {
   "studio.generate": "สร้างด้วย AI",
   "studio.upload": "อัปโหลดฟอร์มเดิม (รูป/สแกน)",
   "studio.sample": "ใช้ฟอร์มตัวอย่าง",
-  "studio.publish": "เผยแพร่ฟอร์มนี้",
+  "studio.publish": "เผยแพร่",
   "studio.discard": "ทิ้งร่างนี้",
   "studio.publishedTitle": "ฟอร์มที่เผยแพร่แล้ว",
   "studio.publishedSub": "คนหน้างานเห็นฟอร์มเหล่านี้ในแท็บ “กรอกฟอร์ม”",
