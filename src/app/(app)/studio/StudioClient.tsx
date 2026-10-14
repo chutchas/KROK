@@ -48,7 +48,7 @@ type FormTab = "access" | "approval" | "fill" | "schedule";
 /** คำสั่งตัวอย่างที่แสดงก่อนกด "ดูทั้งหมด" */
 const PROMPT_PREVIEW = 6;
 
-export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null, initialEditId = null }: { initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null; initialEditId?: string | null }) {
+export default function StudioClient({ initialForms, members, teams, tenantId, template = null, initialMode = "prompt", branding = null, initialEditId = null, initialView = null }: { initialView?: "all" | null; initialForms: FormRow[]; members: Member[]; teams: Team[]; tenantId: string; template?: unknown; initialMode?: "prompt" | "file" | "template"; branding?: WorkspaceBranding | null; initialEditId?: string | null }) {
   const { t, tt, lang } = useT();
   const router = useRouter();
   const [prompt, setPrompt] = useState("");
@@ -80,13 +80,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   };
   /** หัวหน้าแก้ไขตรึงบนจอ (≥900) — วัดความสูงจริงให้แผงซ้าย/ขวาตรึงต่อใต้หัว */
   const editHeadRef = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    const el = editHeadRef.current;
-    if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(() => document.documentElement.style.setProperty("--krok-eh", `${el.offsetHeight}px`));
-    ro.observe(el);
-    return () => { ro.disconnect(); document.documentElement.style.removeProperty("--krok-eh"); };
-  });
   const setOutlinePref = (v: "open" | "closed") => {
     setOutline(v);
     try { localStorage.setItem("krok_studio_outline", v); } catch { /* จำไม่ได้ก็ไม่เป็นไร */ }
@@ -109,7 +102,18 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [customCat, setCustomCat] = useState(false);
   // ?edit=<id> ที่เจอฟอร์ม → เริ่มที่แท็บแก้ไขเลย (ไม่ให้หน้าสร้างใหม่โผล่ขึ้นก่อนระหว่างโหลดฟอร์ม)
   const urlEditForm = initialEditId ? initialForms.find((x) => x.id === initialEditId) : undefined;
-  const [tab, setTab] = useState<"new" | "edit" | "all">(template || urlEditForm ? "edit" : "new");
+  const [tab, setTab] = useState<"new" | "edit" | "all">(template || urlEditForm ? "edit" : initialView === "all" ? "all" : "new");
+  const hasEditHead = tab === "edit" && !!draft;
+  useEffect(() => {
+    const el = editHeadRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const set = () => document.documentElement.style.setProperty("--krok-eh", `${el.offsetHeight}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    return () => { ro.disconnect(); document.documentElement.style.removeProperty("--krok-eh"); };
+    // รันใหม่เฉพาะตอนหัวหน้าแก้ไขโผล่/หาย — เดิมไม่มี deps ลบตัวแปรทิ้งทุก render (กดขั้นใน outline แล้วชื่อขั้นจมใต้หัว)
+  }, [hasEditHead]);
   const [openingFromUrl, setOpeningFromUrl] = useState(!!urlEditForm);
   const [promptGroupBy, setPromptGroupBy] = useState<"task" | "industry">("task");
   const [showAllPrompts, setShowAllPrompts] = useState(false);
@@ -218,10 +222,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || t("studio.errAiFail"));
       history.checkpoint(); // ผล AI = 1 ขั้นย้อนกลับ
-      setDraft(sanitizeSchema(json.schema));
+      const next = sanitizeSchema(json.schema);
+      const d = diffFields(draft, next);
+      const parts = [d.added && tt("studio.diffAdd", { n: d.added }), d.removed && tt("studio.diffDel", { n: d.removed }), d.changed && tt("studio.diffChg", { n: d.changed })].filter(Boolean);
+      setDraft(next);
       setSelKey(null);
       setRefine("");
-      showToast(t("studio.refineDone"), true);
+      showToast(parts.length ? tt("studio.refineDiff", { parts: parts.join(" · ") }) : t("studio.refineDone"), true, next);
     } catch (e) {
       setStatus({ t: e instanceof Error ? e.message : t("studio.errAiFail"), err: true });
     } finally {
@@ -386,12 +393,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   // ---- ย้อนกลับ/ทำซ้ำ + คีย์ลัดที่ใช้ได้ทั้งมุมมองมือถือและกระดาษ ----
   const history = useUndo(draft, setDraft);
-  const [toast, setToast] = useState<{ msg: string; undo?: boolean } | null>(null);
+  const [toast, setToast] = useState<{ msg: string; undo?: boolean; base?: FormSchema } | null>(null);
   const toastTimer = useRef<number | null>(null);
-  const showToast = useCallback((msg: string, undo = false) => {
+  const showToast = useCallback((msg: string, undo = false, base?: FormSchema) => {
     if (toastTimer.current) window.clearTimeout(toastTimer.current);
-    setToast({ msg, undo });
-    toastTimer.current = window.setTimeout(() => setToast(null), 5000);
+    setToast({ msg, undo, base });
+    // มี base = ค้างไว้จนกดปิด/แก้ต่อ (ผล AI ต้องมีเวลาตรวจ) · ไม่มี = หายเองใน 5 วิ
+    if (!base) toastTimer.current = window.setTimeout(() => setToast(null), 5000);
   }, []);
   const doUndo = useCallback(() => { if (history.undo()) { setSelKey(null); setToast(null); } }, [history]);
   const doRedo = useCallback(() => { if (history.redo()) setSelKey(null); }, [history]);
@@ -585,9 +593,41 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   useEffect(() => {
     if (tab !== "edit" || !draft?.title) return;
     const prev = document.title;
-    document.title = `${draft.title} — ${editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}`;
+    document.title = `${draft.title} — ${editingId ? t("studio.crumbEdit") : t("studio.crumbNew")} · KROK`;
     return () => { document.title = prev; };
   }, [tab, draft?.title, editingId, t]);
+  useEffect(() => {
+    if (tab !== "all") return;
+    const prev = document.title;
+    document.title = `${t("studio.allFormsTitle")} · KROK`;
+    return () => { document.title = prev; };
+  }, [tab, t]);
+
+  // หน้ารายการ/แก้ไข มี URL ของตัวเอง — refresh/Back/ส่งลิงก์ได้ (สร้างใหม่ = /studio · ทั้งหมด = ?view=all · แก้ไข = ?edit=<id>)
+  const syncedTab = useRef<string | null>(null);
+  useEffect(() => {
+    if (openingFromUrl) return;
+    const want = tab === "all" ? "/studio?view=all" : tab === "edit" && draft ? (editingId ? `/studio?edit=${editingId}` : "/studio?view=edit") : "/studio";
+    const cur = window.location.pathname + window.location.search;
+    if (cur !== want) {
+      // เปลี่ยนหน้า (แท็บ) = รายการใหม่ในประวัติ · อย่างอื่น (เปิดครั้งแรก/ได้ id หลังบันทึก) = แทนที่
+      if (syncedTab.current !== null && syncedTab.current !== tab) window.history.pushState(null, "", want);
+      else window.history.replaceState(null, "", want);
+    }
+    syncedTab.current = tab;
+  }, [tab, editingId, draft, openingFromUrl]);
+  useEffect(() => {
+    function onPop() {
+      const q = new URLSearchParams(window.location.search);
+      // Back จากหน้าแก้ไข → ร่างยังอยู่ (ปุ่ม "กลับไปแก้ต่อ") ไม่ทิ้งงาน
+      const next = q.get("view") === "all" ? "all" : (q.get("edit") || q.get("view") === "edit") && draft ? "edit" : "new";
+      syncedTab.current = next;
+      setTab(next);
+      setFlash(null);
+    }
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [draft]);
   const formSettings = draft && (
     <div className="krok-fs">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
@@ -842,12 +882,17 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
-      {toast && (
+      {toast && (!toast.base || toast.base === draft) && (
         <div role="status" data-krok-keep="" style={{ position: "fixed", left: "50%", bottom: "calc(24px + var(--krok-tabbar-h))", transform: "translateX(-50%)", zIndex: 95, display: "flex", alignItems: "center", gap: 12, background: "var(--ink)", color: "var(--surface)", borderRadius: 10, padding: "10px 14px", boxShadow: "0 8px 24px rgba(0,0,0,.25)", fontSize: ".88rem", maxWidth: "calc(100vw - 32px)" }}>
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{toast.msg}</span>
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: toast.base ? "normal" : "nowrap" }}>{toast.msg}</span>
           {toast.undo && (
-            <button type="button" onClick={doUndo} style={{ border: "none", background: "transparent", color: "var(--brand-stop-2)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", whiteSpace: "nowrap" }}>
-              {t("kb.undo")} (Ctrl+Z)
+            <button type="button" onClick={doUndo} style={{ minHeight: 44, padding: "0 10px", border: "none", background: "transparent", color: "var(--brand-stop-2)", fontWeight: 700, cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", whiteSpace: "nowrap" }}>
+              {t("kb.undo")}<span className="krok-kbd"> (Ctrl+Z)</span>
+            </button>
+          )}
+          {toast.base && (
+            <button type="button" onClick={() => setToast(null)} aria-label={t("common.close")} style={{ minWidth: 44, minHeight: 44, margin: "-6px -8px -6px 0", border: "none", background: "transparent", color: "inherit", cursor: "pointer", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
+              <Icon icon={X} className="h-4 w-4" />
             </button>
           )}
         </div>
@@ -866,7 +911,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </Button>
             )}
             {tab === "new" ? (initialForms.length > 0 && (
-              <Button data-tour="studio-tabs" onClick={() => { setTab("all"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px", fontWeight: 600 }}>
+              <Button data-tour="studio-tabs" aria-label={tt("studio.allFormsAria", { n: initialForms.length })} onClick={() => { setTab("all"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px", fontWeight: 600 }}>
                 <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={FileText} className="h-4 w-4" /></span> {t("studio.allFormsBtn")}
                 <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", boxSizing: "border-box", borderRadius: 11, background: "var(--accent-soft)", color: "var(--accent-text)", fontSize: ".78rem", fontWeight: 700 }}>{initialForms.length}</span>
               </Button>
@@ -913,7 +958,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <TemplateGallery onUse={applyTemplate} />
         ) : createMode === "prompt" ? (
           <div>
-            <TextArea ref={promptRef} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")}
+            <TextArea ref={promptRef} value={prompt} onChange={(e) => setPrompt(e.target.value)} placeholder={t("studio.promptPlaceholder")} aria-label={t("studio.promptLabel")}
               // คำสั่งจากตัวอย่างยาวหลายบรรทัด → ขยายกล่องให้เห็นทั้งหมด (สูงสุด ~520px แล้วเลื่อนในกล่อง)
               style={{ minHeight: Math.max(200, Math.min(prompt.split("\n").length * 23 + 28, 520)) }} />
             <div style={{ display: "flex", justifyContent: "center", marginTop: 16 }}>
@@ -1144,10 +1189,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <form onSubmit={(e) => { e.preventDefault(); if (!busy && refine.trim()) void refineDraft(); }} title={t("studio.refineSub")}
             style={{ position: "relative", marginTop: 10 }}>
             <span aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--accent-text)", display: "inline-flex", pointerEvents: "none" }}><Icon icon={Sparkles} className="h-4 w-4" /></span>
-            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} maxLength={500}
-              style={{ width: "100%", boxSizing: "border-box", minHeight: 48, paddingLeft: 38, paddingRight: 54 }} />
+            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={narrow ? t("studio.refinePlaceholderShort") : t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} aria-describedby="krok-refine-hint" maxLength={500} enterKeyHint="send"
+              style={{ width: "100%", boxSizing: "border-box", minHeight: 52, paddingLeft: 38, paddingRight: 56 }} />
+            <span id="krok-refine-hint" style={{ position: "absolute", width: 1, height: 1, overflow: "hidden", clip: "rect(0 0 0 0)" }}>{t("studio.refineHint")}</span>
             <button type="submit" disabled={!!busy || !refine.trim()} aria-label={t("studio.refineBtn")} title={t("studio.refineBtn")}
-              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 40, height: 40, borderRadius: 8, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: busy || !refine.trim() ? "default" : "pointer",
+              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 44, height: 44, borderRadius: 8, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: busy || !refine.trim() ? "default" : "pointer",
                 background: refine.trim() && !busy ? "var(--accent)" : "var(--surface-2)", color: refine.trim() && !busy ? "var(--accent-ink)" : "var(--ink-3)" }}>
               {busy === t("studio.busyRefine") ? <span aria-hidden style={{ width: 16, height: 16, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "krok-spin .8s linear infinite" }} /> : <Icon icon={ArrowUp} className="h-4 w-4" />}
             </button>
@@ -1165,7 +1211,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                     const on = previewPaged === v;
                     return (
                       <button key={label} type="button" role="radio" aria-checked={on} data-krok-keep="" onClick={() => setPreviewPaged(v)}
-                        style={{ padding: "6px 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
+                        style={{ minHeight: 44, padding: "0 16px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}>
                         {label}
                       </button>
                     );
@@ -1252,7 +1298,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             const label = k === "all" ? t("studio.stAll") : k === "published" ? t("studio.stPublished") : k === "draft" ? t("studio.stDraft") : t("studio.stArchived");
             return (
               <button key={k} onClick={() => setListFilter(k)}
-                style={{ padding: "6px 13px", borderRadius: 20, fontSize: ".82rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                aria-pressed={on}
+                style={{ minHeight: 44, padding: "0 14px", borderRadius: 22, fontSize: ".85rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                 {label} ({n})
               </button>
             );
@@ -1353,6 +1400,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         .krok-ol-field{ padding-left:22px; }
         .krok-ol-on{ background:var(--accent-soft) !important; color:var(--accent-text) !important; font-weight:600; box-shadow:inset 3px 0 0 var(--accent); }
         .krok-settings-backdrop{ display:none; }
+        @media (pointer: coarse){ .krok-kbd{ display:none; } }
         /* ตั้งค่าฟอร์ม (แผงขวา): หัวข้อย่อยในแท็บ คั่นด้วยเส้น ไม่ใช่กล่องซ้อนกล่อง */
         .krok-fs{ background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:14px; }
         .krok-fs-sec{ padding:14px 0; border-bottom:1px solid var(--line); }
@@ -1419,7 +1467,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           /* ปุ่มจัดการฟอร์ม 5–6 ปุ่ม: ไอคอนเต็มขนาด (เดิมหดจนเหลือจุด) + ชื่อสั้นใต้ไอคอน — รู้ว่าปุ่มไหนคืออะไร */
           /* 6 ปุ่มในแถวเดียวเหลือปุ่มละ ~39px ป้าย 11.5px → ตาราง 3 คอลัมน์ 2 แถว ปุ่มละ ~110px ไอคอน+ป้ายแนวนอน */
           .krok-row-actions{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr))}
-          .krok-row-actions>button{min-width:0;gap:6px !important;min-height:44px !important;padding:6px 8px !important;font-size:.84rem !important;line-height:1.2}
+          .krok-row-actions>button{min-width:0;flex-direction:column;gap:3px !important;min-height:56px !important;padding:6px 4px !important;font-size:.8rem !important;line-height:1.2}
           .krok-row-actions>button svg{flex:0 0 auto;width:18px;height:18px}
           /* ลบ: ไม่มีกรอบ — เบากว่าปุ่มอื่น ไม่เท่ากับเก็บถาวร */
           .krok-row-actions>.krok-row-del{border-color:transparent !important;background:none !important}
@@ -1526,4 +1574,14 @@ function DocNoSettings({ value, onChange }: { value?: DocNoConfig; onChange: (v:
       )}
     </>
   );
+}
+
+/** นับช่องที่ AI เพิ่ม/ลบ/แก้ (เทียบด้วย id) — บอกผู้ใช้ว่าผลปรับแก้เปลี่ยนอะไรไป */
+function diffFields(before: FormSchema, after: FormSchema) {
+  const map = (s: FormSchema) => new Map(s.steps.flatMap((st) => st.fields.map((f) => [f.id, JSON.stringify(f)] as const)));
+  const a = map(before), b = map(after);
+  let added = 0, removed = 0, changed = 0;
+  for (const [id, v] of b) { const old = a.get(id); if (old === undefined) added++; else if (old !== v) changed++; }
+  for (const id of a.keys()) if (!b.has(id)) removed++;
+  return { added, removed, changed };
 }
