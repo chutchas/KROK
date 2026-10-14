@@ -1,4 +1,5 @@
 "use client";
+import HelpTip from "@/components/HelpTip";
 import { Field } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ArrowUp, ArrowDown, Trash2, Copy, Plus, X, ClipboardList } from "lucide-react";
@@ -712,7 +713,7 @@ function FailOptionsPicker({ name, options, value, onChange }: { name: string; o
   };
   return (
     <div role="group" aria-label={tt("editor.failOptionsFor", { name })} style={{ marginTop: 8 }}>
-      <div style={{ fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>{t("editor.failOptions")}</div>
+      <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>{t("editor.failOptions")}<HelpTip id="defects" compact /></div>
       <div style={{ fontSize: ".8rem", color: "var(--ink-2)", margin: "2px 0 6px" }}>{t("editor.failOptionsHint")}</div>
       <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
         {opts.map((o) => {

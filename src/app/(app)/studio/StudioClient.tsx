@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
+import HelpTip from "@/components/HelpTip";
 import { getTemplate } from "@/lib/form-templates";
 import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert, PanelLeftClose, PanelLeftOpen, ArrowUp, Plus } from "lucide-react";
 import Link from "next/link";
@@ -735,7 +736,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
       <div role="tabpanel" style={{ display: formTab === "access" ? "block" : "none" }}>
           <div className="krok-fs-sec">
-            <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap" }}>
+              <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
+              <HelpTip id="visibility" />
+            </div>
             <p style={{ display: "block", color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("studio.visSub")}</p>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
               {(["public", "all", "teams", "users"] as VisMode[]).map((m) => {
@@ -811,6 +815,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </span>
               </span>
             </label>
+            <HelpTip id="devices" />
 
             {requireDevice && visMode !== "public" && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
@@ -846,6 +851,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </span>
               </span>
             </label>
+            <HelpTip id="approval" />
 
             {requiresApproval && (
               <div style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
@@ -922,6 +928,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
           <div className="krok-fs-sec">
             <DocNoSettings key={editingId || "new"} value={draft.doc_no} onChange={(v) => setDraft((d) => { if (!d) return d; const n = { ...d }; if (v) n.doc_no = v; else delete n.doc_no; return n; })} />
+            <HelpTip id="doc-no" />
           </div>
           <div className="krok-fs-sec krok-fs-nest"><AttachmentsPanel formId={editingId} tenantId={tenantId} /></div>
       </div>

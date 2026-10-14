@@ -1,4 +1,5 @@
 "use client";
+import HelpTip from "@/components/HelpTip";
 import { useState } from "react";
 import { Card, Button, Field, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
@@ -75,7 +76,10 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
 
   return (
     <Card>
-      <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("notify.title")}</h2>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
+        <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("notify.title")}</h2>
+        <HelpTip id="notify" />
+      </div>
       <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>{t("notify.subtitle")}</p>
 
       {/* LINE */}

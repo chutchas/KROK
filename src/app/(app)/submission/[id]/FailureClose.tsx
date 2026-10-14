@@ -1,4 +1,5 @@
 "use client";
+import HelpTip from "@/components/HelpTip";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleX, CircleCheck, RotateCcw } from "lucide-react";
@@ -166,7 +167,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
         )}
       </div>
       {list}
-      {supported && <div style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{canClose ? t("fc.openSub") : t("fc.openSubMember")}</div>}
+      {supported && <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", color: "var(--ink-2)", fontSize: ".82rem" }}>{canClose ? t("fc.openSub") : t("fc.openSubMember")}{canClose && <HelpTip id="close-failure" compact />}</div>}
       {history}
       {open && (
         <>
