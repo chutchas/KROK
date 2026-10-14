@@ -238,9 +238,12 @@ export async function sendWorkspaceEmailTo(tenantId: string, to: string[], subje
   const cfg = data as NotifyConfig | null;
   if (!cfg?.email_enabled || !cfg.smtp_host || !cfg.smtp_port || !cfg.email_from) return;
   if (!(await notifyAllowed(tenantId).catch(() => true))) return;
-  await sendEmail(
-    { host: cfg.smtp_host, port: cfg.smtp_port, user: cfg.smtp_user || "", pass: cfg.smtp_pass || "", from: cfg.email_from, to: list },
-    subject,
-    text,
-  );
+  // ส่งแยกฉบับละคน — ผู้รับไม่เห็นอีเมลของกันและกัน
+  for (const addr of Array.from(new Set(list.map((x) => x.toLowerCase())))) {
+    await sendEmail(
+      { host: cfg.smtp_host, port: cfg.smtp_port, user: cfg.smtp_user || "", pass: cfg.smtp_pass || "", from: cfg.email_from, to: [addr] },
+      subject,
+      text,
+    );
+  }
 }

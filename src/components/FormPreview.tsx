@@ -129,7 +129,7 @@ function FieldCard({ f, selected, onSelect, schemaFields = [], grip, dragging = 
       {grip}
       <div style={{ fontWeight: 600, display: "flex", gap: 6, alignItems: "baseline", flexWrap: "wrap" }}>
         {f.label}
-        {f.required && <span style={{ color: "var(--fail)", fontWeight: 700 }}>*</span>}
+        {f.required && <span style={{ color: "var(--fail-text)", fontWeight: 700 }}>*</span>}
         <span
           style={{
             fontFamily: "monospace",
@@ -310,6 +310,7 @@ export default function FormPreview({
         return (
           <div key={s.id}>
             <div
+              id={`fp-s-${s.id}`}
               data-krok-keep=""
               data-drop-step={`${i}:start`}
               onClick={editable ? (e) => { e.stopPropagation(); onSelect!(stepKey); } : undefined}
@@ -317,9 +318,9 @@ export default function FormPreview({
               role={editable ? "button" : undefined}
               aria-pressed={editable ? stepSel : undefined}
               onKeyDown={editable ? (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect!(stepKey); } } : undefined}
-              style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
+              style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", minHeight: editable ? 44 : undefined, scrollMarginTop: 160, padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
             >
-              <span style={{ fontFamily: "monospace", fontSize: ".72rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
+              <span style={{ fontFamily: "monospace", fontSize: ".78rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
                 {tt("fw.stepOf", { n: i + 1, total: schema.steps.length })}
               </span>
               <h2 style={{ fontSize: "1.05rem", margin: 0, color: stepSel ? "var(--accent-text)" : "var(--ink)" }}>{s.title}</h2>
