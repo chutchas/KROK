@@ -1280,7 +1280,7 @@ export const th = {
   "studio.stPublished": "เผยแพร่",
   "studio.stDraft": "ร่าง",
   "studio.stArchived": "ยกเลิก",
-  "studio.cancelForm": "ยกเลิก",
+  "studio.cancelForm": "เก็บถาวร",
   "studio.publishNow": "เผยแพร่",
   "studio.restore": "กู้คืน",
   "studio.editFields": "แก้ฟิลด์",

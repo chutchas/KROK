@@ -239,11 +239,16 @@ export async function sendWorkspaceEmailTo(tenantId: string, to: string[], subje
   if (!cfg?.email_enabled || !cfg.smtp_host || !cfg.smtp_port || !cfg.email_from) return;
   if (!(await notifyAllowed(tenantId).catch(() => true))) return;
   // ส่งแยกฉบับละคน — ผู้รับไม่เห็นอีเมลของกันและกัน
+  // คนหนึ่งส่งไม่ผ่าน (กล่องเต็ม/ที่อยู่ผิด) ต้องไม่ทำให้คนถัดไปไม่ได้รับ
   for (const addr of Array.from(new Set(list.map((x) => x.toLowerCase())))) {
-    await sendEmail(
-      { host: cfg.smtp_host, port: cfg.smtp_port, user: cfg.smtp_user || "", pass: cfg.smtp_pass || "", from: cfg.email_from, to: [addr] },
-      subject,
-      text,
-    );
+    try {
+      await sendEmail(
+        { host: cfg.smtp_host, port: cfg.smtp_port, user: cfg.smtp_user || "", pass: cfg.smtp_pass || "", from: cfg.email_from, to: [addr] },
+        subject,
+        text,
+      );
+    } catch (e) {
+      console.error("[krok] workspace email failed", addr.replace(/^(.).*@/, "$1***@"), e instanceof Error ? e.message : e);
+    }
   }
 }

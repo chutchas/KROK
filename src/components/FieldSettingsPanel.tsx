@@ -282,6 +282,20 @@ export default function FieldSettingsPanel({
 
   return (
     <Shell title={t("editor.fieldSettings")} onClose={() => onSelect(null)}>
+      {/* ขึ้น/ลง/ทำซ้ำ/ลบ: ไว้บนสุดของแผง — บนจอเล็กแผ่นตั้งค่ายาว เดิมอยู่ท้ายสุดต้องเลื่อนลงไปหา · จอ ≥900 มุมมองมือถือมีที่การ์ดแล้ว (ซ่อน) */}
+      <div className={hideFieldActions ? "krok-fa-dup" : undefined} style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap", paddingBottom: 12, borderBottom: "1px solid var(--line)" }}>
+        <button style={iconBtn} title={t("editor.moveUp")} aria-label={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStepFields(move(step.fields, fi, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
+        <button style={iconBtn} title={t("editor.moveDown")} aria-label={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStepFields(move(step.fields, fi, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
+        <button style={iconBtn} title={t("editor.duplicate")} onClick={() => {
+          const clone = { ...field, id: newId("f") };
+          const fields = [...step.fields]; fields.splice(fi + 1, 0, clone);
+          patchStepFields(fields); onSelect(clone.id);
+        }}><Icon icon={Copy} className="h-4 w-4" /> {t("editor.duplicate")}</button>
+        <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => {
+          patchStepFields(step.fields.filter((_, j) => j !== fi)); onSelect(null);
+        }}><Icon icon={Trash2} className="h-4 w-4" /> {t("common.delete")}</button>
+      </div>
+
       <label style={lbl}>{t("editor.fieldName")}</label>
       <Field value={field.label} onChange={(e) => patchField({ label: e.target.value })} placeholder={t("editor.fieldNamePh")} />
 
@@ -594,20 +608,6 @@ export default function FieldSettingsPanel({
       )}
 
       <AttachmentsPanel formId={formId} tenantId={tenantId} fieldId={field.id} compact />
-
-      {/* ขึ้น/ลง/ทำซ้ำ/ลบ อยู่ใต้การ์ดที่เลือกในตัวอย่างฟอร์ม (มุมมองมือถือ) — ที่นี่เหลือไว้สำหรับมุมมองกระดาษ */}
-      <div className={hideFieldActions ? "krok-fa-dup" : undefined} style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>
-        <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStepFields(move(step.fields, fi, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
-        <button style={iconBtn} title={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStepFields(move(step.fields, fi, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
-        <button style={iconBtn} title={t("editor.duplicate")} onClick={() => {
-          const clone = { ...field, id: newId("f") };
-          const fields = [...step.fields]; fields.splice(fi + 1, 0, clone);
-          patchStepFields(fields); onSelect(clone.id);
-        }}><Icon icon={Copy} className="h-4 w-4" /> {t("editor.duplicate")}</button>
-        <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => {
-          patchStepFields(step.fields.filter((_, j) => j !== fi)); onSelect(null);
-        }}><Icon icon={Trash2} className="h-4 w-4" /> {t("common.delete")}</button>
-      </div>
 
       <button onClick={() => { const fid = newId("f"); patchStepFields([...step.fields, { id: fid, type: "text", label: "", required: true }]); onSelect(fid); }}
         style={{ ...iconBtn, width: "100%", marginTop: 8, color: "var(--accent-text)", borderColor: "var(--accent)", justifyContent: "center" }}>

@@ -318,7 +318,7 @@ export default function FormPreview({
               role={editable ? "button" : undefined}
               aria-pressed={editable ? stepSel : undefined}
               onKeyDown={editable ? (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect!(stepKey); } } : undefined}
-              style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", minHeight: editable ? 44 : undefined, scrollMarginTop: 160, padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
+              style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", minHeight: editable ? 44 : undefined, scrollMarginTop: "calc(74px + var(--krok-eh, 0px) + 12px)", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
             >
               <span style={{ fontFamily: "monospace", fontSize: ".78rem", background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 5, padding: "2px 8px", color: "var(--ink-2)" }}>
                 {tt("fw.stepOf", { n: i + 1, total: schema.steps.length })}
