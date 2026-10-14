@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert, PanelLeftClose, PanelLeftOpen, ArrowUp, Plus } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -203,11 +203,30 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     return callGenerate({ prompt }, t("studio.busyGenerate"));
   }
 
-  function refineDraft() {
-    if (!refine.trim() || !draft) return;
-    const p = callGenerate({ schema: draft, instruction: refine }, t("studio.busyRefine"));
-    setRefine("");
-    return p;
+  // ปรับแก้ฟอร์มที่เปิดอยู่ด้วย AI — คงฟอร์มเดิมไว้ (เดิมล้าง editingId → กดบันทึกแล้วกลายเป็นฟอร์มใหม่ซ้ำอีกใบ)
+  async function refineDraft() {
+    const instruction = refine.trim();
+    if (!instruction || !draft) return;
+    setBusy(t("studio.busyRefine"));
+    setStatus(null);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schema: draft, instruction }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || t("studio.errAiFail"));
+      history.checkpoint(); // ผล AI = 1 ขั้นย้อนกลับ
+      setDraft(sanitizeSchema(json.schema));
+      setSelKey(null);
+      setRefine("");
+      showToast(t("studio.refineDone"), true);
+    } catch (e) {
+      setStatus({ t: e instanceof Error ? e.message : t("studio.errAiFail"), err: true });
+    } finally {
+      setBusy(null);
+    }
   }
 
   // เลือกไฟล์ → ยังไม่ส่ง AI ทันที เก็บไว้ให้ผู้ใช้ยืนยันก่อน
@@ -821,12 +840,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     </div>
   );
 
-  const studioTabs = ([
-          { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
-          { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
-          { k: "all" as const, icon: FileText, label: `${t("studio.tabAll")} (${initialForms.length})` },
-        // ซ่อนแท็บที่ยังไม่มีอะไร: "แก้ไข" เมื่อยังไม่ได้เปิดฟอร์มไหน · "ทั้งหมด" เมื่อยังไม่มีฟอร์ม (แท็บที่เปิดอยู่แสดงเสมอ)
-        ]).filter((tb) => tb.k === tab || tb.k === "new" || (tb.k === "edit" ? !!draft : initialForms.length > 0));
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {toast && (
@@ -839,41 +852,42 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           )}
         </div>
       )}
-      {/* แท็บหลัก 3 แท็บ */}
-      {/* เหลือแท็บเดียว (ยังไม่มีฟอร์ม) = ไม่ต้องมีแถบแท็บ */}
-      {/* หน้าแก้ไข: ไม่มีแถบแท็บ (ใช้ลิงก์ "ฟอร์มทั้งหมด" บนหัวหน้าแทน) — พื้นที่ให้ตัวอย่างฟอร์ม */}
-      {studioTabs.length > 1 && !(tab === "edit" && draft) && (
-      <div data-tour="studio-tabs" role="tablist" aria-label={t("nav.studio")} style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)" }}>
-        {studioTabs.map((tb) => {
-          const on = tab === tb.k;
-          return (
-            <button
-              key={tb.k}
-              onClick={() => { setTab(tb.k); setFlash(null); }}
-              role="tab"
-              aria-selected={on}
-              className="inline-flex items-center justify-center gap-1.5"
-              // แถวเดียวเสมอ (เดิม minWidth 120 ทำให้มือถือตกเป็น 2 บรรทัด) · จอแคบลดขอบ/ตัวอักษร
-              style={{ flex: "1 1 0", minWidth: 0, minHeight: 44, whiteSpace: "nowrap", padding: "8px clamp(6px, 2vw, 14px)", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: "clamp(.82rem, 3.6vw, .92rem)", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
-            >
-              <Icon icon={tb.icon} className="h-4 w-4 shrink-0" /> <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tb.label}</span>
-            </button>
-          );
-        })}
+      {/* หัวหน้าแบบเดียวกับหน้าอื่น (เดิมเป็นแถบแท็บ สร้างใหม่/แก้ไข/ทั้งหมด): ชื่อหน้าซ้าย · ปุ่มไปอีกหน้าขวา */}
+      {(tab === "new" || tab === "all") && (
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: "1.4rem", margin: 0, minWidth: 0 }}>
+            {tab === "all" ? t("studio.allFormsTitle") : t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}
+          </h1>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+            {draft && (
+              <Button onClick={() => { setTab("edit"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px" }}>
+                <Icon icon={Pencil} className="h-4 w-4" /> {t("studio.resumeEdit")}
+              </Button>
+            )}
+            {tab === "new" ? (initialForms.length > 0 && (
+              <Button data-tour="studio-tabs" onClick={() => { setTab("all"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px", fontWeight: 600 }}>
+                <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={FileText} className="h-4 w-4" /></span> {t("studio.allFormsBtn")}
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", boxSizing: "border-box", borderRadius: 11, background: "var(--accent-soft)", color: "var(--accent-text)", fontSize: ".78rem", fontWeight: 700 }}>{initialForms.length}</span>
+              </Button>
+            )) : (
+              <Button variant="primary" onClick={() => { setTab("new"); setFlash(null); }} style={{ minHeight: 44, padding: "0 16px" }}>
+                <Icon icon={Plus} className="h-4 w-4" /> {t("studio.createNew")}
+              </Button>
+            )}
+          </div>
+        </div>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: "4px 0 0" }}>
+          {tab === "all" ? t("studio.allFormsSub") : t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}
+        </p>
       </div>
       )}
 
       {tab === "new" && (
       <>
       <Card>
-        <div>
-          {/* หัวข้อตามโหมดที่เลือก (AI / จากไฟล์ / จากเทมเพลต) */}
-          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}</h1>
-          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}</p>
-        </div>
-
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
-        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
+        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "0 0 12px" }}>
           {([
             { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt"), short: t("studio.modePromptShort") },
             { m: "file" as const, icon: FileUp, label: t("studio.modeFile"), short: t("studio.modeFileShort") },
@@ -1126,12 +1140,18 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (ฟอร์มที่สร้างก่อนมีตัวเลือกนี้) → เสนอให้ยืนยัน */}
           <DefectSuggestBanner key={editingId ?? "new"} schema={draft} onApply={(s) => setDraft(s)} />
 
-          {/* ปรับแก้ทั้งฟอร์มด้วย AI — อยู่เหนือฟอร์ม (สั่งแก้ทั้งฟอร์ม ไม่ใช่ตั้งค่า) */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".85rem", fontWeight: 600, color: "var(--accent-text)" }} title={t("studio.refineSub")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.refineTitle")}</span>
-            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} style={{ flex: 1, minWidth: 200 }} />
-            <AsyncButton onClick={refineDraft} disabled={!!busy || !refine.trim()}>{t("studio.refineBtn")}</AsyncButton>
-          </div>
+          {/* ปรับแก้ทั้งฟอร์มด้วย AI — ช่องแถวเดียวแบบช่องแชต: ✨ ในช่อง · ปุ่มส่งไอคอนชิดขวา · Enter ส่ง */}
+          <form onSubmit={(e) => { e.preventDefault(); if (!busy && refine.trim()) void refineDraft(); }} title={t("studio.refineSub")}
+            style={{ position: "relative", marginTop: 10 }}>
+            <span aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--accent-text)", display: "inline-flex", pointerEvents: "none" }}><Icon icon={Sparkles} className="h-4 w-4" /></span>
+            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} maxLength={500}
+              style={{ width: "100%", boxSizing: "border-box", minHeight: 48, paddingLeft: 38, paddingRight: 54 }} />
+            <button type="submit" disabled={!!busy || !refine.trim()} aria-label={t("studio.refineBtn")} title={t("studio.refineBtn")}
+              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 40, height: 40, borderRadius: 8, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: busy || !refine.trim() ? "default" : "pointer",
+                background: refine.trim() && !busy ? "var(--accent)" : "var(--surface-2)", color: refine.trim() && !busy ? "var(--accent-ink)" : "var(--ink-3)" }}>
+              {busy === t("studio.busyRefine") ? <span aria-hidden style={{ width: 16, height: 16, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "krok-spin .8s linear infinite" }} /> : <Icon icon={ArrowUp} className="h-4 w-4" />}
+            </button>
+          </form>
 
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
@@ -1211,11 +1231,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {tab === "all" && (
       <Card>
         {flash && <div role="status" style={{ marginBottom: 12 }}><Notice>{flash}</Notice></div>}
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("studio.allFormsTitle")}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
 
         {/* ค้นหา + กรองประเภท */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0 10px" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 10px" }}>
           <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />

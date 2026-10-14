@@ -348,7 +348,7 @@ export async function refineForm(schema: FormSchema, instruction: string, ctx: A
       JSON.stringify(schema) +
       "\n\nจงแก้ไขตามคำสั่งนี้: " +
       instruction +
-      "\n\nคงส่วนที่ไม่เกี่ยวข้องไว้เหมือนเดิม แล้วตอบกลับ schema ฉบับเต็มหลังแก้\n\n" +
+      "\n\nคงส่วนที่ไม่เกี่ยวข้องไว้เหมือนเดิม ห้ามเปลี่ยน id ของขั้นตอน/ฟิลด์/คอลัมน์ที่มีอยู่แล้ว (ข้อมูลที่กรอกไว้ผูกกับ id) แล้วตอบกลับ schema ฉบับเต็มหลังแก้\n\n" +
       SCHEMA_SPEC,
     null,
     3000,
