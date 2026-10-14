@@ -526,7 +526,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
         )}
 
         <div style={{ marginTop: 26, paddingTop: 12, borderTop: "1px solid var(--line)", fontSize: ".72rem", color: "var(--ink-3)", fontFamily: "monospace", display: "flex", justifyContent: "space-between", gap: 8, flexWrap: "wrap" }}>
-          <span><T k="sub.footer" /></span>
+          {/* เอกสารของลูกค้า: ไม่มีชื่อแพลตฟอร์ม (เดิม "สร้างโดย KROK · ฟอร์มดิจิทัลหน้างาน") — เหลือรหัสอ้างอิงของใบ */}
           <span style={{ wordBreak: "break-all" }}>{String(sub.id)}</span>
         </div>
         {theme.footer && <div style={{ marginTop: 8, fontSize: ".74rem", color: "var(--ink-3)", textAlign: "center", whiteSpace: "pre-wrap", overflowWrap: "anywhere" }}>{theme.footer}</div>}
