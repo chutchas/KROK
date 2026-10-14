@@ -213,6 +213,8 @@ export default function FormPaperEditor({
   }
 
   const drag = useRef<{ key: string; mode: "move" | "resize"; sx: number; sy: number; ox: number; oy: number; ow: number } | null>(null);
+  const handleTouch = useRef(false);
+  const touchDragEndAt = useRef(0);
 
   const commit = useCallback(
     (next: Record<string, PaperBox>) => {
@@ -231,6 +233,7 @@ export default function FormPaperEditor({
     (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
     const box = layout[key];
     drag.current = { key, mode, sx: e.clientX, sy: e.clientY, ox: box.x, oy: box.y, ow: box.w };
+    handleTouch.current = fromHandle && e.pointerType !== "mouse";
     // ลากด้วยนิ้วผ่านที่จับ (ทัช): ปิดแผงตั้งค่าเพื่อไม่ให้ popup บังตอนลาก
     // (แตะที่ "ตัวฟิลด์" เพื่อเปิดตั้งค่าแทน) — เมาส์ยังเลือก+ไฮไลต์ได้ตามปกติ
     if (fromHandle && e.pointerType !== "mouse") select(null);
@@ -409,7 +412,14 @@ export default function FormPaperEditor({
     if (drag.current) {
       (e.target as HTMLElement).releasePointerCapture?.(e.pointerId);
       drag.current = null;
+      if (handleTouch.current) touchDragEndAt.current = e.timeStamp;
+      handleTouch.current = false;
     }
+  }
+  // ปล่อยนิ้วหลังลากด้วยที่จับ เบราว์เซอร์ยิง click ต่อ → เดิมเลือกฟิลด์แล้วแผ่นตั้งค่าเด้งขึ้นทุกครั้ง · ข้าม click ที่ตามมาทันที
+  function clickSelect(e: React.MouseEvent, k: string) {
+    if (touchDragEndAt.current && e.timeStamp - touchDragEndAt.current < 500) return;
+    select(k);
   }
 
   // ---- เมนูคลิกขวา: รายการตามสิ่งที่คลิก (ฟิลด์ / ขั้นตอน / หัวเอกสาร / ที่ว่าง) ----
@@ -550,7 +560,7 @@ export default function FormPaperEditor({
             const on = active === blk.key;
             return (
               <div key={blk.key} data-krok-keep="" data-block-key={blk.key}
-                onClick={() => select(blk.key)}
+                onClick={(e) => clickSelect(e, blk.key)}
                 onPointerDown={(e) => onPointerDown(e, blk.key, "move")}
                 style={{
                   ...paperHeaderBoxStyle, left: bx.x, top: bx.y, width: bx.w,
@@ -580,7 +590,7 @@ export default function FormPaperEditor({
             if (b.kind === "image" && b.image) {
               return (
                 <div key={b.key} data-krok-keep="" data-block-key={b.key}
-                  onClick={() => select(b.key)}
+                  onClick={(e) => clickSelect(e, b.key)}
                   onPointerDown={(e) => onPointerDown(e, b.key, "move")}
                   style={{
                     position: "absolute", left: box.x, top: tops[b.key] ?? box.y, width: box.w,
@@ -604,7 +614,7 @@ export default function FormPaperEditor({
                 ref={isStep ? undefined : measureRef(b.key)}
                 data-krok-keep=""
                 data-block-key={b.key}
-                onClick={() => select(b.key)}
+                onClick={(e) => clickSelect(e, b.key)}
                 onPointerDown={(e) => onPointerDown(e, b.key, "move")}
                 title={!isStep && overflows(b) ? t("fw.overflowTitle") : undefined}
                 style={{
