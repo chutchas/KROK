@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert, PanelLeftClose, PanelLeftOpen, ArrowUp, Plus } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -203,11 +203,30 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     return callGenerate({ prompt }, t("studio.busyGenerate"));
   }
 
-  function refineDraft() {
-    if (!refine.trim() || !draft) return;
-    const p = callGenerate({ schema: draft, instruction: refine }, t("studio.busyRefine"));
-    setRefine("");
-    return p;
+  // ปรับแก้ฟอร์มที่เปิดอยู่ด้วย AI — คงฟอร์มเดิมไว้ (เดิมล้าง editingId → กดบันทึกแล้วกลายเป็นฟอร์มใหม่ซ้ำอีกใบ)
+  async function refineDraft() {
+    const instruction = refine.trim();
+    if (!instruction || !draft) return;
+    setBusy(t("studio.busyRefine"));
+    setStatus(null);
+    try {
+      const res = await fetch("/api/ai/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schema: draft, instruction }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || t("studio.errAiFail"));
+      history.checkpoint(); // ผล AI = 1 ขั้นย้อนกลับ
+      setDraft(sanitizeSchema(json.schema));
+      setSelKey(null);
+      setRefine("");
+      showToast(t("studio.refineDone"), true);
+    } catch (e) {
+      setStatus({ t: e instanceof Error ? e.message : t("studio.errAiFail"), err: true });
+    } finally {
+      setBusy(null);
+    }
   }
 
   // เลือกไฟล์ → ยังไม่ส่ง AI ทันที เก็บไว้ให้ผู้ใช้ยืนยันก่อน
@@ -406,7 +425,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       const el = e.target as HTMLElement | null;
       // กำลังพิมพ์ในช่อง / มีหน้าต่างซ้อนเปิดอยู่ → ไม่ยุ่ง
       if (el?.closest("input, textarea, select, [contenteditable=true]")) return;
-      if (document.querySelector("[role=dialog], [role=alertdialog]")) return;
+      if (document.querySelector("[role=dialog]:not(.krok-aside), [role=alertdialog]")) return;
       const mod = e.ctrlKey || e.metaKey;
       const k = e.key.toLowerCase();
       if (mod && !e.altKey && k === "z") { e.preventDefault(); if (e.shiftKey) doRedo(); else doUndo(); return; }
@@ -419,6 +438,49 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
   }, [tab, draft, selKey, doUndo, doRedo, deleteKey, moveKey]);
+
+  // จอ <900: แผงตั้งค่าเป็นแผ่นเลื่อนขึ้น = modal จริง — โฟกัสเข้าแผ่น, Tab วนในแผ่น, หน้าด้านหลังไม่เลื่อน, ปิดแล้วคืนโฟกัส
+  const asideRef = useRef<HTMLElement>(null);
+  const [narrow, setNarrow] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 899px)");
+    const on = () => setNarrow(mq.matches);
+    on();
+    mq.addEventListener("change", on);
+    return () => mq.removeEventListener("change", on);
+  }, []);
+  const sheetOpen = narrow && tab === "edit" && !!draft && (!!selKey || formPanel);
+  useEffect(() => {
+    if (!sheetOpen) return;
+    const el = asideRef.current;
+    if (!el) return;
+    const back = document.activeElement as HTMLElement | null;
+    const root = document.documentElement;
+    const prevOverflow = root.style.overflow;
+    const prevBodyOverflow = document.body.style.overflow;
+    root.style.overflow = "hidden";
+    document.body.style.overflow = "hidden";
+    if (!el.contains(document.activeElement)) el.focus({ preventScroll: true });
+    function onKey(e: KeyboardEvent) {
+      if (document.querySelector("[role=dialog]:not(.krok-aside), [role=alertdialog]")) return; // dialog ยืนยันซ้อนอยู่
+      if (e.key === "Escape") { e.preventDefault(); setSelKey(null); setFormPanel(false); return; }
+      if (e.key !== "Tab" || !el) return;
+      const items = Array.from(el.querySelectorAll<HTMLElement>("a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex='-1'])"))
+        .filter((x) => x.offsetParent !== null);
+      if (!items.length) { e.preventDefault(); return; }
+      const first = items[0], last = items[items.length - 1];
+      const cur = document.activeElement;
+      if (e.shiftKey && (cur === first || cur === el || !el.contains(cur))) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && (cur === last || !el.contains(cur))) { e.preventDefault(); first.focus(); }
+    }
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      root.style.overflow = prevOverflow;
+      document.body.style.overflow = prevBodyOverflow;
+      if (back && document.contains(back)) back.focus({ preventScroll: true });
+    };
+  }, [sheetOpen]);
 
   // ปิดแผงตั้งค่าฟิลด์อัตโนมัติเมื่อคลิกที่ว่างนอกแผง (เดสก์ท็อป)
   useEffect(() => {
@@ -434,11 +496,15 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     return () => document.removeEventListener("pointerdown", onDown, true);
   }, [selKey]);
 
+  // ค่าตั้งที่อยู่นอก schema (สายอนุมัติ/การมองเห็น/อุปกรณ์) — undo ไม่ได้จับ จึงเทียบกับตอนเปิดฟอร์มเอง
+  const settingsBase = useRef<string | null>(null);
+  const settingsSnap = () => JSON.stringify([requiresApproval, requireDevice, deviceScope, chain, visMode, visTeams, visUsers, versionNote.trim()]);
+
   // ยกเลิก/ปิดการแก้ไข → กลับไปแท็บที่เหมาะสม
   async function cancelDraft() {
     const wasEditing = !!editingId;
     // มีงานที่ยังไม่บันทึก (ฟอร์มใหม่ทั้งฟอร์ม หรือแก้ฟอร์มเดิมไปแล้ว) → ถามก่อน (ปุ่มนี้อยู่ติดปุ่มบันทึก)
-    const unsaved = !wasEditing || history.canUndo();
+    const unsaved = !wasEditing || history.canUndo() || settingsBase.current !== settingsSnap();
     if (unsaved && !(await confirmDialog({
       title: wasEditing ? t("studio.cancelConfirmTitle") : t("studio.discardConfirmTitle"),
       message: wasEditing ? t("studio.cancelConfirm") : t("studio.discardConfirm"),
@@ -479,6 +545,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     setVisMode(f.visibility || "all");
     setVisTeams(f.visible_teams || []);
     setVisUsers(f.visible_users || []);
+    setVersionNote("");
+    settingsBase.current = JSON.stringify([f.requires_approval, !!f.require_approved_device, f.device_scope === "selected" ? "selected" : "any", f.approval_chain || [], f.visibility || "all", f.visible_teams || [], f.visible_users || [], ""]);
     setStatus(null);
     setView("mobile");
     setTab("edit");
@@ -772,12 +840,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     </div>
   );
 
-  const studioTabs = ([
-          { k: "new" as const, icon: Sparkles, label: t("studio.tabNew") },
-          { k: "edit" as const, icon: Pencil, label: t("studio.tabEdit") },
-          { k: "all" as const, icon: FileText, label: `${t("studio.tabAll")} (${initialForms.length})` },
-        // ซ่อนแท็บที่ยังไม่มีอะไร: "แก้ไข" เมื่อยังไม่ได้เปิดฟอร์มไหน · "ทั้งหมด" เมื่อยังไม่มีฟอร์ม (แท็บที่เปิดอยู่แสดงเสมอ)
-        ]).filter((tb) => tb.k === tab || tb.k === "new" || (tb.k === "edit" ? !!draft : initialForms.length > 0));
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0, overflowX: "clip" }}>
       {toast && (
@@ -790,41 +852,42 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           )}
         </div>
       )}
-      {/* แท็บหลัก 3 แท็บ */}
-      {/* เหลือแท็บเดียว (ยังไม่มีฟอร์ม) = ไม่ต้องมีแถบแท็บ */}
-      {/* หน้าแก้ไข: ไม่มีแถบแท็บ (ใช้ลิงก์ "ฟอร์มทั้งหมด" บนหัวหน้าแทน) — พื้นที่ให้ตัวอย่างฟอร์ม */}
-      {studioTabs.length > 1 && !(tab === "edit" && draft) && (
-      <div data-tour="studio-tabs" role="tablist" aria-label={t("nav.studio")} style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)" }}>
-        {studioTabs.map((tb) => {
-          const on = tab === tb.k;
-          return (
-            <button
-              key={tb.k}
-              onClick={() => { setTab(tb.k); setFlash(null); }}
-              role="tab"
-              aria-selected={on}
-              className="inline-flex items-center justify-center gap-1.5"
-              // แถวเดียวเสมอ (เดิม minWidth 120 ทำให้มือถือตกเป็น 2 บรรทัด) · จอแคบลดขอบ/ตัวอักษร
-              style={{ flex: "1 1 0", minWidth: 0, minHeight: 44, whiteSpace: "nowrap", padding: "8px clamp(6px, 2vw, 14px)", border: "none", borderRadius: 9, cursor: "pointer", fontFamily: "inherit", fontSize: "clamp(.82rem, 3.6vw, .92rem)", fontWeight: on ? 700 : 500, background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none" }}
-            >
-              <Icon icon={tb.icon} className="h-4 w-4 shrink-0" /> <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{tb.label}</span>
-            </button>
-          );
-        })}
+      {/* หัวหน้าแบบเดียวกับหน้าอื่น (เดิมเป็นแถบแท็บ สร้างใหม่/แก้ไข/ทั้งหมด): ชื่อหน้าซ้าย · ปุ่มไปอีกหน้าขวา */}
+      {(tab === "new" || tab === "all") && (
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: "1.4rem", margin: 0, minWidth: 0 }}>
+            {tab === "all" ? t("studio.allFormsTitle") : t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}
+          </h1>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+            {draft && (
+              <Button onClick={() => { setTab("edit"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px" }}>
+                <Icon icon={Pencil} className="h-4 w-4" /> {t("studio.resumeEdit")}
+              </Button>
+            )}
+            {tab === "new" ? (initialForms.length > 0 && (
+              <Button data-tour="studio-tabs" onClick={() => { setTab("all"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px", fontWeight: 600 }}>
+                <span style={{ display: "inline-flex", color: "var(--accent-text)" }}><Icon icon={FileText} className="h-4 w-4" /></span> {t("studio.allFormsBtn")}
+                <span style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", minWidth: 22, height: 22, padding: "0 6px", boxSizing: "border-box", borderRadius: 11, background: "var(--accent-soft)", color: "var(--accent-text)", fontSize: ".78rem", fontWeight: 700 }}>{initialForms.length}</span>
+              </Button>
+            )) : (
+              <Button variant="primary" onClick={() => { setTab("new"); setFlash(null); }} style={{ minHeight: 44, padding: "0 16px" }}>
+                <Icon icon={Plus} className="h-4 w-4" /> {t("studio.createNew")}
+              </Button>
+            )}
+          </div>
+        </div>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: "4px 0 0" }}>
+          {tab === "all" ? t("studio.allFormsSub") : t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}
+        </p>
       </div>
       )}
 
       {tab === "new" && (
       <>
       <Card>
-        <div>
-          {/* หัวข้อตามโหมดที่เลือก (AI / จากไฟล์ / จากเทมเพลต) */}
-          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}</h1>
-          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}</p>
-        </div>
-
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
-        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "12px 0" }}>
+        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "0 0 12px" }}>
           {([
             { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt"), short: t("studio.modePromptShort") },
             { m: "file" as const, icon: FileUp, label: t("studio.modeFile"), short: t("studio.modeFileShort") },
@@ -986,14 +1049,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         // จอกว้าง: ฟอร์มซ้าย + แผงตั้งค่าขวาแบบถาวร (ฟอร์มไม่ยืด-หดตอนเลือกฟิลด์) · จอแคบ: แผงลอย/แผ่นเลื่อนขึ้น
         <div>
                   <div ref={editHeadRef} className="krok-edithead" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
-            <div>
+            <div className="krok-eh-title">
               {/* หัวหน้าเหมือนหน้าอื่น: h1 อยู่นอกการ์ด ไม่มีไอคอน (ไอคอนฟอร์มอยู่ในช่องชื่อด้านล่าง) */}
               <nav aria-label={t("studio.crumbLabel")} style={{ fontSize: ".84rem", color: "var(--ink-2)", marginBottom: 2 }}>
                 <button type="button" onClick={() => setTab("all")} style={{ border: "none", background: "none", padding: "0 2px", minHeight: 44, color: "var(--accent-text)", fontFamily: "inherit", fontSize: "inherit", cursor: "pointer" }}>{t("studio.crumbAll")}</button>
-                <span aria-hidden> / </span><span aria-current="page">{editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}</span>
+                <span aria-hidden> / </span><span className="krok-eh-cur" aria-current="page">{editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}</span>
               </nav>
               <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{draft.title || t("editor.formTitle")}</h1>
-              <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
+              <p className="krok-eh-sub" style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
             </div>
@@ -1014,10 +1077,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                       key={v.m}
                       onClick={() => setView(v.m)}
                       aria-pressed={view === v.m}
+                      aria-label={v.label}
+                      title={v.label}
                       className="inline-flex items-center gap-1.5"
                       style={{ minHeight: 44, padding: "0 14px", border: "none", borderLeft: i === 0 ? "none" : "1px solid var(--line)", cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 400 }}
                     >
-                      <Icon icon={v.icon} className="h-4 w-4" /> {v.label}
+                      <Icon icon={v.icon} className="h-4 w-4" /><span className="krok-vt-lbl"> {v.label}</span>
                     </button>
                   );
                 })}
@@ -1064,7 +1129,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   onClick={() => { setSelKey(f.id); requestAnimationFrame(() => document.getElementById(`fp-${f.id}`)?.scrollIntoView({ block: "center", behavior: "smooth" })); }}
                   className={selKey === f.id ? "krok-ol-item krok-ol-field krok-ol-on" : "krok-ol-item krok-ol-field"}>
                   <span style={{ minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.label || t("fw.noName")}</span>
-                  {f.required && <span aria-hidden style={{ color: "var(--fail)", flex: "0 0 auto" }}>*</span>}
+                  {f.required && <span aria-hidden style={{ color: "var(--fail-text)", flex: "0 0 auto" }}>*</span>}
                 </button>
               ))}
             </div>
@@ -1075,12 +1140,18 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (ฟอร์มที่สร้างก่อนมีตัวเลือกนี้) → เสนอให้ยืนยัน */}
           <DefectSuggestBanner key={editingId ?? "new"} schema={draft} onApply={(s) => setDraft(s)} />
 
-          {/* ปรับแก้ทั้งฟอร์มด้วย AI — อยู่เหนือฟอร์ม (สั่งแก้ทั้งฟอร์ม ไม่ใช่ตั้งค่า) */}
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".85rem", fontWeight: 600, color: "var(--accent-text)" }} title={t("studio.refineSub")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.refineTitle")}</span>
-            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} style={{ flex: 1, minWidth: 200 }} />
-            <AsyncButton onClick={refineDraft} disabled={!!busy || !refine.trim()}>{t("studio.refineBtn")}</AsyncButton>
-          </div>
+          {/* ปรับแก้ทั้งฟอร์มด้วย AI — ช่องแถวเดียวแบบช่องแชต: ✨ ในช่อง · ปุ่มส่งไอคอนชิดขวา · Enter ส่ง */}
+          <form onSubmit={(e) => { e.preventDefault(); if (!busy && refine.trim()) void refineDraft(); }} title={t("studio.refineSub")}
+            style={{ position: "relative", marginTop: 10 }}>
+            <span aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--accent-text)", display: "inline-flex", pointerEvents: "none" }}><Icon icon={Sparkles} className="h-4 w-4" /></span>
+            <Field value={refine} onChange={(e) => setRefine(e.target.value)} placeholder={t("studio.refinePlaceholder")} aria-label={t("studio.refineTitle")} maxLength={500}
+              style={{ width: "100%", boxSizing: "border-box", minHeight: 48, paddingLeft: 38, paddingRight: 54 }} />
+            <button type="submit" disabled={!!busy || !refine.trim()} aria-label={t("studio.refineBtn")} title={t("studio.refineBtn")}
+              style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)", width: 40, height: 40, borderRadius: 8, border: "none", display: "inline-flex", alignItems: "center", justifyContent: "center", cursor: busy || !refine.trim() ? "default" : "pointer",
+                background: refine.trim() && !busy ? "var(--accent)" : "var(--surface-2)", color: refine.trim() && !busy ? "var(--accent-ink)" : "var(--ink-3)" }}>
+              {busy === t("studio.busyRefine") ? <span aria-hidden style={{ width: 16, height: 16, border: "2px solid currentColor", borderRightColor: "transparent", borderRadius: "50%", display: "inline-block", animation: "krok-spin .8s linear infinite" }} /> : <Icon icon={ArrowUp} className="h-4 w-4" />}
+            </button>
+          </form>
 
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
@@ -1123,7 +1194,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
         </Card>
         {(selKey || formPanel) && <div className="krok-settings-backdrop" onClick={() => { setSelKey(null); setFormPanel(false); }} />}
-        <aside data-tour="studio-aside" className={selKey || formPanel ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={selKey ? t("editor.fieldSettings") : t("fs.title")}>
+        <aside ref={asideRef} data-tour="studio-aside" className={selKey || formPanel ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={selKey ? t("editor.fieldSettings") : t("fs.title")}
+          {...(sheetOpen ? { role: "dialog", "aria-modal": true, tabIndex: -1 } : {})}>
           {selKey ? (
             <>
               <button type="button" onClick={() => { setSelKey(null); setFormPanel(true); }}
@@ -1159,16 +1231,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {tab === "all" && (
       <Card>
         {flash && <div role="status" style={{ marginBottom: 12 }}><Notice>{flash}</Notice></div>}
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("studio.allFormsTitle")}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("studio.allFormsSub")}</p>
 
         {/* ค้นหา + กรองประเภท */}
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "10px 0 10px" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", margin: "0 0 10px" }}>
           <div style={{ position: "relative", flex: 1, minWidth: 180 }}>
             <span style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
-          <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
+          <select aria-label={t("studio.category")} value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
             style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("studio.allCategories")}</option>
             {studioCats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
@@ -1233,7 +1303,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 ) : (
                   <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
                 )}
-                <AsyncButton variant="danger" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></AsyncButton>
+                <AsyncButton variant="danger" className="krok-row-del" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></AsyncButton>
               </div>
             </div>
           ))}
@@ -1306,8 +1376,20 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           /* หัวหน้าแก้ไขตรึงใต้แถบบนของแอป — เลื่อนฟอร์มยาวแล้วปุ่มบันทึกยังอยู่บนจอ */
           .krok-edithead{ position:sticky; top:64px; z-index:15; background:var(--ground); padding:8px 0 10px; margin-bottom:12px !important;
             border-bottom:1px solid var(--line); }
+          /* ส่วนหัวตรึงต้องเตี้ย (เดิม 120–177px กินจอ 23–30%): แถวเดียว — [ฟอร์มทั้งหมด / ชื่อฟอร์ม] ......... [ปุ่ม]
+             ซ่อนบรรทัดรอง (จำนวนขั้น/ฟิลด์ ดูได้ที่โครงฟอร์มซ้าย) */
+          .krok-edithead{ align-items:center !important; flex-wrap:nowrap !important; padding:4px 0 6px; }
+          .krok-eh-title{ display:flex; align-items:center; gap:6px; min-width:0; flex:1 1 auto; }
+          .krok-eh-title nav{ margin:0 !important; white-space:nowrap; flex:0 0 auto; }
+          .krok-eh-title h1{ font-size:1.15rem !important; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .krok-eh-cur, .krok-eh-sub{ display:none; }
+          .krok-edithead-actions{ flex:0 0 auto; flex-wrap:nowrap !important; }
           .krok-outline{ display:block; position:sticky; top:calc(74px + var(--krok-eh, 0px)); max-height:calc(100vh - 90px - var(--krok-eh, 0px)); overflow:auto;
             background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 6px; }
+        }
+        /* 900–1099: ปุ่มบนแถวเดียวกับชื่อแน่นเกิน → สลับมือถือ/กระดาษเหลือไอคอน (มี aria-label/title) */
+        @media(min-width:900px) and (max-width:1099px){
+          .krok-vt-lbl{ display:none; }
         }
         @media(min-width:1280px){
           .krok-editgrid{ grid-template-columns:var(--ol-w) minmax(0,1fr) 360px; }
@@ -1321,7 +1403,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-aside{ display:none; }
           .krok-fs-close{ display:flex !important; }
           .krok-aside.krok-aside-sel{ display:block; position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:640px; margin:0 auto;
-            max-height:82vh; overflow:auto; z-index:70; box-sizing:border-box; background:var(--surface);
+            max-height:72vh; max-height:72dvh; overflow:auto; overscroll-behavior:contain; z-index:70; outline:none; box-sizing:border-box; background:var(--surface);
             border-radius:16px 16px 0 0; box-shadow:0 -10px 40px rgba(10,14,18,.25);
             padding:18px 12px calc(16px + env(safe-area-inset-bottom)); }
           /* ขีดจับบนแผ่น — บอกว่าเป็นแผ่นเลื่อนขึ้น (ไม่ใช่หน้าใหม่) และเว้นที่ไม่ให้ปุ่มติดขอบบน */
@@ -1335,8 +1417,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
           /* ปุ่ม action 5 ปุ่มในการ์ดฟอร์ม: กว้างเท่ากันเต็มแถว */
           /* ปุ่มจัดการฟอร์ม 5–6 ปุ่ม: ไอคอนเต็มขนาด (เดิมหดจนเหลือจุด) + ชื่อสั้นใต้ไอคอน — รู้ว่าปุ่มไหนคืออะไร */
-          .krok-row-actions>button{flex:1 1 0;min-width:0;flex-direction:column;gap:3px !important;min-height:56px !important;padding:6px 2px !important;font-size:.72rem !important;line-height:1.2}
+          /* 6 ปุ่มในแถวเดียวเหลือปุ่มละ ~39px ป้าย 11.5px → ตาราง 3 คอลัมน์ 2 แถว ปุ่มละ ~110px ไอคอน+ป้ายแนวนอน */
+          .krok-row-actions{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr))}
+          .krok-row-actions>button{min-width:0;gap:6px !important;min-height:44px !important;padding:6px 8px !important;font-size:.84rem !important;line-height:1.2}
           .krok-row-actions>button svg{flex:0 0 auto;width:18px;height:18px}
+          /* ลบ: ไม่มีกรอบ — เบากว่าปุ่มอื่น ไม่เท่ากับเก็บถาวร */
+          .krok-row-actions>.krok-row-del{border-color:transparent !important;background:none !important}
           .krok-row-actions .krok-btn-label{display:block !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           /* toggle แบบแบ่งครึ่ง: เต็มแถว */
           .krok-seg{display:flex !important;width:100%;flex-basis:100%}
