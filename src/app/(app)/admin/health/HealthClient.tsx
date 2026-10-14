@@ -5,16 +5,16 @@ import { Button, Card } from "@/components/ui";
 import type { HealthReport, HealthStatus, AiProfileInfo } from "@/lib/platform-health";
 
 const STATUS: Record<HealthStatus, { label: string; color: string; bg: string; dot: string }> = {
-  ok: { label: "ปกติ", color: "var(--pass)", bg: "var(--pass-soft)", dot: "●" },
-  warn: { label: "ควรตรวจ", color: "var(--warn)", bg: "var(--warn-soft)", dot: "▲" },
-  fail: { label: "ผิดปกติ", color: "var(--fail)", bg: "var(--fail-soft)", dot: "✕" },
-  off: { label: "ไม่ได้เปิดใช้", color: "var(--ink-3)", bg: "var(--code-bg)", dot: "○" },
+  ok: { label: "ปกติ", color: "var(--pass-text)", bg: "var(--pass-soft)", dot: "●" },
+  warn: { label: "ควรตรวจ", color: "var(--warn-text)", bg: "var(--warn-soft)", dot: "▲" },
+  fail: { label: "ผิดปกติ", color: "var(--fail-text)", bg: "var(--fail-soft)", dot: "✕" },
+  off: { label: "ไม่ได้เปิดใช้", color: "var(--ink-2)", bg: "var(--code-bg)", dot: "○" },
 };
 
 function Badge({ s }: { s: HealthStatus }) {
   const c = STATUS[s];
   return (
-    <span style={{ fontSize: ".72rem", fontWeight: 700, borderRadius: 20, padding: "2px 10px", whiteSpace: "nowrap", color: c.color, background: c.bg }}>
+    <span style={{ fontSize: ".8rem", fontWeight: 700, borderRadius: 20, padding: "2px 10px", whiteSpace: "nowrap", color: c.color, background: c.bg }}>
       {c.dot} {c.label}
     </span>
   );
@@ -100,7 +100,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
                 <div style={{ flex: "2 1 240px", fontSize: ".85rem", color: "var(--ink-2)", overflowWrap: "anywhere" }}>
                   {c.detail}
                   {c.ms != null && <span style={{ color: "var(--ink-3)" }}> · {c.ms} ms</span>}
-                  {c.href && <> · <a href={c.href}>เปิด</a></>}
+                  {c.href && <> · <a href={c.href} style={{ display: "inline-block", padding: "12px 8px", margin: "-12px -8px" }}>เปิด</a></>}
                 </div>
               </div>
             ))}

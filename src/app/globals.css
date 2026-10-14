@@ -57,6 +57,7 @@
   --fail-text: #b91c1c; /* ตัวอักษรแดงบน --fail-soft ≥ 4.5:1 */
   /* คำเตือน/รอดำเนินการ/ต้องใส่ใจ — อำพันเข้ม อ่านได้ ≥ 4.5:1 บนพื้นขาวและ --warn-soft */
   --warn: #b45309;
+  --warn-text: #92400e; /* ตัวอักษรอำพันบน --warn-soft ≥ 4.5:1 */
   --warn-soft: #fef3c7;
   --code-bg: #f1f5f9;
 
@@ -98,6 +99,7 @@
     --fail-soft: #2c1a1a;
     --fail-text: #f87171;
     --warn: #fbbf24;
+    --warn-text: #fbbf24;
     --warn-soft: rgba(251, 191, 36, 0.14);
     --code-bg: #232f45;
     --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
@@ -131,6 +133,7 @@
   --fail-soft: #2c1a1a;
   --fail-text: #f87171;
   --warn: #fbbf24;
+  --warn-text: #fbbf24;
   --warn-soft: rgba(251, 191, 36, 0.14);
   --code-bg: #232f45;
   --shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
@@ -270,6 +273,7 @@ a {
     --fail-text: #b91c1c;
     --pass-text: #166534;
     --warn: #b45309;
+    --warn-text: #92400e; /* ตัวอักษรอำพันบน --warn-soft ≥ 4.5:1 */
     --warn-soft: #fef3c7;
     --code-bg: #f1f5f9;
     --shadow: none;

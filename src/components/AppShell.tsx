@@ -264,6 +264,11 @@ export default function AppShell({
           .krok-ws-slot .krok-ws-name{ display: none !important; }
           .krok-nav a{ padding-left: 10px !important; padding-right: 10px !important; }
         }
+        /* 641–670px: แคบสุดของช่วงไอคอน — ชื่อหน้าที่อยู่ก็ซ่อน (ยังไฮไลต์อยู่) เมนูท้าย "รายงาน" ไม่ถูกตัด */
+        @media (min-width: 641px) and (max-width: 670px){
+          .krok-nav a{ padding-left: 7px !important; padding-right: 7px !important; }
+          .krok-nav a[aria-current="page"] .krok-nav-label{ display: none; }
+        }
         /* เมนูหมวดตั้งค่าที่ต่อท้ายตามหน้า (ทีม/แพ็กเกจ/Workspace): ซ่อนถึง 1279px (1200–1279 เมนูเต็มชื่อ + ตัวนี้ = ล้นซ้าย) — อยู่ในเมนู ☰ */
         @media (min-width: 641px) and (max-width: 1279px){
           .krok-nav a.krok-nav-extra{ display: none !important; }
