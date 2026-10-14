@@ -175,7 +175,7 @@ export async function GET(req: Request) {
       ...(() => { const g = readGeo(s.geo); return g ? { geo: fmtCoords(g), geoUrl: mapUrl(g) } : {}; })(),
       ...(s.result === "fail" && "fail_closed_at" in s
         ? {
-            closeStatus: s.fail_closed_at ? "ปิดแล้ว" : "ยังไม่ปิด",
+            closeStatus: s.fail_closed_at ? "ปิดเรื่องแล้ว" : "ยังไม่ปิดเรื่อง",
             closedBy: s.fail_closed_by_name || "",
             closedAt: s.fail_closed_at ? new Date(s.fail_closed_at).toLocaleString("th-TH", { dateStyle: "medium", timeStyle: "short", timeZone: "Asia/Bangkok" }) : "",
             closeNote: s.fail_close_note || "",

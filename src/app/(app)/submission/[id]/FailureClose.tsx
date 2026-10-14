@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import { LocalDate } from "@/i18n/T";
 import { closeFailure, reopenFailure } from "@/lib/failure-close-actions";
+import { daysSince } from "@/lib/fail-items";
 
 export interface FailureState {
   /** ข้อที่ไม่ผ่าน + หมายเหตุของผู้ตรวจ (ถ้ามี) */
@@ -24,8 +25,11 @@ export interface FailureEvent { action: "close" | "reopen"; at: string; byName: 
  * สถานะเรื่องของใบไม่ผ่าน — ยังไม่ปิด (ผู้จัดการกดปิดพร้อมหมายเหตุการแก้ไข) / ปิดแล้ว (ใคร เมื่อไร แก้อย่างไร)
  * supported=false = ยังไม่รัน 0080 → แสดงแค่ข้อที่ไม่ผ่าน ไม่มีปุ่ม · หน้าพิมพ์/PDF แสดงบันทึกการปิดเรื่องแยก (FailureCloseRecord)
  */
-export default function FailureClose({ id, state, canClose, canReopen, supported }: {
+export default function FailureClose({ id, state, canClose, canReopen, supported, historySupported = false, submittedAt = null }: {
   id: string; state: FailureState; canClose: boolean; canReopen: boolean; supported: boolean;
+  /** รัน 0081 แล้ว (เปิดกลับเก็บเหตุผล + หมายเหตุเดิมไว้ในประวัติ) */
+  historySupported?: boolean;
+  submittedAt?: string | null;
 }) {
   const { t, tt } = useT();
   const router = useRouter();
@@ -39,11 +43,21 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
   /** ข้อความประกาศผล (screen reader) + ย้ายโฟกัสกลับหัวแผงหลังเปลี่ยนสถานะ */
   const [done, setDone] = useState<string | null>(null);
   const headRef = useRef<HTMLHeadingElement>(null);
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+  const reopenBtnRef = useRef<HTMLButtonElement>(null);
+  /** กดยกเลิกแล้วคืนโฟกัสให้ปุ่มที่เปิดฟอร์ม (ไม่หลุดไปที่ body) */
+  const refocus = useRef<"close" | "reopen" | null>(null);
   const closed = !!state.closedAt;
+  const days = closed ? 0 : daysSince(submittedAt);
 
   useEffect(() => {
     if (done) headRef.current?.focus();
   }, [done, closed]);
+  useEffect(() => {
+    if (!refocus.current || open || reopening) return;
+    (refocus.current === "close" ? closeBtnRef : reopenBtnRef).current?.focus();
+    refocus.current = null;
+  }, [open, reopening]);
 
   async function run(fn: () => Promise<{ ok: true } | { error: string }>, okMsg: string) {
     setBusy(true); setErr(null); setDone(null);
@@ -106,12 +120,12 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
         {history}
         {reopening && (
           <>
-            <div style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{t("fc.reopenConfirm")}</div>
+            <div style={{ color: "var(--ink-2)", fontSize: ".82rem" }}>{historySupported ? t("fc.reopenConfirm") : t("fc.reopenConfirmNoHist")}</div>
             <label style={{ display: "grid", gap: 4 }}>
               {t("fc.reopenReason")}
               <textarea value={reason} onChange={(e) => setReason(e.target.value)} maxLength={500} rows={2} autoFocus
-                placeholder={t("fc.reopenReasonPh")} aria-describedby="fc-reason-hint" style={textarea} />
-              <span id="fc-reason-hint" style={{ fontSize: ".76rem", color: "var(--ink-3)" }}>{t("trash.reasonMin")}</span>
+                placeholder={t("fc.reopenReasonPh")} aria-describedby="fc-reason-hint" aria-required="true" style={textarea} />
+              <span id="fc-reason-hint" style={{ fontSize: ".76rem", color: "var(--ink-2)" }}>{t("trash.reasonMin")}</span>
             </label>
           </>
         )}
@@ -120,13 +134,13 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: reopening ? "flex-end" : "flex-start" }}>
             {reopening ? (
               <>
-                <Button onClick={() => { setReopening(false); setErr(null); }} disabled={busy}>{t("common.cancel")}</Button>
+                <Button onClick={() => { setReopening(false); setErr(null); refocus.current = "reopen"; }} disabled={busy}>{t("common.cancel")}</Button>
                 <Button variant="danger" onClick={() => run(() => reopenFailure(id, reason), t("fc.reopened"))} disabled={busy || reason.trim().length < 3} loading={busy}>
                   <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
                 </Button>
               </>
             ) : (
-              <Button variant="ghost" onClick={() => setReopening(true)} style={{ fontSize: ".82rem" }}>
+              <Button ref={reopenBtnRef} variant="ghost" onClick={() => setReopening(true)} style={{ fontSize: ".82rem" }}>
                 <Icon icon={RotateCcw} className="h-4 w-4" /> {t("fc.reopen")}
               </Button>
             )}
@@ -144,8 +158,9 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
           <Icon icon={CircleX} className="h-[18px] w-[18px]" />
           {supported ? tt("fc.openTitleN", { n: state.items.length }) : tt("sub.issues", { n: state.items.length })}
         </h2>
+        {supported && days > 0 && <span style={{ color: "var(--fail-text)", fontSize: ".82rem", fontWeight: 600 }}>{tt("fc.daysOpen", { n: days })}</span>}
         {supported && canClose && !open && (
-          <Button onClick={() => setOpen(true)} style={{ marginLeft: "auto" }}>
+          <Button ref={closeBtnRef} onClick={() => setOpen(true)} style={{ marginLeft: "auto" }}>
             <Icon icon={CircleCheck} className="h-4 w-4" /> {t("fc.close")}
           </Button>
         )}
@@ -158,12 +173,12 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
           <label style={{ display: "grid", gap: 4 }}>
             {t("fc.noteLabel")}
             <textarea value={note} onChange={(e) => setNote(e.target.value)} maxLength={1000} rows={3} autoFocus
-              placeholder={t("fc.notePh")} aria-describedby="fc-note-hint" style={textarea} />
-            <span id="fc-note-hint" style={{ fontSize: ".76rem", color: "var(--ink-3)" }}>{t("trash.reasonMin")}</span>
+              placeholder={t("fc.notePh")} aria-describedby="fc-note-hint" aria-required="true" style={textarea} />
+            <span id="fc-note-hint" style={{ fontSize: ".76rem", color: "var(--ink-2)" }}>{t("trash.reasonMin")}</span>
           </label>
           {err && <Notice kind="error">{err}</Notice>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
-            <Button onClick={() => { setOpen(false); setErr(null); }} disabled={busy}>{t("common.cancel")}</Button>
+            <Button onClick={() => { setOpen(false); setErr(null); refocus.current = "close"; }} disabled={busy}>{t("common.cancel")}</Button>
             <Button variant="primary" onClick={() => run(() => closeFailure(id, note), t("fc.closedDone"))} disabled={busy || note.trim().length < 3} loading={busy}>
               <Icon icon={CircleCheck} className="h-4 w-4" /> {t("fc.closeConfirm")}
             </Button>
@@ -176,8 +191,19 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
 }
 
 /** บันทึกการปิดเรื่องบนหน้าพิมพ์/PDF — กล่องแยกท้ายเอกสาร ไม่แตะเนื้อหาที่กรอก (หลักฐานสำหรับผู้ตรวจสอบ) */
-export function FailureCloseRecord({ closedAt, closedBy, note, items }: { closedAt: string; closedBy: string | null; note: string | null; items: { label: string }[] }) {
+export function FailureCloseRecord({ closedAt, closedBy, note, items }: { closedAt: string | null; closedBy: string | null; note: string | null; items: { label: string }[] }) {
   const { t, lang } = useT();
+  // ยังไม่ปิดเรื่อง: บอกบนกระดาษด้วย (ไม่ใช่ไม่มีอะไรเลย — คนอ่าน PDF ไม่รู้ว่ายังค้าง)
+  if (!closedAt) {
+    return (
+      <section className="krok-close-record" style={{ width: "210mm", boxSizing: "border-box", padding: "10mm 14mm", background: "#fff", color: "#111", fontSize: 12, lineHeight: 1.5, breakInside: "avoid" }}>
+        <div style={{ border: "1.5px solid #b91c1c", borderRadius: 4, padding: "8px 12px" }}>
+          <b style={{ display: "block", fontSize: 13, color: "#b91c1c", marginBottom: 4 }}>{t("fc.recordOpenTitle")}</b>
+          {items.length > 0 && <div><span style={{ color: "#555" }}>{t("fc.recordItems")} </span>{items.map((i) => i.label).join(", ")}</div>}
+        </div>
+      </section>
+    );
+  }
   const when = new Date(closedAt).toLocaleString(lang === "en" ? "en-GB" : "th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" });
   return (
     <section className="krok-close-record" style={{ width: "210mm", boxSizing: "border-box", padding: "10mm 14mm", background: "#fff", color: "#111", fontSize: 12, lineHeight: 1.5, breakInside: "avoid" }}>

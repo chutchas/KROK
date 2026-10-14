@@ -223,6 +223,25 @@ export default async function SubmissionPage({ params, searchParams }: { params:
     background: on ? "var(--surface)" : "transparent", color: on ? "var(--ink)" : "var(--ink-2)", boxShadow: on ? "var(--shadow)" : "none",
   });
 
+  // ใบไม่ผ่าน: สถานะเรื่อง (ยังไม่ปิด / ปิดแล้ว) — ทั้งสองแท็บ · ไม่พิมพ์ · วางหลัง h1 ของหน้า (ลำดับหัวข้อ)
+  const failPanel = sub.result === "fail" ? (
+        <FailureClose
+          id={String(sub.id)}
+          supported={"fail_closed_at" in sub}
+          historySupported={"fail_close_history" in sub}
+          submittedAt={sub.submitted_at as string | null}
+          canClose={canManage(session.role)}
+          canReopen={session.role === "owner" || session.role === "admin"}
+          state={{
+            items: failItemsOf(allAnswers, sub.fails),
+            closedAt: (sub.fail_closed_at as string | null) ?? null,
+            closedBy: (sub.fail_closed_by_name as string | null) ?? null,
+            note: (sub.fail_close_note as string | null) ?? null,
+            history: historyOf(sub.fail_close_history),
+          }}
+        />
+  ) : null;
+
   const label: React.CSSProperties = { color: "var(--ink-2)", fontSize: ".85rem", width: 200, flexShrink: 0 };
   const row: React.CSSProperties = { display: "flex", gap: 16, padding: "10px 0", borderBottom: "1px solid var(--line)", alignItems: "flex-start" };
 
@@ -245,26 +264,10 @@ export default async function SubmissionPage({ params, searchParams }: { params:
         </div>
       )}
 
-      {/* ใบไม่ผ่าน: สถานะเรื่อง (ยังไม่ปิด / ปิดแล้ว) — ทั้งสองแท็บ · ไม่พิมพ์ */}
-      {sub.result === "fail" && (
-        <FailureClose
-          id={String(sub.id)}
-          supported={"fail_closed_at" in sub}
-          canClose={canManage(session.role)}
-          canReopen={session.role === "owner" || session.role === "admin"}
-          state={{
-            items: failItemsOf(allAnswers, sub.fails),
-            closedAt: (sub.fail_closed_at as string | null) ?? null,
-            closedBy: (sub.fail_closed_by_name as string | null) ?? null,
-            note: (sub.fail_close_note as string | null) ?? null,
-            history: historyOf(sub.fail_close_history),
-          }}
-        />
-      )}
-
       {view === "doc" && docSchema ? (
         <div role="tabpanel" id="sub-panel">
           <h1 className="sr-only">{sub.form_title} {docNo}</h1>
+          {failPanel}
           {sub.approval_status && sub.approval_status !== "none" && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: ".86rem" }}>
               <span style={{ border: `2px solid ${status.c}`, color: status.c, borderRadius: 8, padding: "2px 10px", fontWeight: 700 }}><T k={status.k} /></span>
@@ -313,6 +316,8 @@ export default async function SubmissionPage({ params, searchParams }: { params:
             </div>
           </div>
         </div>
+
+        {failPanel && <div style={{ marginTop: 12 }}>{failPanel}</div>}
 
         {/* meta */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: "2px 24px", fontSize: ".86rem", margin: "14px 0 8px" }}>

@@ -26,3 +26,11 @@ export function historyOf(raw: unknown): { action: "close" | "reopen"; at: strin
     }];
   });
 }
+
+/** ค้างมากี่วัน (นับวันตามเวลาไทย · วันนี้ = 0) */
+export function daysSince(iso: string | null | undefined): number {
+  if (!iso) return 0;
+  const day = (d: Date) => Date.parse(d.toLocaleDateString("en-CA", { timeZone: "Asia/Bangkok" }));
+  const n = Math.round((day(new Date()) - day(new Date(iso))) / 86_400_000);
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}

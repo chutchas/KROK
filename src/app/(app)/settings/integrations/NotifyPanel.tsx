@@ -85,12 +85,12 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
           <b style={{ fontSize: ".95rem" }}>{t("notify.line")}</b>
         </div>
         <Check on={s.line_enabled} onChange={(v) => set("line_enabled", v)}>{t("notify.lineEnable")}</Check>
-        <label style={label}>{t("notify.lineToken")}</label>
-        <Field type="password" value={lineToken} onChange={(e) => setLineToken(e.target.value)}
+        <label style={label} htmlFor="ntf-lineToken">{t("notify.lineToken")}</label>
+        <Field id="ntf-lineToken" type="password" value={lineToken} onChange={(e) => setLineToken(e.target.value)}
           placeholder={s.hasLineToken ? t("notify.secretSaved") : ""} style={{ width: "100%" }} autoComplete="off" />
         <div style={hint}>{t("notify.lineTokenHint")}</div>
-        <label style={label}>{t("notify.lineTarget")}</label>
-        <Field value={s.line_target} onChange={(e) => set("line_target", e.target.value)} style={{ width: "100%" }} />
+        <label style={label} htmlFor="ntf-lineTarget">{t("notify.lineTarget")}</label>
+        <Field id="ntf-lineTarget" value={s.line_target} onChange={(e) => set("line_target", e.target.value)} style={{ width: "100%" }} />
         <div style={hint}>{t("notify.lineTargetHint")}</div>
         {!s.line_target.trim() && (
           <div style={{ marginTop: 6 }}>
@@ -113,8 +113,8 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
         <Check on={s.email_enabled} onChange={(v) => set("email_enabled", v)}>{t("notify.emailEnable")}</Check>
         <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
           <div>
-            <label style={label}>{t("notify.smtpHost")}</label>
-            <Field value={s.smtp_host} onChange={(e) => set("smtp_host", e.target.value)} placeholder="smtp.gmail.com" style={{ width: "100%" }} />
+            <label style={label} htmlFor="ntf-smtpHost">{t("notify.smtpHost")}</label>
+            <Field id="ntf-smtpHost" value={s.smtp_host} onChange={(e) => set("smtp_host", e.target.value)} placeholder="smtp.gmail.com" style={{ width: "100%" }} />
           </div>
           <div>
             <label style={label}>{t("notify.smtpPort")}</label>
@@ -126,19 +126,19 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div>
-            <label style={label}>{t("notify.smtpUser")}</label>
-            <Field value={s.smtp_user} onChange={(e) => set("smtp_user", e.target.value)} style={{ width: "100%" }} autoComplete="off" />
+            <label style={label} htmlFor="ntf-smtpUser">{t("notify.smtpUser")}</label>
+            <Field id="ntf-smtpUser" value={s.smtp_user} onChange={(e) => set("smtp_user", e.target.value)} style={{ width: "100%" }} autoComplete="off" />
           </div>
           <div>
-            <label style={label}>{t("notify.smtpPass")}</label>
-            <Field type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)}
+            <label style={label} htmlFor="ntf-smtpPass">{t("notify.smtpPass")}</label>
+            <Field id="ntf-smtpPass" type="password" value={smtpPass} onChange={(e) => setSmtpPass(e.target.value)}
               placeholder={s.hasSmtpPass ? t("notify.secretSaved") : ""} style={{ width: "100%" }} autoComplete="off" />
           </div>
         </div>
-        <label style={label}>{t("notify.emailFrom")}</label>
-        <Field type="email" value={s.email_from} onChange={(e) => set("email_from", e.target.value)} placeholder="no-reply@company.com" style={{ width: "100%" }} />
-        <label style={label}>{t("notify.emailTo")}</label>
-        <textarea value={toText} onChange={(e) => setToText(e.target.value)} rows={2}
+        <label style={label} htmlFor="ntf-emailFrom">{t("notify.emailFrom")}</label>
+        <Field id="ntf-emailFrom" type="email" value={s.email_from} onChange={(e) => set("email_from", e.target.value)} placeholder="no-reply@company.com" style={{ width: "100%" }} />
+        <label style={label} htmlFor="ntf-emailTo">{t("notify.emailTo")}</label>
+        <textarea id="ntf-emailTo" value={toText} onChange={(e) => setToText(e.target.value)} rows={2}
           style={{ width: "100%", padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", resize: "vertical", boxSizing: "border-box" }} />
         <div style={{ marginTop: 10 }}>
           <Button onClick={() => test("email")} disabled={testingCh === "email"} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>

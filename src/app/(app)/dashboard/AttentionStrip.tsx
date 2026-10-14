@@ -6,6 +6,7 @@ import Icon, { type IconType } from "@/components/Icon";
 import { CircleX, CalendarClock, ClipboardCheck, CircleCheck, ChevronRight } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import type { AttentionData } from "@/lib/dashboard-attention";
+import { daysSince } from "@/lib/fail-items";
 
 // แถบ "ต้องดูตอนนี้" — คำนวณฝั่ง server (loadAttention) แล้วส่ง promise มา · หน้าแสดงก่อน แถบนี้ตามมาทีหลัง
 
@@ -52,7 +53,7 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
             hint={failed.scope === "open" ? t("dash.attnOpenFailsHint") : undefined} count={failed.count} none={t("dash.attnNone")}>
             {failed.items.map((s) => (
               <Row key={s.id} href={`/submission/${s.id}`} icon={s.form_icon} title={s.form_title}
-                sub={`${s.user_name || "—"} · ${whenOf(s.submitted_at, lang)}${s.fails ? ` · ${tt("dash.failN", { n: s.fails })}` : ""}`} />
+                sub={`${s.user_name || "—"} · ${whenOf(s.submitted_at, lang)}${s.fails ? ` · ${tt("dash.failN", { n: s.fails })}` : ""}${failed.scope === "open" && daysSince(s.submitted_at) > 0 ? ` · ${tt("fc.daysOpen", { n: daysSince(s.submitted_at) })}` : ""}`} />
             ))}
             {failed.count > failed.items.length && <More text={tt("dash.attnMore", { n: failed.count - failed.items.length })}
               href={failed.scope === "open" ? "/reports?result=fail_open" : "/reports?result=fail"} />}
