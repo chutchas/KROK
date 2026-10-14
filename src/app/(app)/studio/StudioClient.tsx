@@ -967,13 +967,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
             </div>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <div className="krok-edithead-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <button type="button" data-krok-keep onClick={() => { setSelKey(null); setFormPanel(true); }}
                 className="inline-flex items-center gap-1.5"
                 style={{ minHeight: 44, padding: "0 14px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent-text)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
                 <Icon icon={Settings2} className="h-4 w-4" /> {t("fs.title")}
               </button>
-              <div style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
+              <div className="krok-viewtoggle" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
                 {([
                   { m: "mobile" as ViewMode, icon: Smartphone, label: t("studio.viewMobile") },
                   { m: "paper" as ViewMode, icon: FileText, label: t("studio.viewPaper") },
@@ -1293,7 +1293,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-btn-label{display:none}
           .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
           /* ปุ่ม action 5 ปุ่มในการ์ดฟอร์ม: กว้างเท่ากันเต็มแถว */
-          .krok-row-actions>button{flex:1 1 0;min-width:0}
+          /* ปุ่มจัดการฟอร์ม 5–6 ปุ่ม: ไอคอนเต็มขนาด (เดิมหดจนเหลือจุด) + ชื่อสั้นใต้ไอคอน — รู้ว่าปุ่มไหนคืออะไร */
+          .krok-row-actions>button{flex:1 1 0;min-width:0;flex-direction:column;gap:3px !important;min-height:56px !important;padding:6px 2px !important;font-size:.72rem !important;line-height:1.2}
+          .krok-row-actions>button svg{flex:0 0 auto;width:18px;height:18px}
+          .krok-row-actions .krok-btn-label{display:block !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           /* toggle แบบแบ่งครึ่ง: เต็มแถว */
           .krok-seg{display:flex !important;width:100%;flex-basis:100%}
           .krok-seg-btn{flex:1;justify-content:center}
@@ -1306,6 +1309,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-typefilter{width:100%;flex:1 1 100% !important;min-width:0 !important}
           /* ปุ่มบันทึก/ยกเลิก: เต็มแถว แบ่งเท่ากัน */
           .krok-editbtns>button{flex:1 1 0}
+          /* หัวหน้าแก้ไข: แถวปุ่มเต็มความกว้าง — [ตั้งค่าฟอร์ม][มือถือ|กระดาษ] / [บันทึก][ยกเลิก] แบ่งเท่ากัน */
+          .krok-edithead>div{width:100%}
+          .krok-edithead-actions .krok-viewtoggle{flex:1 1 auto !important}
+          .krok-viewtoggle>button{flex:1 1 0;justify-content:center}
+          .krok-edithead-actions .krok-editbtns{flex:1 1 100%}
           /* ลำดับผู้อนุมัติ: dropdown เต็มแถว, บทบาท+ลบ อยู่แถวเดียวกันเต็มแถว */
           .krok-appr-select{flex:1 1 100% !important;min-width:0 !important}
           .krok-appr-roleline{flex:1 1 100%;width:100%}
