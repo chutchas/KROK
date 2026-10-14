@@ -29,7 +29,9 @@ async function launch(): Promise<Browser> {
   if (fixed) return puppeteer.launch({ executablePath: fixed, args: BASE_ARGS, headless: true });
   if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     const chromium = (await import("@sparticuz/chromium-min")).default;
-    return puppeteer.launch({ executablePath: await chromium.executablePath(process.env.CHROMIUM_PACK_URL?.trim() || DEFAULT_PACK), args: [...chromium.args, "--font-render-hinting=none"], headless: true });
+    // ตัด --single-process: โหมดโปรเซสเดียวเปิดหน้าต่างแยก (createBrowserContext) แล้วเปิดแท็บไม่ได้ → "Target.createTarget: Target closed" ทุกครั้ง
+    const args = chromium.args.filter((a: string) => a !== "--single-process");
+    return puppeteer.launch({ executablePath: await chromium.executablePath(process.env.CHROMIUM_PACK_URL?.trim() || DEFAULT_PACK), args: [...args, "--font-render-hinting=none"], headless: true });
   }
   const local = LOCAL_CANDIDATES.find((p) => existsSync(p));
   if (!local) throw new Error("chromium not found (set CHROMIUM_PATH)");
@@ -67,26 +69,44 @@ function renderOrigin(): string {
 /** เบราว์เซอร์ที่เก็บไว้ใช้ซ้ำตายไปแล้ว (function ถูกพัก/แช่แข็งระหว่างคำขอ) แต่ยังดูเหมือนต่ออยู่ → "Target closed" */
 const DEAD_BROWSER = /Target closed|Session closed|Connection closed|Protocol error|detached|crashed/i;
 
+/** แบบ shared ใช้หน้าต่างหลักร่วมกัน → ต้องทำทีละคำขอ (คุกกี้ของคนหนึ่งต้องไม่ถูกใช้เปิดเอกสารของอีกคน) */
+let sharedQueue: Promise<unknown> = Promise.resolve();
+let isolatedBroken = false;
+function inSharedQueue<T>(fn: () => Promise<T>): Promise<T> {
+  const run = sharedQueue.then(fn, fn);
+  sharedQueue = run.catch(() => {});
+  return run;
+}
+
 export async function renderDocWithChromium(id: string, kind: "pdf" | "png"): Promise<Buffer> {
   const origin = renderOrigin();
   const jar = await cookies();
+  // เคยเปิดหน้าต่างแยกไม่ได้ในเครื่องนี้แล้ว → ไม่ต้องลองซ้ำ (ลองแต่ละครั้งต้องปิด/เปิดเบราว์เซอร์ใหม่ ช้า 1–3 วิ)
+  if (isolatedBroken) return inSharedQueue(async () => renderOnce(await getBrowser(), id, kind, origin, jar, "shared"));
   const browser = await getBrowser();
   try {
-    return await renderOnce(browser, id, kind, origin, jar);
+    // ปกติ: หน้าต่างแยกต่อคำขอ (คุกกี้ไม่ปนกัน ทำพร้อมกันได้)
+    return await renderOnce(browser, id, kind, origin, jar, "isolated");
   } catch (e) {
     if (!(e instanceof Error) || !DEAD_BROWSER.test(e.message)) throw e;
-    // ทิ้งตัวเดิม เปิดใหม่ แล้วลองอีกครั้งเดียว
+    // เปิดหน้าต่างแยกไม่ได้ / เบราว์เซอร์ตาย → ทิ้งตัวเดิม เปิดใหม่ แล้วใช้หน้าต่างหลักแบบเข้าคิวทีละคำขอ
+    console.warn("[krok] chromium isolated context failed — retrying in shared mode:", e.message);
     browserP = null;
     await browser.close().catch(() => {});
-    return renderOnce(await getBrowser(), id, kind, origin, jar);
+    const out = await inSharedQueue(async () => renderOnce(await getBrowser(), id, kind, origin, jar, "shared"));
+    isolatedBroken = true;
+    return out;
   }
 }
 
-async function renderOnce(browser: Browser, id: string, kind: "pdf" | "png", origin: string, jar: Awaited<ReturnType<typeof cookies>>): Promise<Buffer> {
-  // context แยกต่อคำขอ: คุกกี้ของผู้ใช้คนนี้ไม่ปนกับคำขอของคนอื่นที่ทำพร้อมกันในเบราว์เซอร์ตัวเดียวกัน
-  const ctx = await browser.createBrowserContext();
+async function renderOnce(browser: Browser, id: string, kind: "pdf" | "png", origin: string, jar: Awaited<ReturnType<typeof cookies>>, mode: "isolated" | "shared"): Promise<Buffer> {
+  // isolated: context แยกต่อคำขอ — คุกกี้ของผู้ใช้คนนี้ไม่ปนกับคำขอของคนอื่นที่ทำพร้อมกันในเบราว์เซอร์ตัวเดียวกัน
+  // shared: หน้าต่างหลัก (เรียกผ่าน inSharedQueue เท่านั้น) — ล้างคุกกี้ทั้งก่อนและหลังใช้
+  const ctx = mode === "isolated" ? await browser.createBrowserContext() : browser.defaultBrowserContext();
+  if (mode === "shared") await clearCookies(ctx);
+  let page: Awaited<ReturnType<typeof ctx.newPage>> | null = null;
   try {
-    const page = await ctx.newPage();
+    page = await ctx.newPage();
     await page.setViewport({ width: CANVAS_W, height: PAGE_H, deviceScaleFactor: 1 });
     await page.emulateMediaType("print");
     const bypass = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
@@ -117,6 +137,17 @@ async function renderOnce(browser: Browser, id: string, kind: "pdf" | "png", ori
     const png = await page.screenshot({ type: "png", clip: { x: 0, y: 0, width: CANVAS_W, height: PAGE_H, scale: THUMB_PX / CANVAS_W } });
     return Buffer.from(png);
   } finally {
-    await ctx.close().catch(() => {});
+    if (mode === "isolated") await ctx.close().catch(() => {});
+    else {
+      await clearCookies(ctx);
+      await page?.close().catch(() => {});
+    }
   }
+}
+
+async function clearCookies(ctx: Awaited<ReturnType<Browser["createBrowserContext"]>>) {
+  try {
+    const all = await ctx.cookies();
+    if (all.length) await ctx.deleteCookie(...all);
+  } catch { /* ไม่มีคุกกี้/ปิดไปแล้ว */ }
 }
