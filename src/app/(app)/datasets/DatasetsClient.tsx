@@ -1,4 +1,5 @@
 "use client";
+import HelpTip from "@/components/HelpTip";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -43,6 +44,7 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
             {t("ds.subtitle")}
           </p>
+          <div style={{ display: "flex", flexWrap: "wrap", marginTop: 2 }}><HelpTip id="datasets" /></div>
         </div>
         {canEdit && !creating && (
           <Button data-tour="ds-create" variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>

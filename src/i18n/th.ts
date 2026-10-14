@@ -1000,6 +1000,7 @@ export const th = {
   "contact.topic.feature": "ขอฟีเจอร์",
   "contact.topic.other": "อื่น ๆ",
   "nav.contactTeam": "ติดต่อทีม KROK",
+  "nav.help": "คู่มือการใช้งาน",
   "grp.help": "ช่วยเหลือ",
   "intg.lockedTab": "แพ็กเกจปัจจุบันไม่รวม",
   "intg.lk.from": "มีในแพ็กเกจ {plan} ขึ้นไป",

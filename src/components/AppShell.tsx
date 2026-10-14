@@ -22,7 +22,7 @@ import { LogoMark } from "@/components/Logo";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import type { MenuKey, Role } from "@/lib/menus";
-import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid, ShieldCheck } from "lucide-react";
+import { PenSquare, Smartphone, ClipboardCheck, BarChart3, Users, CreditCard, Webhook, Settings, HardHat, LogOut, Menu, UsersRound, ChevronDown, X, Building2, ScrollText, Terminal, FileSpreadsheet, Database, Bug, HeartPulse, Wallet, Inbox, LifeBuoy, LayoutGrid, ShieldCheck, BookOpen } from "lucide-react";
 
 type NavEntry = { href: string; key: MessageKey; icon: IconType; menu?: MenuKey; gate?: "wsadmin" | "platform" | "dev" };
 
@@ -187,7 +187,7 @@ export default function AppShell({
   // ชื่อหน้าปัจจุบันสำหรับปุ่ม "เมนูเพิ่มเติม" (หน้าตั้งค่า / รายงาน / ชุดข้อมูล ฯลฯ ที่ไม่มีในแถบล่าง)
   const currentEntry = activeSecondary ?? primary.find((n) => n.href === activePrimary);
   // หน้าติดต่อทีมงานอยู่ในเมนูช่วยเหลือ ไม่อยู่ใน nav หลัก — ใส่ชื่อให้ปุ่มด้วย
-  const currentKey = currentEntry?.key ?? (matchesHref("/help/contact") ? "nav.contactTeam" as const : undefined);
+  const currentKey = currentEntry?.key ?? (matchesHref("/help/contact") ? "nav.contactTeam" as const : matchesHref("/help") ? "nav.help" as const : undefined);
 
   // มือถือ: แถบเมนูเลื่อนแนวนอนได้ → เลื่อนให้แท็บที่ active มาอยู่ในจอเสมอ (ไม่ต้องปัดหาเอง)
   // เลื่อนเฉพาะแถบเมนู (scrollTo) ไม่ใช้ scrollIntoView ซึ่งจะเลื่อนทั้งหน้าด้วย
@@ -438,6 +438,14 @@ export default function AppShell({
                     <Icon icon={HardHat} className="h-[18px] w-[18px]" /> {t("nav.profile")}
                   </Link>
                   <Link
+                    href="/help"
+                    onClick={() => setProfileOpen(false)}
+                    className="inline-flex items-center gap-2.5"
+                    style={{ width: "100%", padding: "9px 10px", borderRadius: 8, fontSize: ".9rem", textDecoration: "none", color: "var(--ink)" }}
+                  >
+                    <Icon icon={BookOpen} className="h-[18px] w-[18px]" /> {t("nav.help")}
+                  </Link>
+                  <Link
                     href="/help/contact"
                     onClick={() => setProfileOpen(false)}
                     className="inline-flex items-center gap-2.5"
@@ -575,6 +583,14 @@ export default function AppShell({
                 <div style={{ fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
                   {t("grp.help")}
                 </div>
+                <Link
+                  href="/help"
+                  onClick={() => setMenuOpen(false)}
+                  className="inline-flex items-center gap-3"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: 9, fontSize: ".95rem", textDecoration: "none", fontWeight: 500, color: "var(--ink)" }}
+                >
+                  <Icon icon={BookOpen} className="h-[19px] w-[19px]" /> {t("nav.help")}
+                </Link>
                 <Link
                   href="/help/contact"
                   onClick={() => setMenuOpen(false)}

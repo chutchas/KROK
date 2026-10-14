@@ -995,6 +995,7 @@ export const en: Record<MessageKey, string> = {
   "contact.topic.feature": "Feature request",
   "contact.topic.other": "Other",
   "nav.contactTeam": "Contact the KROK team",
+  "nav.help": "Help",
   "grp.help": "Help",
   "intg.lockedTab": "Not in your current plan",
   "intg.lk.from": "Available on {plan} and above",
