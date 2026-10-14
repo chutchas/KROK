@@ -3,7 +3,7 @@ import { useRef, useState } from "react";
 import { stepAssigned } from "@/lib/case-flow";
 import type { ResolvedTheme } from "@/lib/theme";
 import { FormBrandHeader, FormFooterText, ThemeStyle, hasBrand } from "@/components/FormBrand";
-import { Camera, Check, CheckCircle2, FilePlus2, Send, Users, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X } from "lucide-react";
+import { Camera, Check, CheckCircle2, FilePlus2, Send, Users, GripVertical, Lightbulb, Lock, MapPin, PenLine, Plus, ScanLine, Search, X, ArrowUp, ArrowDown, Copy, Trash2 } from "lucide-react";
 import Icon from "@/components/Icon";
 import FormIcon from "@/components/FormIcon";
 import { useT } from "@/i18n/LanguageProvider";
@@ -186,6 +186,7 @@ export default function FormPreview({
   theme,
   paged = false,
   stepLabel,
+  fieldActions,
 }: {
   schema: FormSchema;
   selectedKey?: string | null;
@@ -200,8 +201,14 @@ export default function FormPreview({
   paged?: boolean;
   /** ชื่อผู้รับผิดชอบขั้น i (ทีม/คน) — ใช้บนปุ่มส่งต่อ */
   stepLabel?: (i: number) => string | null;
+  /** ปุ่มจัดการช่องที่เลือก (ขึ้น/ลง/ทำซ้ำ/ลบ) — แสดงใต้การ์ดที่เลือก (ไม่ซ้อนในการ์ดที่เป็นปุ่ม) */
+  fieldActions?: { move: (key: string, dir: -1 | 1) => void; duplicate: (key: string) => void; remove: (key: string) => void };
 }) {
   const { t, tt } = useT();
+  const actBtn: React.CSSProperties = {
+    minWidth: 44, height: 44, padding: "0 12px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)",
+    cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 5,
+  };
   // ---- ลากเรียงลำดับฟิลด์ (เมาส์/นิ้ว ผ่านที่จับด้านซ้ายของการ์ด) ----
   type Drag = { fid: string; step: number; index: number } | null;
   const [drag, setDragState] = useState<Drag>(null);
@@ -328,6 +335,15 @@ export default function FormPreview({
                 <FieldCard f={f} schemaFields={allFields} selected={selectedKey === f.id} onSelect={editable ? () => onSelect!(f.id) : undefined}
                   scan={(s.fill_sources ?? []).some((src) => src.kind === "scan" && src.map.length === 1 && src.map[0].field_id === f.id)}
                   grip={gripFor(f.id)} dragging={drag?.fid === f.id} dropFid={onMoveField ? `${i}:${fi}` : undefined} />
+                {fieldActions && selectedKey === f.id && (
+                  <div role="toolbar" aria-label={tt("editor.fieldActionsFor", { name: f.label || t("fw.noName") })} data-krok-keep=""
+                    style={{ display: "flex", gap: 6, margin: "-4px 0 12px", flexWrap: "wrap" }}>
+                    <button type="button" data-krok-keep="" style={actBtn} aria-label={t("editor.moveUp")} title={t("editor.moveUp")} onClick={() => fieldActions.move(f.id, -1)}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
+                    <button type="button" data-krok-keep="" style={actBtn} aria-label={t("editor.moveDown")} title={t("editor.moveDown")} onClick={() => fieldActions.move(f.id, 1)}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
+                    <button type="button" data-krok-keep="" style={actBtn} onClick={() => fieldActions.duplicate(f.id)}><Icon icon={Copy} className="h-4 w-4" /> {t("editor.duplicate")}</button>
+                    <button type="button" data-krok-keep="" style={{ ...actBtn, marginLeft: "auto", color: "var(--fail-text)", borderColor: "var(--fail)" }} onClick={() => fieldActions.remove(f.id)}><Icon icon={Trash2} className="h-4 w-4" /> {t("editor.deleteField")}</button>
+                  </div>
+                )}
               </div>
             ))}
             {drag && drag.step === i && drag.index >= s.fields.length && dropLine}

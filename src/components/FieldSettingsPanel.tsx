@@ -47,6 +47,7 @@ export default function FieldSettingsPanel({
   teams = [],
   members = [],
   branding = null,
+  hideFieldActions = false,
 }: {
   schema: FormSchema;
   selectedKey: string | null;
@@ -61,6 +62,8 @@ export default function FieldSettingsPanel({
   members?: { user_id: string; name: string }[];
   /** แบรนด์ของ workspace (ค่าเริ่มต้นของธีมฟอร์ม) */
   branding?: WorkspaceBranding | null;
+  /** ปุ่มขึ้น/ลง/ทำซ้ำ/ลบของช่อง แสดงที่การ์ดในตัวอย่างแล้ว (มุมมองมือถือ) → ไม่ต้องซ้ำในแผง */
+  hideFieldActions?: boolean;
 }) {
   const { t, tt } = useT();
   // แผงหัวเอกสาร: ทั่วไป | รูปลักษณ์ (ธีม — ไม่ใช่ทุกคนจะเปลี่ยน จึงแยกแท็บ)
@@ -592,7 +595,8 @@ export default function FieldSettingsPanel({
 
       <AttachmentsPanel formId={formId} tenantId={tenantId} fieldId={field.id} compact />
 
-      <div style={{ display: "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+      {/* ขึ้น/ลง/ทำซ้ำ/ลบ อยู่ใต้การ์ดที่เลือกในตัวอย่างฟอร์ม (มุมมองมือถือ) — ที่นี่เหลือไว้สำหรับมุมมองกระดาษ */}
+      <div style={{ display: hideFieldActions ? "none" : "flex", gap: 6, marginTop: 14, flexWrap: "wrap", paddingTop: 12, borderTop: "1px solid var(--line)" }}>
         <button style={iconBtn} title={t("editor.moveUp")} disabled={fi === 0} onClick={() => patchStepFields(move(step.fields, fi, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
         <button style={iconBtn} title={t("editor.moveDown")} disabled={fi === step.fields.length - 1} onClick={() => patchStepFields(move(step.fields, fi, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
         <button style={iconBtn} title={t("editor.duplicate")} onClick={() => {
