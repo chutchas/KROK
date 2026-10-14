@@ -27,7 +27,7 @@ import type { ApprovalStep } from "@/lib/approval";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 import dynamic from "next/dynamic";
 import { useUndo } from "@/lib/use-undo";
-import { blockLabel, moveInOrder, removeBlock } from "@/lib/editor-ops";
+import { blockLabel, duplicateField, moveInOrder, removeBlock } from "@/lib/editor-ops";
 import { printWhenReady } from "@/lib/print";
 
 // ส่วนที่เปิดเฉพาะเมื่อใช้งาน — แยก bundle ออกจากหน้า Studio (โหลดหน้าแรกเร็วขึ้น)
@@ -378,6 +378,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     const next = moveInOrder(draft, key, dir);
     if (next) { history.checkpoint(); setDraft(next); }
   }, [draft, history]);
+  /** ทำสำเนาช่องต่อท้ายต้นฉบับ แล้วเลือกช่องใหม่ (เลิกทำได้) */
+  const duplicateKey = useCallback((key: string) => {
+    if (!draft) return;
+    const id = newKey("f");
+    const next = duplicateField(draft, key, id);
+    if (next) { history.checkpoint(); setDraft(next); setSelKey(id); }
+  }, [draft, history]);
 
   useEffect(() => {
     if (tab !== "edit" || !draft) return;
@@ -493,7 +500,35 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex", padding: 4 }}><Icon icon={X} className="h-5 w-5" /></button>
         )}
       </div>
-      <p style={{ fontSize: ".78rem", color: "var(--ink-3)", margin: "0 0 10px" }}>{t("fs.hint")}</p>
+      <p style={{ fontSize: ".78rem", color: "var(--ink-2)", margin: "0 0 10px" }}>{t("fs.hint")}</p>
+          {/* ข้อมูลฟอร์ม: ไอคอน/ชื่อ + ประเภท / คำอธิบาย — อยู่ในตั้งค่าฟอร์ม (หน้าแก้ไขเหลือแต่ตัวอย่างฟอร์ม) */}
+          <div className="krok-fs-sec" style={{ display: "grid", gap: 8, paddingTop: 0 }}>
+            <h3 style={{ fontSize: ".9rem", margin: 0 }}>{t("studio.formInfo")}</h3>
+            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+              <IconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
+              <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
+              <select
+                title={t("studio.category")}
+                className="krok-typefilter"
+                value={draft.category ? (isPresetCategory(draft.category) ? draft.category : "__custom") : ""}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  if (v === "__custom") { setCustomCat(true); setDraft({ ...draft, category: isPresetCategory(draft.category) || !draft.category ? "" : draft.category }); }
+                  else { setCustomCat(false); setDraft({ ...draft, category: v || undefined }); }
+                }}
+                style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", minWidth: 200, flex: "0 0 auto" }}
+              >
+                <option value="">{t("studio.categoryNone")}</option>
+                {FORM_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{lang === "en" ? c.en : c.th}</option>)}
+                <option value="__custom">{t("studio.categoryCustom")}</option>
+              </select>
+            </div>
+            {(customCat || (!!draft.category && !isPresetCategory(draft.category))) && (
+              <Field value={!isPresetCategory(draft.category) ? (draft.category || "") : ""} onChange={(e) => setDraft({ ...draft, category: e.target.value || undefined })} placeholder={t("studio.categoryCustomPh")} maxLength={60} />
+            )}
+            <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
+          </div>
+
       <div role="tablist" aria-label={t("fs.title")} style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 2, border: "1px solid var(--line)", borderRadius: 10, padding: 3, background: "var(--surface-2)" }}>
         {formTabs.map((x) => {
           const on = formTab === x.k;
@@ -727,7 +762,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       )}
       {/* แท็บหลัก 3 แท็บ */}
       {/* เหลือแท็บเดียว (ยังไม่มีฟอร์ม) = ไม่ต้องมีแถบแท็บ */}
-      {studioTabs.length > 1 && (
+      {/* หน้าแก้ไข: ไม่มีแถบแท็บ (ใช้ลิงก์ "ฟอร์มทั้งหมด" บนหัวหน้าแทน) — พื้นที่ให้ตัวอย่างฟอร์ม */}
+      {studioTabs.length > 1 && !(tab === "edit" && draft) && (
       <div data-tour="studio-tabs" role="tablist" aria-label={t("nav.studio")} style={{ display: "flex", gap: 4, border: "1px solid var(--line)", borderRadius: 12, padding: 4, background: "var(--surface-2)" }}>
         {studioTabs.map((tb) => {
           const on = tab === tb.k;
@@ -922,6 +958,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   <div className="krok-edithead" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 10, flexWrap: "wrap", marginBottom: 14 }}>
             <div>
               {/* หัวหน้าเหมือนหน้าอื่น: h1 อยู่นอกการ์ด ไม่มีไอคอน (ไอคอนฟอร์มอยู่ในช่องชื่อด้านล่าง) */}
+              <nav aria-label={t("studio.crumbLabel")} style={{ fontSize: ".84rem", color: "var(--ink-2)", marginBottom: 2 }}>
+                <button type="button" onClick={() => setTab("all")} style={{ border: "none", background: "none", padding: "6px 0", minHeight: 32, color: "var(--accent-text)", fontFamily: "inherit", fontSize: "inherit", cursor: "pointer" }}>{t("studio.crumbAll")}</button>
+                <span aria-hidden> / </span>{editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}
+              </nav>
               <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{draft.title || t("editor.formTitle")}</h1>
               <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
@@ -951,8 +991,16 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   );
                 })}
               </div>
+              <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
+            {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
+            <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
+          </div>
             </div>
           </div>
+          {/* ผลการบันทึก/เผยแพร่ — ใต้หัวหน้า (ปุ่มอยู่บนหัวหน้า) */}
+          {busy && <div style={{ marginBottom: 12 }}><Notice><Spinner /> {busy}</Notice></div>}
+          {status && !busy && <div role="alert" style={{ marginBottom: 12 }}><Notice kind={status.err ? "error" : "info"}>{status.t}</Notice></div>}
         <div className={`krok-editgrid ol-${outline}`}>
         {/* โครงฟอร์ม (จอ ≥900): แบบกาง = รายชื่อขั้น/ช่อง กดเพื่อเลือกและเลื่อนไปที่ช่องนั้น · แบบหุบ = แถบเลขขั้น */}
         <nav className="krok-outline" aria-label={t("studio.outline")}>
@@ -996,33 +1044,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (ฟอร์มที่สร้างก่อนมีตัวเลือกนี้) → เสนอให้ยืนยัน */}
           <DefectSuggestBanner key={editingId ?? "new"} schema={draft} onApply={(s) => setDraft(s)} />
 
-          {/* ตั้งค่าฟอร์ม: ไอคอน/ชื่อ + ประเภท (แถวเดียวกัน) / คำอธิบาย */}
-          <div style={{ border: "1px solid var(--line)", borderRadius: 10, padding: 12, marginTop: 12, display: "grid", gap: 8 }}>
-            <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <IconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
-              <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
-              <select
-                title={t("studio.category")}
-                className="krok-typefilter"
-                value={draft.category ? (isPresetCategory(draft.category) ? draft.category : "__custom") : ""}
-                onChange={(e) => {
-                  const v = e.target.value;
-                  if (v === "__custom") { setCustomCat(true); setDraft({ ...draft, category: isPresetCategory(draft.category) || !draft.category ? "" : draft.category }); }
-                  else { setCustomCat(false); setDraft({ ...draft, category: v || undefined }); }
-                }}
-                style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", minWidth: 200, flex: "0 0 auto" }}
-              >
-                <option value="">{t("studio.categoryNone")}</option>
-                {FORM_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{lang === "en" ? c.en : c.th}</option>)}
-                <option value="__custom">{t("studio.categoryCustom")}</option>
-              </select>
-            </div>
-            {(customCat || (!!draft.category && !isPresetCategory(draft.category))) && (
-              <Field value={!isPresetCategory(draft.category) ? (draft.category || "") : ""} onChange={(e) => setDraft({ ...draft, category: e.target.value || undefined })} placeholder={t("studio.categoryCustomPh")} maxLength={60} />
-            )}
-            <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
-          </div>
-
           {/* ปรับแก้ทั้งฟอร์มด้วย AI — อยู่เหนือฟอร์ม (สั่งแก้ทั้งฟอร์ม ไม่ใช่ตั้งค่า) */}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 10 }}>
             <span style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".85rem", fontWeight: 600, color: "var(--accent-text)" }} title={t("studio.refineSub")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.refineTitle")}</span>
@@ -1050,7 +1071,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </div>
                 <div style={{ width: "100%", maxWidth: 390, border: "10px solid var(--ink)", borderRadius: 30, padding: "10px 12px 16px", background: "var(--surface)", boxShadow: "var(--shadow)" }}>
                   <div style={{ width: 90, height: 5, background: "var(--line)", borderRadius: 3, margin: "2px auto 10px" }} />
-                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} theme={resolveTheme(branding, draft.theme)}
+                  <FormPreview schema={draft} selectedKey={selKey} onSelect={setSelKey} onAddField={(i) => addField(i)} onAddStep={addStep} onMoveField={moveField} fieldActions={{ move: moveKey, duplicate: duplicateKey, remove: deleteKey }} theme={resolveTheme(branding, draft.theme)}
                     paged={previewPaged} stepLabel={stepLabel} />
                 </div>
               </div>
@@ -1069,14 +1090,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             </div>
           )}
 
-          {/* ผลการบันทึก/เผยแพร่ — เดิมแสดงแค่ในแท็บ "สร้างใหม่" กดในแท็บแก้ไขแล้วไม่เห็นอะไร */}
-          {busy && <div style={{ marginTop: 14 }}><Notice><Spinner /> {busy}</Notice></div>}
-          {status && !busy && <div role="alert" style={{ marginTop: 14 }}><Notice kind={status.err ? "error" : "info"}>{status.t}</Notice></div>}
-          <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 10, marginTop: 16, flexWrap: "wrap" }}>
-            <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
-            {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
-            <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
-          </div>
         </Card>
         {(selKey || formPanel) && <div className="krok-settings-backdrop" onClick={() => { setSelKey(null); setFormPanel(false); }} />}
         <aside data-tour="studio-aside" className={selKey || formPanel ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={selKey ? t("editor.fieldSettings") : t("fs.title")}>
@@ -1086,7 +1099,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 style={{ display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem", padding: "2px 0 8px" }}>
                 <Icon icon={ChevronLeft} className="h-4 w-4" /> {t("fs.title")}
               </button>
-              <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} branding={branding} />
+              <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} branding={branding} hideFieldActions={view === "mobile"} />
             </>
           ) : null}
           {/* ซ่อนไว้ (ไม่ unmount) ตอนเลือกฟิลด์ — ค่าที่กรอกค้างในแผงย่อยไม่หาย */}
