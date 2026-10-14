@@ -45,7 +45,7 @@ const FORMAT_L: Record<WidgetFormat, L> = {
   trend: { th: "กราฟแนวโน้ม", en: "Trend" },
   ranking: { th: "อันดับฟอร์ม", en: "Ranking" },
   area: { th: "ตามพื้นที่", en: "By area" },
-  openlist: { th: "ค้างปิดเรื่อง", en: "Open failures" },
+  openlist: { th: "รายการค้างปิดเรื่อง", en: "Open failures list" },
   topfails: { th: "ข้อที่ไม่ผ่านบ่อย", en: "Top failed items" },
 };
 const FORMAT_HINT_L: Record<WidgetFormat, L> = {
@@ -63,7 +63,7 @@ const METRIC_L: Record<WidgetMetric, L> = {
   avgtime: { th: "เวลาเฉลี่ย/รายการ", en: "Avg time / entry" },
   submitters: { th: "จำนวนคนกรอก", en: "Unique submitters" },
   fail: { th: "ใบไม่ผ่าน", en: "Failed submissions" },
-  openfail: { th: "ยังไม่ปิดเรื่อง", en: "Not closed out" },
+  openfail: { th: "ใบค้างปิดเรื่อง", en: "Open failures" },
   closetime: { th: "เวลาปิดเรื่อง (มัธยฐาน)", en: "Time to close (median)" },
 };
 const RANGE_L: Record<WidgetRange, L> = {
