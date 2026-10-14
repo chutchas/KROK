@@ -2,8 +2,10 @@
 // ไม่มี server-only ที่นี่
 
 /** area = รายการใบที่ยังไม่จบตามพื้นที่ (formId เก็บ id พื้นที่ หรือ "all") — metric/range ไม่ใช้ */
-export type WidgetFormat = "stat" | "trend" | "ranking" | "area";
-export type WidgetMetric = "usage" | "pending" | "passrate" | "avgtime" | "submitters";
+/** openlist = ใบไม่ผ่านที่ยังไม่ปิดเรื่อง เก่าสุดก่อน · topfails = ข้อที่ไม่ผ่านบ่อยที่สุด (metric ไม่ใช้) */
+export type WidgetFormat = "stat" | "trend" | "ranking" | "area" | "openlist" | "topfails";
+/** fail = จำนวนใบไม่ผ่าน · openfail = ยังไม่ปิดเรื่อง · closetime = เวลาปิดเรื่อง (มัธยฐาน วัน) */
+export type WidgetMetric = "usage" | "pending" | "passrate" | "avgtime" | "submitters" | "fail" | "openfail" | "closetime";
 export type WidgetRange = "today" | "7d" | "30d" | "month" | "all";
 
 export interface DashWidget {
@@ -14,14 +16,25 @@ export interface DashWidget {
   range: WidgetRange;
 }
 
-export const WIDGET_FORMATS: WidgetFormat[] = ["stat", "trend", "ranking", "area"];
-export const WIDGET_METRICS: WidgetMetric[] = ["usage", "pending", "passrate", "avgtime", "submitters"];
+export const WIDGET_FORMATS: WidgetFormat[] = ["stat", "trend", "ranking", "area", "openlist", "topfails"];
+export const WIDGET_METRICS: WidgetMetric[] = ["usage", "pending", "passrate", "avgtime", "submitters", "fail", "openfail", "closetime"];
+/** ค่าที่แต่ละรูปแบบรองรับ — openfail/closetime คำนวณจากการปิดเรื่อง ไม่มีรายวัน · openlist/topfails/area ไม่ใช้ค่า */
+export const METRICS_BY_FORMAT: Record<WidgetFormat, WidgetMetric[]> = {
+  stat: WIDGET_METRICS,
+  trend: ["usage", "pending", "passrate", "avgtime", "submitters", "fail"],
+  ranking: ["usage", "pending", "passrate", "avgtime", "submitters", "fail", "openfail"],
+  area: [], openlist: [], topfails: [],
+};
+/** ค่าที่ต้องมีคอลัมน์ปิดเรื่อง (migration 0080) */
+export const CLOSEOUT_METRICS: WidgetMetric[] = ["openfail", "closetime"];
 // trend เป็นอนุกรมเวลา จึงรองรับเฉพาะช่วงที่เป็นเวลา
 export const RANGES_BY_FORMAT: Record<WidgetFormat, WidgetRange[]> = {
   stat: ["today", "7d", "30d", "month", "all"],
   ranking: ["today", "7d", "30d", "month", "all"],
   trend: ["7d", "30d", "month"],
   area: ["all"],
+  openlist: ["all"],
+  topfails: ["7d", "30d", "month", "all"],
 };
 
 type L = { th: string; en: string };
@@ -32,12 +45,16 @@ const FORMAT_L: Record<WidgetFormat, L> = {
   trend: { th: "กราฟแนวโน้ม", en: "Trend" },
   ranking: { th: "อันดับฟอร์ม", en: "Ranking" },
   area: { th: "ตามพื้นที่", en: "By area" },
+  openlist: { th: "ค้างปิดเรื่อง", en: "Open failures" },
+  topfails: { th: "ข้อที่ไม่ผ่านบ่อย", en: "Top failed items" },
 };
 const FORMAT_HINT_L: Record<WidgetFormat, L> = {
   stat: { th: "ตัวเลขเดียวของฟอร์มที่เลือก", en: "Single number for the chosen form" },
   trend: { th: "กราฟรายวันของค่าที่เลือก", en: "Daily chart of the metric" },
   ranking: { th: "จัดอันดับทุกฟอร์มตามค่าที่เลือก", en: "Rank all forms by the metric" },
   area: { th: "ใบที่ยังไม่จบในแต่ละพื้นที่", en: "Open work in each area" },
+  openlist: { th: "ใบไม่ผ่านที่ยังไม่ปิดเรื่อง เก่าสุดก่อน", en: "Unclosed failures, oldest first" },
+  topfails: { th: "ข้อตรวจที่ไม่ผ่านซ้ำมากที่สุด", en: "Check items that fail most often" },
 };
 const METRIC_L: Record<WidgetMetric, L> = {
   usage: { th: "จำนวนการใช้งาน", en: "Submissions" },
@@ -45,6 +62,9 @@ const METRIC_L: Record<WidgetMetric, L> = {
   passrate: { th: "อัตราผ่าน", en: "Pass rate" },
   avgtime: { th: "เวลาเฉลี่ย/รายการ", en: "Avg time / entry" },
   submitters: { th: "จำนวนคนกรอก", en: "Unique submitters" },
+  fail: { th: "ใบไม่ผ่าน", en: "Failed submissions" },
+  openfail: { th: "ยังไม่ปิดเรื่อง", en: "Not closed out" },
+  closetime: { th: "เวลาปิดเรื่อง (มัธยฐาน)", en: "Time to close (median)" },
 };
 const RANGE_L: Record<WidgetRange, L> = {
   today: { th: "วันนี้", en: "Today" },
@@ -78,6 +98,8 @@ export function calcMetric(rows: MetricRow[], metric: WidgetMetric): number {
     const ds = rows.map((r) => r.duration_s).filter((n): n is number => typeof n === "number");
     return ds.length ? Math.round(ds.reduce((a, b) => a + b, 0) / ds.length) : 0;
   }
+  if (metric === "fail") return rows.filter((r) => r.result === "fail").length;
+  if (metric === "openfail" || metric === "closetime") return 0; // คำนวณแยก (ต้องใช้ข้อมูลปิดเรื่อง)
   return new Set(rows.map((r) => (r.user_name || "").trim()).filter(Boolean)).size; // submitters
 }
 
@@ -112,6 +134,8 @@ export function calcMetricAgg(a: MetricAgg, metric: WidgetMetric): number {
   if (metric === "pending") return a.pending;
   if (metric === "passrate") return a.pass + a.fail ? Math.round((a.pass / (a.pass + a.fail)) * 100) : 0;
   if (metric === "avgtime") return a.dur_n ? Math.round(a.dur_sum / a.dur_n) : 0;
+  if (metric === "fail") return a.fail;
+  if (metric === "openfail" || metric === "closetime") return 0;
   return a.submitters;
 }
 
@@ -125,6 +149,8 @@ export const metricUnit = (m: WidgetMetric, en = false): string => {
   if (m === "passrate") return "%";
   if (m === "avgtime") return en ? "s" : "วิ";
   if (m === "submitters") return en ? "" : "คน";
+  if (m === "closetime") return en ? "d" : "วัน";
+  if (m === "fail" || m === "openfail") return en ? "" : "ใบ";
   return en ? "" : "ครั้ง";
 };
 

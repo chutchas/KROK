@@ -6,6 +6,8 @@ import { getSession, hasMenu } from "@/lib/session";
 import {
   WIDGET_FORMATS,
   WIDGET_METRICS,
+  METRICS_BY_FORMAT,
+  CLOSEOUT_METRICS,
   calcMetric,
   calcMetricAgg,
   trendDays,
@@ -34,6 +36,7 @@ function clean(raw: unknown): DashWidget[] {
     const range = o.range as WidgetRange;
     if (!WIDGET_FORMATS.includes(format)) continue;
     if (!WIDGET_METRICS.includes(metric)) continue;
+    if (METRICS_BY_FORMAT[format].length && !METRICS_BY_FORMAT[format].includes(metric)) continue;
     if (!RANGES.includes(range)) continue;
     out.push({
       id: typeof o.id === "string" ? o.id.slice(0, 40) : Math.random().toString(36).slice(2),
@@ -91,7 +94,11 @@ export type WidgetResult =
   | { kind: "trend"; total: number; series: { key: string; v: number }[] }
   | { kind: "ranking"; items: { title: string; icon: string; v: number }[] }
   | { kind: "area"; items: OpenItem[] }
+  | { kind: "openlist"; total: number; items: OpenFailItem[] }
+  | { kind: "topfails"; total: number; items: { label: string; v: number }[] }
   | { error: string };
+
+export interface OpenFailItem { id: string; docNo: string | null; title: string; icon: string; who: string; fail: string; at: string }
 
 function rangeStartIso(range: WidgetRange, days?: number): string | null {
   const now = new Date();
@@ -166,9 +173,13 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
   if (!(await hasMenu(session, "dashboard"))) return { error: await sm("ไม่มีสิทธิ์ใช้แดชบอร์ด") };
   if (!WIDGET_FORMATS.includes(w.format) || !WIDGET_METRICS.includes(w.metric)) return { error: "bad widget" };
   if (!RANGES.includes(w.range)) return { error: "bad widget" };
+  if (METRICS_BY_FORMAT[w.format].length && !METRICS_BY_FORMAT[w.format].includes(w.metric)) return { error: "bad widget" };
 
   const supabase = await createClient();
   if (w.format === "area") return computeAreaWidget(supabase, session.tenantId, w.formId);
+  if (w.format === "openlist") return computeOpenList(supabase, session.tenantId, w.formId);
+  if (w.format === "topfails") return computeTopFails(supabase, session.tenantId, w);
+  if (CLOSEOUT_METRICS.includes(w.metric)) return computeCloseout(supabase, session.tenantId, w);
   {
     const scopedFast = w.format !== "ranking" && w.formId && w.formId !== "all" && UUID.test(w.formId) ? w.formId : null;
     if (w.format === "ranking" || !w.formId || w.formId === "all" || scopedFast) {
@@ -233,6 +244,106 @@ export async function computeWidget(w: DashWidget): Promise<WidgetResult> {
     .sort((a, b) => b.v - a.v)
     .slice(0, 8);
   return { kind: "ranking", items };
+}
+
+// ---------- ปิดเรื่องใบไม่ผ่าน (0080) ----------
+type Sb = Awaited<ReturnType<typeof createClient>>;
+const CLOSE_CAP = 5000;
+const formScope = (formId: string) => (formId && formId !== "all" && UUID.test(formId) ? formId : null);
+async function closeoutErr(m: string): Promise<{ error: string }> {
+  if (/fail_closed_at|deleted_at/.test(m) && /does not exist|schema cache|not find|column/i.test(m)) return { error: await sm("ยังไม่ได้รัน migration 0080") };
+  return { error: m || (await sm("คำนวณไม่สำเร็จ")) };
+}
+const openFails = (supabase: Sb, tenantId: string, cols: string, opts?: { count?: "exact"; head?: boolean }) =>
+  supabase.from("submissions").select(cols, opts).eq("tenant_id", tenantId).eq("result", "fail").is("fail_closed_at", null).is("deleted_at", null);
+
+async function computeCloseout(supabase: Sb, tenantId: string, w: DashWidget): Promise<WidgetResult> {
+  const start = rangeStartIso(w.range);
+  if (w.metric === "openfail" && w.format === "ranking") {
+    let q = openFails(supabase, tenantId, "form_id, form_title, form_icon").limit(CLOSE_CAP);
+    if (start) q = q.gte("submitted_at", start);
+    const { data, error } = await q;
+    if (error) return closeoutErr(error.message);
+    const g = new Map<string, { title: string; icon: string; v: number }>();
+    for (const r of (data || []) as unknown as { form_id: string | null; form_title: string; form_icon: string }[]) {
+      const k = r.form_id || r.form_title;
+      const e = g.get(k) ?? { title: r.form_title || "—", icon: r.form_icon || "📋", v: 0 };
+      e.v++;
+      g.set(k, e);
+    }
+    return { kind: "ranking", items: [...g.values()].sort((a, b) => b.v - a.v).slice(0, 8) };
+  }
+  const scoped = formScope(w.formId);
+  if (w.metric === "openfail") {
+    let q = openFails(supabase, tenantId, "id", { count: "exact", head: true });
+    if (scoped) q = q.eq("form_id", scoped);
+    if (start) q = q.gte("submitted_at", start);
+    const { count, error } = await q;
+    if (error) return closeoutErr(error.message);
+    return { kind: "stat", value: count ?? 0 };
+  }
+  // closetime: มัธยฐานวันจากส่งถึงปิดเรื่อง ของใบที่ปิดในช่วงนี้
+  let q = supabase.from("submissions").select("submitted_at, fail_closed_at").eq("tenant_id", tenantId).eq("result", "fail")
+    .not("fail_closed_at", "is", null).is("deleted_at", null).order("fail_closed_at", { ascending: false }).limit(CLOSE_CAP);
+  if (scoped) q = q.eq("form_id", scoped);
+  if (start) q = q.gte("fail_closed_at", start);
+  const { data, error } = await q;
+  if (error) return closeoutErr(error.message);
+  const ds = ((data || []) as { submitted_at: string; fail_closed_at: string }[])
+    .map((r) => (Date.parse(r.fail_closed_at) - Date.parse(r.submitted_at)) / 86_400_000)
+    .filter((d) => Number.isFinite(d) && d >= 0)
+    .sort((a, b) => a - b);
+  if (!ds.length) return { kind: "stat", value: 0 };
+  const mid = Math.floor(ds.length / 2);
+  const med = ds.length % 2 ? ds[mid] : (ds[mid - 1] + ds[mid]) / 2;
+  return { kind: "stat", value: Math.round(med * 10) / 10 };
+}
+
+async function computeOpenList(supabase: Sb, tenantId: string, formId: string): Promise<WidgetResult> {
+  let q = openFails(supabase, tenantId, "id, doc_no, form_title, form_icon, user_name, submitted_at, fails", { count: "exact" })
+    .order("submitted_at", { ascending: true }).limit(6);
+  const scoped = formScope(formId);
+  if (scoped) q = q.eq("form_id", scoped);
+  const { data, count, error } = await q;
+  if (error) return closeoutErr(error.message);
+  const items = ((data || []) as unknown as Record<string, unknown>[]).map((r) => ({
+    id: r.id as string,
+    docNo: (r.doc_no as string) || null,
+    title: (r.form_title as string) || "—",
+    icon: (r.form_icon as string) || "📋",
+    who: (r.user_name as string) || "",
+    fail: Array.isArray(r.fails) && typeof r.fails[0] === "string" ? (r.fails[0] as string) : "",
+    at: r.submitted_at as string,
+  }));
+  return { kind: "openlist", total: count ?? items.length, items };
+}
+
+async function computeTopFails(supabase: Sb, tenantId: string, w: DashWidget): Promise<WidgetResult> {
+  const start = rangeStartIso(w.range);
+  const scoped = formScope(w.formId);
+  const PAGE = 1000;
+  const counts = new Map<string, number>();
+  let total = 0;
+  for (let off = 0; off < CLOSE_CAP; off += PAGE) {
+    let q = supabase.from("submissions").select("fails").eq("tenant_id", tenantId).eq("result", "fail")
+      .is("deleted_at", null).order("submitted_at", { ascending: false }).range(off, off + PAGE - 1);
+    if (scoped) q = q.eq("form_id", scoped);
+    if (start) q = q.gte("submitted_at", start);
+    const { data, error } = await q;
+    if (error) return closeoutErr(error.message);
+    const batch = (data || []) as { fails: unknown }[];
+    total += batch.length;
+    for (const r of batch) {
+      if (!Array.isArray(r.fails)) continue;
+      // ข้อเดียวกันในใบเดียวนับครั้งเดียว
+      for (const l of new Set(r.fails.filter((x): x is string => typeof x === "string").map((x) => x.trim()).filter(Boolean))) {
+        counts.set(l, (counts.get(l) ?? 0) + 1);
+      }
+    }
+    if (batch.length < PAGE) break;
+  }
+  const items = [...counts.entries()].map(([label, v]) => ({ label, v })).sort((a, b) => b.v - a.v).slice(0, 6);
+  return { kind: "topfails", total, items };
 }
 
 // ---------- ใบที่ยังไม่จบตามพื้นที่ (0072) ----------

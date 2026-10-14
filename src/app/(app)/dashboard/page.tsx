@@ -5,11 +5,14 @@ import { getQuotaSnapshot } from "@/lib/quota";
 import { quotaWarnings } from "@/lib/quota-warn";
 import QuotaBanner from "@/components/QuotaBanner";
 import type { DashWidget } from "@/lib/dashboard-meta";
+import { recommendTemplate } from "@/lib/dashboard-templates";
 import DashboardClient, { type SubRow, type FormOpt, type Summary, type AreaOpt } from "./DashboardClient";
 
 export const metadata = { title: "แดชบอร์ด" };
 
 export const dynamic = "force-dynamic";
+
+const daysAgoIso = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
 
 export default async function DashboardPage() {
   const session = await enforceMenu("dashboard");
@@ -38,7 +41,7 @@ export default async function DashboardPage() {
     });
   })().catch(() => ({ failedToday: null, overdueRounds: null, approvals: null }));
 
-  const [snap, recentRes, formsRes, layoutRes, schedRes, wsRes, areasRes] = await Promise.all([
+  const [snap, recentRes, formsRes, layoutRes, schedRes, wsRes, areasRes, failSig, apprSig] = await Promise.all([
     getQuotaSnapshot(session.tenantId),
     // รายการล่าสุด — ไม่ดึงคำตอบ (ก้อนใหญ่) มาด้วย; หน้าต่างรายละเอียดโหลดเองตอนเปิด
     // + สถานะปิดเรื่อง (0080) · ยังไม่รันก็ดึงแบบเดิม
@@ -66,6 +69,10 @@ export default async function DashboardPage() {
     supabase.from("workspace_dashboards").select("widgets").eq("tenant_id", session.tenantId).maybeSingle(),
     // พื้นที่ (ตัวเลือกของ widget "ตามพื้นที่") · ยังไม่รัน 0072 = error → ไม่มีพื้นที่
     supabase.from("workspace_areas").select("id, code, name").eq("tenant_id", session.tenantId).eq("active", true).order("sort").order("name"),
+    // สัญญาณเลือกแม่แบบแนะนำ — แค่ "มีไหม" (limit 1)
+    supabase.from("submissions").select("id").eq("tenant_id", session.tenantId).eq("result", "fail")
+      .gte("submitted_at", daysAgoIso(90)).limit(1),
+    supabase.from("forms").select("id").eq("tenant_id", session.tenantId).eq("requires_approval", true).is("deleted_at", null).limit(1),
   ]);
 
   const summary: Summary = {
@@ -84,6 +91,12 @@ export default async function DashboardPage() {
   const initialWidgets = (layoutRes.data?.widgets as DashWidget[]) ?? [];
   const wsWidgets = wsRes.error ? [] : ((wsRes.data?.widgets as DashWidget[] | undefined) ?? []);
   const isWsAdmin = session.role === "owner" || session.role === "admin";
+  const areas = areasRes.error ? [] : ((areasRes.data || []) as AreaOpt[]);
+  const recommended = recommendTemplate({
+    hasFails: !failSig.error && (failSig.data?.length ?? 0) > 0,
+    hasApproval: !apprSig.error && (apprSig.data?.length ?? 0) > 0,
+    areaCount: areas.length,
+  });
   const [canFill, canCreate] = await Promise.all([hasMenu(session, "forms"), hasMenu(session, "studio")]);
 
   return (<>
@@ -95,7 +108,8 @@ export default async function DashboardPage() {
       summary={summary}
       hasSchedules={!schedRes.error && (schedRes.count ?? 0) > 0}
       initialWidgets={initialWidgets}
-      areas={areasRes.error ? [] : ((areasRes.data || []) as AreaOpt[])}
+      areas={areas}
+      recommended={recommended}
       workspaceWidgets={wsWidgets}
       workspaceReady={!wsRes.error}
       isWsAdmin={isWsAdmin}
