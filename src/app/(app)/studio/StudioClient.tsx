@@ -1096,7 +1096,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {selKey ? (
             <>
               <button type="button" onClick={() => { setSelKey(null); setFormPanel(true); }}
-                style={{ display: "inline-flex", alignItems: "center", gap: 4, border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".84rem", padding: "2px 0 8px" }}>
+                style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", padding: "0 4px 0 0", marginBottom: 4 }}>
                 <Icon icon={ChevronLeft} className="h-4 w-4" /> {t("fs.title")}
               </button>
               <FieldSettingsPanel schema={draft} selectedKey={selKey} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} onSelect={setSelKey} formId={editingId} tenantId={tenantId} teams={teams} members={members} branding={branding} hideFieldActions={view === "mobile"} />
@@ -1320,7 +1320,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-appr-roleline .krok-appr-role{flex:1 1 auto !important;width:auto !important}
           /* มือถือ: ตั้งค่าฟิลด์เป็น popup ขึ้นจากด้านล่าง */
           .krok-aside.krok-aside-sel{ position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:100%;
-            max-height:82vh; border-radius:16px 16px 0 0; z-index:70; }
+            max-height:82vh; border-radius:16px 16px 0 0; z-index:70; box-sizing:border-box;
+            padding:18px 12px calc(16px + env(safe-area-inset-bottom)); }
+          /* ขีดจับบนแผ่น — บอกว่าเป็นแผ่นเลื่อนขึ้น (ไม่ใช่หน้าใหม่) และเว้นที่ไม่ให้ปุ่มติดขอบบน */
+          .krok-aside.krok-aside-sel::before{ content:""; position:absolute; top:7px; left:50%; width:40px; height:4px; margin-left:-20px; border-radius:2px; background:var(--line-strong); }
           .krok-settings-backdrop{ display:block; position:fixed; inset:0; background:rgba(6,10,14,.45); z-index:69; }
         }
       `}</style>
