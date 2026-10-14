@@ -7,7 +7,7 @@ import { Button, AsyncButton, Card, TextArea, Field, Notice, Spinner, Pill } fro
 import { useT } from "@/i18n/LanguageProvider";
 import Icon from "@/components/Icon";
 import { getTemplate } from "@/lib/form-templates";
-import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert } from "lucide-react";
+import { Sparkles, FileUp, LayoutTemplate, Pencil, Save, CheckCircle2, Tag, HardHat, Smartphone, FileText, Globe, QrCode, Share2, Layers, Factory, Archive, Trash2, Search as SearchIcon, TabletSmartphone, History, MapPin, Settings2, ChevronLeft, X, Hash, CircleAlert, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import Link from "next/link";
 import FormPreview from "@/components/FormPreview";
 import { keepClearOnGrow } from "@/lib/paper-layout";
@@ -64,6 +64,19 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const [visUsers, setVisUsers] = useState<string[]>([]);
   const [view, setView] = useState<ViewMode>("mobile");
   const [selKey, setSelKey] = useState<string | null>(null);
+  /** โครงฟอร์มด้านซ้าย: auto = กางที่จอ ≥1280 / หุบเป็นแถบเลขขั้นที่ 900–1279 · open/closed = ผู้ใช้เลือกเอง (จำในเบราว์เซอร์) */
+  const [outline, setOutline] = useState<"auto" | "open" | "closed">("auto");
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("krok_studio_outline");
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่าน localStorage หลัง mount (SSR ไม่มี)
+      if (v === "open" || v === "closed") setOutline(v);
+    } catch { /* ไม่มี storage = auto */ }
+  }, []);
+  const setOutlinePref = (v: "open" | "closed") => {
+    setOutline(v);
+    try { localStorage.setItem("krok_studio_outline", v); } catch { /* จำไม่ได้ก็ไม่เป็นไร */ }
+  };
   // ตั้งค่าระดับฟอร์ม: แท็บที่เปิดอยู่ · จอแคบ = เปิดเป็นแผงลอยด้วยปุ่ม "ตั้งค่าฟอร์ม"
   const [formTab, setFormTab] = useState<FormTab>("access");
   const [formPanel, setFormPanel] = useState(false);
@@ -940,10 +953,27 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </div>
             </div>
           </div>
-        <div className="krok-editgrid">
-        {/* โครงฟอร์ม (จอกว้าง ≥1280): รายชื่อขั้น/ช่อง กดเพื่อเลือกและเลื่อนไปที่ช่องนั้น */}
-        <nav className="krok-outline" aria-labelledby="krok-outline-h">
-          <h2 id="krok-outline-h" style={{ fontSize: "1rem", margin: "0 0 8px" }}>{t("studio.outline")}</h2>
+        <div className={`krok-editgrid ol-${outline}`}>
+        {/* โครงฟอร์ม (จอ ≥900): แบบกาง = รายชื่อขั้น/ช่อง กดเพื่อเลือกและเลื่อนไปที่ช่องนั้น · แบบหุบ = แถบเลขขั้น */}
+        <nav className="krok-outline" aria-label={t("studio.outline")}>
+          <div className="krok-ol-rail">
+            <button type="button" data-krok-keep="" onClick={() => setOutlinePref("open")} aria-label={t("studio.outlineOpen")} title={t("studio.outlineOpen")}
+              aria-expanded={false} className="krok-ol-railbtn"><Icon icon={PanelLeftOpen} className="h-5 w-5" /></button>
+            {draft.steps.map((st, si) => (
+              <button key={st.id} type="button" data-krok-keep="" onClick={() => setSelKey(`s:${st.id}`)}
+                aria-label={`${t("editor.step")} ${si + 1} ${st.title}`} title={st.title}
+                aria-current={selKey === `s:${st.id}` || st.fields.some((f) => f.id === selKey) ? "true" : undefined}
+                className={selKey === `s:${st.id}` || st.fields.some((f) => f.id === selKey) ? "krok-ol-railbtn krok-ol-railon" : "krok-ol-railbtn"}>
+                {si + 1}
+              </button>
+            ))}
+          </div>
+          <div className="krok-ol-full">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, margin: "0 0 6px" }}>
+            <h2 style={{ fontSize: "1rem", margin: "0 0 0 6px" }}>{t("studio.outline")}</h2>
+            <button type="button" data-krok-keep="" onClick={() => setOutlinePref("closed")} aria-label={t("studio.outlineClose")} title={t("studio.outlineClose")}
+              aria-expanded={true} className="krok-ol-railbtn" style={{ border: "none" }}><Icon icon={PanelLeftClose} className="h-5 w-5" /></button>
+          </div>
           {draft.steps.map((st, si) => (
             <div key={st.id} style={{ marginBottom: 6 }}>
               <button type="button" data-krok-keep="" onClick={() => setSelKey(`s:${st.id}`)} aria-current={selKey === `s:${st.id}` ? "true" : undefined}
@@ -960,6 +990,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               ))}
             </div>
           ))}
+          </div>
         </nav>
         <Card>
           {/* ตัวเลือกที่ดูเหมือนข้อบกพร่องแต่ยังไม่ได้ตั้ง (ฟอร์มที่สร้างก่อนมีตัวเลือกนี้) → เสนอให้ยืนยัน */}
@@ -1196,6 +1227,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
            แผงตรึงตอนเลื่อนหน้า · ฟอร์มไม่ยืด-หดตอนเลือก/ปิด */
         .krok-editgrid{ display:grid; grid-template-columns:minmax(0,1fr); gap:16px; align-items:start; }
         .krok-outline{ display:none; }
+        .krok-ol-rail{ display:flex; flex-direction:column; align-items:center; gap:8px; }
+        .krok-ol-railbtn{ width:44px; height:44px; flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--line);
+          border-radius:10px; background:var(--surface); color:var(--ink-2); font-family:var(--font-anuphan); font-weight:700; cursor:pointer; }
+        .krok-ol-railbtn:hover{ background:var(--surface-2); }
+        .krok-ol-railon{ background:var(--accent); border-color:var(--accent); color:var(--accent-ink); }
+        .krok-ol-railon:hover{ background:var(--accent); }
         .krok-ol-item{ display:flex; align-items:center; gap:4px; width:100%; min-height:40px; box-sizing:border-box; padding:6px 10px;
           border:none; border-radius:8px; background:none; color:var(--ink); font-family:inherit; font-size:.86rem; text-align:left; cursor:pointer; }
         .krok-ol-item:hover{ background:var(--surface-2); }
@@ -1214,14 +1251,22 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         .krok-fs .krok-appr-roleline .krok-appr-role{ flex:1 1 auto !important; width:auto !important; }
         /* แผงย่อยที่มีกรอบของตัวเอง (เอกสาร / ตารางเวลา): ถอดกรอบเมื่ออยู่ในแท็บ */
         .krok-fs-nest > div{ border:none !important; padding:0 !important; margin-top:0 !important; border-radius:0 !important; }
+        /* ความกว้างโครงฟอร์ม: หุบ 64px · กาง 220px — auto = หุบที่ 900–1279 กางที่ ≥1280 */
+        .krok-editgrid.ol-auto, .krok-editgrid.ol-closed{ --ol-w:64px; }
+        .krok-editgrid.ol-open{ --ol-w:220px; }
+        .ol-auto .krok-ol-full, .ol-closed .krok-ol-full{ display:none; }
+        .ol-open .krok-ol-rail{ display:none; }
         @media(min-width:900px){
-          .krok-editgrid{ grid-template-columns:minmax(0,1fr) 340px; }
+          .krok-editgrid{ grid-template-columns:var(--ol-w) minmax(0,1fr) 340px; }
           .krok-aside{ position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto; border-radius:12px; }
+          .krok-outline{ display:block; position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto;
+            background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 6px; }
         }
         @media(min-width:1280px){
-          .krok-editgrid{ grid-template-columns:220px minmax(0,1fr) 360px; }
-          .krok-outline{ display:block; position:sticky; top:74px; max-height:calc(100vh - 90px); overflow:auto;
-            background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:12px 8px; }
+          .krok-editgrid{ grid-template-columns:var(--ol-w) minmax(0,1fr) 360px; }
+          .krok-editgrid.ol-auto{ --ol-w:220px; }
+          .ol-auto .krok-ol-full{ display:block; }
+          .ol-auto .krok-ol-rail{ display:none; }
         }
         /* จอกลางแคบ: ไม่มีคอลัมน์ขวา → แผงลอยด้านขวาเฉพาะตอนเลือกฟิลด์ */
         @media(max-width:899px){

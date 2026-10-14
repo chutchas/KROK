@@ -1188,6 +1188,8 @@ export const en: Record<MessageKey, string> = {
   "ws.createBtn": "Create",
   "ws.namePlaceholder": "Workspace / company name",
   "studio.outline": "Outline",
+  "studio.outlineOpen": "Expand outline",
+  "studio.outlineClose": "Collapse outline",
   "studio.title": "Create a form with AI",
   "studio.titleFile": "Create a form from an existing file",
   "studio.subtitleFile": "Take a photo or upload a PDF of the paper form you use today — AI turns it into a digital form, then you adjust it before publishing",
