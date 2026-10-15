@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { Button, Notice } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText, Download, Info, ClipboardCheck } from "lucide-react";
+import { Printer, Clock, CheckCircle2, AlertTriangle, Check, Lock, CloudOff, TabletSmartphone, ShieldAlert, RefreshCw, Save, Send, CornerUpLeft, Users, MapPin, Smartphone, FileText, Download, Info, ClipboardCheck, CircleHelp, X as XIcon } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { localizeServerMsg } from "@/i18n/stored-text";
 import { docNoOf, isFailChoice, isUiOnlyField, labelMap, printPhotosOf, type FormField, type FormSchema, type FormStep } from "@/lib/form-schema";
@@ -44,7 +44,7 @@ import { listChildLinks, type ChildLink } from "./child-actions";
 import { FieldControl, toCode, fallbackFieldLabel } from "./FieldControl";
 import { PhotoStampProvider } from "./photo-stamp";
 import { useGeo } from "./useGeo";
-import HelpTip from "@/components/HelpTip";
+import HelpTip, { HelpPanel } from "@/components/HelpTip";
 import { watermarkLines } from "@/lib/geo";
 import { FillActionBar, FillTopBar, FOCUS_COL_W, type FocusMenuItem } from "./FillFocusBar";
 
@@ -141,6 +141,7 @@ export default function FillWizard(props: Props) {
   );
   const submitErrRef = useRef<HTMLDivElement>(null);
   useEffect(() => { if (submitErr) submitErrRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [submitErr]);
+  const [helpOpen, setHelpOpen] = useState(false);
   const [mode, setMode] = useState<"mobile" | "paper">(seed?.mode ?? "mobile");
   const [done, setDone] = useState<{ result: "pass" | "fail"; fails: string[]; dur: number; pending: boolean; offline: boolean; docNo?: string | null; subId?: string; handoff?: { step: string; team: string | null }; returned?: string; caseWarn?: string } | null>(null);
   const [caseModal, setCaseModal] = useState<null | "handoff" | "return" | "release" | "cancel">(null);
@@ -1529,7 +1530,9 @@ export default function FillWizard(props: Props) {
 
   // เมนู ⋯ บนแถบบน (โหมดเต็มจอ): มุมมอง · พิมพ์ (กระดาษ) · บันทึกร่าง
   const focusMenu: FocusMenuItem[] = [
-    { key: "v-mobile", label: t("studio.viewMobile"), icon: Smartphone, checked: mode === "mobile", onSelect: () => setMode("mobile") },
+    // วิธีใช้: กางคู่มือใต้แถบบน (ไม่พาออกจากหน้ากรอก — งานที่กรอกค้างไม่หาย)
+    { key: "help", label: t("fw.help"), icon: CircleHelp, onSelect: () => setHelpOpen((v) => !v) },
+    { key: "v-mobile", label: t("studio.viewMobile"), icon: Smartphone, checked: mode === "mobile", separator: true, onSelect: () => setMode("mobile") },
     { key: "v-paper", label: t("studio.viewPaper"), icon: FileText, checked: mode === "paper", onSelect: () => setMode("paper") },
     ...(mode === "paper" ? [{ key: "print", label: t("sub.print"), icon: Printer, separator: true, onSelect: () => void printWhenReady() }] : []),
     ...(draftsOn ? [{
@@ -1537,6 +1540,18 @@ export default function FillWizard(props: Props) {
       disabled: mediaLoading || draftState.kind === "saving", onSelect: () => void saveDraftNow("manual"),
     }] : []),
   ];
+  const helpBlock = (colWidth: number | string) => helpOpen ? (
+    <div className="no-print" style={{ maxWidth: colWidth, margin: "8px auto 0", padding: "0 12px", boxSizing: "border-box" }}>
+      <div style={{ display: "flex", justifyContent: "flex-end" }}>
+        <button type="button" onClick={() => setHelpOpen(false)} aria-label={t("common.close")}
+          style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, padding: "0 10px", border: "none", background: "none", color: "var(--ink-2)", fontFamily: "inherit", fontSize: ".84rem", cursor: "pointer" }}>
+          <Icon icon={XIcon} className="h-4 w-4" /> {t("fw.helpClose")}
+        </button>
+      </div>
+      <HelpPanel id="offline" guideLink={false} />
+      <HelpPanel id="signature" guideLink={false} />
+    </div>
+  ) : null;
   const topBar = (colWidth: number | string) => (
     <FillTopBar title={props.title} colWidth={colWidth} menu={focusMenu} onClose={() => void exitForm()} closing={exiting}
       stepLabel={mode === "mobile" ? `${tt("fw.stepOf", { n: idx + 1, total: nSteps })} · ${schema.steps[idx]?.title ?? ""}` : undefined} status={savedStatus} />
@@ -1628,6 +1643,7 @@ export default function FillWizard(props: Props) {
     return (
       <PhotoStampProvider value={schema.watermark ? stampOf : null}>
       {focus && topBar("var(--krok-page-w)")}
+      {focus && helpBlock("var(--krok-page-w)")}
       <div className={themeScope} style={focus ? { maxWidth: "var(--krok-page-w)", margin: "0 auto" } : undefined}>
         <ThemeStyle scope={themeScope} theme={theme} />
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) — โหมดเต็มจอ: ปุ่มย้ายไปเมนู ⋯ บนแถบบน */}
@@ -1698,6 +1714,7 @@ export default function FillWizard(props: Props) {
   return (
     <PhotoStampProvider value={schema.watermark ? stampOf : null}>
     {focus && topBar(FOCUS_COL_W)}
+    {focus && helpBlock(FOCUS_COL_W)}
     <div className={themeScope} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 20, boxShadow: "var(--shadow)", ...(focus ? { maxWidth: FOCUS_COL_W, margin: "0 auto" } : {}) }}>
       <ThemeStyle scope={themeScope} theme={theme} />
       {branded && <FormBrandHeader theme={theme} icon={props.icon} title={props.title} description={schema.description} />}
