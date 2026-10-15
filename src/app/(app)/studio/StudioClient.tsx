@@ -657,13 +657,15 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     if (tab !== "edit" || !draft?.title) return;
     const prev = document.title;
     document.title = `${draft.title} — ${editingId ? t("studio.crumbEdit") : t("studio.crumbNew")} · KROK`;
-    return () => { document.title = prev; };
+    // คืนชื่อเดิมเฉพาะเมื่อยังอยู่ใน Studio — ออกไปหน้าอื่นแล้วไม่ทับชื่อของหน้าใหม่
+    return () => { if (window.location.pathname.startsWith("/studio")) document.title = prev; };
   }, [tab, draft?.title, editingId, t]);
   useEffect(() => {
     if (tab !== "all") return;
     const prev = document.title;
     document.title = `${t("studio.allFormsTitle")} · KROK`;
-    return () => { document.title = prev; };
+    // คืนชื่อเดิมเฉพาะเมื่อยังอยู่ใน Studio — ออกไปหน้าอื่นแล้วไม่ทับชื่อของหน้าใหม่
+    return () => { if (window.location.pathname.startsWith("/studio")) document.title = prev; };
   }, [tab, t]);
 
   // หน้ารายการ/แก้ไข มี URL ของตัวเอง — refresh/Back/ส่งลิงก์ได้ (สร้างใหม่ = /studio · ทั้งหมด = ?view=all · แก้ไข = ?edit=<id>)
@@ -984,10 +986,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {/* หัวหน้าแบบเดียวกับหน้าอื่น (เดิมเป็นแถบแท็บ สร้างใหม่/แก้ไข/ทั้งหมด): ชื่อหน้าซ้าย · ปุ่มไปอีกหน้าขวา */}
       {(tab === "new" || tab === "all") && (
       <div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "2px 8px", flexWrap: "wrap" }}>
           <h1 style={{ fontSize: "1.4rem", margin: 0, minWidth: 0 }}>
             {tab === "all" ? t("studio.allFormsTitle") : t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}
           </h1>
+          {/* วิธีใช้ข้างชื่อหน้า (กติกาเดียวกับทุกหน้า) — panel กางเต็มบรรทัดใต้หัว */}
+          {tab === "new" && <HelpTip id="create-form" compact panelOrder={2} />}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
             {draft && (
               <Button onClick={() => { setTab("edit"); setFlash(null); }} style={{ minHeight: 44, padding: "0 14px" }}>
@@ -1005,10 +1009,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </Button>
             )}
           </div>
+          <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
+            {tab === "all" ? t("studio.allFormsSub") : t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}
+          </p>
         </div>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: "4px 0 0" }}>
-          {tab === "all" ? t("studio.allFormsSub") : t(createMode === "file" ? "studio.subtitleFile" : createMode === "template" ? "studio.subtitleTemplate" : "studio.subtitle")}
-        </p>
       </div>
       )}
 
@@ -1038,7 +1042,6 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             );
           })}
         </div>
-        <HelpTip id="create-form" />
         </div>
 
         {createMode === "template" ? (
@@ -1319,7 +1322,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {editingId && (
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginTop: 16 }}>
               <Field value={versionNote} maxLength={300} onChange={(e) => setVersionNote(e.target.value)} placeholder={t("ver.notePh")} aria-label={t("ver.notePh")} style={{ flex: "1 1 240px", minWidth: 0 }} />
-              <Link href={`/studio/history/${editingId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".86rem", color: "var(--accent-text)", minHeight: 40, whiteSpace: "nowrap" }}>
+              <Link href={`/studio/history/${editingId}`} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: ".86rem", color: "var(--accent-text)", minHeight: 44, whiteSpace: "nowrap" }}>
                 <Icon icon={History} className="h-4 w-4" /> {t("ver.history")}
               </Link>
             </div>
@@ -1351,7 +1354,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         <Card>
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-2)" }}>
             <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)", marginBottom: 10 }}><Icon icon={Pencil} className="h-10 w-10" strokeWidth={1.4} /></div>
-            <h1 style={{ fontSize: "1.1rem", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h1>
+            <h1 style={{ fontSize: "1.4rem", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h1>
             <p style={{ fontSize: ".9rem", color: "var(--ink-3)", margin: "0 0 16px" }}>{t("studio.editEmptySub")}</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <Button variant="primary" onClick={() => setTab("new")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.tabNew")}</Button>

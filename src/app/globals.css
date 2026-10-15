@@ -441,7 +441,8 @@ a {
   .krok-subactions > button svg, .krok-subbtns > button svg { width: 20px !important; height: 20px !important; flex: 0 0 auto; }
   .krok-subactions .krok-sb-pdf { flex: 1 1 100%; order: -1; min-height: 52px; flex-direction: row; font-size: 1rem !important;
     background: var(--accent) !important; border-color: var(--accent) !important; }
-  .krok-subactions .krok-sb-del { order: 5; color: var(--fail-text) !important; }
+  /* ลบ: ขนาดเท่าปุ่มอื่น (อ่านง่าย) แต่ขอบ/พื้นแดงอ่อน — ไม่หนักเท่าปุ่มทั่วไป ดูออกว่าเป็นปุ่มอันตราย */
+  .krok-subactions .krok-sb-del { order: 5; color: var(--fail-text) !important; border-color: color-mix(in srgb, var(--fail) 35%, transparent) !important; background: var(--fail-soft) !important; }
   .krok-subactions .krok-sb-del .krok-narrow-hide { display: inline !important; }
   .krok-sb-long { display: none; }
   .krok-sb-short { display: inline !important; }
@@ -454,3 +455,6 @@ a {
   :root { --krok-grip-pad: 42px; }
 }
 .krok-touch-min { min-height: 44px; }
+
+/* จองที่ scrollbar เสมอ — สลับหน้าที่มี/ไม่มีแถบเลื่อนแล้วเนื้อหาไม่กระตุกซ้าย-ขวา */
+html { scrollbar-gutter: stable; }

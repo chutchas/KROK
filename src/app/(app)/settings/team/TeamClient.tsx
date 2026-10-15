@@ -9,7 +9,7 @@ import { inviteMember, resendInvite, type InviteResult, cancelInvite, changeRole
 import { useT } from "@/i18n/LanguageProvider";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 import type { MessageKey } from "@/i18n/dictionaries";
-import HelpTip from "@/components/HelpTip";
+import PageHeader from "@/components/PageHeader";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 export interface RoleOption { key: string; name: string; canManage: boolean }
@@ -107,19 +107,10 @@ export default function TeamClient({
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{tt("team.title", { name: tenantName })}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("team.subtitle")}</p>
-      </div>
+      <PageHeader title={tt("team.title", { name: tenantName })} subtitle={t("team.subtitle")} />
 
       <Card>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-          <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("team.inviteTitle")}</h2>
-          <HelpTip id="invite-roles" />
-        </div>
-        <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>
-          {t("team.inviteSub")}
-        </p>
+        <PageHeader as="h2" title={t("team.inviteTitle")} help="invite-roles" subtitle={t("team.inviteSub")} style={{ marginBottom: 12 }} />
         <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
           <Field type="email" placeholder={t("team.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
           <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} aria-label={t("team.inviteRoleSel")} style={selstyle}>

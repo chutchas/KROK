@@ -306,7 +306,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
             ) : (
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.05rem", color: theme.custom ? theme.header : "var(--ink)" }}>{session.tenantName}</span>
             )}
-            <h1 style={{ fontSize: "1.5rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={24} />{sub.form_title}</h1>
+            <h1 style={{ fontSize: "1.4rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={22} />{sub.form_title}</h1>
             <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{theme.logo ? <>{session.tenantName} · </> : null}<T k="sub.docNo" vars={{ id: docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }) }} /></div>
           </div>
           <div style={{ textAlign: "right" }}>

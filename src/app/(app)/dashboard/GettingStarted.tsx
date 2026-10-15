@@ -18,15 +18,18 @@ export default function GettingStarted({ hasForms, firstSubId, canCreate }: { ha
   const { t } = useT();
   const [pdfSeen, setPdfSeen] = useState(false);
   const [hidden, setHidden] = useState(false);
+  // ยังไม่อ่าน localStorage = ยังไม่แสดง (เดิม server แสดงการ์ดก่อน แล้วค่อยซ่อน → โผล่แวบ หน้ากระโดด)
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     try {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- อ่าน localStorage หลัง mount (SSR ไม่มี)
       setPdfSeen(localStorage.getItem(PDF_SEEN_KEY) === "1");
       setHidden(localStorage.getItem(DISMISS_KEY) === "1");
     } catch { /* โหมดส่วนตัว = แสดงต่อ */ }
+    setReady(true);
   }, []);
   const filled = !!firstSubId;
-  if (hidden || (hasForms && filled && pdfSeen)) return null;
+  if (!ready || hidden || (hasForms && filled && pdfSeen)) return null;
   const dismiss = () => {
     setHidden(true);
     try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ปิดได้แค่รอบนี้ */ }

@@ -32,14 +32,7 @@ export default function HelpClient() {
     window.history.replaceState(null, "", next ? `#${next}` : window.location.pathname);
   };
 
-  const list = useMemo(() => {
-    const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-    if (!words.length) return HELP_ARTICLES;
-    return HELP_ARTICLES.filter((a) => {
-      const hay = [a.title.th, a.title.en, a.summary.th, a.summary.en, a.keywords, ...a.steps.th, ...a.steps.en, ...(a.notes?.th ?? []), ...(a.notes?.en ?? [])].join(" ").toLowerCase();
-      return words.every((w) => hay.includes(w));
-    });
-  }, [q]);
+  const list = useMemo(() => searchHelp(q), [q]);
 
   return (
     // ชิดซ้ายเต็มความกว้างเหมือนหน้าอื่น — จำกัดความกว้างเฉพาะช่องค้นหา/เนื้อหา (อ่านง่ายบนจอกว้าง)
@@ -119,4 +112,39 @@ export default function HelpClient() {
       </Link>
     </div>
   );
+}
+
+// ---- ค้นหาคู่มือ: จัดอันดับ (ชื่อ > คำค้น > สรุป > เนื้อหา) · ภาษาไทยไม่เว้นวรรคก็เจอ ----
+const squash = (x: string) => x.toLowerCase().replace(/\s+/g, "");
+const bigrams = (x: string) => { const out: string[] = []; for (let i = 0; i < x.length - 1; i++) out.push(x.slice(i, i + 2)); return out; };
+function searchHelp(q: string) {
+  const raw = q.trim().toLowerCase();
+  if (!raw) return HELP_ARTICLES;
+  const words = raw.split(/\s+/).filter(Boolean);
+  const qs = squash(raw);
+  const scored = HELP_ARTICLES.map((a, idx) => {
+    const fields = [
+      { t: `${a.title.th} ${a.title.en}`, w: 10 },
+      { t: a.keywords, w: 5 },
+      { t: `${a.summary.th} ${a.summary.en}`, w: 3 },
+      { t: [...a.steps.th, ...a.steps.en, ...(a.notes?.th ?? []), ...(a.notes?.en ?? [])].join(" "), w: 1 },
+    ].map((f) => ({ low: f.t.toLowerCase(), sq: squash(f.t), w: f.w }));
+    const all = fields.map((f) => f.sq).join("|");
+    // ตรงทุกคำ (แบบเว้นวรรค) หรือทั้งวลีเมื่อตัดช่องว่าง
+    const exact = words.every((w) => all.includes(squash(w))) || all.includes(qs);
+    let score = 0;
+    for (const f of fields) {
+      if (f.sq.includes(qs)) score += f.w * 2;
+      for (const w of words) if (f.low.includes(w)) score += f.w;
+    }
+    if (!exact) {
+      // ไทยไม่เว้นวรรค/พิมพ์ต่างไปนิด: นับคู่ตัวอักษรของคำค้นที่พบ — ≥ 70% ถือว่าใกล้เคียง
+      const bg = bigrams(qs);
+      const hit = bg.length ? bg.filter((b) => all.includes(b)).length / bg.length : 0;
+      if (hit < 0.7) return null;
+      score = hit;
+    }
+    return { a, score, idx };
+  }).filter((x): x is { a: (typeof HELP_ARTICLES)[number]; score: number; idx: number } => !!x);
+  return scored.sort((x, y) => y.score - x.score || x.idx - y.idx).map((x) => x.a);
 }
