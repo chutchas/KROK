@@ -33,8 +33,8 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAX_BODY = 512 * 1024;
 
 const json = (body: unknown, status = 200) => NextResponse.json(body, { status });
-const PLAN_OFF = { error: "แพ็กเกจปัจจุบันขององค์กรไม่รวม API รับข้อมูล (หรือเกินจำนวนฟอร์มที่แพ็กเกจรองรับ) — ให้ผู้ดูแลอัปเกรดแพ็กเกจในหน้า แพ็กเกจและการชำระเงิน", code: "plan_not_included" };
-const DISABLED = { error: "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้ผู้ดูแลเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล", code: "intake_disabled" };
+const PLAN_OFF = { error: "แพ็กเกจปัจจุบันขององค์กรไม่รวม API รับข้อมูล (หรือเกินจำนวนฟอร์มที่แพ็กเกจรองรับ) — ให้แอดมินอัปเกรดแพ็กเกจในหน้า แพ็กเกจและการชำระเงิน", code: "plan_not_included" };
+const DISABLED = { error: "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้แอดมินเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล", code: "intake_disabled" };
 
 async function authenticate(req: Request, formId: string, admin: Admin) {
   const auth = req.headers.get("authorization") || "";
@@ -82,7 +82,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   const a = await authenticate(req, id, admin);
   if (a === "disabled") return json(DISABLED, 403);
   if (a === "plan") return json(PLAN_OFF, 403);
-  if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
+  if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้แอดมินสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   const schema = await loadSchema(admin, a.f.schema, a.f.tenant_id);
   const keys = (a.cfg.field_keys as Record<string, string>) || {};
@@ -102,7 +102,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const a = await authenticate(req, id, admin);
   if (a === "disabled") return json(DISABLED, 403);
   if (a === "plan") return json(PLAN_OFF, 403);
-  if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
+  if (a === "expired") return json({ error: "API key หมดอายุแล้ว — ให้แอดมินสร้าง key ใหม่หรือต่ออายุ", code: "key_expired" }, 401);
   if (!a) return json({ error: "unauthorized" }, 401);
   if (a.f.status !== "published") return json({ error: "ฟอร์มนี้ยังไม่เผยแพร่" }, 409);
   if (await rateLimited(admin, `intake:${id}`)) return json({ error: "ส่งถี่เกินไป (สูงสุด 120 ครั้ง/นาที)" }, 429);
@@ -167,5 +167,5 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     if (/form_cases|ext_ref/.test(r.error)) return json({ error: "ยังไม่ได้เปิดใช้การเปิดงานจาก API — ติดต่อผู้ดูแลระบบ KROK" }, 501);
     return json({ error: r.error }, 500);
   }
-  return json({ ok: true, type: "job", id: r.id, ref, missing, assigned_to: r.holder ?? (r.team ? `ทีม ${r.team}` : "ผู้ดูแล"), ignored: co.ignored }, 201);
+  return json({ ok: true, type: "job", id: r.id, ref, missing, assigned_to: r.holder ?? (r.team ? `ทีม ${r.team}` : "แอดมิน"), ignored: co.ignored }, 201);
 }

@@ -93,7 +93,7 @@ const SCOPE: Record<string, L> = { any: { th: "ทุกเครื่องท
 const DS_KIND: Record<string, L> = { file: { th: "อัปโหลดไฟล์", en: "File upload" }, api_pull: { th: "ดึงจาก API", en: "Pull from API" }, api_push: { th: "ระบบภายนอกส่งเข้ามา", en: "Pushed by external system" } };
 const SOURCE: Record<string, L> = { public: { th: "ลิงก์สาธารณะ", en: "Public link" }, api: { th: "ระบบภายนอก (API)", en: "External system (API)" } };
 const RESULT: Record<string, L> = { pass: { th: "ผ่าน", en: "Pass" }, fail: { th: "ไม่ผ่าน", en: "Fail" } };
-const ROLE: Record<string, L> = { owner: { th: "เจ้าของ", en: "Owner" }, admin: { th: "ผู้ดูแล", en: "Admin" }, designer: { th: "ผู้ออกแบบฟอร์ม", en: "Designer" }, operator: { th: "ผู้กรอก", en: "Operator" }, user: { th: "ผู้ใช้", en: "User" } };
+const ROLE: Record<string, L> = { owner: { th: "เจ้าของ", en: "Owner" }, admin: { th: "แอดมิน", en: "Admin" }, designer: { th: "ออกแบบฟอร์ม", en: "Designer" }, operator: { th: "ผู้กรอก", en: "Operator" }, user: { th: "ผู้ใช้", en: "User" } };
 
 const K: Record<string, L> = {
   form: { th: "ฟอร์ม", en: "Form" }, device: { th: "เครื่อง", en: "Device" }, dataset: { th: "ชุดข้อมูล", en: "Dataset" }, member: { th: "สมาชิก", en: "Member" },

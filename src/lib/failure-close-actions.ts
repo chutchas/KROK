@@ -91,7 +91,7 @@ export async function closeFailure(id: string, note: string): Promise<R> {
 export async function reopenFailure(id: string, reason: string): Promise<R> {
   const session = await getSession();
   if (!session) return { error: await sm("เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่") };
-  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะเจ้าของหรือผู้ดูแล workspace ที่เปิดเรื่องกลับได้") };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะเจ้าของหรือแอดมิน workspace ที่เปิดเรื่องกลับได้") };
   const r = String(reason || "").trim();
   if (r.length < 3) return { error: await sm("กรุณาระบุเหตุผลที่เปิดเรื่องกลับ") };
   const supabase = await createClient();

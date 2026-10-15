@@ -95,7 +95,7 @@ export async function registerDevice(
     .select("id", { count: "exact", head: true })
     .eq("tenant_id", session.tenantId)
     .eq("status", "pending");
-  if ((pendingCount ?? 0) >= 50) return { error: await sm("มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้ผู้ดูแลอนุมัติ/ลบก่อน") };
+  if ((pendingCount ?? 0) >= 50) return { error: await sm("มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้แอดมินอนุมัติ/ลบก่อน") };
 
   const { data, error } = await admin
     .from("devices")

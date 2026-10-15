@@ -1148,7 +1148,7 @@ export const en: Record<MessageKey, string> = {
   "dash.took": "took {s}",
   "dash.photoAlt": "attached photo",
   "dash.loadingPhoto": "Loading photo...",
-  "appr.title": "Pending approval",
+  "appr.title": "Approvals",
   "appr.count": "{n} item(s) awaiting approval",
   "appr.none": "Nothing pending",
   "appr.noneSetTitle": "No forms need approval yet",

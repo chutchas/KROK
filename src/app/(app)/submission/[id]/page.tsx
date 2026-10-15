@@ -253,7 +253,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
       <OnboardingSeen />
       <div className="no-print krok-subbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
         {/* ลิงก์กลับ + วิธีใช้ อยู่ด้วยกัน (มือถือไม่ให้ ? อยู่บรรทัดเดียวลำพัง) · panel กางเต็มกลุ่มนี้ */}
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", flex: "1 1 320px", minWidth: 0 }}>
+        <div className="krok-subback" style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", flex: "1 1 320px", minWidth: 0 }}>
           <BackLink from={sp.from} mine={!canManage(session.role)} />
           <HelpTip id="print-pdf" compact panelOrder={2} />
         </div>

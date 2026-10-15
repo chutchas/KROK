@@ -67,7 +67,7 @@ async function sendInviteMail(supabase: Awaited<ReturnType<typeof createClient>>
   const link = await inviteLink(inv.email);
   const mail = inviteEmail({
     workspace: session.tenantName,
-    inviter: session.displayName || "ผู้ดูแล",
+    inviter: session.displayName || "แอดมิน",
     role: (role?.name as string) || inv.role_key || "User",
     teams: ((teamRows || []) as { name: string }[]).map((t) => t.name),
     link,

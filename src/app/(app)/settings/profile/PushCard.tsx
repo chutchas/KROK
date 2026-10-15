@@ -145,7 +145,7 @@ export default function PushCard() {
               <div style={{ fontSize: ".86rem", fontWeight: 600, marginBottom: 4 }}>{t("push.types")}</div>
               <div style={{ display: "grid", gap: 2 }}>
                 {PUSH_GROUPS.map((g) => (
-                  <label key={g} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".88rem", cursor: "pointer", minHeight: 36 }}>
+                  <label key={g} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".88rem", cursor: "pointer", minHeight: 44 }}>
                     <input type="checkbox" checked={!state.offGroups.includes(g)} onChange={(e) => void toggleGroup(g, e.target.checked)} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
                     {t(`push.g.${g}`)}
                   </label>

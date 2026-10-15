@@ -6,8 +6,8 @@
 
 export const SERVER_MESSAGES_EN: Record<string, string> = {
   "AI ไม่ได้ตอบเป็น JSON": "The AI didn't reply with JSON",
-  "API key หมดอายุแล้ว — ให้ผู้ดูแลสร้าง key ใหม่หรือต่ออายุ": "API key expired — ask an admin to create or renew a key",
-  "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้ผู้ดูแลเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล": "The intake API for this form is off — ask an admin to enable it under Integrations › Intake API",
+  "API key หมดอายุแล้ว — ให้แอดมินสร้าง key ใหม่หรือต่ออายุ": "API key expired — ask an admin to create or renew a key",
+  "API รับข้อมูลของฟอร์มนี้ถูกปิดอยู่ — ให้แอดมินเปิดในหน้า การเชื่อมต่อ › API รับข้อมูล": "The intake API for this form is off — ask an admin to enable it under Integrations › Intake API",
   "API ไม่ได้ตอบกลับเป็น JSON": "The API didn't reply with JSON",
   "Azure ต้องตั้ง AZURE_OPENAI_ENDPOINT": "Azure requires AZURE_OPENAI_ENDPOINT",
   "Gateway ตอบรูปแบบไม่ถูกต้อง": "The gateway returned an invalid response",
@@ -71,7 +71,7 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ฟอร์มไม่ถูกต้อง": "The form is invalid",
   "ฟอร์มไม่มีฟิลด์ที่ใช้งานได้": "The form has no usable fields",
   "มีการส่งฟอร์มถี่เกินไป โปรดลองใหม่อีกสักครู่": "Too many submissions — please try again shortly",
-  "มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้ผู้ดูแลอนุมัติ/ลบก่อน": "Too many devices awaiting approval — ask an admin to approve or remove some first",
+  "มีเครื่องรออนุมัติค้างอยู่มากเกินไป — ให้แอดมินอนุมัติ/ลบก่อน": "Too many devices awaiting approval — ask an admin to approve or remove some first",
   "ยังขาดช่องบังคับ": "Required fields are missing",
   "ยังไม่มี key": "No key yet",
   "ยังไม่มีบัตรที่บันทึกไว้ — เพิ่มบัตรก่อน": "No saved card — add a card first",
@@ -225,7 +225,7 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ต้องลดสิทธิ์ platform admin ของผู้ใช้นี้ก่อนจึงจะลบได้": "Remove this user's platform admin role before deleting them",
   "ไม่พบผู้ใช้": "User not found",
   "เฉพาะผู้จัดการ workspace ที่ปิดเรื่องได้": "Only workspace managers can close issues",
-  "เฉพาะเจ้าของหรือผู้ดูแล workspace ที่เปิดเรื่องกลับได้": "Only the workspace owner or admins can reopen issues",
+  "เฉพาะเจ้าของหรือแอดมิน workspace ที่เปิดเรื่องกลับได้": "Only the workspace owner or admins can reopen issues",
   "กรุณาระบุว่าแก้ไขอย่างไร": "Please describe how it was fixed",
   "ระบบยังไม่พร้อมปิดเรื่อง (ผู้ดูแลต้องรัน migration 0080)": "Closing issues isn't ready yet (run migration 0080)",
   "เอกสารนี้ไม่มีข้อที่ไม่ผ่าน": "This submission has no failed items",
