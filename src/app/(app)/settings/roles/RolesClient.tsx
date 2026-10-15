@@ -176,7 +176,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
       </div>
       {undo && (
         <div role="status" className="no-print"
-          style={{ position: "fixed", left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
+          style={{ position: "fixed", left: "50%", bottom: "calc(16px + max(var(--krok-tabbar-h), env(safe-area-inset-bottom)))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
             padding: "8px 8px 8px 16px", borderRadius: 12, background: "var(--ink)", color: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.2)", fontSize: ".88rem" }}>
           <span>{undo.text}</span>
           <button type="button" onClick={() => void revert()} disabled={busy} className="inline-flex items-center gap-1.5"

@@ -46,7 +46,7 @@ export default async function FormsPage({ searchParams }: { searchParams: Promis
     const { data } = first.error ? await formsQuery("schema") : first;
     const myTeams = new Set(((teamIdRows as string[] | null) || []).map(String));
     const visible = ((data || []) as unknown as FormRow[]).filter((f) => {
-      if (manager) return true; // ผู้ดูแลเห็นทุกฟอร์มเพื่อทดสอบ/แก้ไข
+      if (manager) return true; // แอดมินเห็นทุกฟอร์มเพื่อทดสอบ/แก้ไข
       const mode = f.visibility ?? "all";
       if (mode === "all") return true;
       if (mode === "teams") return (f.visible_teams || []).some((tid) => myTeams.has(String(tid)));

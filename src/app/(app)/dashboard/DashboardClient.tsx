@@ -298,7 +298,7 @@ export default function DashboardClient({
               ) : undefined} />
             {shown.length > 0 && (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
                   {shown.map((w, i) => (
                     <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={editing} onDragStart={() => editing && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => editing && onDrop(w.id)}>
                       <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t} editing={editing}
@@ -395,7 +395,7 @@ export default function DashboardClient({
       )}
       {undo && undo.tab === tab && (
         <div role="status" className="no-print"
-          style={{ position: "fixed", left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
+          style={{ position: "fixed", left: "50%", bottom: "calc(16px + max(var(--krok-tabbar-h), env(safe-area-inset-bottom)))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
             padding: "8px 8px 8px 16px", borderRadius: 12, background: "var(--ink)", color: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.2)", fontSize: ".88rem" }}>
           <span>{t(undo.tab === "ws" ? "dash.tplAppliedWs" : "dash.tplApplied")}</span>
           <button type="button" onClick={() => { void persist(undo.prev); setUndo(null); }}

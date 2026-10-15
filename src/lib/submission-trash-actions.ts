@@ -13,7 +13,7 @@ type R = { ok: true } | { error: string };
 async function guard(): Promise<{ error: string } | null> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะเจ้าของหรือผู้ดูแล workspace ที่ลบเอกสารได้") };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะเจ้าของหรือแอดมิน workspace ที่ลบเอกสารได้") };
   return null;
 }
 
