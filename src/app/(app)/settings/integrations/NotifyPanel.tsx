@@ -13,7 +13,7 @@ const hint: React.CSSProperties = { fontSize: ".74rem", color: "var(--ink-3)", m
 
 function Check({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
-    <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: ".86rem", cursor: "pointer" }}>
+    <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: ".86rem", cursor: "pointer", minHeight: 44 }}>
       <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
       {children}
     </label>

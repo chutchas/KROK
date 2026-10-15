@@ -71,7 +71,7 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
 
   return (
     <div style={{ minWidth: 0 }}>
-      <Link href={`/studio?edit=${formId}`} style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 12 }}>
+      <Link href={`/studio?edit=${formId}`} style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 12, minHeight: 44 }}>
         <Icon icon={ArrowLeft} className="h-4 w-4" /> {t("ver.back")}
       </Link>
       <Card>

@@ -59,6 +59,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   }
 
   async function search() {
+    setUsingSaved(false);
     try { sessionStorage.setItem(KEY, JSON.stringify({ formId, preset, from, to, result, approval })); } catch { /* ไม่มี storage = ไม่จำ */ }
     await runSearch(filters());
   }
@@ -75,6 +76,13 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   }
 
   const restored = useRef(false);
+  // คืนตัวกรองที่จำไว้ (sessionStorage) → บอกผู้ใช้ + ปุ่มล้าง (ไม่งั้นกลับมาเจอ "ไม่พบ" แล้วไม่รู้ว่าเพราะตัวกรองเดิม)
+  const [usingSaved, setUsingSaved] = useState(false);
+  function resetFilters() {
+    try { sessionStorage.removeItem(KEY); } catch { /* ไม่มี storage */ }
+    setFormId("all"); setPreset("30d"); setFrom(""); setTo(""); setResult("all"); setApproval("all");
+    setUsingSaved(false); setPreview(null); setPreviewKey(""); setMsg(null);
+  }
   useEffect(() => {
     if (restored.current) return;
     restored.current = true;
@@ -86,6 +94,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
     const f = { formId: saved.formId && (saved.formId === "all" || forms.some((x) => x.id === saved!.formId)) ? saved.formId : "all", preset: saved.preset || "30d", from: saved.from || "", to: saved.to || "", result: saved.result || "all", approval: saved.approval || "all" };
     /* eslint-disable react-hooks/set-state-in-effect -- คืนค่าจาก sessionStorage ได้หลัง mount เท่านั้น */
     setFormId(f.formId); setPreset(f.preset); setFrom(f.from); setTo(f.to); setResult(f.result); setApproval(f.approval);
+    if (!initialResult) setUsingSaved(true);
     /* eslint-enable react-hooks/set-state-in-effect */
     void runSearch(filtersOf(f));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -142,6 +151,12 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
         </Card>
       ) : (<>
       <Card>
+        {usingSaved && (
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "-4px 0 10px", fontSize: ".82rem", color: "var(--ink-2)" }}>
+            <span style={{ padding: "2px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)", fontWeight: 600 }}>{t("rep.restored")}</span>
+            <button type="button" onClick={resetFilters} style={{ minHeight: 44, padding: "0 8px", border: "none", background: "none", color: "var(--accent-text)", textDecoration: "underline", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer" }}>{t("rep.resetFilters")}</button>
+          </div>
+        )}
         {/* แถวตัวกรอง — dropdown เรียงแถวเดียว (ตัดบรรทัดบนจอแคบ) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
           <Selectable label={t("report.form")}>

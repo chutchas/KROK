@@ -210,7 +210,7 @@ export default function FormPaperFill({
       <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 8, justifyContent: "flex-end" }}>
         <button
           onClick={() => { userZoomed.current = false; setScale(fitScale); }}
-          style={{ padding: "5px 10px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".76rem" }}
+          style={{ minHeight: 44, padding: "0 12px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".76rem" }}
         >
           {t("paper.fit")}
         </button>
@@ -218,7 +218,7 @@ export default function FormPaperFill({
         <input type="range" min={0.35} max={1.4} step={0.05} value={scale}
           aria-label={t("paper.zoom")} aria-valuetext={`${Math.round(scale * 100)}%`}
           onChange={(e) => { userZoomed.current = true; setScale(parseFloat(e.target.value)); }}
-          style={{ accentColor: "var(--accent)" }} />
+          style={{ accentColor: "var(--accent)", height: 44 }} />
         <span className="tabnum" style={{ fontSize: ".76rem", color: "var(--ink-2)", width: 42 }}>{Math.round(scale * 100)}%</span>
       </div>
     </div>

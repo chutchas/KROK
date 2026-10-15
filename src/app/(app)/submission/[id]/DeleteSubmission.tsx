@@ -16,7 +16,7 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
   const [reason, setReason] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const { panelRef, triggerRef } = useInlineConfirmFocus(open);
+  const { panelRef, triggerRef } = useInlineConfirmFocus(open, () => { if (!busy) { setOpen(false); setErr(null); } });
 
   async function confirm() {
     setBusy(true); setErr(null);

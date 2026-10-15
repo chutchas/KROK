@@ -147,7 +147,7 @@ export default function FieldSettingsPanel({
           </button>
           <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} onClick={async () => {
             if (schema.steps.length <= 1) { await alertDialog(t("editor.needOneStep")); return; }
-            if (!(await confirmDialog({ title: t("dlg.delStep"), message: t("editor.deleteStepConfirm"), confirmLabel: t("dlg.btn.delStep"), danger: true }))) return;
+            if (!(await confirmDialog({ title: t("dlg.delStep"), message: tt("editor.deleteStepConfirmN", { n: si + 1, title: step.title?.trim() ? ` “${step.title.trim()}”` : "", count: step.fields.length }), confirmLabel: t("dlg.btn.delStep"), danger: true }))) return;
             setSteps(schema.steps.filter((_, i) => i !== si));
             onSelect(null);
           }}><Icon icon={Trash2} className="h-4 w-4" /> {t("editor.deleteStep")}</button>

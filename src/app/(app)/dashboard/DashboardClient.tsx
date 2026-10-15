@@ -487,7 +487,7 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
   const isArea = w.format === "area";
   const noMetric = w.format === "openlist" || w.format === "topfails";
   const fIcon = isArea ? MapPin : w.format === "openlist" ? AlertTriangle : w.format === "topfails" ? ListOrdered
-    : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
+    : w.metric === "pending" ? Clock : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
   const sub = isArea ? <AreaSubtitle name={areaName(w.formId)} /> : w.format === "openlist" || period ? formName(w.formId) : `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
 
   return (
