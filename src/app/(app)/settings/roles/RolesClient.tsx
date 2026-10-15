@@ -68,12 +68,11 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("roles.title")}</h1>
-          <HelpTip id="invite-roles" compact />
-        </div>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("roles.subtitle")}</p>
+      {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("roles.title")}</h1>
+        <HelpTip id="invite-roles" compact panelOrder={2} />
+        <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("roles.subtitle")}</p>
       </div>
 
       {msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}

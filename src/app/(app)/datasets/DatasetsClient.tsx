@@ -39,21 +39,20 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* ปุ่มสร้างชิดบน (ไม่ผูกกับก้นคอลัมน์ซ้าย) — เปิดวิธีใช้แล้วปุ่มไม่เด้งลง */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
-        <div style={{ flex: "1 1 320px", minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("nav.datasets")}</h1>
-            <HelpTip id="datasets" compact />
-          </div>
-          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-            {t("ds.subtitle")}
-          </p>
-        </div>
+      {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("nav.datasets")}</h1>
+        <HelpTip id="datasets" compact panelOrder={2} />
         {canEdit && !creating && (
-          <Button data-tour="ds-create" variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>
-            <Icon icon={Plus} className="h-4 w-4" /> {t("ds.create")}
-          </Button>
+          <span style={{ marginLeft: "auto" }}>
+            <Button data-tour="ds-create" variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>
+              <Icon icon={Plus} className="h-4 w-4" /> {t("ds.create")}
+            </Button>
+          </span>
         )}
+        <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
+          {t("ds.subtitle")}
+        </p>
       </div>
 
       {missingTable && (

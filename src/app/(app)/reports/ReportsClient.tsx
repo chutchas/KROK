@@ -123,19 +123,16 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16, minWidth: 0 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-            <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{mine ? t("rep.mineTitle") : t("report.title")}</h1>
-            <HelpTip id="export-excel" compact />
-          </div>
-          <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{mine ? t("rep.mineSub") : t("report.subtitle")}</p>
-        </div>
+      {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
+        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{mine ? t("rep.mineTitle") : t("report.title")}</h1>
+        <HelpTip id="export-excel" compact panelOrder={2} />
         {canTrash && (
-          <a href="/reports/trash" style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, fontSize: ".86rem" }}>
+          <a href="/reports/trash" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, fontSize: ".86rem" }}>
             <Icon icon={Trash2} className="h-4 w-4" /> {t("trash.title")}
           </a>
         )}
+        <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{mine ? t("rep.mineSub") : t("report.subtitle")}</p>
       </div>
 
       {forms.length === 0 ? (
