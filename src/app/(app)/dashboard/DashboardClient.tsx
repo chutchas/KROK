@@ -108,7 +108,7 @@ export default function DashboardClient({
   tenantId: string; initial: SubRow[]; forms: FormOpt[]; summary: Summary; initialWidgets: DashWidget[];
   /** พื้นที่ที่เปิดใช้ (widget "ตามพื้นที่") */
   areas?: AreaOpt[];
-  /** dashboard ของ workspace (0073) — owner/admin จัด สมาชิกทุกคนเห็น */
+  /** dashboard ของ workspace (0073) — เจ้าของ/แอดมิน จัด สมาชิกทุกคนเห็น */
   workspaceWidgets?: DashWidget[];
   /** รัน 0073 แล้ว (ยังไม่รัน = แท็บ Workspace แก้ไม่ได้) */
   workspaceReady?: boolean;
@@ -264,7 +264,7 @@ export default function DashboardClient({
       case "widgets":
         return (
           <Fragment key={key}>
-            {/* Workspace (owner/admin จัด) / ของฉัน */}
+            {/* Workspace (เจ้าของ/แอดมิน จัด) / ของฉัน */}
             <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "22px 0 14px", overflowX: "auto" }}>
               {(["ws", "mine"] as const).map((k) => (
                 <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); setManaging(false); setUndo(null); }}
@@ -313,7 +313,7 @@ export default function DashboardClient({
           </Fragment>
         );
       case "usage":
-        // โควตาแพ็กเกจของ workspace (ตายตัว 3 การ์ด) — ไว้ล่างสุด เห็นเฉพาะ owner/admin
+        // โควตาแพ็กเกจของ workspace (ตายตัว 3 การ์ด) — ไว้ล่างสุด เห็นเฉพาะ เจ้าของ/แอดมิน
         return isWsAdmin ? (
           <section key={key} aria-labelledby="dash-usage-h" style={{ marginTop: 18 }}>
             <h2 id="dash-usage-h" style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.usageTitle")}</h2>
@@ -353,7 +353,7 @@ export default function DashboardClient({
 
       {/* รายการล่าสุด (คงเดิม) */}
       <Card>
-        <h2 data-tour="dash-latest" style={{ fontSize: "1.15rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+        <h2 data-tour="dash-latest" style={{ fontSize: "1.1rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
           <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--pass)" }} />
           {t("dash.latest")}
         </h2>
@@ -719,7 +719,7 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="tpl-h" aria-describedby="tpl-scope"
         style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 760, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 22px 0" }}>
-        <h2 id="tpl-h" style={{ fontSize: "1.2rem", margin: 0 }}>{t("dash.tplTitle")}</h2>
+        <h2 id="tpl-h" style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.tplTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 6px" }}>{t("dash.tplSub")}</p>
         <p id="tpl-scope" style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 14px", fontSize: ".84rem", fontWeight: 600, color: scope === "ws" ? "var(--warn)" : "var(--ink-2)" }}>
           <Icon icon={scope === "ws" ? Users : Settings2} className="h-4 w-4" /> {t(scope === "ws" ? "dash.tplScopeWs" : "dash.tplScopeMine")}
@@ -835,7 +835,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, scope, existing, onCancel
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="wb-h" style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: "22px 22px 0" }}>
-        <h2 id="wb-h" style={{ fontSize: "1.15rem", marginBottom: scope === "ws" ? 4 : 12 }}>{t("dash.widgetBuilder" as never)}</h2>
+        <h2 id="wb-h" style={{ fontSize: "1.1rem", marginBottom: scope === "ws" ? 4 : 12 }}>{t("dash.widgetBuilder" as never)}</h2>
         {scope === "ws" && (
           <p style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px", fontSize: ".84rem", fontWeight: 600, color: "var(--warn-text)" }}>
             <Icon icon={Users} className="h-4 w-4" /> {t("dash.builderScopeWs" as never)}

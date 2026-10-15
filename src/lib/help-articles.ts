@@ -122,6 +122,30 @@ export const HELP_ARTICLES: HelpArticle[] = [
     keywords: "ลายเซ็น signature เซ็น sign ชื่อผู้เซ็น ล้างลายเซ็น",
   },
   {
+    id: "fix-submitted",
+    title: { th: "แก้ไขใบที่ส่งแล้ว (ส่งผิด/ต้องแก้)", en: "Fix a submission that was already sent" },
+    summary: { th: "ใบที่ส่งแล้วแก้ทับไม่ได้ (เก็บเป็นหลักฐานตามจริง) — ส่งใบใหม่แทน หรือใช้การตีกลับ/ส่งกลับ", en: "Sent submissions can't be overwritten (they're kept as evidence) — send a new one, or use send back/reject." },
+    steps: {
+      th: [
+        "กรอกผิด: กรอกใบใหม่ที่ถูกต้อง แล้วให้เจ้าของหรือแอดมินลบใบเดิม (เปิดเอกสาร → ปุ่มลบ — ไปอยู่ในถังขยะ กู้คืนได้)",
+        "ฟอร์มที่ต้องอนุมัติ: ผู้อนุมัติกด \"ตีกลับ\" พร้อมเหตุผล — ผู้กรอกเห็นเหตุผลในเอกสาร แล้วส่งใบใหม่",
+        "ฟอร์มกรอกหลายคน (ส่งต่องาน): ก่อนงานจบ ส่งกลับไปขั้นก่อนหน้าด้วย \"ส่งกลับไปแก้ไข\" ให้คนนั้นแก้แล้วส่งต่อ",
+        "ใบไม่ผ่านที่แก้ปัญหาแล้ว: ไม่ต้องแก้ใบ — บันทึกการแก้ไขด้วย \"ปิดเรื่อง\" ในเอกสาร",
+      ],
+      en: [
+        "Wrong entry: fill a new, correct one, then have an owner or admin delete the old one (open it → Delete — it goes to the trash and can be restored)",
+        "Forms with approval: the approver taps \"Reject\" with a reason — the filler sees it on the document and sends a new one",
+        "Multi-person forms: before the job finishes, use \"Send back for correction\" to return it to an earlier step",
+        "A failed submission that's been fixed: don't edit it — record the fix with \"Close issue\" on the document",
+      ],
+    },
+    notes: {
+      th: ["ระบบไม่ให้แก้ทับเพื่อให้ตรวจสอบย้อนหลังได้ (audit) — ทุกการลบ/กู้คืน/ปิดเรื่องมีประวัติ"],
+      en: ["Overwriting is blocked so records stay auditable — every delete/restore/close-out is logged"],
+    },
+    keywords: "แก้ไข แก้ใบ ส่งผิด กรอกผิด edit fix wrong resubmit ส่งใหม่ ตีกลับ reject ส่งกลับ ลบ delete ถังขยะ trash",
+  },
+  {
     id: "print-pdf",
     title: { th: "พิมพ์และดาวน์โหลด PDF", en: "Print and download PDF" },
     summary: { th: "เอกสารที่ส่งแล้วพิมพ์ได้ทั้งแบบ A4 และแบบสรุป ดาวน์โหลด PDF และรูปทั้งหมดได้", en: "Print submitted documents as A4 or summary, and download the PDF and all photos." },
@@ -208,7 +232,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     },
     notes: {
       th: [
-        "บทบาทของระบบ: เจ้าของ (ทุกอย่าง), ผู้ดูแล (จัดการได้ทุกเมนู), สมาชิก (กรอกฟอร์ม + แดชบอร์ด)",
+        "บทบาทของระบบ: เจ้าของ (ทุกอย่าง), แอดมิน (จัดการได้ทุกเมนู), สมาชิก (กรอกฟอร์ม + แดชบอร์ด)",
         "คำเชิญที่ยังไม่ตอบรับนับรวมในจำนวนผู้ใช้ของแพ็กเกจ",
         "ลบบทบาทที่สร้างเอง = คนที่ใช้บทบาทนั้นกลายเป็นสมาชิก",
         "ทีม/แผนก ใช้กำหนดว่าใครเห็นฟอร์มไหน",
@@ -221,7 +245,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ],
     },
     where: { href: "/settings/team", label: { th: "ไปหน้าทีม", en: "Go to Team" } },
-    keywords: "เชิญ invite สมาชิก member ทีม team บทบาท role สิทธิ์ permission เมนู admin owner ผู้ดูแล",
+    keywords: "เชิญ invite สมาชิก member ทีม team บทบาท role สิทธิ์ permission เมนู admin owner ผู้ดูแล แอดมิน เจ้าของ",
   },
   {
     id: "approval",
@@ -294,7 +318,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ],
     },
     notes: {
-      th: ["ปิดเรื่องได้เฉพาะผู้จัดการ (เจ้าของ ผู้ดูแล หรือบทบาทที่จัดการ workspace ได้)", "ปิดแล้วเปิดกลับได้ ต้องใส่เหตุผล — ประวัติการปิด/เปิดเก็บไว้ทั้งหมด", "ดูใบที่ยังค้างได้ที่ รายงาน → ผลลัพธ์ \"ไม่ผ่าน · ยังไม่ปิดเรื่อง\""],
+      th: ["ปิดเรื่องได้เฉพาะผู้จัดการ (เจ้าของ แอดมิน หรือบทบาทที่จัดการ workspace ได้)", "ปิดแล้วเปิดกลับได้ ต้องใส่เหตุผล — ประวัติการปิด/เปิดเก็บไว้ทั้งหมด", "ดูใบที่ยังค้างได้ที่ รายงาน → ผลลัพธ์ \"ไม่ผ่าน · ยังไม่ปิดเรื่อง\""],
       en: ["Only managers (owner, admin, or roles that can manage the workspace) can close", "You can reopen with a reason — the full close/reopen history is kept", "Find open ones in Reports → result \"Fail · not closed\""],
     },
     where: { href: "/reports?result=fail_open", label: { th: "ดูใบที่ยังไม่ปิดเรื่อง", en: "See open failures" } },
@@ -421,7 +445,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ],
     },
     notes: {
-      th: ["ผู้ดูแลเห็นทุกฟอร์มเสมอ", "ต้องสร้างทีมก่อนที่ ตั้งค่า → ทีม"],
+      th: ["เจ้าของและแอดมินเห็นทุกฟอร์มเสมอ", "ต้องสร้างทีมก่อนที่ ตั้งค่า → ทีม"],
       en: ["Admins always see every form", "Create teams first in Settings → Team"],
     },
     keywords: "ใครเห็น การมองเห็น visibility ทีม team public สาธารณะ qr แชร์ share",
@@ -433,7 +457,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     summary: { th: "เริ่มจากแม่แบบตามลักษณะงาน แล้วเพิ่ม แก้ หรือลบการ์ดทีละใบ", en: "Start from a template for your kind of work, then add, edit or remove cards one by one." },
     steps: {
       th: [
-        "ไปที่แดชบอร์ด → แท็บ \"ส่วนกลาง\" (ทุกคนเห็น · เฉพาะเจ้าของหรือผู้ดูแลแก้ได้) หรือ \"ของฉัน\" (เห็นคนเดียว)",
+        "ไปที่แดชบอร์ด → แท็บ \"ส่วนกลาง\" (ทุกคนเห็น · เฉพาะเจ้าของหรือแอดมินแก้ได้) หรือ \"ของฉัน\" (เห็นคนเดียว)",
         "กด \"ใช้แม่แบบ\" (ถ้ามีการ์ดอยู่แล้ว กด \"จัดการการ์ด\" ก่อน ปุ่มจะโผล่ขึ้นมา) แล้วเลือกแบบที่ใกล้งานที่สุด — งานตรวจ/ความปลอดภัย, บันทึกข้อมูลประจำวัน, งานอนุมัติ หรือตามพื้นที่ (แม่แบบนี้มีเมื่อตั้งพื้นที่ไว้แล้ว · แบบที่มีป้าย \"แนะนำ\" ระบบเลือกจากข้อมูลจริงของคุณ)",
         "ถ้ามีการ์ดอยู่แล้ว เลือก \"ต่อท้าย\" (เพิ่มเฉพาะการ์ดที่ยังไม่มี · การ์ดที่มีแล้วจะมีป้ายบอก) หรือ \"แทนที่\" (เปลี่ยนทั้งชุด) แล้วกดปุ่มด้านล่าง",
         "อยากปรับต่อ กด \"จัดการการ์ด\" — เพิ่มการ์ด แก้ (ไอคอนดินสอ) ลบ หรือเลื่อนลำดับขึ้น/ลง (ลากวางได้บนคอม)",

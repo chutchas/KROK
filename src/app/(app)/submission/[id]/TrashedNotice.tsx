@@ -7,7 +7,7 @@ import { Button, Notice } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 import { restoreSubmission } from "@/lib/submission-trash-actions";
 
-/** owner/admin เปิดลิงก์ของเอกสารที่อยู่ในถังขยะ → บอกว่าถูกลบ ใคร เพราะอะไร + กู้คืนได้ตรงนี้ (แทนหน้า "ไม่พบ") */
+/** เจ้าของ/แอดมิน เปิดลิงก์ของเอกสารที่อยู่ในถังขยะ → บอกว่าถูกลบ ใคร เพราะอะไร + กู้คืนได้ตรงนี้ (แทนหน้า "ไม่พบ") */
 export default function TrashedNotice({ id, title, docNo, by, reason, deletedAt }: { id: string; title: string; docNo: string; by: string; reason: string; deletedAt: string }) {
   const { t, tt, lang } = useT();
   const router = useRouter();

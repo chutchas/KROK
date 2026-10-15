@@ -106,13 +106,13 @@ export async function listBrandLibrary(): Promise<{ assets: BrandAsset[] } | { e
 }
 
 /**
- * ลบรูปออกจากคลัง (owner/admin) — ตรวจการใช้งานใหม่ฝั่ง server ทุกครั้ง รูปที่ยังใช้อยู่จะไม่ถูกลบ
+ * ลบรูปออกจากคลัง (เจ้าของ/แอดมิน) — ตรวจการใช้งานใหม่ฝั่ง server ทุกครั้ง รูปที่ยังใช้อยู่จะไม่ถูกลบ
  * คืนจำนวนที่ลบ + รายการที่ข้ามเพราะยังใช้อยู่
  */
 export async function deleteBrandAssets(paths: string[]): Promise<{ deleted: number; skipped: string[] } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะ owner/admin เท่านั้นที่ลบรูปได้") };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะ เจ้าของ/แอดมิน เท่านั้นที่ลบรูปได้") };
   const prefix = `${session.tenantId}/`;
   const wanted = [...new Set(paths)].filter((p) => typeof p === "string" && p.startsWith(prefix) && !p.includes("..") && !p.slice(prefix.length).includes("/")).slice(0, 500);
   if (!wanted.length) return { deleted: 0, skipped: [] };

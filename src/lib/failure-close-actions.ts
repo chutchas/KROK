@@ -10,7 +10,7 @@ import { runLater } from "@/lib/background";
 import { siteOrigin } from "@/lib/site-origin";
 
 // ปิดเรื่อง / เปิดเรื่องกลับ ของใบไม่ผ่าน (0080) — ฐานข้อมูลตรวจสิทธิ์ซ้ำ (close_submission_failure / reopen_submission_failure)
-// ปิด: ผู้จัดการ (owner/admin/designer) + หมายเหตุว่าแก้อย่างไร · เปิดกลับ: owner/admin · บันทึก audit_log ทุกครั้ง
+// ปิด: ผู้จัดการ (เจ้าของ/แอดมิน/ออกแบบฟอร์ม) + หมายเหตุว่าแก้อย่างไร · เปิดกลับ: เจ้าของ/แอดมิน · บันทึก audit_log ทุกครั้ง
 
 type R = { ok: true } | { error: string };
 

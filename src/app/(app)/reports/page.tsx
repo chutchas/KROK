@@ -26,7 +26,7 @@ export default async function ReportsPage({ searchParams }: { searchParams: Prom
     icon: (f.icon as string) || "📋",
   }));
 
-  // สมาชิกทั่วไป: รายงาน = ประวัติการส่งของตัวเอง (RLS) · owner/admin: มีถังขยะเอกสารที่ลบ
+  // สมาชิกทั่วไป: รายงาน = ประวัติการส่งของตัวเอง (RLS) · เจ้าของ/แอดมิน: มีถังขยะเอกสารที่ลบ
   return <ReportsClient forms={forms} mine={!canManage(session.role)} canTrash={session.role === "owner" || session.role === "admin"}
     initialResult={sp.result && RESULT_LINKS.includes(sp.result) ? sp.result : null} />;
 }

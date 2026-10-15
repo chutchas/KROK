@@ -7,7 +7,7 @@ import Icon from "@/components/Icon";
 import { useT } from "@/i18n/LanguageProvider";
 import { deleteSubmission } from "@/lib/submission-trash-actions";
 
-/** ปุ่มลบเอกสาร (owner/admin) — ต้องใส่เหตุผล · ย้ายไปถังขยะ กู้คืนได้ 30 วัน */
+/** ปุ่มลบเอกสาร (เจ้าของ/แอดมิน) — ต้องใส่เหตุผล · ย้ายไปถังขยะ กู้คืนได้ 30 วัน */
 export default function DeleteSubmission({ id, docNo }: { id: string; docNo: string }) {
   const { t, tt } = useT();
   const router = useRouter();

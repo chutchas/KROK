@@ -86,7 +86,7 @@ export default function WorkspaceClient({
       </div>
 
       <Card>
-        <h2 style={{ fontSize: "1.05rem", marginBottom: 8 }}>{t("ws.general")}</h2>
+        <h2 style={{ fontSize: "1rem", marginBottom: 8 }}>{t("ws.general")}</h2>
         <label htmlFor="ws-name" style={{ display: "block", fontSize: ".85rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("ws.name")}</label>
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <Field id="ws-name" value={name} onChange={(e) => setName(e.target.value)} style={{ flex: 1, minWidth: 200 }} maxLength={80} />
@@ -102,7 +102,7 @@ export default function WorkspaceClient({
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: "1.05rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <h2 style={{ fontSize: "1rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={Palette} className="h-5 w-5" /> {t("brand.wsTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 0" }}>{t("brand.wsSub")}</p>
@@ -121,7 +121,7 @@ export default function WorkspaceClient({
 
       {isOwner && (
         <Card style={{ borderColor: "var(--fail)" }}>
-          <h2 style={{ fontSize: "1.05rem", marginBottom: 4, color: "var(--fail)", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <h2 style={{ fontSize: "1rem", marginBottom: 4, color: "var(--fail)", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Icon icon={AlertTriangle} className="h-5 w-5" /> {t("ws.dangerZone")}
           </h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("ws.deleteWarn")}</p>

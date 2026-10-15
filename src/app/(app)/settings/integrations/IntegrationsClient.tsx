@@ -203,7 +203,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: "1.05rem", marginBottom: 6 }}>{t("intg.payloadTitle")}</h2>
+        <h2 style={{ fontSize: "1rem", marginBottom: 6 }}>{t("intg.payloadTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("intg.payloadSub")}</p>
         <Payload />
       </Card>
@@ -275,7 +275,7 @@ function Legacy({ title, action, children }: { title: string; action?: React.Rea
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: "1.02rem", margin: 0, flex: 1, minWidth: 200 }}>{title}</h2>
+        <h2 style={{ fontSize: "1rem", margin: 0, flex: 1, minWidth: 200 }}>{title}</h2>
         {action}
       </div>
       <p style={{ color: "var(--fail)", fontSize: ".84rem", margin: "6px 0 10px", lineHeight: 1.6, display: "flex", gap: 6, alignItems: "flex-start" }}>

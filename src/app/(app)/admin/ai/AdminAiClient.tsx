@@ -177,7 +177,7 @@ function PurposeForm({ purpose, current }: { purpose: AiPurpose; current: AiSett
   return (
     <Card>
       <div style={{ marginBottom: 14 }}>
-        <h2 style={{ fontSize: "1.05rem", margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+        <h2 style={{ fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
           {PURPOSE_LABELS[purpose]}
           {needsVision ? (
             <span style={{ fontSize: ".72rem", fontWeight: 600, color: "var(--ink-2)", background: "var(--accent-soft)", padding: "2px 8px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 4 }}>

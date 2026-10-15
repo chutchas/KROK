@@ -138,13 +138,18 @@ function searchHelp(q: string) {
       for (const w of words) if (f.low.includes(w)) score += f.w;
     }
     if (!exact) {
-      // ไทยไม่เว้นวรรค/พิมพ์ต่างไปนิด: นับคู่ตัวอักษรของคำค้นที่พบ — ≥ 70% ถือว่าใกล้เคียง
+      // ไทยไม่เว้นวรรค/สะกดผิดนิดหน่อย: นับคู่ตัวอักษรของคำค้นที่พบ — ≥ 70% ถือว่าใกล้เคียง
+      // ให้น้ำหนักตามช่องเหมือนตอนตรงตัว (ชื่อ > คำค้น > สรุป > เนื้อหา) — "ลายเซน" ได้บทความลายเซ็นก่อน
       const bg = bigrams(qs);
-      const hit = bg.length ? bg.filter((b) => all.includes(b)).length / bg.length : 0;
-      if (hit < 0.7) return null;
-      score = hit;
+      if (!bg.length) return null;
+      const ratio = (hay: string) => bg.filter((g) => hay.includes(g)).length / bg.length;
+      if (ratio(all) < 0.7) return null;
+      score = fields.reduce((sum, f) => sum + f.w * ratio(f.sq), 0);
     }
     return { a, score, idx };
   }).filter((x): x is { a: (typeof HELP_ARTICLES)[number]; score: number; idx: number } => !!x);
-  return scored.sort((x, y) => y.score - x.score || x.idx - y.idx).map((x) => x.a);
+  scored.sort((x, y) => y.score - x.score || x.idx - y.idx);
+  // ตัดผลที่ห่างจากอันดับแรกมาก (< 40%) — ท้ายรายการไม่ยาวและไม่เกี่ยว
+  const top = scored[0]?.score ?? 0;
+  return scored.filter((x) => x.score >= top * 0.4).map((x) => x.a);
 }

@@ -67,11 +67,11 @@ export async function saveDashboardLayout(widgets: unknown): Promise<{ ok: true 
   return { ok: true };
 }
 
-/** Dashboard ของ workspace — owner/admin เท่านั้น (RLS ตรวจซ้ำ · 0073) */
+/** Dashboard ของ workspace — เจ้าของ/แอดมิน เท่านั้น (RLS ตรวจซ้ำ · 0073) */
 export async function saveWorkspaceDashboard(widgets: unknown): Promise<{ ok: true } | { error: string }> {
   const session = await getSession();
   if (!session) return { error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะ owner/admin เท่านั้น") };
+  if (session.role !== "owner" && session.role !== "admin") return { error: await sm("เฉพาะ เจ้าของ/แอดมิน เท่านั้น") };
   const supabase = await createClient();
   const { error } = await supabase
     .from("workspace_dashboards")

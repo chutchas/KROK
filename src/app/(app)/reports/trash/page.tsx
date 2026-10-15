@@ -11,7 +11,7 @@ export const metadata = { title: "ถังขยะ" };
 
 export const dynamic = "force-dynamic";
 
-// ถังขยะเอกสาร — owner/admin · เอกสารที่ลบภายใน 30 วัน กู้คืนได้ (เลยกำหนด = cron cleanup ลบจริงพร้อมรูป)
+// ถังขยะเอกสาร — เจ้าของ/แอดมิน · เอกสารที่ลบภายใน 30 วัน กู้คืนได้ (เลยกำหนด = cron cleanup ลบจริงพร้อมรูป)
 export default async function TrashPage({ searchParams }: { searchParams: Promise<{ deleted?: string }> }) {
   const session = await getSession();
   if (!session) return redirectNoSession();

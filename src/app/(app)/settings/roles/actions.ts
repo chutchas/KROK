@@ -10,7 +10,7 @@ async function requireWsAdmin() {
   const session = await getSession();
   if (!session) return { ok: false as const, error: "unauthorized" };
   if (session.role !== "owner" && session.role !== "admin")
-    return { ok: false as const, error: await sm("เฉพาะ owner/admin เท่านั้น") };
+    return { ok: false as const, error: await sm("เฉพาะ เจ้าของ/แอดมิน เท่านั้น") };
   return { ok: true as const, session };
 }
 

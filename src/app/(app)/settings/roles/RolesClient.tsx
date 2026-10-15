@@ -1,10 +1,10 @@
 "use client";
 import { roleLabel } from "@/lib/role-label";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Card, Button, Field, Notice, Pill } from "@/components/ui";
 import Icon from "@/components/Icon";
-import { ShieldCheck, Lock, Trash2, Plus } from "lucide-react";
+import { ShieldCheck, Lock, Trash2, Plus, Undo2 } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { ALWAYS_MENUS, MENUS as ALL_MENUS, type MenuKey } from "@/lib/menus";
 
@@ -25,7 +25,7 @@ export interface RoleRow {
 
 export default function RolesClient({ roles }: { roles: RoleRow[] }) {
   const router = useRouter();
-  const { t } = useT();
+  const { t, tt } = useT();
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [busy, setBusy] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -48,22 +48,42 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
     router.refresh();
   }
 
+  // ชิปบันทึกทันที — บอกว่าบันทึกแล้ว + เลิกทำได้ 8 วินาที (เดิมเปลี่ยนเงียบ ๆ ย้อนไม่ได้)
+  const [undo, setUndo] = useState<{ key: string; text: string; prev: { menus?: string[]; canManage?: boolean } } | null>(null);
+  useEffect(() => {
+    if (!undo) return;
+    const id = setTimeout(() => setUndo(null), 8000);
+    return () => clearTimeout(id);
+  }, [undo]);
+  async function revert() {
+    if (!undo) return;
+    const u = undo;
+    setUndo(null);
+    setBusy(true);
+    const res = await updateRole(u.key, u.prev);
+    setBusy(false);
+    if ("error" in res) setMsg({ t: res.error, err: true });
+    else router.refresh();
+  }
+
   async function toggleMenu(r: RoleRow, k: MenuKey) {
     const has = r.menus.includes(k);
     const next = has ? r.menus.filter((x) => x !== k) : [...r.menus, k];
     setBusy(true);
     const res = await updateRole(r.key, { menus: next });
     setBusy(false);
-    if ("error" in res) setMsg({ t: res.error, err: true });
-    else router.refresh();
+    if ("error" in res) { setMsg({ t: res.error, err: true }); return; }
+    setUndo({ key: r.key, prev: { menus: r.menus }, text: tt(has ? "roles.savedOff" : "roles.savedOn", { role: roleLabel(r.key, r.name, t), menu: menuLabel(k) }) });
+    router.refresh();
   }
 
   async function toggleManage(r: RoleRow) {
     setBusy(true);
     const res = await updateRole(r.key, { canManage: !r.canManage });
     setBusy(false);
-    if ("error" in res) setMsg({ t: res.error, err: true });
-    else router.refresh();
+    if ("error" in res) { setMsg({ t: res.error, err: true }); return; }
+    setUndo({ key: r.key, prev: { canManage: r.canManage }, text: tt(r.canManage ? "roles.savedManageOff" : "roles.savedManageOn", { role: roleLabel(r.key, r.name, t) }) });
+    router.refresh();
   }
 
   return (
@@ -154,6 +174,17 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
           );
         })}
       </div>
+      {undo && (
+        <div role="status" className="no-print"
+          style={{ position: "fixed", left: "50%", bottom: "calc(16px + env(safe-area-inset-bottom))", transform: "translateX(-50%)", zIndex: 70, display: "flex", alignItems: "center", gap: 12, maxWidth: "calc(100vw - 32px)",
+            padding: "8px 8px 8px 16px", borderRadius: 12, background: "var(--ink)", color: "var(--surface)", boxShadow: "0 8px 24px rgba(0,0,0,.2)", fontSize: ".88rem" }}>
+          <span>{undo.text}</span>
+          <button type="button" onClick={() => void revert()} disabled={busy} className="inline-flex items-center gap-1.5"
+            style={{ minHeight: 40, padding: "0 12px", border: "none", borderRadius: 8, background: "transparent", color: "inherit", textDecoration: "underline", fontFamily: "inherit", fontSize: ".88rem", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+            <Icon icon={Undo2} className="h-4 w-4" /> {t("dash.undo")}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

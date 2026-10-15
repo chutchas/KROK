@@ -142,7 +142,7 @@ async function manageGuard(): Promise<Guard> {
   const session = await getSession();
   if (!session) return { ok: false, error: "unauthorized" };
   if (session.role !== "owner" && session.role !== "admin")
-    return { ok: false, error: await sm("จัดการอุปกรณ์ได้เฉพาะ owner/admin") };
+    return { ok: false, error: await sm("จัดการอุปกรณ์ได้เฉพาะ เจ้าของ/แอดมิน") };
   const supabase = await createClient();
   return { ok: true, session, supabase };
 }

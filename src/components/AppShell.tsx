@@ -393,7 +393,7 @@ export default function AppShell({
                 aria-label={t("nav.profile")}
                 // แผงเปิด/ปิดธรรมดา (disclosure) — ข้างในเป็นลิงก์/ปุ่มทั่วไป ไม่ใช่เมนูแบบ role=menu
                 aria-expanded={profileOpen}
-                aria-controls="krok-profile-panel"
+                aria-controls={profileOpen ? "krok-profile-panel" : undefined}
                 className="inline-flex items-center gap-1.5"
                 style={{
                   fontSize: ".8rem",
