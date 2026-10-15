@@ -30,7 +30,7 @@ import {
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
-import { DASH_TEMPLATES, templateWidgets, newTemplateWidgets, templateCardLabel, sameWidget, type DashTemplateKey } from "@/lib/dashboard-templates";
+import { DASH_TEMPLATES, templateWidgets, newTemplateWidgets, templateCardLabel, sameWidget, freshWidget, type DashTemplateKey } from "@/lib/dashboard-templates";
 import HelpTip from "@/components/HelpTip";
 const TPL_ICON: Record<DashTemplateKey, typeof Hash> = { inspect: ShieldCheck, log: ClipboardList, approve: FileCheck2, area: MapPin };
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
@@ -147,7 +147,7 @@ export default function DashboardClient({
   const editing = canEdit && managing;
   // "เพิ่มการ์ด" = งานจัดหน้า (ทำครั้งเดียว) → อยู่ในโหมดจัดการ / ตอนยังว่าง ไม่ใช่ปุ่มหลักของหน้า
   const addCardBtn = (
-    <button type="button" data-tour="dash-add" onClick={() => setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" })}
+    <button type="button" data-tour="dash-add" onClick={() => setBuilder(freshWidget(widgets))}
       className="inline-flex items-center gap-1.5"
       style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
       <Icon icon={Plus} className="h-4 w-4" /> {t("dash.addWidget")}
@@ -402,7 +402,7 @@ export default function DashboardClient({
       {picking && (
         <TemplatePicker recommended={recommended} existing={widgets} en={en} scope={tab} areaCount={areas.length}
           onCancel={() => setPicking(false)} onApply={(k, m) => void applyTemplate(k, m)}
-          onEmpty={() => { setPicking(false); setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" }); }} />
+          onEmpty={() => { setPicking(false); setBuilder(freshWidget(widgets)); }} />
       )}
       {undo && undo.tab === tab && (
         <div role="status" className="no-print"
@@ -546,19 +546,21 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
   const max = Math.max(1, ...series.map((s) => s.v));
   // แตะ/กดแท่ง = ดูค่าวันนั้นแทนผลรวม (จอสัมผัสไม่มี tooltip)
   const [pick, setPick] = useState<number | null>(null);
+  const sliderRef = useRef<HTMLDivElement>(null);
   const cur = pick != null ? series[pick] : null;
   const day = (k: string) => dayLabel(k, lang);
   return (
     <div>
       {/* ไม่ใช้ aria-live — slider ประกาศ valuetext เองอยู่แล้ว (กันอ่านซ้ำ) */}
-      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+      {/* สูงคงที่ 44px — ปุ่มแสดงผลรวมโผล่/หายแล้วแถวไม่ขยับ */}
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", minHeight: 44, marginBottom: 8 }}>
         <span className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1 }}>
           {fmtValue(metric, cur ? cur.v : res.total, en, tt)}
         </span>
         <span style={{ fontSize: ".82rem", color: "var(--ink-3)" }}>{cur ? `· ${day(cur.key)}` : ""}</span>
         {cur && (
-          <button type="button" onClick={() => setPick(null)}
-            style={{ marginLeft: "auto", minHeight: 36, padding: "0 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer" }}>
+          <button type="button" onClick={() => { setPick(null); sliderRef.current?.focus(); }}
+            style={{ marginLeft: "auto", minHeight: 44, padding: "0 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer" }}>
             {tt("dash.trendShowTotal")}
           </button>
         )}
@@ -580,7 +582,7 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
           })}
         </div>
         {/* พื้นที่แตะเต็มแถบ: คำนวณวันจากตำแหน่งนิ้ว (แท่งแคบ ~8px แตะตรงยาก) */}
-        <div role="slider" tabIndex={0} aria-label={tt("dash.trendPick")}
+        <div ref={sliderRef} role="slider" tabIndex={0} aria-label={tt("dash.trendPick")}
           // ตำแหน่ง 1..n = รายวัน · n+1 = ผลรวมทั้งช่วง (อยู่ท้ายสุด ต่อจากวันล่าสุด)
           aria-valuemin={1} aria-valuemax={series.length + 1} aria-valuenow={pick == null ? series.length + 1 : pick + 1}
           aria-valuetext={cur ? `${day(cur.key)} · ${fmtValue(metric, cur.v, en, tt)}` : `${tt("dash.trendTotal")} · ${fmtValue(metric, res.total, en, tt)}`}
@@ -757,7 +759,7 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
                     return (
                       <li key={i} style={{ color: dup ? "var(--ink-3)" : undefined }}>
                         {templateCardLabel(w, en)}
-                        {dup && <span style={{ marginLeft: 6, fontSize: ".74rem", fontWeight: 600, padding: "0 6px", borderRadius: 6, border: "1px solid var(--line-strong)" }}>{t("dash.tplHas")}</span>}
+                        {dup && <><span className="sr-only">, </span><span style={{ marginLeft: 6, fontSize: ".74rem", fontWeight: 600, padding: "0 6px", borderRadius: 6, border: "1px solid var(--line-strong)" }}>{t("dash.tplHas")}</span></>}
                       </li>
                     );
                   })}
@@ -835,6 +837,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, scope, existing, onCancel
     : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric: noMetric ? "usage" : effMetric, range: effRange };
   // เตือนเฉย ๆ (ไม่ห้าม) — บางทีตั้งใจวางซ้ำ
   const dupCard = existing.some((e) => e.id !== initial.id && sameWidget(e, out));
+  const dupName = [templateCardLabel([out.format, out.metric, out.range], en), out.format === "area" ? (areas.find((a) => a.id === out.formId)?.name ?? null) : out.formId !== "all" ? (forms.find((f) => f.id === out.formId)?.title ?? null) : null].filter(Boolean).join(" · ");
   const metricN = format === "ranking" ? 2 : 3;
   const rangeN = noMetric ? metricN : metricN + 1;
 
@@ -897,7 +900,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, scope, existing, onCancel
 
         <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 10, marginTop: 20, padding: "12px 0 calc(16px + env(safe-area-inset-bottom))", flexWrap: "wrap", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
           {dupCard && (
-            <p role="status" style={{ flexBasis: "100%", margin: 0, fontSize: ".84rem", fontWeight: 600, color: "var(--warn-text)" }}>{t("dash.builderDup" as never)}</p>
+            <p role="status" style={{ flexBasis: "100%", margin: 0, fontSize: ".84rem", fontWeight: 600, color: "var(--warn-text)" }}>{(t("dash.builderDup" as never) as string).replace("{name}", dupName)}</p>
           )}
           <button type="button" onClick={() => onSave(out)}
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>

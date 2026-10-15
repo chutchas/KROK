@@ -229,14 +229,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: {
       th: [
         "ไปที่แดชบอร์ด → แท็บ \"ส่วนกลาง\" (ทุกคนเห็น · เฉพาะเจ้าของหรือผู้ดูแลแก้ได้) หรือ \"ของฉัน\" (เห็นคนเดียว)",
-        "กด \"ใช้แม่แบบ\" (ถ้ามีการ์ดอยู่แล้ว กด \"จัดการการ์ด\" ก่อน ปุ่มจะโผล่ขึ้นมา) แล้วเลือกแบบที่ใกล้งานที่สุด — งานตรวจ/ความปลอดภัย, บันทึกข้อมูลประจำวัน, งานอนุมัติ หรือตามพื้นที่ (แบบที่มีป้าย \"แนะนำ\" ระบบเลือกจากข้อมูลจริงของคุณ)",
+        "กด \"ใช้แม่แบบ\" (ถ้ามีการ์ดอยู่แล้ว กด \"จัดการการ์ด\" ก่อน ปุ่มจะโผล่ขึ้นมา) แล้วเลือกแบบที่ใกล้งานที่สุด — งานตรวจ/ความปลอดภัย, บันทึกข้อมูลประจำวัน, งานอนุมัติ หรือตามพื้นที่ (มีเฉพาะเมื่อตั้งพื้นที่ไว้แล้ว) (แบบที่มีป้าย \"แนะนำ\" ระบบเลือกจากข้อมูลจริงของคุณ)",
         "ถ้ามีการ์ดอยู่แล้ว เลือก \"ต่อท้าย\" (เพิ่มเฉพาะการ์ดที่ยังไม่มี · การ์ดที่มีแล้วจะมีป้ายบอก) หรือ \"แทนที่\" (เปลี่ยนทั้งชุด) แล้วกดปุ่มด้านล่าง",
         "อยากปรับต่อ กด \"จัดการการ์ด\" — เพิ่มการ์ด แก้ (ไอคอนดินสอ) ลบ หรือเลื่อนลำดับขึ้น/ลง (ลากวางได้บนคอม)",
         "เพิ่มการ์ดเอง: เลือกรูปแบบ (ตัวเลข / กราฟแนวโน้ม / อันดับฟอร์ม / ค้างปิดเรื่อง / ข้อที่ไม่ผ่านบ่อย / ตามพื้นที่) → ฟอร์ม → ค่าที่แสดง → ช่วงเวลา → บันทึก",
       ],
       en: [
         "Go to Dashboard → the \"Shared\" tab (everyone sees it · only owners/admins edit) or \"Mine\" (only you)",
-        "Tap \"Use a template\" (if you already have cards, tap \"Manage cards\" first to reveal it) and pick the closest fit — Inspection/safety, Daily records, Approvals or By area (the \"Recommended\" one is chosen from your real data)",
+        "Tap \"Use a template\" (if you already have cards, tap \"Manage cards\" first to reveal it) and pick the closest fit — Inspection/safety, Daily records, Approvals or By area (only once areas are set up) (the \"Recommended\" one is chosen from your real data)",
         "If you already have cards, choose \"Add after current cards\" (adds only cards you don't have yet · existing ones are marked) or \"Replace all current cards\" (swap the whole set), then press the button at the bottom",
         "To fine-tune, tap \"Manage cards\" — add, edit (pencil), remove or move up/down (drag on desktop)",
         "Add a card yourself: pick a format (stat / trend / ranking / open failures / top failed items / by area) → form → metric → period → save",

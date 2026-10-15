@@ -36,7 +36,7 @@ const AUTH_COOKIE = (() => {
 })();
 
 /**
- * access token ใน cookie หมดอายุ (หรือใกล้หมด ≤ 30 วิ) ไหม — อ่านจาก cookie เอง ไม่เรียกเครือข่าย
+ * access token ใน cookie หมดอายุ (หรือใกล้หมด ≤ 90 วิ) ไหม — อ่านจาก cookie เอง ไม่เรียกเครือข่าย
  * อ่านไม่ได้/ไม่มี session = null (ไม่รู้)
  */
 async function accessTokenExpired(r: NextRequest): Promise<boolean | null> {
@@ -47,7 +47,8 @@ async function accessTokenExpired(r: NextRequest): Promise<boolean | null> {
     const json = raw.startsWith("base64-") ? stringFromBase64URL(raw.slice(7)) : raw;
     const exp = Number((JSON.parse(json) as { expires_at?: number }).expires_at);
     if (!Number.isFinite(exp)) return null;
-    return exp * 1000 - Date.now() <= 30_000;
+    // 90 วิ = เกณฑ์เดียวกับ auth-js (EXPIRY_MARGIN_MS) ที่เริ่มต่ออายุ — ต่ำกว่านี้ prefetch ยังยิง refresh ได้
+    return exp * 1000 - Date.now() <= 90_000;
   } catch {
     return null;
   }
@@ -60,12 +61,29 @@ const isTransientAuthError = (e: unknown) => {
   return st === 429 || (typeof st === "number" && st >= 500) || name === "AuthRetryableFetchError";
 };
 
-/** หน้ารอเชื่อมต่อใหม่ (เก็บ session ไว้ โหลดซ้ำเองใน 3 วิ) — ไม่มีสคริปต์ จึงไม่ต้องใช้ nonce */
+/**
+ * Supabase ขัดข้อง — เก็บ session ไว้ ให้ลองใหม่ (ไม่มีสคริปต์ จึงไม่ต้องใช้ nonce)
+ * หน้าเอกสาร: รอ 3 → 6 → 12 → 24 วิ (นับรอบด้วย ?_ar=) ครบแล้วหยุด ให้กดลองใหม่เอง
+ * header x-krok-auth-retry = 503 จาก proxy นี้ (แยกจาก 503 ของ Vercel ใน log)
+ */
+const RETRY_STEPS = [3, 6, 12, 24];
 function retryResponse(r: NextRequest) {
-  const headers = { "Retry-After": "3", "Cache-Control": "no-store" };
-  if (isRsc(r) || isPrefetch(r)) return new NextResponse(null, { status: 503, headers });
-  const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="3"><title>กำลังเชื่อมต่อใหม่</title></head><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#0f1d2e;background:#f6f9fb"><p style="text-align:center;line-height:1.6">กำลังเชื่อมต่อใหม่…<br><small style="color:#4a5b6e">ระบบยืนยันตัวตนตอบช้าชั่วคราว หน้านี้จะโหลดใหม่เองใน 3 วินาที</small></p></body></html>`;
-  return new NextResponse(html, { status: 503, headers: { ...headers, "Content-Type": "text/html; charset=utf-8" } });
+  const base = { "Cache-Control": "no-store", "x-krok-auth-retry": "1" };
+  if (isRsc(r) || isPrefetch(r)) return new NextResponse(null, { status: 503, headers: { ...base, "Retry-After": "3" } });
+  const n = Math.max(0, Math.min(RETRY_STEPS.length, Number(r.nextUrl.searchParams.get("_ar")) || 0));
+  const wait = RETRY_STEPS[n];
+  const nextUrl = r.nextUrl.clone();
+  nextUrl.searchParams.set("_ar", String(n + 1));
+  const retryUrl = r.nextUrl.clone();
+  retryUrl.searchParams.delete("_ar");
+  const esc = (u: string) => u.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
+  const target = esc(`${nextUrl.pathname}${nextUrl.search}`);
+  const again = esc(`${retryUrl.pathname}${retryUrl.search}`);
+  const auto = wait != null;
+  const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">${auto ? `<meta http-equiv="refresh" content="${wait};url=${target}">` : ""}<title>กำลังเชื่อมต่อใหม่</title></head><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#0f1d2e;background:#f6f9fb"><main style="text-align:center;line-height:1.6;padding:16px">${auto
+    ? `<p>กำลังเชื่อมต่อใหม่…<br><small style="color:#4a5b6e">ระบบยืนยันตัวตนตอบช้าชั่วคราว จะลองใหม่เองใน ${wait} วินาที</small></p>`
+    : `<p>ยังเชื่อมต่อระบบยืนยันตัวตนไม่ได้<br><small style="color:#4a5b6e">ข้อมูลการเข้าสู่ระบบของคุณยังอยู่ ลองใหม่อีกครั้งในอีกสักครู่</small></p><p><a href="${again}" style="display:inline-block;padding:12px 20px;border-radius:10px;background:#2f6fe0;color:#fff;text-decoration:none;font-weight:600">ลองใหม่</a> <a href="/login" style="display:inline-block;padding:12px 16px;color:#2559c4">ไปหน้าเข้าสู่ระบบ</a></p>`}</main></body></html>`;
+  return new NextResponse(html, { status: 503, headers: { ...base, "Retry-After": String(wait ?? 30), "Content-Type": "text/html; charset=utf-8" } });
 }
 
 export async function updateSession(request: NextRequest) {
