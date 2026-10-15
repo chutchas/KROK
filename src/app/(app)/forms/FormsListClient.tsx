@@ -12,6 +12,7 @@ import { deleteDraftAction, deleteSubmittedDrafts } from "./actions";
 import CasesList, { type CaseListItem } from "./CasesList";
 import TodayRounds, { actionable, type TodayRoundItem } from "./TodayRounds";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
+import HelpTip from "@/components/HelpTip";
 
 export interface FormListItem {
   id: string;
@@ -118,7 +119,11 @@ export default function FormsListClient({
   return (
     // หัวหน้าเพจอยู่นอกการ์ด (เหมือนหน้าอื่น) — เดิมทั้งหน้าอยู่ในการ์ดใหญ่ แล้วรายการ/หน้าว่างซ้อนการ์ดอีกชั้น
     <div style={{ minWidth: 0 }}>
-      <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("forms.title")}</h1>
+      {/* วิธีใช้ (ออฟไลน์) — หน้าแรกของคนกรอก เห็นก่อนเริ่มกรอก · ลูกตรงของแถว wrap ให้ panel กางเต็มบรรทัด */}
+      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("forms.title")}</h1>
+        <HelpTip id="offline" />
+      </div>
       <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("forms.subtitle")}</p>
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}

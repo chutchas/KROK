@@ -42,15 +42,16 @@ export default function HelpClient() {
   }, [q]);
 
   return (
-    <div style={{ display: "grid", gap: 16, maxWidth: 820, margin: "0 auto" }}>
+    // ชิดซ้ายเต็มความกว้างเหมือนหน้าอื่น — จำกัดความกว้างเฉพาะช่องค้นหา/เนื้อหา (อ่านง่ายบนจอกว้าง)
+    <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{L === "en" ? "Help" : "คู่มือการใช้งาน"}</h1>
-        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: "4px 0 0" }}>
+        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{L === "en" ? "Help" : "คู่มือการใช้งาน"}</h1>
+        <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {L === "en" ? "Short how-tos for the trickier parts of KROK. Can't find it? Contact the team below." : "วิธีทำงานที่ซับซ้อนใน KROK แบบสั้น ๆ — หาไม่เจอ ติดต่อทีมงานได้ท้ายหน้า"}
         </p>
       </div>
 
-      <div style={{ position: "relative" }}>
+      <div style={{ position: "relative", maxWidth: 640 }}>
         <span style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--ink-3)", display: "inline-flex" }}><Icon icon={SearchIcon} className="h-4 w-4" /></span>
         <Field type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={L === "en" ? "Search help" : "ค้นหาคู่มือ"}
           placeholder={L === "en" ? "Search, e.g. approval, LINE, dataset" : "ค้นหา เช่น อนุมัติ, LINE, ชุดข้อมูล"} style={{ width: "100%", boxSizing: "border-box", minHeight: 48, paddingLeft: 36 }} />
@@ -59,12 +60,13 @@ export default function HelpClient() {
         {q.trim() ? (L === "en" ? `${list.length} found` : `พบ ${list.length} เรื่อง`) : ""}
       </p>
 
-      <div style={{ display: "grid", gap: 10 }}>
-        {list.map((a) => {
+      {/* รายการเดียวในการ์ดเดียว คั่นด้วยเส้น (แบบหน้ารายการฟอร์ม) — เดิมการ์ดละเรื่อง สูงและห่างเกิน */}
+      {list.length > 0 && (
+      <Card style={{ padding: "4px 20px" }}>
+        {list.map((a, i) => {
           const open = openId === a.id;
           return (
-            <Card key={a.id}>
-              <section id={`help-${a.id}`} style={{ scrollMarginTop: 80 }}>
+              <section key={a.id} id={`help-${a.id}`} style={{ scrollMarginTop: 80, padding: "12px 0", borderTop: i ? "1px solid var(--line)" : "none" }}>
                 <h2 style={{ margin: 0, fontSize: "1rem" }}>
                   <button type="button" aria-expanded={open} onClick={() => toggle(a.id, open)}
                     style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 44, padding: 0, border: "none", background: "none", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem", fontWeight: 700, textAlign: "left", cursor: "pointer" }}>
@@ -74,7 +76,7 @@ export default function HelpClient() {
                 </h2>
                 <p style={{ margin: "2px 0 0", color: "var(--ink-2)", fontSize: ".88rem" }}>{a.summary[L]}</p>
                 {open && (
-                  <div style={{ marginTop: 10, fontSize: ".92rem", lineHeight: 1.6 }}>
+                  <div style={{ marginTop: 10, fontSize: ".92rem", lineHeight: 1.6, maxWidth: 820 }}>
                     <ol style={{ margin: 0, paddingLeft: 22, listStyle: "decimal" }}>{a.steps[L].map((s, i) => <li key={i}>{s}</li>)}</ol>
                     {a.notes && (
                       <div style={{ marginTop: 10, padding: "10px 12px", borderRadius: 10, background: "var(--surface-2)" }}>
@@ -90,9 +92,10 @@ export default function HelpClient() {
                   </div>
                 )}
               </section>
-            </Card>
           );
         })}
+      </Card>
+      )}
         {!list.length && (
           <Card>
             <p style={{ margin: "0 0 8px", color: "var(--ink-2)" }}>{L === "en" ? "Nothing matches — pick a topic below or ask the team." : "ไม่พบเรื่องที่ตรง — เลือกจากหัวข้อทั้งหมดด้านล่าง หรือถามทีมงาน"}</p>
@@ -108,7 +111,6 @@ export default function HelpClient() {
             </ul>
           </Card>
         )}
-      </div>
 
       <Link href="/help/contact" style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 16px", borderRadius: 12, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", textDecoration: "none" }}>
         <Icon icon={LifeBuoy} className="h-5 w-5" />

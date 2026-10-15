@@ -1715,6 +1715,8 @@ export const en: Record<MessageKey, string> = {
   "dash.builderDup": "This card already exists: {name} — you can still save if that's intended",
   "studio.noChanges": "No changes yet",
   "studio.descLabel": "Description",
+  "fw.help": "How to (offline · signature)",
+  "fw.helpClose": "Close help",
   "dash.durSec": "{s}s",
   "dash.deletedForm": "(deleted form)",
   "dash.passFail": "pass {pass} · fail {fail}",

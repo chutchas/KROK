@@ -1730,6 +1730,8 @@ export const th = {
   "dash.builderDup": "มีการ์ดนี้อยู่แล้ว: {name} — บันทึกต่อได้ถ้าตั้งใจวางซ้ำ",
   "studio.noChanges": "ยังไม่มีการแก้ไข",
   "studio.descLabel": "คำอธิบาย",
+  "fw.help": "วิธีใช้ (ออฟไลน์ · ลายเซ็น)",
+  "fw.helpClose": "ปิดวิธีใช้",
   "dash.durSec": "{s}วิ",
   "dash.deletedForm": "(ฟอร์มถูกลบ)",
   "dash.passFail": "ผ่าน {pass} · ไม่ผ่าน {fail}",
