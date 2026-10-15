@@ -30,7 +30,7 @@ import {
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
-import { DASH_TEMPLATES, templateWidgets, newTemplateWidgets, templateCardLabel, type DashTemplateKey } from "@/lib/dashboard-templates";
+import { DASH_TEMPLATES, templateWidgets, newTemplateWidgets, templateCardLabel, sameWidget, type DashTemplateKey } from "@/lib/dashboard-templates";
 import HelpTip from "@/components/HelpTip";
 const TPL_ICON: Record<DashTemplateKey, typeof Hash> = { inspect: ShieldCheck, log: ClipboardList, approve: FileCheck2, area: MapPin };
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
@@ -284,15 +284,17 @@ export default function DashboardClient({
                 <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: 0, flex: "1 1 260px" }}>
                   {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
                 </p>
-                {canEdit && <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{tplBtn(true)}{addCardBtn}<HelpTip id="dashboard" /></span>}
+                {canEdit && <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{tplBtn(true)}{addCardBtn}</span>}
+                {/* ลูกตรงของแถวที่ wrap — panel วิธีใช้กางเต็มบรรทัดใหม่ ไม่ดันปุ่ม */}
+                <HelpTip id="dashboard" />
               </div>
             )}
             {shown.length > 0 && (
               <>
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 10px", flexWrap: "wrap" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2><HelpTip id="dashboard" compact /></span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px", flexWrap: "wrap" }}>
+                  <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
                   {canEdit && (
-                    <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
+                    <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
                     {managing && tplBtn(false)}
                     {managing && addCardBtn}
                     <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
@@ -302,6 +304,8 @@ export default function DashboardClient({
                     </button>
                     </span>
                   )}
+                  {/* ท้ายแถว + เป็นลูกตรง — panel กางใต้แถวเต็มความกว้าง ไม่บีบหัวข้อ/ไม่ดันปุ่ม */}
+                  <HelpTip id="dashboard" compact />
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
                   {shown.map((w, i) => (
@@ -413,7 +417,7 @@ export default function DashboardClient({
         </div>
       )}
       {builder && (
-        <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t} scope={tab}
+        <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t} scope={tab} existing={widgets}
           onCancel={() => setBuilder(null)} onSave={upsertWidget} />
       )}
 
@@ -546,9 +550,18 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
   const day = (k: string) => dayLabel(k, lang);
   return (
     <div>
-      <div className="tabnum" aria-live="polite" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1, marginBottom: 8 }}>
-        {fmtValue(metric, cur ? cur.v : res.total, en, tt)}
-        {cur && <span style={{ fontSize: ".8rem", fontWeight: 500, color: "var(--ink-3)", marginLeft: 8 }}>{day(cur.key)}</span>}
+      {/* ไม่ใช้ aria-live — slider ประกาศ valuetext เองอยู่แล้ว (กันอ่านซ้ำ) */}
+      <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+        <span className="tabnum" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1 }}>
+          {fmtValue(metric, cur ? cur.v : res.total, en, tt)}
+        </span>
+        <span style={{ fontSize: ".82rem", color: "var(--ink-3)" }}>{cur ? `· ${day(cur.key)}` : ""}</span>
+        {cur && (
+          <button type="button" onClick={() => setPick(null)}
+            style={{ marginLeft: "auto", minHeight: 36, padding: "0 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer" }}>
+            {tt("dash.trendShowTotal")}
+          </button>
+        )}
       </div>
       <div style={{ position: "relative" }}>
         <div style={{ display: "flex", alignItems: "flex-end", gap: series.length > 14 ? 2 : 4, height: 72, borderBottom: "1px solid var(--line-strong)" }}>
@@ -568,17 +581,17 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
         </div>
         {/* พื้นที่แตะเต็มแถบ: คำนวณวันจากตำแหน่งนิ้ว (แท่งแคบ ~8px แตะตรงยาก) */}
         <div role="slider" tabIndex={0} aria-label={tt("dash.trendPick")}
-          aria-valuemin={1} aria-valuemax={series.length} aria-valuenow={(pick ?? series.length - 1) + 1}
-          aria-valuetext={cur ? `${day(cur.key)}: ${fmtValue(metric, cur.v, en, tt)}` : tt("dash.trendTotal")}
+          // ตำแหน่ง 1..n = รายวัน · n+1 = ผลรวมทั้งช่วง (อยู่ท้ายสุด ต่อจากวันล่าสุด)
+          aria-valuemin={1} aria-valuemax={series.length + 1} aria-valuenow={pick == null ? series.length + 1 : pick + 1}
+          aria-valuetext={cur ? `${day(cur.key)} · ${fmtValue(metric, cur.v, en, tt)}` : `${tt("dash.trendTotal")} · ${fmtValue(metric, res.total, en, tt)}`}
           onKeyDown={(e) => {
-            // ลูกศรเลื่อนวัน · Home/End วันแรก/สุดท้าย · Esc กลับไปผลรวม
-            // ยังไม่เลือก: ลูกศรซ้าย = วันล่าสุด (เริ่มจากขวา) · ขวา = วันแรก
+            // ซ้าย/ขวา เลื่อนทีละวัน (ขวาสุด = ผลรวม) · Home วันแรก · End/Esc ผลรวม
             const last = series.length - 1;
             let next: number | null | undefined;
             if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = pick == null ? last : Math.max(0, pick - 1);
-            else if (e.key === "ArrowRight" || e.key === "ArrowUp") next = pick == null ? 0 : Math.min(last, pick + 1);
+            else if (e.key === "ArrowRight" || e.key === "ArrowUp") next = pick == null ? null : pick >= last ? null : pick + 1;
             else if (e.key === "Home") next = 0;
-            else if (e.key === "End") next = last;
+            else if (e.key === "End") next = null;
             else if (e.key === "Escape" && pick != null) next = null;
             if (next === undefined) return;
             e.preventDefault();
@@ -706,7 +719,10 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
   const order = recommended ? [...list].sort((a, b) => Number(b.key === recommended.key) - Number(a.key === recommended.key)) : list;
   const [sel, setSel] = useState<DashTemplateKey>(order[0].key);
   // มีการ์ดอยู่แล้ว = ส่วนใหญ่อยากเปลี่ยนทั้งชุด (ต่อท้ายทำให้การ์ดซ้ำ) · ยืนยัน + เลิกทำได้
-  const [mode, setMode] = useState<"append" | "replace">(hasCards ? "replace" : "append");
+  // ต่อท้ายไม่เพิ่มการ์ดซ้ำแล้ว = ทางที่ปลอดภัยกว่า (ไม่ลบการ์ดเดิม)
+  const [mode, setMode] = useState<"append" | "replace">("append");
+  const has = ([f, m, r]: [WidgetFormat, WidgetMetric, WidgetRange]) =>
+    existing.some((e) => e.format === f && e.formId === "all" && e.metric === m && e.range === r);
   return (
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
@@ -736,7 +752,15 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
                 {rec && recommended && <span style={{ color: "var(--accent-text)", fontSize: ".8rem", fontWeight: 600 }}>{en ? recommended.why.en : recommended.why.th}</span>}
                 <span style={{ color: "var(--ink-3)", fontSize: ".76rem", marginTop: 2 }}>{tt("dash.tplCards", { n: tp.widgets.length })}</span>
                 <ul style={{ margin: 0, paddingLeft: 18, listStyle: "disc", color: "var(--ink-2)", fontSize: ".8rem", display: "grid", gap: 2 }}>
-                  {tp.widgets.map((w, i) => <li key={i}>{templateCardLabel(w, en)}</li>)}
+                  {tp.widgets.map((w, i) => {
+                    const dup = hasCards && mode === "append" && has(w);
+                    return (
+                      <li key={i} style={{ color: dup ? "var(--ink-3)" : undefined }}>
+                        {templateCardLabel(w, en)}
+                        {dup && <span style={{ marginLeft: 6, fontSize: ".74rem", fontWeight: 600, padding: "0 6px", borderRadius: 6, border: "1px solid var(--line-strong)" }}>{t("dash.tplHas")}</span>}
+                      </li>
+                    );
+                  })}
                 </ul>
               </button>
             );
@@ -760,7 +784,8 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
             const none = hasCards && mode === "append" && fresh === 0;
             return (
               <button type="button" disabled={none} onClick={() => onApply(sel, hasCards ? mode : "replace")}
-                style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: `1px solid ${none ? "var(--line-strong)" : "var(--accent)"}`, background: none ? "var(--surface-2)" : "var(--accent)", color: none ? "var(--ink-2)" : "var(--accent-ink)", cursor: none ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: `1px dashed ${none ? "var(--line-strong)" : "var(--accent)"}`, borderStyle: none ? "dashed" : "solid", background: none ? "transparent" : "var(--accent)", color: none ? "var(--ink-3)" : "var(--accent-ink)", cursor: none ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                {none && <span style={{ display: "inline-flex", marginRight: 6, verticalAlign: "-3px" }}><Icon icon={Check} className="h-4 w-4" /></span>}
                 {!hasCards ? t("dash.tplApply")
                   : none ? t("dash.tplAllThere")
                   : tt(mode === "replace" ? "dash.tplApplyReplace" : "dash.tplApplyAppend", { n: fresh })}
@@ -784,7 +809,9 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
 }
 
 // ---------- ตัวสร้าง/แก้ widget ----------
-function WidgetBuilder({ initial, forms, areas, en, t, scope, onCancel, onSave }: {
+function WidgetBuilder({ initial, forms, areas, en, t, scope, existing, onCancel, onSave }: {
+  /** การ์ดที่มีอยู่ — เตือนถ้าตั้งค่าซ้ำ */
+  existing: DashWidget[];
   initial: DashWidget; forms: FormOpt[]; areas: AreaOpt[]; en: boolean; t: TFn;
   /** ส่วนกลาง = เตือนว่าทุกคนเห็น */
   scope: "ws" | "mine";
@@ -803,6 +830,11 @@ function WidgetBuilder({ initial, forms, areas, en, t, scope, onCancel, onSave }
   const showRange = format !== "area" && format !== "openlist";
   const boxRef = useRef<HTMLDivElement>(null);
   useDialogA11y(boxRef, onCancel);
+  const out: DashWidget = format === "area"
+    ? { id: initial.id, format, formId: areas.some((a) => a.id === formId) ? formId : "all", metric: "usage", range: "all" }
+    : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric: noMetric ? "usage" : effMetric, range: effRange };
+  // เตือนเฉย ๆ (ไม่ห้าม) — บางทีตั้งใจวางซ้ำ
+  const dupCard = existing.some((e) => e.id !== initial.id && sameWidget(e, out));
   const metricN = format === "ranking" ? 2 : 3;
   const rangeN = noMetric ? metricN : metricN + 1;
 
@@ -864,9 +896,10 @@ function WidgetBuilder({ initial, forms, areas, en, t, scope, onCancel, onSave }
         </>}
 
         <div style={{ position: "sticky", bottom: 0, display: "flex", gap: 10, marginTop: 20, padding: "12px 0 calc(16px + env(safe-area-inset-bottom))", flexWrap: "wrap", background: "var(--surface)", borderTop: "1px solid var(--line)" }}>
-          <button type="button" onClick={() => onSave(format === "area"
-              ? { id: initial.id, format, formId: areas.some((a) => a.id === formId) ? formId : "all", metric: "usage", range: "all" }
-              : { id: initial.id, format, formId: format === "ranking" ? "all" : formId, metric: noMetric ? "usage" : effMetric, range: effRange })}
+          {dupCard && (
+            <p role="status" style={{ flexBasis: "100%", margin: 0, fontSize: ".84rem", fontWeight: 600, color: "var(--warn-text)" }}>{t("dash.builderDup" as never)}</p>
+          )}
+          <button type="button" onClick={() => onSave(out)}
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
             {t("common.save" as never)}
           </button>

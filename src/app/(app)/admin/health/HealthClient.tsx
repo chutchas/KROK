@@ -83,7 +83,9 @@ export default function HealthClient({ report }: { report: HealthReport }) {
               {/* บอกชื่อรายการ — ไม่ต้องไล่หาเองทั้งหน้า */}
               {worst !== "ok" && (
                 <div style={{ fontSize: ".84rem", color: "var(--ink-2)", marginTop: 2 }}>
-                  {all.filter((c) => c.status === "fail" || c.status === "warn").map((c) => c.name).join(" · ")}
+                  {all.map((c, i) => ({ c, i })).filter(({ c }) => c.status === "fail" || c.status === "warn").map(({ c, i }, k) => (
+                    <span key={i}>{k > 0 && " · "}<a href={`#chk-${i}`} style={{ display: "inline-block", padding: "10px 2px", margin: "-10px 0" }}>{c.name}</a></span>
+                  ))}
                 </div>
               )}
             </div>
@@ -100,7 +102,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
           <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>{g.title}</h2>
           <div style={{ display: "grid" }}>
             {g.checks.map((c, i) => (
-              <div key={c.name + i} style={{ display: "flex", gap: 10, alignItems: "baseline", padding: "8px 0", borderTop: i ? "1px solid var(--line)" : "none", flexWrap: "wrap" }}>
+              <div key={c.name + i} id={`chk-${all.indexOf(c)}`} style={{ scrollMarginTop: 80, display: "flex", gap: 10, alignItems: "baseline", padding: "8px 0", borderTop: i ? "1px solid var(--line)" : "none", flexWrap: "wrap" }}>
                 <div style={{ width: 104, flex: "0 0 auto" }}><Badge s={c.status} /></div>
                 <div style={{ flex: "1 1 180px", fontWeight: 600, minWidth: 0 }}>{c.name}</div>
                 <div style={{ flex: "2 1 240px", fontSize: ".85rem", color: "var(--ink-2)", overflowWrap: "anywhere" }}>

@@ -1,4 +1,4 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, combineChunks, stringFromBase64URL, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import { buildCsp, newNonce } from "@/lib/csp";
 
@@ -20,6 +20,54 @@ const NO_SESSION_PATHS = ["/api/health", "/api/public", "/api/client-error", "/a
 const matches = (path: string, p: string) =>
   p.endsWith("/") ? path.startsWith(p) : path === p || path.startsWith(p + "/") || path.startsWith(p + ".");
 
+// ---- กัน session หลุดจากการต่ออายุ token พร้อมกันหลายคำขอ ----
+// เดิม: token หมดอายุ → ทุกคำขอ (รวม prefetch ของลิงก์ที่เข้าจอพร้อมกันหลายตัว) ยิง refresh พร้อมกัน
+// → Supabase ตอบ 429 → auth-js ถือว่า session ตาย (429 ไม่ใช่ retryable) แล้วลบ cookie = ผู้ใช้หลุด
+
+/** คำขอ prefetch ของ Next (Link เข้าจอ) — ไม่ใช่การเปิดหน้าจริง */
+const isPrefetch = (r: NextRequest) =>
+  r.headers.get("next-router-prefetch") === "1" || r.headers.get("purpose") === "prefetch" || r.headers.get("sec-purpose")?.includes("prefetch") === true;
+
+/** คำขอ RSC (ข้อมูลหน้า ไม่ใช่เอกสาร HTML) */
+const isRsc = (r: NextRequest) => r.headers.get("rsc") === "1" || r.nextUrl.searchParams.has("_rsc");
+
+const AUTH_COOKIE = (() => {
+  try { return `sb-${new URL(process.env.NEXT_PUBLIC_SUPABASE_URL!).hostname.split(".")[0]}-auth-token`; } catch { return ""; }
+})();
+
+/**
+ * access token ใน cookie หมดอายุ (หรือใกล้หมด ≤ 30 วิ) ไหม — อ่านจาก cookie เอง ไม่เรียกเครือข่าย
+ * อ่านไม่ได้/ไม่มี session = null (ไม่รู้)
+ */
+async function accessTokenExpired(r: NextRequest): Promise<boolean | null> {
+  if (!AUTH_COOKIE) return null;
+  try {
+    const raw = await combineChunks(AUTH_COOKIE, (name) => r.cookies.get(name)?.value);
+    if (!raw) return null;
+    const json = raw.startsWith("base64-") ? stringFromBase64URL(raw.slice(7)) : raw;
+    const exp = Number((JSON.parse(json) as { expires_at?: number }).expires_at);
+    if (!Number.isFinite(exp)) return null;
+    return exp * 1000 - Date.now() <= 30_000;
+  } catch {
+    return null;
+  }
+}
+
+/** Supabase ขัดข้องชั่วคราว (ขอถี่เกิน / ล่ม) — ไม่ใช่ session ตายจริง */
+const isTransientAuthError = (e: unknown) => {
+  const st = (e as { status?: number } | null)?.status;
+  const name = (e as { name?: string } | null)?.name;
+  return st === 429 || (typeof st === "number" && st >= 500) || name === "AuthRetryableFetchError";
+};
+
+/** หน้ารอเชื่อมต่อใหม่ (เก็บ session ไว้ โหลดซ้ำเองใน 3 วิ) — ไม่มีสคริปต์ จึงไม่ต้องใช้ nonce */
+function retryResponse(r: NextRequest) {
+  const headers = { "Retry-After": "3", "Cache-Control": "no-store" };
+  if (isRsc(r) || isPrefetch(r)) return new NextResponse(null, { status: 503, headers });
+  const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="3"><title>กำลังเชื่อมต่อใหม่</title></head><body style="font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:90vh;margin:0;color:#0f1d2e;background:#f6f9fb"><p style="text-align:center;line-height:1.6">กำลังเชื่อมต่อใหม่…<br><small style="color:#4a5b6e">ระบบยืนยันตัวตนตอบช้าชั่วคราว หน้านี้จะโหลดใหม่เองใน 3 วินาที</small></p></body></html>`;
+  return new NextResponse(html, { status: 503, headers: { ...headers, "Content-Type": "text/html; charset=utf-8" } });
+}
+
 export async function updateSession(request: NextRequest) {
   // CSP + nonce ใหม่ทุกคำขอ — Next แปะ nonce ให้สคริปต์ของตัวเองอัตโนมัติจาก header นี้ (หน้าต้อง render แบบ dynamic)
   const nonce = newNonce();
@@ -36,7 +84,14 @@ export async function updateSession(request: NextRequest) {
 
   if (NO_SESSION_PATHS.some((p) => matches(request.nextUrl.pathname, p))) return next();
 
+  // prefetch + token หมดอายุ → ไม่ต่ออายุตรงนี้ (กันยิง refresh เป็นชุด) · เปิดหน้าจริงค่อยต่อ
+  if (isPrefetch(request) && (await accessTokenExpired(request)) === true) {
+    return new NextResponse(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
+
   let response = next();
+  // เก็บ cookie ที่ไลบรารีอยากเขียนไว้ก่อน — ตัดสินใจหลังรู้ผล (ขัดข้องชั่วคราว = ไม่ลบ session)
+  const pending: { list: { name: string; value: string; options: CookieOptions }[] | null } = { list: null };
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,19 +102,25 @@ export async function updateSession(request: NextRequest) {
           return request.cookies.getAll();
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
-          response = next();
-          cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
-          );
+          pending.list = cookiesToSet;
         },
       },
     }
   );
 
   // getClaims: ต่ออายุ token ที่หมดอายุ + ตรวจลายเซ็น JWT ในเครื่อง (HS256 เดิม = fallback ไป getUser ให้เอง)
-  const { data: claimData } = await supabase.auth.getClaims();
+  const { data: claimData, error: claimErr } = await supabase.auth.getClaims();
   const user = claimData?.claims?.sub ? claimData.claims : null;
+
+  // ต่ออายุไม่สำเร็จเพราะ Supabase ขัดข้องชั่วคราว → ไม่เขียน cookie (ไม่ลบ session) และให้ลองใหม่
+  if (!user && claimErr && isTransientAuthError(claimErr)) return retryResponse(request);
+
+  const toSet = pending.list;
+  if (toSet) {
+    toSet.forEach(({ name, value }) => request.cookies.set(name, value));
+    response = next();
+    toSet.forEach(({ name, value, options }) => response.cookies.set(name, value, options));
+  }
 
   const path = request.nextUrl.pathname;
   const isPublic = PUBLIC_PATHS.some((p) => matches(path, p));
