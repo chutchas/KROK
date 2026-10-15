@@ -1016,7 +1016,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       <>
       <Card>
         {/* โหมดสร้าง: พิมพ์ prompt หรือ อัพโหลดไฟล์ */}
-        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: "0 0 12px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", margin: "0 0 12px" }}>
+        <div className="krok-seg krok-seg-modes" data-tour="studio-modes" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 10, overflow: "hidden", margin: 0 }}>
           {([
             { m: "prompt" as const, icon: Sparkles, label: t("studio.modePrompt"), short: t("studio.modePromptShort") },
             { m: "file" as const, icon: FileUp, label: t("studio.modeFile"), short: t("studio.modeFileShort") },
@@ -1036,6 +1037,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </button>
             );
           })}
+        </div>
+        <HelpTip id="create-form" />
         </div>
 
         {createMode === "template" ? (

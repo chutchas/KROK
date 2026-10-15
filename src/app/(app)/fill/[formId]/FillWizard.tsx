@@ -44,6 +44,7 @@ import { listChildLinks, type ChildLink } from "./child-actions";
 import { FieldControl, toCode, fallbackFieldLabel } from "./FieldControl";
 import { PhotoStampProvider } from "./photo-stamp";
 import { useGeo } from "./useGeo";
+import HelpTip from "@/components/HelpTip";
 import { watermarkLines } from "@/lib/geo";
 import { FillActionBar, FillTopBar, FOCUS_COL_W, type FocusMenuItem } from "./FillFocusBar";
 
@@ -1632,7 +1633,11 @@ export default function FillWizard(props: Props) {
         {/* แถบเครื่องมืออยู่นอกกระดาษ (พอดีจอ) — โหมดเต็มจอ: ปุ่มย้ายไปเมนู ⋯ บนแถบบน */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
           <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-            <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+            {/* วิธีใช้ (ออฟไลน์/ลายเซ็น) ข้างชื่อฟอร์ม — panel กางเต็มบรรทัดใต้ชื่อ · โหมดเต็มจอไม่แสดง */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem", margin: 0 }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              {!focus && <HelpTip id="offline" compact />}
+            </div>
             {formDesc}
           </div>
           {!focus && (
@@ -1700,7 +1705,11 @@ export default function FillWizard(props: Props) {
         <div style={{ display: "flex", justifyContent: branded ? "flex-end" : "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
           {!branded && (
             <div style={{ minWidth: 0, flex: "1 1 220px" }}>
-              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem" }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              {/* วิธีใช้ (ออฟไลน์/ลายเซ็น) ข้างชื่อฟอร์ม — panel กางเต็มบรรทัดใต้ชื่อ · โหมดเต็มจอไม่แสดง */}
+            <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem", margin: 0 }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              {!focus && <HelpTip id="offline" compact />}
+            </div>
               {formDesc}
             </div>
           )}

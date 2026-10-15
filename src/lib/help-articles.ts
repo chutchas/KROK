@@ -18,6 +18,211 @@ export type HelpArticle = {
 };
 
 export const HELP_ARTICLES: HelpArticle[] = [
+  // งานพื้นฐานที่ทุกคนเจอก่อน (คนกรอก → คนสร้าง/ผู้ดูแล) แล้วค่อยเรื่องเฉพาะทาง
+  {
+    id: "create-form",
+    title: { th: "สร้างฟอร์มใหม่", en: "Create a new form" },
+    summary: { th: "ให้ AI ร่างจากคำอธิบาย ไฟล์ฟอร์มเดิม หรือเทมเพลต แล้วปรับแก้ก่อนเผยแพร่", en: "Let AI draft it from a description, an existing paper form or a template, then adjust before publishing." },
+    tipFrom: 1,
+    steps: {
+      th: [
+        "ไปที่เมนู \"สร้างฟอร์ม\"",
+        "เลือกวิธีสร้าง: \"พิมพ์อธิบาย (AI)\" พิมพ์ว่าอยากได้ฟอร์มตรวจอะไรแล้วกด \"สร้างด้วย AI\" · \"จากไฟล์ฟอร์มเดิม\" อัปโหลดรูปถ่าย/สแกน/PDF ของฟอร์มกระดาษ · \"จากเทมเพลต\" เลือกแบบสำเร็จรูป",
+        "ปรับต่อ: พิมพ์ในช่อง \"ให้ AI แก้ฟอร์ม…\" หรือแตะฟิลด์บนฟอร์มเพื่อแก้ชื่อ ชนิด และตั้งเป็นช่องจำเป็น · ใช้ \"เพิ่มฟิลด์\" / \"เพิ่มขั้นตอน\" และลากเพื่อจัดลำดับ",
+        "สลับดูตัวอย่าง \"มือถือ\" (หน้าจอคนกรอก) และ \"กระดาษ\" (หน้าตาเอกสาร A4)",
+        "กด \"เผยแพร่\" เมื่อพร้อมให้คนหน้างานกรอก หรือ \"บันทึกร่าง\" ไว้แก้ต่อทีหลัง",
+      ],
+      en: [
+        "Go to the \"Create form\" menu",
+        "Pick a method: \"Describe (AI)\" — type what the checklist is for and tap \"Create with AI\" · \"From existing form\" — upload a photo/scan/PDF of the paper form · \"From a template\" — pick a ready-made one",
+        "Refine: type in \"Ask AI to edit the form…\" or tap a field to change its name, type and whether it's required · use \"Add field\" / \"Add step\" and drag to reorder",
+        "Switch the preview between \"Mobile\" (what fillers see) and \"Paper\" (the A4 document)",
+        "Tap \"Publish\" when field staff should start filling it, or \"Save draft\" to keep working later",
+      ],
+    },
+    notes: {
+      th: [
+        "ร่างยังไม่ไปถึงคนหน้างาน (ทั้งออนไลน์และออฟไลน์) จนกว่าจะเผยแพร่",
+        "แก้ฟอร์มที่เผยแพร่แล้ว = ได้เวอร์ชันใหม่ ใบที่ส่งไปแล้วยังผูกกับเวอร์ชันเดิม ดูย้อนหลัง/กู้คืนได้ที่ \"ประวัติเวอร์ชัน\"",
+        "จากไฟล์: อ่าน PDF ได้สูงสุด 6 หน้าแรก",
+      ],
+      en: [
+        "Drafts don't reach field staff (online or offline) until you publish",
+        "Editing a published form creates a new version; past submissions stay tied to the version they used — see or restore in \"Version history\"",
+        "From a file: only the first 6 pages of a PDF are read",
+      ],
+    },
+    where: { href: "/studio", label: { th: "ไปหน้าสร้างฟอร์ม", en: "Go to Create form" } },
+    keywords: "สร้างฟอร์ม create form studio ai เทมเพลต template อัปโหลด upload pdf เผยแพร่ publish ร่าง draft เวอร์ชัน",
+  },
+  {
+    id: "offline",
+    title: { th: "กรอกฟอร์มตอนไม่มีเน็ต", en: "Fill forms without internet" },
+    summary: { th: "เปิดแอปตอนมีเน็ตไว้ก่อน แล้วกรอกและส่งได้ตามปกติ ระบบส่งให้เองเมื่อกลับมาออนไลน์", en: "Open the app once while online, then fill and submit as usual — it sends automatically when you're back online." },
+    steps: {
+      th: [
+        "เปิดแอปตอนมีเน็ตสักครั้ง (ไม่ต้องกดดาวน์โหลด) — ระบบเตรียมฟอร์มที่คุณมีสิทธิ์ไว้ในเครื่องเอง และอัปเดตทุกครั้งที่เปิดแอปตอนออนไลน์",
+        "ตอนไม่มีเน็ต แอปจะพาไปหน้า \"ฟอร์มที่กรอกออฟไลน์ได้\" — เลือกฟอร์มแล้วกรอกตามปกติ ถ่ายรูปและเซ็นชื่อได้",
+        "กดส่ง — ขึ้น \"บันทึกไว้แบบออฟไลน์แล้ว\" และป้าย \"รอส่ง n รายการ\" ที่แถบด้านบน",
+        "เมื่อกลับมามีเน็ต ระบบส่งให้เอง (แตะป้ายเพื่อส่งทันทีก็ได้) จนขึ้น \"ส่งแล้ว\"",
+      ],
+      en: [
+        "Open the app once while online (no download button needed) — the forms you can use are prepared on this device and refreshed whenever you open the app online",
+        "With no internet, the app takes you to \"Forms available offline\" — pick one and fill as usual, including photos and signatures",
+        "Submit — you'll see \"Saved offline\" and a \"n waiting to send\" badge in the top bar",
+        "When you're back online it sends by itself (or tap the badge to send now) until it shows \"Sent\"",
+      ],
+    },
+    notes: {
+      th: [
+        "อย่าออกจากระบบหรือล้างข้อมูลเบราว์เซอร์ตอนที่ยังมีรายการรอส่ง — ร่างในเครื่องจะหาย",
+        "ใช้ออฟไลน์ไม่ได้: ฟอร์มกรอกหลายคน ช่องที่ให้ AI ตรวจรูป/อ่านเอกสาร และฟอร์มที่เพิ่งสร้างหลังเปิดแอปครั้งล่าสุด",
+        "ฟอร์มที่ล็อกเครื่อง: เครื่องต้องได้รับอนุมัติตอนออนไลน์มาก่อน",
+        "ขึ้น \"ส่งไม่ได้\" = ข้อมูลยังอยู่ในเครื่อง แตะดูเหตุผล (เช่น ฟอร์มถูกปิด หรือพื้นที่เต็ม)",
+        "iPhone/Safari อาจลบข้อมูลในเครื่องถ้าไม่ได้เปิดแอปราว 7 วัน — เปิดแอปตอนมีเน็ตเป็นระยะ",
+      ],
+      en: [
+        "Don't sign out or clear browser data while items are waiting to send — local drafts are deleted",
+        "Not available offline: multi-person forms, AI photo checks/document reading, and forms created after you last opened the app",
+        "Device-locked forms: the device must have been approved while online",
+        "\"Couldn't send\" means the data is still on the device — tap to see why (e.g. form closed, storage full)",
+        "iPhone/Safari may clear local data if the app isn't opened for about 7 days — open it online now and then",
+      ],
+    },
+    keywords: "ออฟไลน์ offline ไม่มีเน็ต no internet รอส่ง queue sync ซิงก์ ส่งไม่ได้",
+  },
+  {
+    id: "signature",
+    title: { th: "เซ็นชื่อในฟอร์ม", en: "Sign a form" },
+    summary: { th: "เซ็นด้วยนิ้วหรือเมาส์ในกรอบ ล้างแล้วเซ็นใหม่ได้ ลายเซ็นแสดงในเอกสาร PDF", en: "Sign with a finger or mouse in the box; clear and redo anytime. The signature appears in the PDF." },
+    steps: {
+      th: [
+        "โหมดมือถือ: เซ็นในกรอบ \"เซ็นชื่อในกรอบนี้\" ยกนิ้วแล้วบันทึกเอง (ขึ้น \"✓ เซ็นแล้ว\")",
+        "โหมดกระดาษ: แตะ \"แตะเพื่อเซ็น\" เซ็นในแผ่นเต็มจอ แล้วกด \"บันทึกลายเซ็น\"",
+        "เซ็นผิด กด \"ล้างลายเซ็น\" แล้วเซ็นใหม่",
+        "ถ้าฟอร์มให้พิมพ์ชื่อกำกับ พิมพ์ชื่อผู้เซ็นตัวบรรจงในช่องใต้ลายเซ็น",
+      ],
+      en: [
+        "Mobile view: sign in the \"Sign in this box\" area — it saves when you lift your finger (shows \"✓ Signed\")",
+        "Paper view: tap \"Tap to sign\", sign on the full-screen pad, then \"Save signature\"",
+        "Made a mistake? Tap \"Clear signature\" and sign again",
+        "If the form asks for a printed name, type the signer's name under the signature",
+      ],
+    },
+    notes: {
+      th: [
+        "ลายเซ็นเก็บเป็นรูป นับรวมในพื้นที่ไฟล์ของแพ็กเกจ และเซ็นตอนออฟไลน์ได้",
+        "ผู้สร้างฟอร์มตั้งได้ที่ช่องลายเซ็น → \"ให้พิมพ์ชื่อผู้เซ็นกำกับ\"",
+      ],
+      en: [
+        "Signatures are stored as images, count toward file storage, and work offline",
+        "Form creators can turn on \"Ask for a printed name\" in the signature field settings",
+      ],
+    },
+    keywords: "ลายเซ็น signature เซ็น sign ชื่อผู้เซ็น ล้างลายเซ็น",
+  },
+  {
+    id: "print-pdf",
+    title: { th: "พิมพ์และดาวน์โหลด PDF", en: "Print and download PDF" },
+    summary: { th: "เอกสารที่ส่งแล้วพิมพ์ได้ทั้งแบบ A4 และแบบสรุป ดาวน์โหลด PDF และรูปทั้งหมดได้", en: "Print submitted documents as A4 or summary, and download the PDF and all photos." },
+    tipFrom: 1,
+    steps: {
+      th: [
+        "เปิดเอกสารที่ส่งแล้ว (จากแดชบอร์ด รายงาน หรือการแจ้งเตือน)",
+        "เลือกแท็บ \"เอกสาร A4\" (หน้าตาเหมือนฟอร์มกระดาษ) หรือ \"สรุป\" (รายการคำตอบ)",
+        "กด \"ดาวน์โหลด PDF\" — ได้ไฟล์ตามแท็บที่เลือก · หรือ \"พิมพ์\" เพื่อสั่งเครื่องพิมพ์",
+        "มีรูปในเอกสาร: กด \"ดาวน์โหลดรูปทั้งหมด\" ได้ไฟล์ zip",
+      ],
+      en: [
+        "Open a submitted document (from the dashboard, reports or a notification)",
+        "Choose the \"A4 document\" tab (looks like the paper form) or \"Summary\" (list of answers)",
+        "Tap \"Download PDF\" for the selected tab, or \"Print\" to send it to a printer",
+        "With photos: \"Download all photos\" gives a zip file",
+      ],
+    },
+    notes: {
+      th: [
+        "แท็บ A4 มีเฉพาะฟอร์มที่จัดหน้ากระดาษไว้ · ทำ PDF ไม่สำเร็จ ใช้ \"เปิดหน้าพิมพ์ A4\" แล้วเลือก \"บันทึกเป็น PDF\" ของเบราว์เซอร์",
+        "พิมพ์ฟอร์มเปล่า: หน้าสร้างฟอร์ม → มุมมอง \"กระดาษ\" → \"พิมพ์\"",
+        "QR ของฟอร์ม: หน้าฟอร์มทั้งหมด → ปุ่ม QR → \"ดาวน์โหลด\" (รูป PNG ไปพิมพ์ติดหน้างาน)",
+      ],
+      en: [
+        "The A4 tab exists only for forms with a paper layout · if the PDF fails, use \"Open A4 print page\" and the browser's \"Save as PDF\"",
+        "Blank form: Create form → \"Paper\" view → \"Print\"",
+        "Form QR: All forms → QR button → \"Download\" (PNG to print and post on site)",
+      ],
+    },
+    keywords: "พิมพ์ print pdf ดาวน์โหลด download a4 สรุป summary รูป photos zip qr",
+  },
+  {
+    id: "export-excel",
+    title: { th: "ส่งออกข้อมูลเป็น Excel", en: "Export data to Excel" },
+    summary: { th: "เลือกฟอร์มและช่วงเวลา กดค้นหา แล้วส่งออกเป็นไฟล์ .xlsx", en: "Pick a form and period, search, then export a .xlsx file." },
+    tipFrom: 1,
+    steps: {
+      th: [
+        "ไปที่เมนู \"รายงาน\"",
+        "ตั้งตัวกรอง: ฟอร์ม ช่วงเวลา ผลลัพธ์ (ผ่าน/ไม่ผ่าน/ปิดเรื่องแล้ว) และสถานะอนุมัติ",
+        "กด \"ค้นหา\" เพื่อดูตัวอย่างก่อน",
+        "กด \"ส่งออก Excel (.xlsx)\"",
+      ],
+      en: [
+        "Go to the \"Reports\" menu",
+        "Set filters: form, period, result (pass/fail/closed out) and approval status",
+        "Tap \"Search\" to preview",
+        "Tap \"Export Excel (.xlsx)\"",
+      ],
+    },
+    notes: {
+      th: [
+        "อยากได้คำตอบแยกเป็นคอลัมน์รายช่อง ต้องเลือกฟอร์มเดียว (ช่องตารางแยกชีตให้) · เลือก \"ทุกฟอร์ม\" ได้แค่ข้อมูลสรุปต่อใบ",
+        "สูงสุด 100,000 แถวต่อไฟล์",
+        "สมาชิกทั่วไปส่งออกได้เฉพาะใบที่ตัวเองส่ง",
+      ],
+      en: [
+        "For one column per field, pick a single form (table fields get their own sheets) · \"All forms\" gives a per-submission summary only",
+        "Up to 100,000 rows per file",
+        "Regular members can only export their own submissions",
+      ],
+    },
+    where: { href: "/reports", label: { th: "ไปหน้ารายงาน", en: "Go to Reports" } },
+    keywords: "excel xlsx ส่งออก export รายงาน report ดาวน์โหลด ตาราง คอลัมน์",
+  },
+  {
+    id: "invite-roles",
+    title: { th: "เชิญคนเข้า workspace และกำหนดบทบาท", en: "Invite people and set roles" },
+    summary: { th: "เชิญทางอีเมล เลือกบทบาท และสร้างบทบาทเองเพื่อกำหนดเมนูที่แต่ละคนเข้าได้", en: "Invite by email, choose a role, and create custom roles to control which menus people can use." },
+    steps: {
+      th: [
+        "ตั้งค่า → ทีม → \"เชิญสมาชิกใหม่\": ใส่อีเมล เลือกสิทธิ์ (และทีม/แผนก ถ้ามี) แล้วกด \"เชิญ\"",
+        "ผู้ถูกเชิญได้อีเมล — สมัครหรือเข้าสู่ระบบด้วยอีเมลนั้นแล้วเข้า workspace เอง · อีเมลไม่ถึง ใช้ \"คัดลอกลิงก์เชิญ\" ส่งทางแชตได้",
+        "อยากได้บทบาทแบบอื่น: ตั้งค่า → บทบาท → \"เพิ่มบทบาท\" ตั้งชื่อ (เช่น หัวหน้ากะ, QA) แล้วเลือกเมนูที่เข้าได้",
+        "เปลี่ยนบทบาทของคนเดิมได้ที่รายชื่อสมาชิกในหน้าทีม",
+      ],
+      en: [
+        "Settings → Team → \"Invite a new member\": enter the email, choose a role (and team, optional), then \"Invite\"",
+        "The invitee gets an email — they sign up or sign in with that email and join automatically · if the email doesn't arrive, use \"Copy invite link\" and send it by chat",
+        "Need another kind of role: Settings → Roles → \"Add role\", name it (e.g. Shift lead, QA) and pick its menus",
+        "Change someone's role from the member list on the Team page",
+      ],
+    },
+    notes: {
+      th: [
+        "บทบาทของระบบ: เจ้าของ (ทุกอย่าง), ผู้ดูแล (จัดการได้ทุกเมนู), สมาชิก (กรอกฟอร์ม + แดชบอร์ด)",
+        "คำเชิญที่ยังไม่ตอบรับนับรวมในจำนวนผู้ใช้ของแพ็กเกจ",
+        "ลบบทบาทที่สร้างเอง = คนที่ใช้บทบาทนั้นกลายเป็นสมาชิก",
+        "ทีม/แผนก ใช้กำหนดว่าใครเห็นฟอร์มไหน",
+      ],
+      en: [
+        "Built-in roles: Owner (everything), Admin (manages all menus), Member (fill forms + dashboard)",
+        "Pending invites count toward your plan's user limit",
+        "Deleting a custom role turns its people into Members",
+        "Teams control who sees which forms",
+      ],
+    },
+    where: { href: "/settings/team", label: { th: "ไปหน้าทีม", en: "Go to Team" } },
+    keywords: "เชิญ invite สมาชิก member ทีม team บทบาท role สิทธิ์ permission เมนู admin owner ผู้ดูแล",
+  },
   {
     id: "approval",
     tipFrom: 1,
@@ -229,14 +434,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     steps: {
       th: [
         "ไปที่แดชบอร์ด → แท็บ \"ส่วนกลาง\" (ทุกคนเห็น · เฉพาะเจ้าของหรือผู้ดูแลแก้ได้) หรือ \"ของฉัน\" (เห็นคนเดียว)",
-        "กด \"ใช้แม่แบบ\" (ถ้ามีการ์ดอยู่แล้ว กด \"จัดการการ์ด\" ก่อน ปุ่มจะโผล่ขึ้นมา) แล้วเลือกแบบที่ใกล้งานที่สุด — งานตรวจ/ความปลอดภัย, บันทึกข้อมูลประจำวัน, งานอนุมัติ หรือตามพื้นที่ (มีเฉพาะเมื่อตั้งพื้นที่ไว้แล้ว) (แบบที่มีป้าย \"แนะนำ\" ระบบเลือกจากข้อมูลจริงของคุณ)",
+        "กด \"ใช้แม่แบบ\" (ถ้ามีการ์ดอยู่แล้ว กด \"จัดการการ์ด\" ก่อน ปุ่มจะโผล่ขึ้นมา) แล้วเลือกแบบที่ใกล้งานที่สุด — งานตรวจ/ความปลอดภัย, บันทึกข้อมูลประจำวัน, งานอนุมัติ หรือตามพื้นที่ (แม่แบบนี้มีเมื่อตั้งพื้นที่ไว้แล้ว · แบบที่มีป้าย \"แนะนำ\" ระบบเลือกจากข้อมูลจริงของคุณ)",
         "ถ้ามีการ์ดอยู่แล้ว เลือก \"ต่อท้าย\" (เพิ่มเฉพาะการ์ดที่ยังไม่มี · การ์ดที่มีแล้วจะมีป้ายบอก) หรือ \"แทนที่\" (เปลี่ยนทั้งชุด) แล้วกดปุ่มด้านล่าง",
         "อยากปรับต่อ กด \"จัดการการ์ด\" — เพิ่มการ์ด แก้ (ไอคอนดินสอ) ลบ หรือเลื่อนลำดับขึ้น/ลง (ลากวางได้บนคอม)",
         "เพิ่มการ์ดเอง: เลือกรูปแบบ (ตัวเลข / กราฟแนวโน้ม / อันดับฟอร์ม / ค้างปิดเรื่อง / ข้อที่ไม่ผ่านบ่อย / ตามพื้นที่) → ฟอร์ม → ค่าที่แสดง → ช่วงเวลา → บันทึก",
       ],
       en: [
         "Go to Dashboard → the \"Shared\" tab (everyone sees it · only owners/admins edit) or \"Mine\" (only you)",
-        "Tap \"Use a template\" (if you already have cards, tap \"Manage cards\" first to reveal it) and pick the closest fit — Inspection/safety, Daily records, Approvals or By area (only once areas are set up) (the \"Recommended\" one is chosen from your real data)",
+        "Tap \"Use a template\" (if you already have cards, tap \"Manage cards\" first to reveal it) and pick the closest fit — Inspection/safety, Daily records, Approvals or By area (shown once areas are set up · the \"Recommended\" one is chosen from your real data)",
         "If you already have cards, choose \"Add after current cards\" (adds only cards you don't have yet · existing ones are marked) or \"Replace all current cards\" (swap the whole set), then press the button at the bottom",
         "To fine-tune, tap \"Manage cards\" — add, edit (pencil), remove or move up/down (drag on desktop)",
         "Add a card yourself: pick a format (stat / trend / ranking / open failures / top failed items / by area) → form → metric → period → save",

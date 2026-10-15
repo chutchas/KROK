@@ -10,7 +10,7 @@ import { helpArticle } from "@/lib/help-articles";
  * "วิธีใช้" ข้างฟีเจอร์ที่ซับซ้อน — กดแล้วกางขั้นตอนสั้น ๆ ในหน้าเดิม (ไม่ต้องออกจากงาน) + ลิงก์อ่านต่อใน /help
  * กางแบบ inline (ไม่ใช่ popover ลอย) — ไม่ล้นจอบนมือถือ ไม่บังช่องที่กำลังตั้ง
  */
-export default function HelpTip({ id, compact = false }: { id: string; compact?: boolean }) {
+export default function HelpTip({ id, compact = false, alignSelf }: { id: string; compact?: boolean; /** ในแถว flex แนวตั้ง (มือถือ) ไม่ให้ปุ่มยืดเต็มแถว */ alignSelf?: "flex-start" | "flex-end" | "center" }) {
   const a = helpArticle(id);
   const { lang } = useT();
   const [open, setOpen] = useState(false);
@@ -22,7 +22,7 @@ export default function HelpTip({ id, compact = false }: { id: string; compact?:
       <button type="button" className="no-print" data-krok-keep="" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}
         title={a.title[L]} aria-label={`${L === "en" ? "How to" : "วิธีใช้"}: ${a.title[L]}`}
         style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, minWidth: 44, justifyContent: "center", padding: compact ? "0 4px" : "0 8px", border: "none", borderRadius: 8,
-          background: open ? "var(--accent-soft)" : "transparent", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", verticalAlign: "middle" }}>
+          background: open ? "var(--accent-soft)" : "transparent", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", verticalAlign: "middle", alignSelf }}>
         <Icon icon={CircleHelp} className="h-4 w-4" />{!compact && <span>{L === "en" ? "How to" : "วิธีใช้"}</span>}
       </button>
       {open && (

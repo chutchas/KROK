@@ -9,6 +9,7 @@ import { deleteDevice, renameDevice, setDeviceStatus, setFormDeviceScope, toggle
 import { confirmDialog } from "@/components/dialogs";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
+import HelpTip from "@/components/HelpTip";
 
 export interface DeviceRow {
   id: string;
@@ -149,7 +150,10 @@ export default function DevicesClient({
     <div style={{ display: "grid", gap: 16 }}>
       {/* หัวหน้าเพจ: นอกการ์ด ขนาดเดียวกับทุกหน้า */}
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("dev.devicesTitle")}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dev.devicesTitle")}</h1>
+          <HelpTip id="devices" compact />
+        </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {t("dev.devicesSub1")}<b>{t("dev.stApproved")}</b>{t("dev.devicesSub2")}
         </p>
