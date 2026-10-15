@@ -98,7 +98,7 @@ export default function PlanClient({ plans, configured, tenantCounts = {} }: {
   }
   async function remove(p: Plan) {
     if ((tenantCounts[p.key] ?? 0) > 0) { setMsg({ t: `มี ${tenantCounts[p.key]} บัญชีใช้แพ็กเกจนี้อยู่ — ซ่อนแทนการลบ`, err: true }); return; }
-    if (!(await confirmDialog({ message: `ลบแพ็กเกจ "${p.name}"? (มีผลเมื่อกดบันทึก)`, danger: true }))) return;
+    if (!(await confirmDialog({ message: `ลบแพ็กเกจ "${p.name}"? (มีผลเมื่อกดบันทึก)`, confirmLabel: "ลบ", danger: true }))) return;
     setRows((s) => s.filter((r) => r.key !== p.key));
     setDirty(true);
   }

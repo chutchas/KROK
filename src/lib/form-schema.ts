@@ -77,7 +77,7 @@ export interface FormField {
   min?: number;
   max?: number;
   unit?: string;
-  /** formula — สูตร อ้างฟิลด์ด้วย {fieldId} และคอลัมน์ตารางด้วย {tableId.colId} (ดู lib/formula.ts) */
+  /** formula — สูตร อ้างช่องด้วย {fieldId} และคอลัมน์ตารางด้วย {tableId.colId} (ดู lib/formula.ts) */
   formula?: string;
   /** formula — ทศนิยมที่แสดง/ปัด (default 2) */
   decimals?: number;
@@ -101,7 +101,7 @@ export interface FormField {
    * ค่าที่บันทึก = รหัสพื้นที่ · แสดงชื่อ · ฐานข้อมูลใช้หาใบที่ยังไม่จบในพื้นที่เดียวกัน (0072)
    */
   area?: true;
-  /** ฟิลด์พื้นที่: รหัสพื้นที่ที่เลือกไว้ให้ก่อน (ฟอร์มที่ใช้ที่เดียวตายตัว) */
+  /** ช่องพื้นที่: รหัสพื้นที่ที่เลือกไว้ให้ก่อน (ฟอร์มที่ใช้ที่เดียวตายตัว) */
   area_default?: string;
   /** child_form — ปุ่มเปิดฟอร์มลูก (ไม่มีคำตอบของตัวเอง · ไม่พิมพ์ลงกระดาษ) */
   child_form?: ChildFormConfig;
@@ -111,11 +111,11 @@ export interface FormField {
   width?: "full" | "half";
   // photo
   photo_hint?: string;
-  /** ฟิลด์รูปถ่าย: ใส่ได้สูงสุดกี่รูป (1–12, ไม่ระบุ = 1) */
+  /** ช่องรูปถ่าย: ใส่ได้สูงสุดกี่รูป (1–12, ไม่ระบุ = 1) */
   max_photos?: number;
-  /** ฟิลด์รูปถ่ายที่บังคับกรอก: ต้องมีอย่างน้อยกี่รูป (ไม่ระบุ = 1) */
+  /** ช่องรูปถ่ายที่บังคับกรอก: ต้องมีอย่างน้อยกี่รูป (ไม่ระบุ = 1) */
   min_photos?: number;
-  /** ชื่อใต้รูปแต่ละช่อง (แยกจากชื่อฟิลด์) เช่น ["ด้านหน้า","ด้านข้าง"] — ว่าง = "รูปที่ n" */
+  /** ชื่อใต้รูปแต่ละช่อง (แยกจากชื่อช่อง) เช่น ["ด้านหน้า","ด้านข้าง"] — ว่าง = "รูปที่ n" */
   photo_labels?: string[];
   /** ช่องรูปที่ไม่บังคับ แต่ต้องแนบเมื่อใบนี้มีข้อไม่ผ่าน (เช่น รูปสินค้าชำรุด) */
   required_if_fail?: boolean;
@@ -153,7 +153,7 @@ export interface FormField {
 // ============================================================
 // ฟอร์มลูก (0074): ปุ่มในใบงานหลักเปิดงานของอีกฟอร์ม แล้วรับผลกลับเป็นแถวใหม่ในตาราง
 // ============================================================
-/** ชนิดฟิลด์ที่ส่งค่าไป/รับค่ากลับได้ (เหมือนแหล่งเติมข้อมูล) */
+/** ชนิดช่องที่ส่งค่าไป/รับค่ากลับได้ (เหมือนแหล่งเติมข้อมูล) */
 export const CHILD_MAP_TYPES: FieldType[] = ["text", "number", "datetime", "select"];
 /**
  * ฟิลด์ของฟอร์มลูกที่ส่งกลับเข้าคอลัมน์ชนิดนี้ได้ ([] = คอลัมน์นี้รับค่าจากฟอร์มลูกไม่ได้)
@@ -218,7 +218,7 @@ export function sanitizeChildForm(raw: unknown): ChildFormConfig | undefined {
   };
 }
 
-/** ฟิลด์ที่ไม่มีคำตอบของตัวเอง (UI ของเว็บเท่านั้น) */
+/** ช่องที่ไม่มีคำตอบของตัวเอง (UI ของเว็บเท่านั้น) */
 export const isUiOnlyField = (f: Pick<FormField, "type">) => f.type === "child_form";
 
 // ============================================================
@@ -237,11 +237,11 @@ export const isUiOnlyField = (f: Pick<FormField, "type">) => f.type === "child_f
 export type FillSourceKind = "scan" | "doc";
 export type FillParse = "raw" | "json" | "regex";
 
-/** ชนิดฟิลด์ที่ยอมให้เติมอัตโนมัติได้ — ผลตรวจ/รูป/ลายเซ็นต้องทำจริงหน้างาน */
+/** ชนิดช่องที่ยอมให้เติมอัตโนมัติได้ — ผลตรวจ/รูป/ลายเซ็นต้องทำจริงหน้างาน */
 export const FILL_TARGET_TYPES: FieldType[] = ["text", "number", "datetime", "select"];
 
 export interface FillMapEntry {
-  /** ฟิลด์ปลายทาง (ต้องอยู่ step เดียวกัน) */
+  /** ช่องปลายทาง (ต้องอยู่ step เดียวกัน) */
   field_id: string;
   /** ชื่อค่าที่จะดึง — doc: ชื่อที่ให้ AI หา · scan json: ชื่อ property · scan regex: ชื่อ named group */
   key: string;
@@ -358,7 +358,7 @@ export function printPhotosOf(schema: Pick<FormSchema, "print_photos">): Require
   };
 }
 
-/** ฟิลด์รูปถ่ายทั้งหมดตามลำดับในฟอร์ม (ไม่รวมคอลัมน์รูปในตาราง) */
+/** ช่องรูปถ่ายทั้งหมดตามลำดับในฟอร์ม (ไม่รวมคอลัมน์รูปในตาราง) */
 export function photoFieldsOf(schema: FormSchema): { field: FormField; stepIndex: number }[] {
   const out: { field: FormField; stepIndex: number }[] = [];
   schema.steps.forEach((s, si) => s.fields.forEach((f) => { if (f.type === "photo") out.push({ field: f, stepIndex: si }); }));
@@ -383,7 +383,7 @@ export const FIELD_TYPE_LABELS: Record<FieldType, string> = {
 /** รหัสพื้นที่ — ตรงกับ check ใน workspace_areas (0072): ห้ามช่องว่าง/จุลภาค ยาวไม่เกิน 20 */
 export const AREA_CODE_RE = /^[^\s,]{1,20}$/;
 
-/** ฟิลด์พื้นที่ของฟอร์ม (มีได้ช่องเดียว) */
+/** ช่องพื้นที่ของฟอร์ม (มีได้ช่องเดียว) */
 export function areaFieldOf(schema: FormSchema): FormField | null {
   for (const s of schema.steps) for (const f of s.fields) if (f.area) return f;
   return null;
@@ -682,7 +682,7 @@ export function sanitizeSchema(raw: unknown): FormSchema {
     })
     .filter((s) => s.fields.length > 0);
 
-  if (steps.length === 0) throw new Error("ฟอร์มไม่มีฟิลด์ที่ใช้งานได้");
+  if (steps.length === 0) throw new Error("ฟอร์มไม่มีช่องที่ใช้งานได้");
 
   // ฟิลด์แม่ของ dropdown ที่กรองตามกัน ต้องเป็น select/checkbox ที่อยู่ "ก่อนหน้า" ในฟอร์ม
   // (กันวงวน และให้การกรอกทีละขั้นตอนมีค่าแม่ก่อนถึงฟิลด์ลูกเสมอ)
@@ -838,7 +838,7 @@ export function labelMap(options?: string[], labels?: string[]): Map<string, str
   return m;
 }
 
-/** dataset ทั้งหมดที่ฟอร์มนี้อ้างอิง (ฟิลด์ + คอลัมน์ตาราง) */
+/** dataset ทั้งหมดที่ฟอร์มนี้อ้างอิง (ช่อง + คอลัมน์ตาราง) */
 export function datasetIdsOf(schema: FormSchema): string[] {
   const ids = new Set<string>();
   for (const s of schema.steps)
@@ -855,12 +855,12 @@ export function countFields(schema: FormSchema): number {
 
 // ---- helper เกี่ยวกับ fill source ----
 
-/** แหล่งเติมข้อมูลที่ผูกกับฟิลด์นี้ (ถ้ามี) */
+/** แหล่งเติมข้อมูลที่ผูกกับช่องนี้ (ถ้ามี) */
 export function fillSourceOf(step: FormStep, fieldId: string): FillSource | undefined {
   return step.fill_sources?.find((s) => s.map.some((m) => m.field_id === fieldId));
 }
 
-/** จำนวนฟิลด์ที่ถูกเติมอัตโนมัติ (นับเฉพาะ kind ที่ระบุ ถ้าไม่ระบุ = ทุกแบบ) */
+/** จำนวนช่องที่ถูกเติมอัตโนมัติ (นับเฉพาะ kind ที่ระบุ ถ้าไม่ระบุ = ทุกแบบ) */
 export function countDerivedFields(schema: FormSchema, kind?: FillSourceKind): number {
   return schema.steps.reduce(
     (n, s) =>

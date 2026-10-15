@@ -67,7 +67,7 @@ export default function BrandLibrary({ assets, error, canDelete }: { assets: Bra
 
   async function remove(paths: string[]) {
     if (!paths.length) return;
-    if (!(await confirmDialog({ message: tt("brand.lib.deleteConfirm", { n: paths.length }), danger: true }))) return;
+    if (!(await confirmDialog({ message: tt("brand.lib.deleteConfirm", { n: paths.length }), confirmLabel: t("common.delete"), danger: true }))) return;
     setBusy(true);
     setMsg(null);
     const res = await deleteBrandAssets(paths);

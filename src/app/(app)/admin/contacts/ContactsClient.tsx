@@ -61,7 +61,7 @@ export default function ContactsClient({ rows, missing, need0069, showAll }: { r
               <AsyncButton onClick={async () => { await setContactHandled(r.id, !r.handled_at); router.refresh(); }} style={{ padding: "7px 12px", fontSize: ".84rem" }}>
                 <Icon icon={r.handled_at ? Undo2 : Check} className="h-4 w-4" /> {r.handled_at ? "ยังไม่ได้ติดต่อ" : "ติดต่อแล้ว"}
               </AsyncButton>
-              <AsyncButton variant="danger" aria-label="ลบ" onClick={async () => { if (await confirmDialog({ message: `ลบข้อความของ ${r.name}?`, danger: true })) { await deleteContact(r.id); router.refresh(); } }} style={{ padding: "7px 10px" }}>
+              <AsyncButton variant="danger" aria-label="ลบ" onClick={async () => { if (await confirmDialog({ message: `ลบข้อความของ ${r.name}?`, confirmLabel: "ลบ", danger: true })) { await deleteContact(r.id); router.refresh(); } }} style={{ padding: "7px 10px" }}>
                 <Icon icon={Trash2} className="h-4 w-4" />
               </AsyncButton>
             </div>

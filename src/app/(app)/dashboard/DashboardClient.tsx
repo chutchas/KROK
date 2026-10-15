@@ -288,7 +288,7 @@ export default function DashboardClient({
                   {shown.length === 0 ? <>{tplBtn(true)}{addCardBtn}</> : <>
                   {managing && tplBtn(false)}
                   {managing && addCardBtn}
-                  <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
+                  <button type="button" onClick={() => setManaging((v) => !v)}
                     className="inline-flex items-center gap-1.5"
                     style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
                     {managing ? <><Icon icon={Check} className="h-4 w-4" /> {t("dash.manageDone")}</> : <><Icon icon={Settings2} className="h-4 w-4" /> {t("dash.manage")}</>}
@@ -503,7 +503,7 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
       </div>
       {/* สลับช่วงบนการ์ด (วันนี้ · 7 · 14 · 30 วัน) — ไม่ต้องมีการ์ดแยกต่อช่วง · แถวของตัวเอง การ์ดแคบก็ไม่เบียดชื่อ */}
       {period && (
-        <div role="group" aria-label={`${t("dash.period" as never)} · ${isArea ? "" : noMetric ? formatLabel(w.format, en) : metricLabel(w.metric, en)}`} style={{ display: "flex", marginTop: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
+        <div role="group" aria-label={[t("dash.period" as never), formatLabel(w.format, en), noMetric ? null : metricLabel(w.metric, en), w.formId !== "all" ? formName(w.formId) : null].filter(Boolean).join(" · ")} style={{ display: "flex", marginTop: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
           {periods.map((r) => {
             const on = w.range === r;
             return (

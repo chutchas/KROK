@@ -34,7 +34,7 @@ export default function SubscriptionCard({ plan, expiresAt, daysLeft, sub, isOwn
   const auto = !!sub?.autoRenew && !!sub.hasCard;
 
   async function toggle(on: boolean) {
-    if (!on && !(await confirmDialog({ message: tt("sub.cancelConfirm", { date }), danger: true }))) return;
+    if (!on && !(await confirmDialog({ message: tt("sub.cancelConfirm", { date }), confirmLabel: t("sub.cancel"), danger: true }))) return;
     setBusy("toggle"); setErr(null);
     const r = await setAutoRenew(on);
     setBusy("");

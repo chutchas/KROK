@@ -311,7 +311,7 @@ export default function DatasetDetailClient({
             loading={busy === "delete"}
             disabled={usedBy.length > 0}
             onClick={async () => {
-              if (!(await confirmDialog({ message: tt("ds.deleteConfirm", { name: ds.name }), danger: true }))) return;
+              if (!(await confirmDialog({ message: tt("ds.deleteConfirm", { name: ds.name }), confirmLabel: t("common.delete"), danger: true }))) return;
               setBusy("delete");
               const res = await deleteDataset(ds.id);
               setBusy(null);

@@ -163,7 +163,7 @@ function uniqRows(rows: OptRow[]): OptRow[] {
 function applyToField(f: FormField, rows: OptRow[] | null, dsName: string | undefined, cascading: boolean, labeled: boolean) {
   if (!rows) {
     // dataset ถูกลบ/ไม่มีสิทธิ์/ยังไม่รัน migration → ใช้ตัวเลือกที่พิมพ์ไว้ (ถ้ามี) และเตือน
-    f.options_error = dsName ? "ดึงตัวเลือกจากชุดข้อมูลไม่ได้" : "ไม่พบชุดข้อมูลที่ฟิลด์นี้ใช้";
+    f.options_error = dsName ? "ดึงตัวเลือกจากชุดข้อมูลไม่ได้" : "ไม่พบชุดข้อมูลที่ช่องนี้ใช้";
     delete f.options_source?.parent;
     return;
   }
@@ -333,7 +333,7 @@ export async function runPull(admin: Db, datasetId: string, kind: "manual" | "sc
   await admin.from("datasets").update({ last_sync_status: "running", next_sync_at: next }).eq("id", datasetId);
 
   try {
-    if (!cfg.field_map.length) throw new Error("ยังไม่ได้เลือกฟิลด์ที่จะนำเข้า");
+    if (!cfg.field_map.length) throw new Error("ยังไม่ได้เลือกช่องที่จะนำเข้า");
     const raw = await fetchPullRecords(cfg);
     const records = mapPulledRecords(raw, ds.columns, cfg.field_map);
     const res = await writeRecords(admin, ds, records, ds.syncMode);

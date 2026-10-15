@@ -167,7 +167,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   }
 
   async function archiveForm(id: string, title: string) {
-    if (!(await confirmDialog({ message: tt("studio.archiveConfirm", { title }), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("studio.archiveTitle"), message: tt("studio.archiveConfirm", { title }), confirmLabel: t("studio.cancelForm") }))) return;
     const res = await setFormStatus(id, "archived");
     if ("error" in res) { await alertDialog(res.error); return; }
     setFlash(tt("studio.archivedOk", { title }));
@@ -643,7 +643,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   });
 
   async function onDelete(id: string, title: string) {
-    if (!(await confirmDialog({ message: tt("studio.deleteConfirm", { title }), danger: true }))) return;
+    if (!(await confirmDialog({ message: tt("studio.deleteConfirm", { title }), confirmLabel: t("common.delete"), danger: true }))) return;
     const res = await deleteForm(id);
     if ("error" in res) await alertDialog(res.error);
     else router.refresh();

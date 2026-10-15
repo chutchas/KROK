@@ -144,7 +144,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                 )}
                 <Button
                   onClick={async () => {
-                    if (!(await confirmDialog({ message: t("mfa.adminResetConfirm"), danger: true }))) return;
+                    if (!(await confirmDialog({ message: t("mfa.adminResetConfirm"), confirmLabel: t("mfa.adminReset"), danger: true }))) return;
                     setBusy(u.userId);
                     const res = await resetUserMfa(u.userId);
                     setBusy(null);
@@ -204,7 +204,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                         <Button
                           variant="danger"
                           onClick={async () => {
-                            if (!(await confirmDialog({ message: t("admin.removeConfirm"), danger: true }))) return;
+                            if (!(await confirmDialog({ message: t("admin.removeConfirm"), confirmLabel: t("admin.removeFromWs"), danger: true }))) return;
                             setBusy(u.userId);
                             const res = await removeFromWorkspace(u.userId, w.tenantId);
                             setBusy(null);

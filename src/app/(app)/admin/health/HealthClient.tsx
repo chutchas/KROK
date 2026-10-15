@@ -135,7 +135,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
               <div style={{ flex: "2 1 240px", fontSize: ".85rem", color: st?.busy ? "var(--ink-3)" : st?.ok ? "var(--pass)" : "var(--fail)", overflowWrap: "anywhere" }}>
                 {st?.text}
               </div>
-              <Button onClick={() => test(p)} loading={st?.busy} disabled={!p.hasKey} style={{ padding: "6px 14px", fontSize: ".85rem" }}>ทดสอบ</Button>
+              <Button onClick={() => test(p)} loading={st?.busy} disabled={!p.hasKey} style={{ minHeight: 44, padding: "0 14px", fontSize: ".85rem" }}>ทดสอบ</Button>
             </div>
           );
         })}
