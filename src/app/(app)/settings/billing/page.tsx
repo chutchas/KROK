@@ -1,7 +1,7 @@
 import BillingClient from "./BillingClient";
 import { loadBilling } from "./load";
 
-export const metadata = { title: "แพ็กเกจ" };
+export const metadata = { title: "แพ็กเกจปัจจุบัน" };
 
 export const dynamic = "force-dynamic";
 

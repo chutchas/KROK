@@ -47,7 +47,7 @@ export default function FormEditor({
   value: FormSchema;
   onChange: (s: FormSchema) => void;
 }) {
-  const { t } = useT();
+  const { t, tt } = useT();
   const [openField, setOpenField] = useState<string | null>(null);
   // ลากวางจัดลำดับฟิลด์ (ภายในขั้นตอนเดียวกัน)
   const [drag, setDrag] = useState<{ si: number; fi: number } | null>(null);
@@ -147,7 +147,7 @@ export default function FormEditor({
               title={t("editor.deleteStep")}
               onClick={async () => {
                 if (value.steps.length <= 1) { await alertDialog(t("editor.needOneStep")); return; }
-                if (!(await confirmDialog({ title: t("dlg.delStep"), message: t("editor.deleteStepConfirm"), confirmLabel: t("dlg.btn.delStep"), danger: true }))) return;
+                if (!(await confirmDialog({ title: t("dlg.delStep"), message: tt("editor.deleteStepConfirmN", { n: si + 1, title: value.steps[si].title?.trim() ? ` “${value.steps[si].title.trim()}”` : "", count: value.steps[si].fields.length }), confirmLabel: t("dlg.btn.delStep"), danger: true }))) return;
                 setSteps(value.steps.filter((_, i) => i !== si));
               }}
             >

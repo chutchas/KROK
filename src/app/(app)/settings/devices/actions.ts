@@ -125,7 +125,7 @@ export async function registerDevice(
       user_id: m.user_id as string,
       type: "device_pending",
       title: "📱 มีอุปกรณ์รออนุมัติ",
-      body: `${(data.name as string) || "อุปกรณ์ใหม่"} — ขอใช้กรอกฟอร์มที่ล็อคเครื่อง`,
+      body: `${(data.name as string) || "อุปกรณ์ใหม่"} — ขอใช้กรอกฟอร์มที่ล็อกเครื่อง`,
       link: "/settings/devices",
     }));
     if (rows.length) await admin.from("notifications").insert(rows);

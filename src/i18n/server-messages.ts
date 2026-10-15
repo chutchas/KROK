@@ -175,7 +175,7 @@ export const SERVER_MESSAGES_EN: Record<string, string> = {
   "ไม่พบสมาชิกนี้": "Member not found",
   "ไม่พบหัวคอลัมน์ในแถวแรก": "No column headers found in the first row",
   "ไม่พบเอกสาร": "Document not found",
-  "ไม่พบแบบร่าง": "Draft not found",
+  "ไม่พบร่าง": "Draft not found",
   "ไม่พบแพ็กเกจนี้": "Plan not found",
   "ไม่พบใบแจ้งหนี้": "Invoice not found",
   "ไม่พบไฟล์": "File not found",

@@ -18,7 +18,7 @@ export default function DeleteAccountCard({ email }: { email: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
-  const { panelRef, triggerRef } = useInlineConfirmFocus(!!plan);
+  const { panelRef, triggerRef } = useInlineConfirmFocus(!!plan, () => { if (!busy) { setPlan(null); setConfirm(""); setErr(null); } });
 
   async function open() {
     setBusy(true); setErr(null);
