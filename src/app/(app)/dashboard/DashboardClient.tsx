@@ -26,7 +26,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import {
   WIDGET_FORMATS, METRICS_BY_FORMAT, RANGES_BY_FORMAT,
-  formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS, PERIOD_RANGES, isPeriodStat,
+  formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS, periodsOf, isPeriodWidget,
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
@@ -444,7 +444,7 @@ const periodKey = (scope: string, id: string) => `krok-dash-period:${scope}:${id
 function readPeriod(scope: string, w: DashWidget): WidgetRange | null {
   try {
     const v = JSON.parse(localStorage.getItem(periodKey(scope, w.id)) || "null") as { base?: string; r?: string } | null;
-    return v && v.base === w.range && PERIOD_RANGES.includes(v.r as WidgetRange) ? (v.r as WidgetRange) : null;
+    return v && v.base === w.range && periodsOf(w).includes(v.r as WidgetRange) ? (v.r as WidgetRange) : null;
   } catch { return null; }
 }
 function writePeriod(scope: string, w: DashWidget, r: WidgetRange) {
@@ -463,7 +463,8 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
   /** ไม่มี = ดูอย่างเดียว (dashboard ของ workspace สำหรับสมาชิก) */
   onEdit?: () => void; onRemove?: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
 }) {
-  const period = isPeriodStat(base);
+  const period = isPeriodWidget(base);
+  const periods = period ? periodsOf(base) : [];
   const [picked, setPicked] = useState<WidgetRange | null>(null);
   // อ่านค่าที่จำไว้หลัง mount (ฝั่ง server ไม่มี localStorage — กัน hydration ไม่ตรง)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -497,22 +498,22 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".82rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
-        {/* การ์ดตัวเลข: สลับช่วง 7/14/30 วันบนการ์ดเลย (ไม่ต้องมีการ์ดแยกต่อช่วง) */}
-        {period && (
-          <div role="group" aria-label={t("dash.period" as never)} style={{ display: "inline-flex", flex: "0 0 auto", border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
-            {PERIOD_RANGES.map((r) => {
-              const on = w.range === r;
-              return (
-                <button key={r} type="button" aria-pressed={on} onClick={() => pickPeriod(r)} title={rangeLabel(r, en)}
-                  style={{ minWidth: 44, minHeight: 40, padding: "0 6px", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: ".8rem", fontWeight: on ? 700 : 500, cursor: "pointer",
-                    background: on ? "var(--accent-soft)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontVariantNumeric: "tabular-nums" }}>
-                  {r.replace("d", "")}{t("dash.dayShort" as never)}
-                </button>
-              );
-            })}
-          </div>
-        )}
       </div>
+      {/* สลับช่วงบนการ์ด (วันนี้ · 7 · 14 · 30 วัน) — ไม่ต้องมีการ์ดแยกต่อช่วง · แถวของตัวเอง การ์ดแคบก็ไม่เบียดชื่อ */}
+      {period && (
+        <div role="group" aria-label={t("dash.period" as never)} style={{ display: "flex", marginTop: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
+          {periods.map((r) => {
+            const on = w.range === r;
+            return (
+              <button key={r} type="button" aria-pressed={on} onClick={() => pickPeriod(r)}
+                style={{ flex: "1 1 0", minWidth: 0, minHeight: 40, padding: "0 4px", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: ".8rem", fontWeight: on ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap",
+                  background: on ? "var(--accent-soft)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontVariantNumeric: "tabular-nums" }}>
+                {rangeLabel(r, en)}
+              </button>
+            );
+          })}
+        </div>
+      )}
       {editing && (
         <div style={{ display: "flex", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
           {/* ปุ่มที่ใช้ไม่ได้ (ใบแรก/ใบสุดท้าย) ซ่อนไว้แต่คงที่ว่าง — ปุ่มไม่กระโดดตำแหน่ง */}

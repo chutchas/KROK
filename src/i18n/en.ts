@@ -1723,7 +1723,6 @@ export const en: Record<MessageKey, string> = {
   "roles.savedManageOff": "Saved: {role} can no longer manage the workspace",
   "studio.moreFor": "More actions for {title}",
   "dash.period": "Period",
-  "dash.dayShort": "d",
   "dash.durSec": "{s}s",
   "dash.deletedForm": "(deleted form)",
   "dash.passFail": "pass {pass} · fail {fail}",

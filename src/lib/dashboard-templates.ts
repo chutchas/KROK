@@ -1,5 +1,5 @@
 // แม่แบบแดชบอร์ด — ชุดการ์ดตั้งต้นตามลักษณะงาน (ผู้ใช้แก้/เพิ่ม/ลบต่อได้เหมือนการ์ดปกติ)
-import { formatLabel, metricLabel, rangeLabel, isPeriodStat, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange } from "./dashboard-meta";
+import { formatLabel, metricLabel, rangeLabel, isPeriodWidget, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange } from "./dashboard-meta";
 
 export type DashTemplateKey = "inspect" | "log" | "approve" | "area";
 
@@ -30,7 +30,8 @@ export const DASH_TEMPLATES: DashTemplate[] = [
     name: { th: "บันทึกข้อมูลประจำวัน", en: "Daily records" },
     desc: { th: "จำนวนที่บันทึก คนกรอก และแนวโน้มรายวัน — ไม่มีผ่าน/ไม่ผ่าน", en: "Entries, submitters and daily trend — no pass/fail" },
     widgets: [
-      ["stat", "usage", "today"], ["stat", "usage", "7d"], ["stat", "submitters", "7d"],
+      // จำนวนบันทึก: การ์ดเดียว เริ่มที่ "วันนี้" (สลับ 7/14/30 วันบนการ์ด)
+      ["stat", "usage", "today"], ["stat", "submitters", "7d"],
       ["trend", "usage", "30d"], ["ranking", "usage", "7d"],
     ],
   },
@@ -82,15 +83,17 @@ export function recommendTemplate(s: TemplateSignals): { key: DashTemplateKey; w
 export function templateCardLabel([format, metric, range]: W, en = false): string {
   const parts = [formatLabel(format, en)];
   if (format === "stat" || format === "trend" || format === "ranking") parts.push(metricLabel(metric, en));
-  if (format !== "area" && format !== "openlist") parts.push(rangeLabel(range, en));
+  // การ์ดที่สลับช่วงบนการ์ดได้: บอกว่าเลือกได้ (ไม่โชว์ "7 วัน"/"30 วัน" ราวกับเป็นการ์ดคนละใบ)
+  if (isPeriodWidget({ format, metric, range })) parts.push(en ? "pick period on card" : "เลือกช่วงบนการ์ด");
+  else if (format !== "area" && format !== "openlist") parts.push(rangeLabel(range, en));
   return parts.join(" · ");
 }
 
 /** การ์ดตั้งค่าเหมือนกัน (รูปแบบ · ฟอร์ม/พื้นที่ · ค่า · ช่วงเวลา) — ไม่สนใจ id */
-/** การ์ดซ้ำ = รูปแบบ/ฟอร์ม/ค่าเดียวกัน และช่วงเดียวกัน — การ์ดตัวเลข 7/14/30 วันนับเป็นใบเดียว (สลับช่วงบนการ์ดได้) */
+/** การ์ดซ้ำ = รูปแบบ/ฟอร์ม/ค่าเดียวกัน และช่วงเดียวกัน — การ์ดที่สลับช่วงได้ (วันนี้/7/14/30) นับเป็นใบเดียว */
 export const sameWidget = (a: DashWidget, b: DashWidget) =>
   a.format === b.format && a.formId === b.formId && a.metric === b.metric
-  && (a.range === b.range || (isPeriodStat(a) && isPeriodStat(b)));
+  && (a.range === b.range || (isPeriodWidget(a) && isPeriodWidget(b)));
 
 /** การ์ดของแม่แบบที่ยังไม่มีในชุดเดิม — ใช้ตอน "ต่อท้าย" กันการ์ดซ้ำ */
 export function newTemplateWidgets(key: DashTemplateKey, existing: DashWidget[]): DashWidget[] {
@@ -99,7 +102,7 @@ export function newTemplateWidgets(key: DashTemplateKey, existing: DashWidget[])
 
 /** ค่าเริ่มต้นของ "เพิ่มการ์ด" — ตัวเลือกแรกที่ยังไม่มีในชุด (ไม่ให้ขึ้นเตือนการ์ดซ้ำตั้งแต่เปิด) */
 const STARTERS: W[] = [
-  ["stat", "usage", "7d"], ["stat", "usage", "today"], ["stat", "submitters", "7d"],
+  ["stat", "usage", "7d"], ["stat", "submitters", "7d"],
   ["stat", "fail", "7d"], ["stat", "pending", "all"], ["stat", "passrate", "30d"], ["trend", "usage", "30d"], ["ranking", "usage", "7d"],
 ];
 export function freshWidget(existing: DashWidget[]): DashWidget {
