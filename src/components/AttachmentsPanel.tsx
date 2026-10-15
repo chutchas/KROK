@@ -119,7 +119,7 @@ export default function AttachmentsPanel({
   }
 
   async function onRemove(a: Attachment) {
-    if (!(await confirmDialog({ message: tt("att.removeConfirm", { name: a.name }), confirmLabel: t("common.delete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delAttach"), message: tt("att.removeConfirm", { name: a.name }), confirmLabel: t("common.delete"), danger: true }))) return;
     setBusy(true);
     try {
       const res = await removeAttachment(a.id);

@@ -169,7 +169,7 @@ export default function DashboardClient({
     return () => clearTimeout(id);
   }, [undo]);
   async function applyTemplate(key: DashTemplateKey, mode: "append" | "replace") {
-    if (mode === "replace" && widgets.length && !(await confirmDialog({
+    if (mode === "replace" && widgets.length && !(await confirmDialog({ title: t("dlg.tplReplace"),
       message: tt(tab === "ws" ? "dash.tplReplaceConfirmWs" : "dash.tplReplaceConfirm", { n: widgets.length }),
       confirmLabel: t("dash.tplReplace"), danger: true,
     }))) return;
@@ -214,7 +214,7 @@ export default function DashboardClient({
     setBuilder(null);
   }
   async function removeWidget(id: string) {
-    if (!(await confirmDialog({ message: t("dash.removeConfirm"), confirmLabel: t("common.delete" as never), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delCard"), message: t("dash.removeConfirm"), confirmLabel: t("common.delete" as never), danger: true }))) return;
     persist(widgets.filter((x) => x.id !== id));
   }
   /** ปุ่มเลื่อนขึ้น/ลง — ทางเลือกของการลาก (มือถือ/จอสัมผัส/คีย์บอร์ดลากไม่ได้) */

@@ -69,7 +69,7 @@ export default function FormSchedulePanel({ formId, teams, members }: {
 
   async function turnOff() {
     if (!saved) { setCfg(null); return; }
-    if (!(await confirmDialog({ message: t("sch.removeConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delSchedule"), message: t("sch.removeConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
     const r = await deleteFormSchedule(formId!);
     if ("error" in r) { setMsg({ kind: "err", text: localizeServerMsg(r.error, lang) }); return; }
     setSaved(null);

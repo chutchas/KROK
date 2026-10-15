@@ -486,7 +486,7 @@ export default function FillWizard(props: Props) {
     try {
       if (draftsOn && dirty.current !== savedAt.current && hasContent()) {
         const ok = await saveDraftNow("auto");
-        if (!ok && !(await confirmDialog({ message: t("draft.exitUnsaved"), confirmLabel: t("fill.exit"), danger: true }))) return;
+        if (!ok && !(await confirmDialog({ title: t("dlg.exitUnsaved"), message: t("draft.exitUnsaved"), confirmLabel: t("fill.exit"), danger: true }))) return;
       }
       go(listPath);
     } finally {

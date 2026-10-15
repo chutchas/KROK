@@ -274,7 +274,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
 
       {view === "doc" && docSchema ? (
         <div role="tabpanel" id="sub-panel">
-          <h1 className="krok-a4-h1">{sub.form_title}{docNo ? <span style={{ color: "var(--ink-3)", fontWeight: 500 }}> · {docNo}</span> : null}</h1>
+          <h1 className="krok-a4-h1">{sub.form_title}{sub.doc_no ? <span style={{ color: "var(--ink-3)", fontWeight: 500 }}> · {docNo}</span> : null}</h1>
           {failPanel}
           {sub.approval_status && sub.approval_status !== "none" && (
             <div className="no-print" style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 10, fontSize: ".86rem" }}>

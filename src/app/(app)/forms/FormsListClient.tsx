@@ -89,7 +89,7 @@ export default function FormsListClient({
   }
 
   async function removeDraft(id: string) {
-    if (!(await confirmDialog({ message: t("draft.deleteConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delDraft"), message: t("draft.deleteConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
     setBusyId(id);
     const res = await deleteDraftAction(id);
     setBusyId(null);

@@ -643,7 +643,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   });
 
   async function onDelete(id: string, title: string) {
-    if (!(await confirmDialog({ message: tt("studio.deleteConfirm", { title }), confirmLabel: t("common.delete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delForm"), message: tt("studio.deleteConfirm", { title }), confirmLabel: t("common.delete"), danger: true }))) return;
     const res = await deleteForm(id);
     if ("error" in res) await alertDialog(res.error);
     else router.refresh();

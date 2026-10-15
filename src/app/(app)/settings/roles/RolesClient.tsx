@@ -107,7 +107,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                   const on = newMenus.includes(m.key);
                   return (
                     <button key={m.key} type="button" aria-pressed={on} onClick={() => setNewMenus((s) => (on ? s.filter((x) => x !== m.key) : [...s, m.key]))}
-                      style={{ padding: "6px 12px", minHeight: 44, borderRadius: 22, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                      style={{ padding: "6px 12px", minHeight: 44, minWidth: 44, borderRadius: 22, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                       {menuLabel(m.key)}
                     </button>
                   );
@@ -140,7 +140,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                 </div>
                 {r.canManage ? <Pill kind="pass">{t("roles.manages")}</Pill> : <Pill kind="na">{t("roles.limited")}</Pill>}
                 {!r.isSystem && (
-                  <Button variant="danger" onClick={async () => { if (!(await confirmDialog({ message: t("roles.deleteConfirm"), confirmLabel: t("common.delete"), danger: true }))) return; setBusy(true); const res = await deleteRole(r.key); setBusy(false); if ("error" in res) setMsg({ t: res.error, err: true }); else router.refresh(); }} style={{ padding: "6px 10px" }}>
+                  <Button variant="danger" onClick={async () => { if (!(await confirmDialog({ title: t("dlg.delRole"), message: t("roles.deleteConfirm"), confirmLabel: t("common.delete"), danger: true }))) return; setBusy(true); const res = await deleteRole(r.key); setBusy(false); if ("error" in res) setMsg({ t: res.error, err: true }); else router.refresh(); }} style={{ padding: "6px 10px" }}>
                     <Icon icon={Trash2} className="h-4 w-4" />
                   </Button>
                 )}
@@ -162,7 +162,7 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
                       const on = r.menus.includes(m.key);
                       return (
                         <button key={m.key} type="button" aria-pressed={on} disabled={busy} onClick={() => toggleMenu(r, m.key)}
-                          style={{ padding: "6px 12px", minHeight: 44, borderRadius: 22, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
+                          style={{ padding: "6px 12px", minHeight: 44, minWidth: 44, borderRadius: 22, fontSize: ".8rem", cursor: "pointer", fontFamily: "inherit", border: on ? "1px solid var(--accent)" : "1px solid var(--line)", background: on ? "var(--accent-soft)" : "var(--surface)", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500 }}>
                           {menuLabel(m.key)}
                         </button>
                       );

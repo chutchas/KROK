@@ -67,7 +67,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
         <div style={{ flex: 1, minWidth: 220 }}>
           <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>สุขภาพระบบ</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 0" }}>
-            ตรวจการเชื่อมต่อทุกส่วนอัตโนมัติเมื่อเปิดหน้านี้ · ตรวจล่าสุด {new Date(report.checkedAt).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}
+            ตรวจการเชื่อมต่อทุกส่วนอัตโนมัติเมื่อเปิดหน้านี้ · ตรวจล่าสุด {new Date(report.checkedAt).toLocaleString("th-TH", { timeZone: "Asia/Bangkok", dateStyle: "medium", timeStyle: "short" })}
           </p>
         </div>
         <Button onClick={() => startRefresh(() => router.refresh())} loading={refreshing}>ตรวจใหม่</Button>

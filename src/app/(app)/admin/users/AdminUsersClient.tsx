@@ -144,7 +144,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                 )}
                 <Button
                   onClick={async () => {
-                    if (!(await confirmDialog({ message: t("mfa.adminResetConfirm"), confirmLabel: t("mfa.adminReset"), danger: true }))) return;
+                    if (!(await confirmDialog({ title: t("dlg.mfaReset"), message: t("mfa.adminResetConfirm"), confirmLabel: t("mfa.adminReset"), danger: true }))) return;
                     setBusy(u.userId);
                     const res = await resetUserMfa(u.userId);
                     setBusy(null);
@@ -203,8 +203,9 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
                       {w.roleKey !== "owner" && (
                         <Button
                           variant="danger"
+                          aria-label={`${t("admin.removeFromWs")} ${u.name || u.email} · ${w.tenantName}`}
                           onClick={async () => {
-                            if (!(await confirmDialog({ message: t("admin.removeConfirm"), confirmLabel: t("admin.removeFromWs"), danger: true }))) return;
+                            if (!(await confirmDialog({ title: t("dlg.removeMember"), message: tt("admin.removeConfirm", { who: u.name || u.email, ws: w.tenantName }), confirmLabel: t("admin.removeFromWs"), danger: true }))) return;
                             setBusy(u.userId);
                             const res = await removeFromWorkspace(u.userId, w.tenantId);
                             setBusy(null);
