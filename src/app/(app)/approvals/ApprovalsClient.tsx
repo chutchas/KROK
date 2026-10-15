@@ -226,7 +226,7 @@ export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = t
           {hasApprovalForms || initial.length > 0 ? (
             <EmptyState icon={<Icon icon={PartyPopper} className="h-7 w-7" />} title={t("appr.cleared")} />
           ) : (
-            <EmptyState icon={<Icon icon={ClipboardCheck} className="h-7 w-7" />} title={t("appr.noneSetTitle")} hint={t("appr.noneSetBody")} action={{ href: "/studio", label: t("appr.goStudio") }} />
+            <EmptyState icon={<Icon icon={ClipboardCheck} className="h-7 w-7" />} title={t("appr.noneSetTitle")} hint={t("appr.noneSetBody")} action={{ href: "/studio?view=all", label: t("appr.goStudio") }} />
           )}
         </Card>
       )}

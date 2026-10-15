@@ -10,6 +10,7 @@ import { confirmDialog } from "@/components/dialogs";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import HelpTip from "@/components/HelpTip";
+import Link from "next/link";
 
 export interface DeviceRow {
   id: string;
@@ -228,7 +229,7 @@ function MatrixCard({
           <Icon icon={Grid3x3} className="h-4 w-4" /> {t("dev.matrixTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: 0 }}>
-          {t("dev.matrixNoForms")}<b>{t("nav.studio")}</b>
+          {t("dev.matrixNoForms")}<Link href="/studio?view=all" style={{ fontWeight: 600 }}>{t("nav.studio")}</Link>
         </p>
       </Card>
     );

@@ -25,7 +25,7 @@ export default function HelpTip({ id, compact = false, alignSelf, panelOrder }: 
   const L = lang === "en" ? "en" : "th";
   return (
     <Fragment>
-      <button type="button" className="no-print" data-krok-keep="" aria-expanded={open} aria-controls={panelId} onClick={() => setOpen((v) => !v)}
+      <button type="button" className="no-print" data-krok-keep="" aria-expanded={open} aria-controls={open ? panelId : undefined} onClick={() => setOpen((v) => !v)}
         title={a.title[L]} aria-label={`${L === "en" ? "How to" : "วิธีใช้"}: ${a.title[L]}`}
         style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, minWidth: 44, justifyContent: "center", padding: compact ? "0 4px" : "0 8px", border: "none", borderRadius: 8,
           background: open ? "var(--accent-soft)" : "transparent", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", verticalAlign: "middle", alignSelf }}>
@@ -45,13 +45,13 @@ export function HelpPanel({ id, panelId, guideLink = true, order }: { id: string
   return (
     <div id={panelId} className="no-print" role="region" aria-label={a.title[L]} data-krok-keep=""
       style={{ display: "block", flexBasis: "100%", width: "100%", order, boxSizing: "border-box", margin: "6px 0 8px", padding: "10px 12px", borderRadius: 10,
-        border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)", background: "var(--accent-soft)", color: "var(--ink)", fontSize: ".84rem", lineHeight: 1.55, fontWeight: 400, textAlign: "left" }}>
-      <b style={{ display: "block", marginBottom: 4 }}>{a.title[L]}</b>
-      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal" }}>
+        border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)", background: "var(--accent-soft)", color: "var(--ink)", fontSize: ".86rem", lineHeight: 1.7, fontWeight: 400, textAlign: "left" }}>
+      <b style={{ display: "block", marginBottom: 6 }}>{a.title[L]}</b>
+      <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal", display: "grid", gap: 4 }}>
         {a.steps[L].slice(a.tipFrom ?? 0).map((s, i) => <li key={i}>{s}</li>)}
       </ol>
       {a.notes && (
-        <ul style={{ margin: "6px 0 0", paddingLeft: 18, listStyle: "disc", color: "var(--ink-2)" }}>
+        <ul style={{ margin: "10px 0 0", paddingLeft: 18, listStyle: "disc", color: "var(--ink-2)", display: "grid", gap: 2 }}>
           {a.notes[L].map((s, i) => <li key={i}>{s}</li>)}
         </ul>
       )}

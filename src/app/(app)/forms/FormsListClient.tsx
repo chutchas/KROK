@@ -139,7 +139,7 @@ export default function FormsListClient({
           const on = tab === x.k;
           return (
             <button key={x.k} role="tab" aria-selected={on} onClick={() => switchTab(x.k)} aria-label={x.n > 0 ? `${x.label} ${x.n}` : x.label}
-              style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "9px 12px", minHeight: 44, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
+              style={{ display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6, padding: "9px 12px", minHeight: 44, minWidth: 44, border: "none", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, background: "none", color: on ? "var(--accent-text)" : "var(--ink-2)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: on ? 600 : 400, cursor: "pointer", textAlign: "left", lineHeight: 1.3, whiteSpace: "nowrap", flex: "0 0 auto" }}>
               {x.k === "drafts" && <Icon icon={FilePen} className="h-4 w-4" />}
               {x.k === "tasks" && <Icon icon={ClipboardList} className="h-4 w-4" />}
               {x.k === "today" && <Icon icon={CalendarCheck2} className="h-4 w-4" />}

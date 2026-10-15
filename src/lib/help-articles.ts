@@ -294,8 +294,8 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ],
     },
     notes: {
-      th: ["ปิดเรื่องได้เฉพาะผู้จัดการ (owner / admin / designer)", "ปิดแล้วเปิดกลับได้ ต้องใส่เหตุผล — ประวัติการปิด/เปิดเก็บไว้ทั้งหมด", "ดูใบที่ยังค้างได้ที่ รายงาน → ผลลัพธ์ \"ไม่ผ่าน · ยังไม่ปิดเรื่อง\""],
-      en: ["Only managers (owner / admin / designer) can close", "You can reopen with a reason — the full close/reopen history is kept", "Find open ones in Reports → result \"Fail · not closed\""],
+      th: ["ปิดเรื่องได้เฉพาะผู้จัดการ (เจ้าของ ผู้ดูแล หรือบทบาทที่จัดการ workspace ได้)", "ปิดแล้วเปิดกลับได้ ต้องใส่เหตุผล — ประวัติการปิด/เปิดเก็บไว้ทั้งหมด", "ดูใบที่ยังค้างได้ที่ รายงาน → ผลลัพธ์ \"ไม่ผ่าน · ยังไม่ปิดเรื่อง\""],
+      en: ["Only managers (owner, admin, or roles that can manage the workspace) can close", "You can reopen with a reason — the full close/reopen history is kept", "Find open ones in Reports → result \"Fail · not closed\""],
     },
     where: { href: "/reports?result=fail_open", label: { th: "ดูใบที่ยังไม่ปิดเรื่อง", en: "See open failures" } },
     keywords: "ปิดเรื่อง ไม่ผ่าน close failure แก้ไข corrective action เปิดเรื่องกลับ reopen",

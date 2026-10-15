@@ -128,7 +128,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{mine ? t("rep.mineTitle") : t("report.title")}</h1>
         <HelpTip id="export-excel" compact panelOrder={2} />
         {canTrash && (
-          <a href="/reports/trash" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, minHeight: 40, fontSize: ".86rem" }}>
+          <a href="/reports/trash" style={{ marginLeft: "auto", display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44, fontSize: ".86rem" }}>
             <Icon icon={Trash2} className="h-4 w-4" /> {t("trash.title")}
           </a>
         )}
