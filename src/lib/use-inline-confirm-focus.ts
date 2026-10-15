@@ -23,11 +23,15 @@ export function useInlineConfirmFocus<P extends HTMLElement = HTMLDivElement, T 
   const escRef = useRef(onEscape);
   useEffect(() => { escRef.current = onEscape; });
   useEffect(() => {
-    const panel = panelRef.current;
-    if (!open || !panel) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && escRef.current) { e.stopPropagation(); escRef.current(); } };
-    panel.addEventListener("keydown", onKey);
-    return () => panel.removeEventListener("keydown", onKey);
+    if (!open) return;
+    // ดักที่ document: คลิกออกนอกกล่อง (โฟกัสไป body) แล้วกด Esc ก็ยังยกเลิกได้ · ถ้ามี dialog ซ้อนอยู่ (aria-modal) ปล่อยให้ dialog จัดการ
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || !escRef.current || e.defaultPrevented) return;
+      if (document.querySelector('[aria-modal="true"]')) return;
+      escRef.current();
+    };
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
   }, [open]);
   return { panelRef, triggerRef };
 }

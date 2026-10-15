@@ -495,9 +495,10 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
       <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
         {onEdit && <span aria-hidden style={{ color: "var(--ink-3)", cursor: "grab", marginTop: 2 }}><Icon icon={GripVertical} className="h-4 w-4" /></span>}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600 }}>
+          {/* ชื่อการ์ด = h3 (ใต้ h2 ของส่วนการ์ด) — โปรแกรมอ่านหน้าจอข้ามไปทีละการ์ดได้ */}
+          <h3 style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: ".9rem", fontWeight: 600, margin: 0, fontFamily: "inherit" }}>
             <Icon icon={fIcon} className="h-4 w-4" /> {isArea ? <AreaWidgetTitle /> : noMetric ? formatLabel(w.format, en) : metricLabel(w.metric, en)}
-          </div>
+          </h3>
           <div style={{ color: "var(--ink-3)", fontSize: ".82rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
       </div>

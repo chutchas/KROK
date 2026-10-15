@@ -59,7 +59,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   }
 
   async function search() {
-    setUsingSaved(false);
+    setSavedSnap(null);
     try { sessionStorage.setItem(KEY, JSON.stringify({ formId, preset, from, to, result, approval })); } catch { /* ไม่มี storage = ไม่จำ */ }
     await runSearch(filters());
   }
@@ -77,11 +77,19 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
 
   const restored = useRef(false);
   // คืนตัวกรองที่จำไว้ (sessionStorage) → บอกผู้ใช้ + ปุ่มล้าง (ไม่งั้นกลับมาเจอ "ไม่พบ" แล้วไม่รู้ว่าเพราะตัวกรองเดิม)
-  const [usingSaved, setUsingSaved] = useState(false);
+  // ค่าตัวกรองตอนคืนจาก storage — ป้ายแสดงเฉพาะเมื่อค่าที่จำไว้ ≠ ค่าเริ่มต้น และผู้ใช้ยังไม่ได้เปลี่ยนเอง
+  const [savedSnap, setSavedSnap] = useState<string | null>(null);
+  const firstFilterRef = useRef<HTMLSelectElement>(null);
+  const snapOf = (v: { formId: string; preset: string; from: string; to: string; result: string; approval: string }) => JSON.stringify([v.formId, v.preset, v.from, v.to, v.result, v.approval]);
+  const DEFAULT_SNAP = snapOf({ formId: "all", preset: "30d", from: "", to: "", result: "all", approval: "all" });
+  const curSnap = snapOf({ formId, preset, from, to, result, approval });
+  const usingSaved = savedSnap !== null && savedSnap !== DEFAULT_SNAP && curSnap === savedSnap;
   function resetFilters() {
     try { sessionStorage.removeItem(KEY); } catch { /* ไม่มี storage */ }
     setFormId("all"); setPreset("30d"); setFrom(""); setTo(""); setResult("all"); setApproval("all");
-    setUsingSaved(false); setPreview(null); setPreviewKey(""); setMsg(null);
+    setSavedSnap(null); setPreview(null); setPreviewKey(""); setMsg(null);
+    // ปุ่มล้างหายไปพร้อมป้าย → ย้ายโฟกัสไปช่องตัวกรองแรก (ไม่หลุดไป <body>)
+    requestAnimationFrame(() => firstFilterRef.current?.focus());
   }
   useEffect(() => {
     if (restored.current) return;
@@ -94,7 +102,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
     const f = { formId: saved.formId && (saved.formId === "all" || forms.some((x) => x.id === saved!.formId)) ? saved.formId : "all", preset: saved.preset || "30d", from: saved.from || "", to: saved.to || "", result: saved.result || "all", approval: saved.approval || "all" };
     /* eslint-disable react-hooks/set-state-in-effect -- คืนค่าจาก sessionStorage ได้หลัง mount เท่านั้น */
     setFormId(f.formId); setPreset(f.preset); setFrom(f.from); setTo(f.to); setResult(f.result); setApproval(f.approval);
-    if (!initialResult) setUsingSaved(true);
+    if (!initialResult) setSavedSnap(snapOf(f));
     /* eslint-enable react-hooks/set-state-in-effect */
     void runSearch(filtersOf(f));
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -128,11 +136,21 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   }
 
   const emptyNow = preview?.total === 0 && previewKey === JSON.stringify(filters());
+  // ตัวกรองเปลี่ยนหลังค้นครั้งล่าสุด → ผลที่แสดงเป็นของตัวกรองเดิม (จางลง + บอกให้กดค้นหา)
+  const stale = !!preview && previewKey !== "" && previewKey !== JSON.stringify(filters());
+  const presetLabel: Record<Preset, string> = { today: t("rep.today"), "7d": t("rep.7d"), "14d": t("rep.14d"), "30d": t("rep.30d"), month: t("rep.thisMonth"), all: t("rep.allTime"), custom: t("rep.custom") };
+  const resultLabel: Record<string, string> = { pass: t("rep.pass"), fail: t("rep.fail"), fail_open: t("rep.failOpen"), fail_closed: t("rep.failClosed") };
   const approvalLabel = (a: string) =>
     a === "pending" ? t("dash.pending")
       : a === "approved" ? t("dash.approved")
       : a === "rejected" ? t("dash.rejected")
       : "-";
+  const savedSummary = [
+    formId !== "all" ? forms.find((f) => f.id === formId)?.title : null,
+    preset !== "30d" ? presetLabel[preset] : null,
+    result !== "all" ? resultLabel[result] : null,
+    approval !== "all" ? (approval === "none" ? t("rep.noApproval") : approvalLabel(approval)) : null,
+  ].filter(Boolean).join(" · ");
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16, minWidth: 0 }}>
@@ -153,14 +171,14 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
       <Card>
         {usingSaved && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", margin: "-4px 0 10px", fontSize: ".82rem", color: "var(--ink-2)" }}>
-            <span style={{ padding: "2px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)", fontWeight: 600 }}>{t("rep.restored")}</span>
+            <span style={{ padding: "2px 10px", borderRadius: 999, background: "var(--accent-soft)", color: "var(--accent-text)", fontWeight: 600 }}>{t("rep.restored")}{savedSummary ? `: ${savedSummary}` : ""}</span>
             <button type="button" onClick={resetFilters} style={{ minHeight: 44, padding: "0 8px", border: "none", background: "none", color: "var(--accent-text)", textDecoration: "underline", fontFamily: "inherit", fontSize: ".82rem", cursor: "pointer" }}>{t("rep.resetFilters")}</button>
           </div>
         )}
         {/* แถวตัวกรอง — dropdown เรียงแถวเดียว (ตัดบรรทัดบนจอแคบ) */}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: 12 }}>
           <Selectable label={t("report.form")}>
-            <select value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
+            <select ref={firstFilterRef} value={formId} onChange={(e) => setFormId(e.target.value)} style={selStyle}>
               <option value="all">{t("report.allForms")}</option>
               {forms.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
             </select>
@@ -226,7 +244,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               : t("rep.hintOneForm")}
           </span>
           {/* ไม่พบ = บอกที่เดียว (การ์ดผลด้านล่าง) ไม่ซ้ำสามจุด */}
-          {preview && preview.total > 0 && (
+          {stale && <span role="status" style={{ color: "var(--warn-text)", fontSize: ".85rem", fontWeight: 600 }}>{t("rep.stale")}</span>}
+          {preview && preview.total > 0 && !stale && (
             <span role="status" aria-live="polite" style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
               {tt("rep.found", { n: preview.total.toLocaleString() })}
               {preview.total > preview.rows.length && tt("rep.showingFirst", { n: preview.rows.length })}
@@ -238,6 +257,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
 
       {/* ตาราง preview */}
       {preview && (
+        <div style={{ opacity: stale ? 0.5 : 1, transition: "opacity .15s" }} aria-hidden={stale || undefined}>{
         preview.rows.length === 0 ? (
           <Card><p id="rep-nodata" role="status" style={{ color: "var(--ink-2)", margin: 0 }}>{t("rep.exportNone")}</p></Card>
         ) : (
@@ -311,6 +331,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               @media(max-width:640px){ .krok-rep-cards{display:grid !important} .krok-rep-table{display:none} }`}</style>
           </Card>
         )
+        }</div>
       )}
       </>)}
     </div>

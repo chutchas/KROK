@@ -14,7 +14,7 @@ const hint: React.CSSProperties = { fontSize: ".74rem", color: "var(--ink-3)", m
 function Check({ on, onChange, children }: { on: boolean; onChange: (v: boolean) => void; children: React.ReactNode }) {
   return (
     <label style={{ display: "inline-flex", alignItems: "center", gap: 7, fontSize: ".86rem", cursor: "pointer", minHeight: 44 }}>
-      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} style={{ width: 16, height: 16, accentColor: "var(--accent)" }} />
+      <input type="checkbox" checked={on} onChange={(e) => onChange(e.target.checked)} style={{ width: 16, height: 16, flex: "0 0 auto", accentColor: "var(--accent)" }} />
       {children}
     </label>
   );
@@ -123,7 +123,7 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
           <div>
             <label style={label}>{t("notify.smtpPort")}</label>
             <select value={String(s.smtp_port)} onChange={(e) => set("smtp_port", Number(e.target.value))} aria-label={t("notify.smtpPort")}
-              style={{ width: "100%", padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".9rem", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
+              style={{ width: "100%", minHeight: 44, padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".9rem", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
               {[587, 465, 2525, 25].map((p) => <option key={p} value={p}>{p}{p === 587 ? " (STARTTLS)" : p === 465 ? " (SSL)" : ""}</option>)}
             </select>
           </div>
