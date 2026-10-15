@@ -72,7 +72,7 @@ export default function FileImportPanel({ ds, onDone, maxRows = MAX_DATASET_ROWS
 
   async function doImport() {
     if (!file) return;
-    if (mode === "replace" && ds.rowCount > 0 && !(await confirmDialog({ message: tt("ds.file.replaceConfirm", { n: ds.rowCount.toLocaleString() }), confirmLabel: t("ds.file.replaceBtn"), danger: true }))) return;
+    if (mode === "replace" && ds.rowCount > 0 && !(await confirmDialog({ title: t("dlg.dsReplace"), message: tt("ds.file.replaceConfirm", { n: ds.rowCount.toLocaleString() }), confirmLabel: t("ds.file.replaceBtn"), danger: true }))) return;
     setBusy("import");
     setErr("");
     try {

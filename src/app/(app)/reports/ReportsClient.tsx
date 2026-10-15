@@ -11,7 +11,18 @@ import PageHeader from "@/components/PageHeader";
 
 export interface ReportFormOpt { id: string; title: string; icon: string }
 
-type Preset = "7d" | "30d" | "month" | "all" | "custom";
+// ช่วงเวลาชุดเดียวกับแดชบอร์ด (วันนี้/7/14/30 วัน นับรวมวันนี้) + เดือนนี้/ทั้งหมด/กำหนดเอง
+type Preset = "today" | "7d" | "14d" | "30d" | "month" | "all" | "custom";
+const PRESET_DAYS: Partial<Record<Preset, number>> = { today: 1, "7d": 7, "14d": 14, "30d": 30 };
+function presetDates(p: Preset, from: string, to: string): { from?: string; to?: string } {
+  const now = new Date();
+  if (p === "custom") return { from: from || undefined, to: to || undefined };
+  if (p === "all") return {};
+  if (p === "month") return { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
+  const days = PRESET_DAYS[p] ?? 30;
+  const start = new Date(now); start.setDate(now.getDate() - (days - 1));
+  return { from: ymd(start), to: ymd(now) };
+}
 
 function ymd(d: Date) { return d.toLocaleDateString("sv"); }
 
@@ -34,14 +45,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   const [msg, setMsg] = useState<{ t: string; err?: boolean } | null>(null);
   const [preview, setPreview] = useState<{ rows: PreviewRow[]; total: number } | null>(null);
 
-  function resolveDates(): { from?: string; to?: string } {
-    const now = new Date();
-    if (preset === "custom") return { from: from || undefined, to: to || undefined };
-    if (preset === "all") return {};
-    if (preset === "month") return { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
-    const days = preset === "7d" ? 7 : 30;
-    return { from: ymd(new Date(now.getTime() - days * 864e5)), to: ymd(now) };
-  }
+  const resolveDates = () => presetDates(preset, from, to);
   function filters() {
     const d = resolveDates();
     return { formId, from: d.from, to: d.to, result, approval };
@@ -50,11 +54,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   // จำตัวกรองล่าสุดในแท็บนี้ — กดดูเอกสารแล้วกลับมา ได้ผลการค้นหาเดิม (ค้นใหม่ให้ข้อมูลล่าสุด)
   const KEY = "krok_report_filters_v1";
   function filtersOf(v: { formId: string; preset: Preset; from: string; to: string; result: string; approval: string }) {
-    const now = new Date();
-    let d: { from?: string; to?: string } = {};
-    if (v.preset === "custom") d = { from: v.from || undefined, to: v.to || undefined };
-    else if (v.preset === "month") d = { from: ymd(new Date(now.getFullYear(), now.getMonth(), 1)), to: ymd(now) };
-    else if (v.preset !== "all") { const days = v.preset === "7d" ? 7 : 30; d = { from: ymd(new Date(now.getTime() - days * 864e5)), to: ymd(now) }; }
+    const d = presetDates(v.preset, v.from, v.to);
     return { formId: v.formId, from: d.from, to: d.to, result: v.result, approval: v.approval };
   }
 
@@ -63,12 +63,15 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
     await runSearch(filters());
   }
 
+  // ตัวกรองของผลที่แสดงอยู่ — ผล "ไม่พบ" ใช้ปิดปุ่มส่งออกได้เฉพาะเมื่อตัวกรองยังเหมือนเดิม
+  const [previewKey, setPreviewKey] = useState("");
   async function runSearch(f: ReturnType<typeof filters>) {
     setBusy(true); setMsg(null);
     const res = await previewReport(f);
     setBusy(false);
     if ("error" in res) { setMsg({ t: res.error, err: true }); setPreview(null); return; }
     setPreview(res);
+    setPreviewKey(JSON.stringify(f));
   }
 
   const restored = useRef(false);
@@ -115,6 +118,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
     a.remove();
   }
 
+  const emptyNow = preview?.total === 0 && previewKey === JSON.stringify(filters());
   const approvalLabel = (a: string) =>
     a === "pending" ? t("dash.pending")
       : a === "approved" ? t("dash.approved")
@@ -149,7 +153,9 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
 
           <Selectable label={t("report.range")}>
             <select value={preset} onChange={(e) => setPreset(e.target.value as Preset)} style={selStyle}>
+              <option value="today">{t("rep.today")}</option>
               <option value="7d">{t("rep.7d")}</option>
+              <option value="14d">{t("rep.14d")}</option>
               <option value="30d">{t("rep.30d")}</option>
               <option value="month">{t("rep.thisMonth")}</option>
               <option value="all">{t("rep.allTime")}</option>
@@ -195,9 +201,11 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
           <Button onClick={search} disabled={busy}>
             <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
-          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={!preview || preview.total === 0}>
+          {/* ส่งออกได้เลยตามตัวกรอง (ไม่ต้องกดค้นหาก่อน) · ปิดเฉพาะเมื่อค้นแล้วไม่พบรายการ — บอกเหตุผลข้างปุ่ม */}
+          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow} aria-describedby={emptyNow ? "rep-export-why" : undefined}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
+          {emptyNow && <span id="rep-export-why" style={{ fontSize: ".82rem", color: "var(--ink-3)" }}>{t("rep.exportNone")}</span>}
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
             {formId === "all"
               ? t("rep.hintPickForm")

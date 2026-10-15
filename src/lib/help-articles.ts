@@ -181,19 +181,19 @@ export const HELP_ARTICLES: HelpArticle[] = [
   {
     id: "export-excel",
     title: { th: "ส่งออกข้อมูลเป็น Excel", en: "Export data to Excel" },
-    summary: { th: "เลือกฟอร์มและช่วงเวลา กดค้นหา แล้วส่งออกเป็นไฟล์ .xlsx", en: "Pick a form and period, search, then export a .xlsx file." },
+    summary: { th: "เลือกฟอร์มและช่วงเวลา แล้วส่งออกเป็นไฟล์ .xlsx (กดค้นหาเพื่อดูตัวอย่างก่อนได้)", en: "Pick a form and period, then export a .xlsx file (search first to preview if you like)." },
     tipFrom: 1,
     steps: {
       th: [
         "ไปที่เมนู \"รายงาน\"",
         "ตั้งตัวกรอง: ฟอร์ม ช่วงเวลา ผลลัพธ์ (ผ่าน/ไม่ผ่าน/ปิดเรื่องแล้ว) และสถานะอนุมัติ",
-        "กด \"ค้นหา\" เพื่อดูตัวอย่างก่อน",
+        "(ไม่บังคับ) กด \"ค้นหา\" เพื่อดูตัวอย่างก่อน",
         "กด \"ส่งออก Excel (.xlsx)\"",
       ],
       en: [
         "Go to the \"Reports\" menu",
         "Set filters: form, period, result (pass/fail/closed out) and approval status",
-        "Tap \"Search\" to preview",
+        "(Optional) tap \"Search\" to preview",
         "Tap \"Export Excel (.xlsx)\"",
       ],
     },

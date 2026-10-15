@@ -151,7 +151,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
   }
 
   async function revoke() {
-    if (!(await confirmDialog({ message: t("intake.revokeConfirm"), confirmLabel: t("intake.revoke"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.revokeKey"), message: t("intake.revokeConfirm"), confirmLabel: t("intake.revoke"), danger: true }))) return;
     setBusy("revoke"); setMsg(null);
     const r = await revokeIntakeKey(formId);
     setBusy(null);

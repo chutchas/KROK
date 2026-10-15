@@ -71,7 +71,7 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
     setMsg(null);
     const res = await testNotify(ch);
     setTestingCh(null);
-    setMsg({ t: `${ch === "line" ? "LINE" : "Email"}: ${res.status}`, err: !res.ok });
+    setMsg({ t: `${ch === "line" ? "LINE" : t("intg.legacyEmail")}: ${res.status}`, err: !res.ok });
   }
 
   return (

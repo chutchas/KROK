@@ -202,7 +202,7 @@ export default function TeamClient({
                       let res = await changeRoleKey(m.user_id, v);
                       if ("needConfirm" in res) {
                         const s = res.needConfirm;
-                        if (await confirmDialog({ message: tt("team.planShift", { from: s.from, to: s.to, owner: s.nextOwner }), confirmLabel: t("common.confirm"), danger: true }))
+                        if (await confirmDialog({ title: t("dlg.planShift"), message: tt("team.planShift", { from: s.from, to: s.to, owner: s.nextOwner }), confirmLabel: t("team.planShiftBtn"), danger: true }))
                           res = await changeRoleKey(m.user_id, v, true);
                       }
                       if ("error" in res) await alertDialog(res.error);
@@ -218,12 +218,12 @@ export default function TeamClient({
                   <span style={{ fontSize: ".82rem", color: "var(--ink-2)", padding: "6px 12px", border: "1px solid var(--line)", borderRadius: 20 }}>{roleName}</span>
                 )}
                 {!isMe && canEditThis && (
-                  <AsyncButton variant="danger" onClick={async () => {
-                    if (!(await confirmDialog({ message: tt("team.removeConfirm", { name: m.name || m.email || "" }), confirmLabel: t("team.remove"), danger: true }))) return;
+                  <AsyncButton variant="danger" aria-label={`${t("team.remove")} ${m.name || m.email || ""}`.trim()} onClick={async () => {
+                    if (!(await confirmDialog({ title: t("dlg.removeMember"), message: tt("team.removeConfirm", { name: m.name || m.email || "" }), confirmLabel: t("team.remove"), danger: true }))) return;
                     let res = await removeMember(m.user_id);
                     if ("needConfirm" in res) {
                       const s = res.needConfirm;
-                      if (!(await confirmDialog({ message: tt("team.planShift", { from: s.from, to: s.to, owner: s.nextOwner }), confirmLabel: t("common.confirm"), danger: true }))) return;
+                      if (!(await confirmDialog({ title: t("dlg.planShift"), message: tt("team.planShift", { from: s.from, to: s.to, owner: s.nextOwner }), confirmLabel: t("team.planShiftBtn"), danger: true }))) return;
                       res = await removeMember(m.user_id, true);
                     }
                     if ("error" in res) await alertDialog(res.error);
@@ -325,7 +325,7 @@ function TeamsSection({
                   <Button
                     variant="danger"
                     onClick={async () => {
-                      if (!(await confirmDialog({ message: t("team.deleteTeamConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+                      if (!(await confirmDialog({ title: t("dlg.delTeam"), message: t("team.deleteTeamConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
                       const res = await deleteTeam(team.id);
                       if ("error" in res) await alertDialog(res.error);
                       else router.refresh();

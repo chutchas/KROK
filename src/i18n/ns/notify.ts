@@ -4,7 +4,7 @@ import { createNsHook } from "./factory";
 import type { MessageKey } from "../dictionaries";
 
 const th = {
-  "notify.title": "แจ้งเตือน LINE / Email",
+  "notify.title": "แจ้งเตือน LINE / อีเมล",
   "notify.subtitle": "แจ้งเตือนอัตโนมัติเมื่อมีการส่งฟอร์มหรืออนุมัติ — ใส่คีย์ของแต่ละองค์กรเอง",
   "notify.line": "LINE (Messaging API)",
   "notify.lineEnable": "เปิดแจ้งเตือนผ่าน LINE",

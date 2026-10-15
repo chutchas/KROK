@@ -58,7 +58,7 @@ export default function TwoFactorCard() {
 
   async function disable() {
     if (!factorId) return;
-    if (!(await confirmDialog({ message: t("mfa.disableConfirm"), confirmLabel: t("mfa.disable"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.mfaOff"), message: t("mfa.disableConfirm"), confirmLabel: t("mfa.disable"), danger: true }))) return;
     setBusy(true); setMsg(null);
     const sb = createClient();
     const { error } = await sb.auth.mfa.unenroll({ factorId });

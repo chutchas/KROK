@@ -258,7 +258,7 @@ export default function DatasetDetailClient({
           <button
             style={{ ...smallBtn, marginTop: 10, color: "var(--fail)" }}
             disabled={busy === "clear"}
-            onClick={async () => { if (await confirmDialog({ message: tt("ds.clearConfirm", { n: ds.rowCount.toLocaleString() }), confirmLabel: t("ds.clearBtn"), danger: true })) void run("clear", () => clearRows(ds.id), t("ds.cleared")); }}
+            onClick={async () => { if (await confirmDialog({ title: t("dlg.dsClear"), message: tt("ds.clearConfirm", { n: ds.rowCount.toLocaleString() }), confirmLabel: t("ds.clearBtn"), danger: true })) void run("clear", () => clearRows(ds.id), t("ds.cleared")); }}
           >
             <Icon icon={Eraser} className="h-3.5 w-3.5" /> {t("ds.clearAll")}
           </button>
@@ -311,7 +311,7 @@ export default function DatasetDetailClient({
             loading={busy === "delete"}
             disabled={usedBy.length > 0}
             onClick={async () => {
-              if (!(await confirmDialog({ message: tt("ds.deleteConfirm", { name: ds.name }), confirmLabel: t("common.delete"), danger: true }))) return;
+              if (!(await confirmDialog({ title: t("dlg.dsDelete"), message: tt("ds.deleteConfirm", { name: ds.name }), confirmLabel: t("common.delete"), danger: true }))) return;
               setBusy("delete");
               const res = await deleteDataset(ds.id);
               setBusy(null);

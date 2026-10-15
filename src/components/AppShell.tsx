@@ -1,4 +1,5 @@
 "use client";
+import { attachTabScrollHints } from "@/lib/tabscroll-hints";
 import { getAllPending } from "@/lib/offline-queue";
 import { confirmDialog } from "@/components/dialogs";
 import { backdropClose } from "@/lib/backdrop";
@@ -97,6 +98,12 @@ export default function AppShell({
   activeTenantId: string;
 }) {
   const path = usePathname();
+  // ขอบจางของแถบแท็บที่เลื่อนได้ — สแกนใหม่ทุกครั้งที่เปลี่ยนหน้า (แถบบางอันโผล่หลังโหลดข้อมูล → สแกนซ้ำสั้น ๆ)
+  useEffect(() => {
+    let detach = attachTabScrollHints();
+    const id = window.setTimeout(() => { detach(); detach = attachTabScrollHints(); }, 600);
+    return () => { window.clearTimeout(id); detach(); };
+  }, [path]);
   // หน้ากรอกฟอร์ม = โหมดเต็มจอ (focus): ซ่อนแถบเมนูหลัก กันพลาดกดออกกลางการตรวจ
   // หน้ากรอกมีแถบบนของตัวเอง (ชื่อฟอร์ม · ขั้นที่ · ปุ่มปิด) — ดู fill/[formId]/FillFocusBar
   const focusMode = isFocusPath(path);
@@ -154,7 +161,7 @@ export default function AppShell({
       if (n > 0 && !(await confirmDialog({ message: tt("sync.signOutPending", { n }), confirmLabel: t("sync.signOutAnyway") }))) return;
       // ร่างที่บันทึกในเครื่อง (ตอนออฟไลน์) จะถูกลบเมื่อออกจากระบบ — เครื่องที่ใช้ร่วมกันจะได้ไม่เห็นงานของคนก่อน
       const d = me ? (await listLocalDrafts(me)).length : 0;
-      if (d > 0 && !(await confirmDialog({ message: tt("sync.signOutDrafts", { n: d }), confirmLabel: t("sync.signOutAnyway"), danger: true }))) return;
+      if (d > 0 && !(await confirmDialog({ title: t("dlg.signOutDrafts"), message: tt("sync.signOutDrafts", { n: d }), confirmLabel: t("sync.signOutAnyway"), danger: true }))) return;
     } catch { /* อ่านคิวไม่ได้ → ออกจากระบบตามปกติ */ }
     await sb.auth.signOut();
     // ฟอร์มที่ดาวน์โหลดไว้ + ร่างในเครื่องไม่ค้างหลังออกจากระบบ (คิวที่ยังไม่ส่งยังเก็บไว้ — ส่งเมื่อคนเดิมล็อกอินกลับมา)

@@ -17,7 +17,7 @@ export default function InviteBanner({ invites }: { invites: PendingInvite[] }) 
   const [hidden, setHidden] = useState<string[]>([]);
 
   async function run(inv: PendingInvite, accept: boolean) {
-    if (!accept && !(await confirmDialog({ message: tt("invite.declineConfirm", { name: inv.tenant_name }), danger: true, confirmLabel: t("invite.decline") }))) return;
+    if (!accept && !(await confirmDialog({ title: t("dlg.declineInvite"), message: tt("invite.declineConfirm", { name: inv.tenant_name }), danger: true, confirmLabel: t("invite.decline") }))) return;
     setBusy(inv.id + (accept ? ":a" : ":d"));
     setErr(null);
     const r = await (accept ? acceptInvite(inv.id) : declineInvite(inv.id)).catch(() => ({ error: t("wf.netError") }));

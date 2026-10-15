@@ -3,7 +3,7 @@
 // KROK · หน้าต่างยืนยัน/แจ้งเตือนของแอป — แทน window.confirm / alert ของ browser
 //
 // เรียกได้จากที่ไหนก็ได้ (ไม่ต้องใช้ hook):
-//   if (!(await confirmDialog({ message: "ลบ?", confirmLabel: "ลบ", danger: true }))) return;
+//   if (!(await confirmDialog({ title: "ลบฟอร์ม?", message: "…", confirmLabel: "ลบ", danger: true }))) return;
 //   await alertDialog("บันทึกไม่สำเร็จ");
 // <DialogHost /> วางครั้งเดียวที่ root layout (ภายใน LanguageProvider)
 //
@@ -17,12 +17,12 @@ import { useT } from "@/i18n/LanguageProvider";
 
 type ConfirmBase = { title?: string; message: string; cancelLabel?: string };
 /**
- * danger = ปุ่มยืนยันสีแดง (ลบ/ยกเลิก/ย้อนกลับไม่ได้) — ต้องระบุ confirmLabel เสมอ (บังคับที่ type)
+ * danger = ปุ่มยืนยันสีแดง (ลบ/ยกเลิก/ย้อนกลับไม่ได้) — ต้องระบุ title + confirmLabel เสมอ (บังคับที่ type · title ผูก aria-labelledby)
  * กันกรณีปุ่มแดงขึ้นคำว่า "ลบ" ทั้งที่การกระทำไม่ใช่การลบ (เช่น เก็บถาวร · ยกเลิกต่ออายุ)
  */
 export type ConfirmOptions = ConfirmBase & (
   | { danger?: false; confirmLabel?: string }
-  | { danger: true; confirmLabel: string }
+  | { danger: true; confirmLabel: string; title: string }
 );
 
 type Req =

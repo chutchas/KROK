@@ -40,7 +40,7 @@ export default function PushPanel({ ds, maxRows = MAX_DATASET_ROWS }: { ds: Data
   }
 
   async function revoke() {
-    if (!(await confirmDialog({ message: t("ds.push.revokeConfirm"), confirmLabel: t("ds.push.revoke"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.revokeKey"), message: t("ds.push.revokeConfirm"), confirmLabel: t("ds.push.revoke"), danger: true }))) return;
     setBusy("revoke");
     const res = await revokePushKey(ds.id);
     setBusy("");

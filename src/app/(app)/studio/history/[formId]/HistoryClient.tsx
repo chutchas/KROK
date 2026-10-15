@@ -53,7 +53,7 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
   }
 
   async function restore(v: number) {
-    if (!(await confirmDialog({ message: tt("ver.restoreConfirm", { v }) }))) return;
+    if (!(await confirmDialog({ title: t("dlg.restoreVer"), message: tt("ver.restoreConfirm", { v }), confirmLabel: t("ver.restoreBtn") }))) return;
     const r = await restoreFormVersion(formId, v);
     if ("error" in r) return err(r.error);
     setPreview(null);

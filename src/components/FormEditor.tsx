@@ -147,7 +147,7 @@ export default function FormEditor({
               title={t("editor.deleteStep")}
               onClick={async () => {
                 if (value.steps.length <= 1) { await alertDialog(t("editor.needOneStep")); return; }
-                if (!(await confirmDialog({ message: t("editor.deleteStepConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+                if (!(await confirmDialog({ title: t("dlg.delStep"), message: t("editor.deleteStepConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
                 setSteps(value.steps.filter((_, i) => i !== si));
               }}
             >
