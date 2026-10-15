@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { useInlineConfirmFocus } from "@/lib/use-inline-confirm-focus";
 import Link from "next/link";
 import { Trash2 } from "lucide-react";
 import Icon from "@/components/Icon";
@@ -17,6 +18,7 @@ export default function DeleteAccountCard({ email }: { email: string }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [confirm, setConfirm] = useState("");
+  const { panelRef, triggerRef } = useInlineConfirmFocus(!!plan);
 
   async function open() {
     setBusy(true); setErr(null);
@@ -44,7 +46,7 @@ export default function DeleteAccountCard({ email }: { email: string }) {
   if (!plan) {
     return (
       <div>
-        <Button variant="danger" onClick={open} loading={busy}><Icon icon={Trash2} className="h-4 w-4" /> {t("acct.delete")}</Button>
+        <Button ref={triggerRef} variant="danger" onClick={open} loading={busy}><Icon icon={Trash2} className="h-4 w-4" /> {t("acct.delete")}</Button>
         {err && <div style={{ marginTop: 8 }}><Notice kind="error">{err}</Notice></div>}
       </div>
     );
@@ -52,7 +54,7 @@ export default function DeleteAccountCard({ email }: { email: string }) {
 
   const blocked = plan.blockers.length > 0;
   return (
-    <div style={{ border: "1px solid var(--fail)", borderRadius: 10, padding: 12, display: "grid", gap: 10 }}>
+    <div ref={panelRef} tabIndex={-1} role="group" aria-label={t("acct.deleteTitle")} style={{ border: "1px solid var(--fail)", borderRadius: 10, padding: 12, display: "grid", gap: 10 }}>
       <b style={{ color: "var(--fail)" }}>{t("acct.deleteTitle")}</b>
       {blocked ? (
         <div style={{ fontSize: ".86rem", color: "var(--ink-2)" }}>

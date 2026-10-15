@@ -112,7 +112,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
       )}
 
       {/* แท็บ: แจ้งเตือน | Webhook ขาออก | API รับข้อมูลเข้า */}
-      <div role="tablist" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
+      <div role="tablist" aria-label={t("nav.integrations")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
         {([
           { k: "notify" as const, label: t("intg.tabNotify"), icon: Bell, locked: notifyLocked },
           { k: "webhooks" as const, label: t("intg.tabWebhooks"), icon: Webhook, locked: webhookLocked },

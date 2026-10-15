@@ -202,16 +202,16 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
             <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
           {/* ส่งออกได้เลยตามตัวกรอง (ไม่ต้องกดค้นหาก่อน) · ปิดเฉพาะเมื่อค้นแล้วไม่พบรายการ — บอกเหตุผลข้างปุ่ม */}
-          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow} aria-describedby={emptyNow ? "rep-export-why" : undefined}>
+          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow} aria-describedby={emptyNow ? "rep-nodata" : undefined}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
-          {emptyNow && <span id="rep-export-why" style={{ fontSize: ".82rem", color: "var(--ink-3)" }}>{t("rep.exportNone")}</span>}
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
             {formId === "all"
               ? t("rep.hintPickForm")
               : t("rep.hintOneForm")}
           </span>
-          {preview && (
+          {/* ไม่พบ = บอกที่เดียว (การ์ดผลด้านล่าง) ไม่ซ้ำสามจุด */}
+          {preview && preview.total > 0 && (
             <span role="status" aria-live="polite" style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
               {tt("rep.found", { n: preview.total.toLocaleString() })}
               {preview.total > preview.rows.length && tt("rep.showingFirst", { n: preview.rows.length })}
@@ -224,7 +224,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
       {/* ตาราง preview */}
       {preview && (
         preview.rows.length === 0 ? (
-          <Card><p style={{ color: "var(--ink-3)", margin: 0 }}>{t("rep.noData")}</p></Card>
+          <Card><p id="rep-nodata" role="status" style={{ color: "var(--ink-2)", margin: 0 }}>{t("rep.exportNone")}</p></Card>
         ) : (
           <Card>
             {/* มือถือ: การ์ดแถวละใบ (ตารางกว้างเกินจอ คอลัมน์ผลลัพธ์อยู่นอกจอ) · จอกว้าง: ตาราง */}
@@ -313,7 +313,7 @@ function Selectable({ label, children }: { label: string; children: React.ReactN
 }
 
 const selStyle: React.CSSProperties = {
-  width: "100%", padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".88rem",
+  width: "100%", minHeight: 44, padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".88rem",
   border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)",
 };
 const dateLabel: React.CSSProperties = { fontSize: ".78rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 3 };

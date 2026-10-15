@@ -325,7 +325,7 @@ function TeamsSection({
                   <Button
                     variant="danger"
                     onClick={async () => {
-                      if (!(await confirmDialog({ title: t("dlg.delTeam"), message: t("team.deleteTeamConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+                      if (!(await confirmDialog({ title: t("dlg.delTeam"), message: t("team.deleteTeamConfirm"), confirmLabel: t("dlg.btn.delTeam"), danger: true }))) return;
                       const res = await deleteTeam(team.id);
                       if ("error" in res) await alertDialog(res.error);
                       else router.refresh();

@@ -89,7 +89,7 @@ export async function inviteMember(email: string, roleKey: string, teamIds: stri
   const { data: roleDef } = await supabase
     .from("tenant_roles").select("key, can_manage").eq("tenant_id", session.tenantId).eq("key", roleKey).maybeSingle();
   if (!roleDef) return { error: await sm("ไม่พบ role นี้") };
-  if (roleKey === "owner" && session.role !== "owner") return { error: await sm("เฉพาะ owner เชิญ owner ได้") };
+  if (roleKey === "owner" && session.role !== "owner") return { error: await sm("เฉพาะเจ้าของเชิญเจ้าของได้") };
 
   // enum role (ชั้นความปลอดภัย/RLS) จาก can_manage
   const role: Role = roleKey === "owner" ? "owner" : roleDef.can_manage ? "admin" : "operator";
@@ -167,7 +167,7 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
   if (!roleDef) return { error: await sm("ไม่พบ role นี้") };
 
   const isOwnerRole = roleKey === "owner";
-  if (isOwnerRole && session.role !== "owner") return { error: await sm("เฉพาะ owner ตั้ง owner ได้") };
+  if (isOwnerRole && session.role !== "owner") return { error: await sm("เฉพาะเจ้าของตั้งเจ้าของได้") };
 
   // กัน owner คนสุดท้ายหลุด
   if (!isOwnerRole) {
@@ -177,7 +177,7 @@ export async function changeRoleKey(userId: string, roleKey: string, confirmPlan
       const { count } = await supabase
         .from("memberships").select("id", { count: "exact", head: true })
         .eq("tenant_id", session.tenantId).eq("role", "owner");
-      if ((count ?? 0) <= 1) return { error: await sm("ต้องมี owner อย่างน้อย 1 คน") };
+      if ((count ?? 0) <= 1) return { error: await sm("ต้องมีเจ้าของอย่างน้อย 1 คน") };
     }
   }
 
@@ -205,7 +205,7 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
   if (!a.ok) return { error: a.error };
   const { session } = a;
   if (!ROLES.includes(role)) return { error: await sm("role ไม่ถูกต้อง") };
-  if (role === "owner" && session.role !== "owner") return { error: await sm("เฉพาะ owner ตั้ง owner ได้") };
+  if (role === "owner" && session.role !== "owner") return { error: await sm("เฉพาะเจ้าของตั้งเจ้าของได้") };
 
   const supabase = await createClient();
   // กันเปลี่ยน owner คนสุดท้ายให้กลายเป็น role อื่น
@@ -216,7 +216,7 @@ export async function changeRole(userId: string, role: Role): Promise<{ ok: true
       const { count } = await supabase
         .from("memberships").select("id", { count: "exact", head: true })
         .eq("tenant_id", session.tenantId).eq("role", "owner");
-      if ((count ?? 0) <= 1) return { error: await sm("ต้องมี owner อย่างน้อย 1 คน") };
+      if ((count ?? 0) <= 1) return { error: await sm("ต้องมีเจ้าของอย่างน้อย 1 คน") };
     }
   }
 
@@ -241,7 +241,7 @@ export async function removeMember(userId: string, confirmPlan = false): Promise
   const { data: target } = await supabase
     .from("memberships").select("role").eq("tenant_id", session.tenantId).eq("user_id", userId).maybeSingle();
   if (target?.role === "owner" && session.role !== "owner")
-    return { error: await sm("เฉพาะ owner ลบ owner ได้") };
+    return { error: await sm("เฉพาะเจ้าของลบเจ้าของได้") };
   if (target?.role === "owner" && !confirmPlan) {
     const shift = await planShift(session.tenantId, userId);
     if (shift) return { needConfirm: shift };

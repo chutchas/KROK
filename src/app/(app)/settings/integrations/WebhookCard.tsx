@@ -119,7 +119,7 @@ export default function WebhookCard({ w, forms, onMsg, locked = false }: {
         </Button>}
         <Button onClick={loadHistory} aria-expanded={histOpen}><Icon icon={History} className="h-4 w-4" /> {t("intg.history")}</Button>
         <Button variant="danger" disabled={!!busy} onClick={async () => {
-          if (!(await confirmDialog({ title: t("dlg.delWebhook"), message: t("intg.deleteConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+          if (!(await confirmDialog({ title: t("dlg.delWebhook"), message: t("intg.deleteConfirm"), confirmLabel: t("dlg.btn.delWebhook"), danger: true }))) return;
           const r = await run("delete", () => deleteWebhook(w.id));
           if ("error" in r) onMsg({ t: r.error, err: true });
           router.refresh();

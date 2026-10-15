@@ -245,7 +245,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
       ],
     },
     where: { href: "/settings/team", label: { th: "ไปหน้าทีม", en: "Go to Team" } },
-    keywords: "เชิญ invite สมาชิก member ทีม team บทบาท role สิทธิ์ permission เมนู admin owner ผู้ดูแล แอดมิน เจ้าของ",
+    keywords: "เชิญ invite สมาชิก member ทีม team บทบาท role สิทธิ์ permission เมนู admin owner เจ้าของผู้ดูแล แอดมิน เจ้าของ",
   },
   {
     id: "approval",
@@ -326,7 +326,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
   },
   {
     id: "datasets",
-    title: { th: "ใช้รายชื่อขององค์กรเป็นตัวเลือกในฟอร์ม (ชุดข้อมูล)", en: "Use your own lists as form choices (datasets)" },
+    title: { th: "ใช้รายชื่อของคุณเป็นตัวเลือกในฟอร์ม (ชุดข้อมูล)", en: "Use your own lists as form choices (datasets)" },
     summary: { th: "เช่น รายชื่อลูกค้า สาขา รหัสสินค้า ทะเบียนรถ — แก้ที่เดียว ทุกฟอร์มได้ค่าใหม่", en: "E.g. customers, branches, product codes, plates — update once, every form follows." },
     steps: {
       th: [
