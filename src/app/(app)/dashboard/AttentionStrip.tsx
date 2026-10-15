@@ -38,7 +38,7 @@ export default function AttentionStrip({ data }: { data: Promise<AttentionData> 
 
   return (
     <section aria-labelledby="dash-attn-h" data-tour="dash-attention" style={{ marginBottom: 6 }}>
-      <h2 id="dash-attn-h" style={{ fontSize: "1.1rem", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 8 }}>
+      <h2 id="dash-attn-h" style={{ fontSize: "var(--fs-h2)", margin: "0 0 10px", display: "flex", alignItems: "center", gap: 8 }}>
         {t("dash.attnTitle")}
         {allClear && (
           <span style={{ display: "inline-flex", alignItems: "center", gap: 4, color: "var(--pass)", fontSize: ".82rem", fontWeight: 500 }}>

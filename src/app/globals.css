@@ -202,6 +202,13 @@ body {
 .krok-paper ::placeholder {
   color: #64748b;
 }
+:root { --fs-h1: 1.4rem; --fs-h1-compact: 1.25rem; --fs-h2: 1.1rem; --fs-h3: 1rem; }
+/* ขนาดหัวข้อของแอป: h1 หน้า 1.4 · h1 หัวแบบ compact (editor/หน้ากรอก) 1.25 · h2 1.1 · h3 1
+   :where = specificity 0 → class/inline ทับได้ · กระดาษ A4/print และแลนดิ้งคงขนาดเดิม */
+:where(h1) { font-size: var(--fs-h1); }
+:where(h2) { font-size: var(--fs-h2); }
+:where(h3) { font-size: var(--fs-h3); }
+:where([data-paper], .krok-paper, .lp) :where(h1, h2, h3) { font-size: revert; }
 h1, h2, h3, h4 {
   font-family: var(--font-anuphan);
   line-height: 1.3;

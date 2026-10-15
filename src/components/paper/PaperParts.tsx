@@ -253,6 +253,7 @@ export function PaperSignature({ url, onOpen, disabled = false }: { url?: string
       data-print-keep=""
       disabled={disabled}
       onClick={onOpen}
+      aria-label={url ? t("fw.paper.sigAlt") : t("fw.paper.tapToSign")}
       style={{ width: "100%", height: CONTROL_H, boxSizing: "border-box", display: "flex", alignItems: "center", justifyContent: url ? "flex-start" : "center", gap: 5, border: "none", borderBottom: `1px solid ${INK}`, background: "#fff", color: MUTED, fontFamily: "inherit", fontSize: FONT, cursor: disabled ? "default" : "pointer", padding: 0 }}
     >
       {url ? (

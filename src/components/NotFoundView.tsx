@@ -17,7 +17,7 @@ export default function NotFoundView({ bare = false }: { bare?: boolean }) {
       <span aria-hidden style={{ width: 56, height: 56, borderRadius: 16, background: "var(--accent-soft)", color: "var(--accent-text)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
         <Icon icon={FileQuestion} className="h-7 w-7" />
       </span>
-      <h1 style={{ fontSize: "1.35rem", margin: 0 }}>{t("nf.title")}</h1>
+      <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>{t("nf.title")}</h1>
       <p style={{ color: "var(--ink-2)", margin: 0, lineHeight: 1.6 }}>{t("nf.body")}</p>
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 6 }}>
         <a href="/forms" style={{ ...btn, background: "var(--accent)", color: "var(--accent-ink)" }}><Icon icon={ClipboardList} className="h-4 w-4" /> {t("nf.toForms")}</a>

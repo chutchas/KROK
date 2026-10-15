@@ -103,7 +103,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("intg.title")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("intg.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("intg.subtitle")}</p>
       </div>
 
@@ -178,7 +178,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
       {tab === "webhooks" && overWebhook && plan && <Notice kind="error">{tt("intg.overWebhook", { used: webhookUsed, max: plan.maxWebhooks })}</Notice>}
       {tab === "webhooks" && !webhookLocked && (<>
       {!webhookFull && <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intg.addTitle")}</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 4 }}>{t("intg.addTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("intg.addSub")}</p>
         <WebhookForm forms={forms} busy={busy} submitLabel={t("intg.add")} onSubmit={async (d) => {
           setBusy(true);
@@ -195,7 +195,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
       {webhookFull && msg && <Notice kind={msg.err ? "error" : "info"}>{msg.t}</Notice>}
 
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{t("intg.listTitle")} ({webhooks.length})</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 8 }}>{t("intg.listTitle")} ({webhooks.length})</h2>
         {webhooks.length === 0 && <p style={{ color: "var(--ink-3)", fontSize: ".85rem" }}>{t("intg.empty")}</p>}
         <div style={{ display: "grid", gap: 10 }}>
           {webhooks.map((w) => <WebhookCard key={w.id} w={w} forms={forms} onMsg={setMsg} />)}
@@ -203,7 +203,7 @@ export default function IntegrationsClient({ webhooks, forms, notify, intake, te
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: "1rem", marginBottom: 6 }}>{t("intg.payloadTitle")}</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 6 }}>{t("intg.payloadTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("intg.payloadSub")}</p>
         <Payload />
       </Card>
@@ -248,7 +248,7 @@ function FeatureLock({ icon, title, bullets, current, unlock, children }: {
           <Icon icon={icon} className="h-5 w-5" />
         </span>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <h2 style={{ fontSize: "1.1rem", margin: "0 0 2px", display: "flex", alignItems: "center", gap: 6 }}>{title} <Icon icon={Lock} className="h-4 w-4" /></h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 2px", display: "flex", alignItems: "center", gap: 6 }}>{title} <Icon icon={Lock} className="h-4 w-4" /></h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: 0 }}>
             {unlock ? tt("intg.lk.from", { plan: unlock }) : t("intg.lk.upgrade")} · {tt("intg.lk.current", { plan: current })}
           </p>
@@ -275,7 +275,7 @@ function Legacy({ title, action, children }: { title: string; action?: React.Rea
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <h2 style={{ fontSize: "1rem", margin: 0, flex: 1, minWidth: 200 }}>{title}</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: 0, flex: 1, minWidth: 200 }}>{title}</h2>
         {action}
       </div>
       <p style={{ color: "var(--fail)", fontSize: ".84rem", margin: "6px 0 10px", lineHeight: 1.6, display: "flex", gap: 6, alignItems: "flex-start" }}>

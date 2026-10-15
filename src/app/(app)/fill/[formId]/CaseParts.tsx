@@ -354,7 +354,7 @@ function Modal({ title, onClose, children, busy = false, keepOnBackdrop = false 
       <div ref={boxRef} onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 440, background: "var(--surface)", color: "var(--ink)", borderRadius: 12, padding: 18, boxShadow: "var(--shadow)", paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}>
         <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
-          <h3 id={titleId} style={{ margin: 0, fontSize: "1.02rem" }}>{title}</h3>
+          <h3 id={titleId} style={{ margin: 0, fontSize: "var(--fs-h3)" }}>{title}</h3>
           <button type="button" onClick={onClose} disabled={busy} aria-label={t("common.close")}
             style={{ marginLeft: "auto", border: "none", background: "none", color: "var(--ink-3)", cursor: "pointer", display: "inline-flex", minWidth: 40, minHeight: 40, alignItems: "center", justifyContent: "center" }}>
             <Icon icon={X} className="h-5 w-5" />

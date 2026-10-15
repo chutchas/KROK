@@ -54,7 +54,7 @@ function Trend({ rows }: { rows: MonthSummary[] }) {
 function CostTable({ title, rows, keyLabel, nameOf, usdThb }: { title: string; rows: CostBucket[]; keyLabel: string; nameOf: (b: CostBucket) => string; usdThb: number }) {
   return (
     <Card>
-      <h2 style={{ fontSize: "1rem", margin: "0 0 6px" }}>{title}</h2>
+      <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 6px" }}>{title}</h2>
       {rows.length === 0 ? (
         <div style={{ color: "var(--ink-3)", fontSize: ".86rem" }}>ยังไม่มีการใช้งานในเดือนนี้</div>
       ) : (
@@ -151,7 +151,7 @@ export default function FinanceClient({ report }: { report: FinanceReport }) {
     <div style={{ display: "grid", gap: 14, gridTemplateColumns: "minmax(0, 1fr)" }}>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>ยอดขายและต้นทุน</h1>
+          <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>ยอดขายและต้นทุน</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 0" }}>
             รายได้จากใบแจ้งหนี้ที่ชำระแล้ว · ต้นทุน AI จาก token ที่ใช้จริง × ราคาที่ตั้งด้านล่าง (บาท อัตรา {r.settings.usdThb} บาท/USD)
           </p>
@@ -178,7 +178,7 @@ export default function FinanceClient({ report }: { report: FinanceReport }) {
 
       <Card>
         <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-          <h2 style={{ fontSize: "1rem", margin: 0, flex: 1 }}>6 เดือนล่าสุด</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: 0, flex: 1 }}>6 เดือนล่าสุด</h2>
           <span style={{ fontSize: ".75rem", color: "var(--ink-3)", display: "flex", gap: 10 }}>
             <span><span style={{ color: "var(--pass)" }}>■</span> รายได้</span>
             <span><span style={{ color: "var(--fail)" }}>■</span> ต้นทุน AI</span>
@@ -212,7 +212,7 @@ export default function FinanceClient({ report }: { report: FinanceReport }) {
 
       <div style={{ display: "grid", gap: 14, gridTemplateColumns: "repeat(auto-fit, minmax(min(300px, 100%), 1fr))" }}>
         <Card>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 6px" }}>สมาชิกที่จ่ายอยู่ (ตอนนี้)</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 6px" }}>สมาชิกที่จ่ายอยู่ (ตอนนี้)</h2>
           {r.subs.byPlan.length === 0 ? <div style={{ color: "var(--ink-3)", fontSize: ".86rem" }}>ยังไม่มีบัญชีแบบเสียเงิน</div> : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr><th style={th}>แพ็กเกจ</th><th style={numTh}>บัญชี</th><th style={numTh}>MRR</th></tr></thead>
@@ -222,7 +222,7 @@ export default function FinanceClient({ report }: { report: FinanceReport }) {
           <p style={{ fontSize: ".75rem", color: "var(--ink-3)", margin: "6px 0 0" }}>นับบัญชีที่ยังไม่หมดอายุ (รวมช่วงผ่อนผัน 3 วัน) · ใช้ราคาที่ล็อกไว้ตอนสมัคร ถ้าไม่มีใช้ราคาแพ็กเกจปัจจุบัน</p>
         </Card>
         <Card>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 6px" }}>รายได้เดือนนี้ตามแพ็กเกจ</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 6px" }}>รายได้เดือนนี้ตามแพ็กเกจ</h2>
           {r.revenueByPlan.length === 0 ? <div style={{ color: "var(--ink-3)", fontSize: ".86rem" }}>ยังไม่มีใบแจ้งหนี้ที่ชำระในเดือนนี้</div> : (
             <table style={{ width: "100%", borderCollapse: "collapse" }}>
               <thead><tr><th style={th}>แพ็กเกจ</th><th style={numTh}>ใบ</th><th style={numTh}>ยอด</th></tr></thead>
@@ -237,7 +237,7 @@ export default function FinanceClient({ report }: { report: FinanceReport }) {
       <CostTable title="Workspace ที่ใช้ AI มากที่สุด" rows={r.topTenants} keyLabel="Workspace" nameOf={(b) => (b as CostBucket & { name: string }).name} usdThb={r.settings.usdThb} />
 
       <Card>
-        <h2 style={{ fontSize: "1rem", margin: "0 0 10px" }}>ตั้งค่าการคำนวณต้นทุน</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 10px" }}>ตั้งค่าการคำนวณต้นทุน</h2>
         <div style={{ display: "grid", gap: 10, gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", alignItems: "end" }}>
           <label style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>อัตราแลกเปลี่ยน (บาท ต่อ 1 USD)
             <input inputMode="decimal" value={fx} onChange={(e) => setFx(e.target.value)} style={{ ...inputStyle, marginTop: 4 }} />

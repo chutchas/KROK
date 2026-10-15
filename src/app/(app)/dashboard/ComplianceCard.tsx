@@ -58,7 +58,7 @@ export default function ComplianceCard() {
   return (
     <Card style={{ marginBottom: 18 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", justifyContent: "space-between" }}>
-        <h2 style={{ fontSize: "1.1rem", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: 0, display: "flex", alignItems: "center", gap: 8 }}>
           <Icon icon={CalendarCheck2} className="h-5 w-5" /> {t("comp.title")}
         </h2>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>

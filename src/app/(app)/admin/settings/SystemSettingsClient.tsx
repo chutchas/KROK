@@ -38,7 +38,7 @@ export default function SystemSettingsClient({
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ตั้งค่าระบบ</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>ตั้งค่าระบบ</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           ตั้งค่าระดับแพลตฟอร์ม — เฉพาะ Platform Admin / Developer มีผลกับทุก workspace
         </p>

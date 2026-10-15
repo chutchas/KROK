@@ -88,7 +88,7 @@ export default function BrandLibrary({ assets, error, canDelete }: { assets: Bra
 
   return (
     <Card>
-      <h2 style={{ fontSize: "1.05rem", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
+      <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 2, display: "inline-flex", alignItems: "center", gap: 8 }}>
         <Icon icon={Images} className="h-5 w-5" /> {t("brand.lib.title")}
       </h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("brand.lib.sub")}</p>

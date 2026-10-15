@@ -51,7 +51,7 @@ export default function AppError({ error, reset }: { error: Error & { digest?: s
         >
           ⚠️
         </div>
-        <h2 style={{ margin: "0 0 6px", fontSize: "1.1rem", fontFamily: "var(--font-anuphan)" }}>
+        <h2 style={{ margin: "0 0 6px", fontSize: "var(--fs-h2)", fontFamily: "var(--font-anuphan)" }}>
           {t("err.title")}
         </h2>
         <p style={{ margin: "0 0 20px", color: "var(--ink-2)", fontSize: ".9rem", lineHeight: 1.6 }}>

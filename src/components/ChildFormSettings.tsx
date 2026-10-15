@@ -109,7 +109,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
   }
 
   const sel: React.CSSProperties = { width: "100%", padding: "7px 9px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".86rem" };
-  const h: React.CSSProperties = { fontSize: ".92rem", margin: "16px 0 6px" };
+  const h: React.CSSProperties = { fontSize: "var(--fs-h3)", margin: "16px 0 6px" };
   const row: React.CSSProperties = { display: "grid", gridTemplateColumns: "minmax(0,1fr) minmax(0,1.2fr)", gap: 8, alignItems: "center", fontSize: ".84rem" };
   const chk: React.CSSProperties = { display: "flex", gap: 8, alignItems: "flex-start", fontSize: ".84rem", marginTop: 6 };
 
@@ -119,7 +119,7 @@ function ChildFormDialog({ schema, stepIndex, field, onClose, onSave }: {
         style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 80, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
         <div ref={boxRef} style={{ background: "var(--surface)", borderRadius: 14, maxWidth: 620, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 20 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <h2 style={{ fontSize: "1.1rem", margin: 0, flex: 1 }}>{t("child.cfgTitle")}</h2>
+            <h2 style={{ fontSize: "var(--fs-h2)", margin: 0, flex: 1 }}>{t("child.cfgTitle")}</h2>
             <button type="button" onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex" }}><Icon icon={X} className="h-5 w-5" /></button>
           </div>
           {err && <p role="alert" style={{ color: "var(--fail)", fontSize: ".84rem" }}>{err}</p>}

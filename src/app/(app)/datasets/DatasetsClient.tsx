@@ -77,8 +77,8 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
       )}
 
       {items.length === 0 && !creating ? (
-        <Card><EmptyState icon={<Icon icon={Database} className="h-7 w-7" />} title={t("ds.emptyTitle")} hint={t("ds.emptyHint")}
-          action={missingTable ? undefined : { label: t("ds.create"), onClick: () => setCreating(true) }} /></Card>
+        <Card><EmptyState icon={<Icon icon={Database} className="h-7 w-7" />} title={t("ds.emptyTitle")} hint={t("ds.emptyHint")} /></Card>
+        // ปุ่มสร้างอยู่หัวหน้าแล้ว (จุดเดียว — ทัวร์ชี้ปุ่มนั้น) ไม่ซ้ำใน empty state · hint บอกตำแหน่งแทน
       ) : (
         <div style={{ display: "grid", gap: 8 }}>
           {items.map((d) => (

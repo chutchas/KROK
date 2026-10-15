@@ -59,7 +59,7 @@ export default function AdminAiClient({
     <div style={{ display: "grid", gap: 16 }}>
       {!embedded && (
         <div>
-          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>ตั้งค่า AI (ระดับแพลตฟอร์ม)</h1>
+          <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>ตั้งค่า AI (ระดับแพลตฟอร์ม)</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
             คีย์ชุดนี้ใช้ร่วมกันทุก workspace — ตั้งค่าได้เฉพาะ Platform Admin / Developer เปลี่ยนแล้วมีผลทันที
           </p>
@@ -177,7 +177,7 @@ function PurposeForm({ purpose, current }: { purpose: AiPurpose; current: AiSett
   return (
     <Card>
       <div style={{ marginBottom: 14 }}>
-        <h2 style={{ fontSize: "1rem", margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: 0, display: "flex", alignItems: "center", gap: 7 }}>
           {PURPOSE_LABELS[purpose]}
           {needsVision ? (
             <span style={{ fontSize: ".72rem", fontWeight: 600, color: "var(--ink-2)", background: "var(--accent-soft)", padding: "2px 8px", borderRadius: 999, display: "inline-flex", alignItems: "center", gap: 4 }}>

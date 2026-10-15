@@ -155,7 +155,7 @@ export default function TeamClient({
 
       {invites.length > 0 && (
         <Card>
-          <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{t("team.pending")}</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 8 }}>{t("team.pending")}</h2>
           <div style={{ display: "grid", gap: 8 }}>
             {invites.map((inv) => (
               <div key={inv.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 0", borderBottom: "1px solid var(--line)", flexWrap: "wrap" }}>
@@ -177,7 +177,7 @@ export default function TeamClient({
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 8 }}>{tt("team.members", { n: members.length })}</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 8 }}>{tt("team.members", { n: members.length })}</h2>
         <div style={{ display: "grid", gap: 4 }}>
           {members.map((m) => {
             const isMe = m.user_id === me;
@@ -293,7 +293,7 @@ function TeamsSection({
 
   return (
     <Card>
-      <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("team.teamsTitle")}</h2>
+      <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 4 }}>{t("team.teamsTitle")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("team.teamsSub")}</p>
 
       <form onSubmit={add} style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>

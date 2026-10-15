@@ -77,7 +77,7 @@ export default function NotifyPanel({ initial }: { initial: NotifySettings }) {
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap", marginBottom: 4 }}>
-        <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("notify.title")}</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: 0 }}>{t("notify.title")}</h2>
         <HelpTip id="notify" />
       </div>
       <p style={{ color: "var(--ink-2)", fontSize: ".88rem", marginTop: 0 }}>{t("notify.subtitle")}</p>

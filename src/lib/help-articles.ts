@@ -43,7 +43,7 @@ export const HELP_ARTICLES: HelpArticle[] = [
     notes: {
       th: [
         "ร่างยังไม่ไปถึงคนหน้างาน (ทั้งออนไลน์และออฟไลน์) จนกว่าจะเผยแพร่",
-        "แก้ฟอร์มที่เผยแพร่แล้ว = ได้เวอร์ชันใหม่ ใบที่ส่งไปแล้วยังผูกกับเวอร์ชันเดิม ดูย้อนหลัง/กู้คืนได้ที่ \"ประวัติเวอร์ชัน\"",
+        "แก้ฟอร์มที่เผยแพร่แล้ว = ได้เวอร์ชันใหม่ ใบที่ส่งไปแล้วยังผูกกับเวอร์ชันเดิม ดูย้อนหลัง/กู้คืนได้ที่ ⋯ → \"ประวัติเวอร์ชัน\"",
         "จากไฟล์: อ่าน PDF ได้สูงสุด 6 หน้าแรก",
       ],
       en: [
@@ -168,12 +168,12 @@ export const HELP_ARTICLES: HelpArticle[] = [
       th: [
         "แท็บ A4 มีเฉพาะฟอร์มที่จัดหน้ากระดาษไว้ · ทำ PDF ไม่สำเร็จ ใช้ \"เปิดหน้าพิมพ์ A4\" แล้วเลือก \"บันทึกเป็น PDF\" ของเบราว์เซอร์",
         "พิมพ์ฟอร์มเปล่า: หน้าสร้างฟอร์ม → มุมมอง \"กระดาษ\" → \"พิมพ์\"",
-        "QR ของฟอร์ม: หน้าฟอร์มทั้งหมด → ปุ่ม QR → \"ดาวน์โหลด\" (รูป PNG ไปพิมพ์ติดหน้างาน)",
+        "QR ของฟอร์ม: หน้าฟอร์มทั้งหมด → ปุ่ม ⋯ ของฟอร์ม → \"QR Code ฟอร์ม\" → \"ดาวน์โหลด\" (รูป PNG ไปพิมพ์ติดหน้างาน)",
       ],
       en: [
         "The A4 tab exists only for forms with a paper layout · if the PDF fails, use \"Open A4 print page\" and the browser's \"Save as PDF\"",
         "Blank form: Create form → \"Paper\" view → \"Print\"",
-        "Form QR: All forms → QR button → \"Download\" (PNG to print and post on site)",
+        "Form QR: All forms → the form's ⋯ button → \"Form QR code\" → \"Download\" (PNG to print and post on site)",
       ],
     },
     keywords: "พิมพ์ print pdf ดาวน์โหลด download a4 สรุป summary รูป photos zip qr",

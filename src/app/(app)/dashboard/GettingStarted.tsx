@@ -47,7 +47,7 @@ export default function GettingStarted({ hasForms, firstSubId, canCreate }: { ha
   return (
     <section data-tour="dash-start-new" aria-labelledby="onb-h" style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 14, padding: 16, marginBottom: 16 }}>
       <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
-        <h2 id="onb-h" style={{ fontSize: "1.1rem", margin: "0 0 2px" }}>{t("onb.title")}</h2>
+        <h2 id="onb-h" style={{ fontSize: "var(--fs-h2)", margin: "0 0 2px" }}>{t("onb.title")}</h2>
         <button type="button" onClick={dismiss} aria-label={t("onb.dismiss")} title={t("onb.dismiss")}
           style={{ flex: "0 0 auto", width: 44, height: 44, margin: "-10px -10px 0 0", display: "inline-flex", alignItems: "center", justifyContent: "center", border: "none", borderRadius: 10, background: "transparent", color: "var(--ink-3)", cursor: "pointer" }}>
           <Icon icon={X} className="h-[18px] w-[18px]" />

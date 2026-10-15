@@ -626,7 +626,7 @@ function Shell({ title, onClose, children }: { title: string; onClose: () => voi
   return (
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface)", padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-        <h2 style={{ fontFamily: "var(--font-anuphan)", fontSize: "1rem", margin: 0 }}>{title}</h2>
+        <h2 style={{ fontFamily: "var(--font-anuphan)", fontSize: "var(--fs-h2)", margin: 0 }}>{title}</h2>
         <button onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "-8px -8px -8px 0" }}><Icon icon={X} className="h-5 w-5" /></button>
       </div>
       {children}

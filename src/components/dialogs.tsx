@@ -91,7 +91,7 @@ function DialogView({ req }: { req: Req }) {
       style={{ position: "fixed", inset: 0, zIndex: 200, background: "rgba(6,10,14,.45)", display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <div ref={boxRef} onClick={(e) => e.stopPropagation()}
         style={{ width: "100%", maxWidth: 420, background: "var(--surface)", color: "var(--ink)", borderRadius: 12, padding: 18, boxShadow: "var(--shadow)", paddingBottom: "max(18px, env(safe-area-inset-bottom))" }}>
-        {opts.title && <h3 id={titleId} style={{ margin: "0 0 8px", fontSize: "1.02rem" }}>{opts.title}</h3>}
+        {opts.title && <h3 id={titleId} style={{ margin: "0 0 8px", fontSize: "var(--fs-h3)" }}>{opts.title}</h3>}
         <p id={`${titleId}-m`} style={{ margin: 0, fontSize: ".92rem", color: "var(--ink-2)", whiteSpace: "pre-wrap", lineHeight: 1.55 }}>{opts.message}</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", marginTop: 16, flexWrap: "wrap" }}>
           {!isAlert && <Button ref={cancelRef} onClick={() => settle(req.id, false)}>{opts.cancelLabel || t("common.cancel")}</Button>}

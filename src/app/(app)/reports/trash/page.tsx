@@ -34,7 +34,7 @@ export default async function TrashPage({ searchParams }: { searchParams: Promis
     <div style={{ display: "grid", gap: 14 }}>
       <a href="/reports" style={{ fontSize: ".9rem", display: "inline-flex", alignItems: "center", gap: 4 }}><Icon icon={ArrowLeft} className="h-4 w-4" /> <T k="report.title" /></a>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}><T k="trash.title" /></h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}><T k="trash.title" /></h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}><T k="trash.sub" /></p>
       </div>
       {sp.deleted === "1" && <div role="status"><Notice kind="info"><T k="trash.deletedOk" /></Notice></div>}

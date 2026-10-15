@@ -168,7 +168,7 @@ export default function DevicesClient({
 
       {pending.length > 0 && (
         <Card>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 10px", display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Icon icon={Clock} className="h-4 w-4" /> {tt("dev.pendingCount", { n: pending.length })}
           </h2>
           <div style={{ display: "grid", gap: 8 }}>{pending.map(row)}</div>
@@ -176,7 +176,7 @@ export default function DevicesClient({
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1rem", margin: "0 0 10px" }}>{tt("dev.allCount", { n: others.length })}</h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 10px" }}>{tt("dev.allCount", { n: others.length })}</h2>
         {others.length === 0 ? (
           <EmptyState
             icon={<Icon icon={TabletSmartphone} className="h-8 w-8" strokeWidth={1.5} />}
@@ -218,7 +218,7 @@ function MatrixCard({
   if (forms.length === 0)
     return (
       <Card>
-        <h2 style={{ fontSize: "1rem", margin: "0 0 6px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 6px", display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Icon icon={Grid3x3} className="h-4 w-4" /> {t("dev.matrixTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: 0 }}>
@@ -263,7 +263,7 @@ function MatrixCard({
 
   return (
     <Card>
-      <h2 style={{ fontSize: "1rem", margin: "0 0 4px", display: "inline-flex", alignItems: "center", gap: 6 }}>
+      <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 4px", display: "inline-flex", alignItems: "center", gap: 6 }}>
         <Icon icon={Grid3x3} className="h-4 w-4" /> {t("dev.matrixTitle")}
       </h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>

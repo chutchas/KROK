@@ -26,7 +26,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import {
   WIDGET_FORMATS, METRICS_BY_FORMAT, RANGES_BY_FORMAT,
-  formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS,
+  formatLabel, formatHint, metricLabel, rangeLabel, metricUnit, DEFAULT_DASH_SECTIONS, PERIOD_RANGES, isPeriodStat,
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
@@ -301,7 +301,7 @@ export default function DashboardClient({
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
                   {shown.map((w, i) => (
                     <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={editing} onDragStart={() => editing && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => editing && onDrop(w.id)}>
-                      <WidgetCard w={w} formName={formName} areaName={areaName} en={en} t={t} editing={editing}
+                      <WidgetCard scope={tab} w={w} formName={formName} areaName={areaName} en={en} t={t} editing={editing}
                         onEdit={editing ? () => setBuilder(w) : undefined} onRemove={editing ? () => void removeWidget(w.id) : undefined}
                         onUp={editing && i > 0 ? () => move(w.id, -1) : undefined}
                         onDown={editing && i < shown.length - 1 ? () => move(w.id, 1) : undefined} />
@@ -316,7 +316,7 @@ export default function DashboardClient({
         // โควตาแพ็กเกจของ workspace (ตายตัว 3 การ์ด) — ไว้ล่างสุด เห็นเฉพาะ เจ้าของ/แอดมิน
         return isWsAdmin ? (
           <section key={key} aria-labelledby="dash-usage-h" style={{ marginTop: 18 }}>
-            <h2 id="dash-usage-h" style={{ fontSize: "1.1rem", margin: "0 0 10px" }}>{t("dash.usageTitle")}</h2>
+            <h2 id="dash-usage-h" style={{ fontSize: "var(--fs-h2)", margin: "0 0 10px" }}>{t("dash.usageTitle")}</h2>
             <div data-tour="dash-summary" style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }} className="krok-sumcards">
               <SummaryCard icon={FileText} label={t("dash.sumForms")} used={summary.forms.used} max={summary.forms.max} />
               <SummaryCard icon={Users} label={t("dash.sumMembers")} used={summary.members.used} max={summary.members.max} />
@@ -353,7 +353,7 @@ export default function DashboardClient({
 
       {/* รายการล่าสุด (คงเดิม) */}
       <Card>
-        <h2 data-tour="dash-latest" style={{ fontSize: "1.1rem", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
+        <h2 data-tour="dash-latest" style={{ fontSize: "var(--fs-h2)", marginBottom: 4, display: "flex", alignItems: "center", gap: 8 }}>
           <span aria-hidden style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: "var(--pass)" }} />
           {t("dash.latest")}
         </h2>
@@ -439,13 +439,37 @@ function SummaryCard({ icon, label, used, max, sub }: { icon: typeof FileText; l
 
 // ---------- การ์ด widget ----------
 type TFn = (k: never) => string;
-function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemove, onUp, onDown, t }: {
+// ช่วงที่ผู้ดูเลือกบนการ์ดตัวเลข (7/14/30 วัน) — จำต่อคนต่อเครื่อง · ผูกกับช่วงตั้งต้นของการ์ด (แก้การ์ดแล้วกลับไปใช้ค่าตั้งต้น)
+const periodKey = (scope: string, id: string) => `krok-dash-period:${scope}:${id}`;
+function readPeriod(scope: string, w: DashWidget): WidgetRange | null {
+  try {
+    const v = JSON.parse(localStorage.getItem(periodKey(scope, w.id)) || "null") as { base?: string; r?: string } | null;
+    return v && v.base === w.range && PERIOD_RANGES.includes(v.r as WidgetRange) ? (v.r as WidgetRange) : null;
+  } catch { return null; }
+}
+function writePeriod(scope: string, w: DashWidget, r: WidgetRange) {
+  try {
+    if (r === w.range) localStorage.removeItem(periodKey(scope, w.id));
+    else localStorage.setItem(periodKey(scope, w.id), JSON.stringify({ base: w.range, r }));
+  } catch { /* โหมดส่วนตัว ฯลฯ — ใช้ได้เฉพาะรอบนี้ */ }
+}
+
+function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, onEdit, onRemove, onUp, onDown, t }: {
+  /** แท็บที่การ์ดอยู่ (ws/mine) — ใช้เป็นกุญแจจำช่วงที่เลือก */
+  scope: string;
   /** โหมดจัดการการ์ด: แถบปุ่มเลื่อน/แก้/ลบ ขนาดนิ้วกดได้ (44px) ใต้หัวการ์ด */
   editing?: boolean;
   w: DashWidget; formName: (id: string) => string; areaName: (id: string) => string | null; en: boolean;
   /** ไม่มี = ดูอย่างเดียว (dashboard ของ workspace สำหรับสมาชิก) */
   onEdit?: () => void; onRemove?: () => void; onUp?: () => void; onDown?: () => void; t: TFn;
 }) {
+  const period = isPeriodStat(base);
+  const [picked, setPicked] = useState<WidgetRange | null>(null);
+  // อ่านค่าที่จำไว้หลัง mount (ฝั่ง server ไม่มี localStorage — กัน hydration ไม่ตรง)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { if (period) setPicked(readPeriod(scope, base)); }, [period, scope, base.id, base.range]);
+  const w: DashWidget = period && picked ? { ...base, range: picked } : base;
+  const pickPeriod = (r: WidgetRange) => { setPicked(r); writePeriod(scope, base, r); };
   const [res, setRes] = useState<WidgetResult | null>(null);
   const [attempt, setAttempt] = useState(0); // กด "ลองใหม่" → คำนวณการ์ดนี้ใหม่
   const key = `${w.format}|${w.formId}|${w.metric}|${w.range}`;
@@ -461,7 +485,7 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
   const noMetric = w.format === "openlist" || w.format === "topfails";
   const fIcon = isArea ? MapPin : w.format === "openlist" ? AlertTriangle : w.format === "topfails" ? ListOrdered
     : w.format === "stat" ? Hash : w.format === "trend" ? TrendingUp : Trophy;
-  const sub = isArea ? <AreaSubtitle name={areaName(w.formId)} /> : w.format === "openlist" ? formName(w.formId) : `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
+  const sub = isArea ? <AreaSubtitle name={areaName(w.formId)} /> : w.format === "openlist" || period ? formName(w.formId) : `${formName(w.formId)} · ${rangeLabel(w.range, en)}`;
 
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: 14, height: "100%", display: "flex", flexDirection: "column", minWidth: 0, overflow: "hidden" }}>
@@ -473,6 +497,21 @@ function WidgetCard({ w, formName, areaName, en, editing = false, onEdit, onRemo
           </div>
           <div style={{ color: "var(--ink-3)", fontSize: ".82rem", marginTop: 1, overflowWrap: "anywhere" }}>{sub}</div>
         </div>
+        {/* การ์ดตัวเลข: สลับช่วง 7/14/30 วันบนการ์ดเลย (ไม่ต้องมีการ์ดแยกต่อช่วง) */}
+        {period && (
+          <div role="group" aria-label={t("dash.period" as never)} style={{ display: "inline-flex", flex: "0 0 auto", border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
+            {PERIOD_RANGES.map((r) => {
+              const on = w.range === r;
+              return (
+                <button key={r} type="button" aria-pressed={on} onClick={() => pickPeriod(r)} title={rangeLabel(r, en)}
+                  style={{ minWidth: 44, minHeight: 40, padding: "0 6px", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: ".8rem", fontWeight: on ? 700 : 500, cursor: "pointer",
+                    background: on ? "var(--accent-soft)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontVariantNumeric: "tabular-nums" }}>
+                  {r.replace("d", "")}{t("dash.dayShort" as never)}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
       {editing && (
         <div style={{ display: "flex", gap: 8, marginTop: 10, paddingTop: 10, borderTop: "1px solid var(--line)" }}>
@@ -719,7 +758,7 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="tpl-h" aria-describedby="tpl-scope"
         style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 760, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 22px 0" }}>
-        <h2 id="tpl-h" style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.tplTitle")}</h2>
+        <h2 id="tpl-h" style={{ fontSize: "var(--fs-h2)", margin: 0 }}>{t("dash.tplTitle")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 6px" }}>{t("dash.tplSub")}</p>
         <p id="tpl-scope" style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 14px", fontSize: ".84rem", fontWeight: 600, color: scope === "ws" ? "var(--warn)" : "var(--ink-2)" }}>
           <Icon icon={scope === "ws" ? Users : Settings2} className="h-4 w-4" /> {t(scope === "ws" ? "dash.tplScopeWs" : "dash.tplScopeMine")}
@@ -835,7 +874,7 @@ function WidgetBuilder({ initial, forms, areas, en, t, scope, existing, onCancel
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="wb-h" style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: "22px 22px 0" }}>
-        <h2 id="wb-h" style={{ fontSize: "1.1rem", marginBottom: scope === "ws" ? 4 : 12 }}>{t("dash.widgetBuilder" as never)}</h2>
+        <h2 id="wb-h" style={{ fontSize: "var(--fs-h2)", marginBottom: scope === "ws" ? 4 : 12 }}>{t("dash.widgetBuilder" as never)}</h2>
         {scope === "ws" && (
           <p style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px", fontSize: ".84rem", fontWeight: 600, color: "var(--warn-text)" }}>
             <Icon icon={Users} className="h-4 w-4" /> {t("dash.builderScopeWs" as never)}
@@ -970,7 +1009,7 @@ function DetailModal({ sub, tenantId, onClose }: { sub: SubRow; tenantId: string
       <div ref={boxRef} role="dialog" aria-modal="true" aria-label={sub.form_title} style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 640, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: 22 }}>
         {/* ชื่อฟอร์ม + ปุ่มปิด แถวเดียว · ป้ายผลตรวจอยู่บรรทัดล่าง (จอแคบไม่บีบชื่อ) */}
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10 }}>
-          <h2 style={{ fontSize: "1.1rem", flex: 1, minWidth: 0, overflowWrap: "anywhere", margin: "8px 0 0" }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", flex: 1, minWidth: 0, overflowWrap: "anywhere", margin: "8px 0 0" }}><InlineFormIcon value={sub.form_icon} size={20} />{sub.form_title}</h2>
           <button ref={closeBtn} type="button" onClick={onClose} aria-label={t("common.close")} title={t("common.close")} style={iconBtn}><Icon icon={X} className="h-5 w-5" /></button>
         </div>
         <div style={{ marginTop: 6 }}>
