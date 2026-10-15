@@ -12,6 +12,7 @@ import { ALWAYS_MENUS, MENUS as ALL_MENUS, type MenuKey } from "@/lib/menus";
 const MENUS = ALL_MENUS.filter((m) => !ALWAYS_MENUS.includes(m.key));
 import { createRole, updateRole, deleteRole } from "./actions";
 import { confirmDialog } from "@/components/dialogs";
+import HelpTip from "@/components/HelpTip";
 
 export interface RoleRow {
   key: string;
@@ -68,7 +69,10 @@ export default function RolesClient({ roles }: { roles: RoleRow[] }) {
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("roles.title")}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("roles.title")}</h1>
+          <HelpTip id="invite-roles" compact />
+        </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("roles.subtitle")}</p>
       </div>
 

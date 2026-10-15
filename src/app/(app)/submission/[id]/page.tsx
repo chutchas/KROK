@@ -30,6 +30,7 @@ import { docNoOf } from "@/lib/form-schema";
 import { getDocSchema } from "@/lib/submission-doc-server";
 import type { StoredAnswer } from "@/lib/doc-answers";
 import SubmissionDoc from "@/components/SubmissionDoc";
+import HelpTip from "@/components/HelpTip";
 
 export const dynamic = "force-dynamic";
 
@@ -258,6 +259,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
           {/* ลบไว้ท้ายสุด — ไม่ให้ปุ่มทำลายอยู่ตำแหน่งแรก (มือถือ = ใกล้นิ้วโป้ง) */}
           {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}
         </div>
+        <HelpTip id="print-pdf" compact alignSelf="flex-end" />
       </div>
 
       {docSchema && (

@@ -7,6 +7,7 @@ import Icon from "@/components/Icon";
 import { Download, FileText, Search, CalendarDays, Trash2, ChevronRight } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
 import { previewReport, type PreviewRow } from "./actions";
+import HelpTip from "@/components/HelpTip";
 
 export interface ReportFormOpt { id: string; title: string; icon: string }
 
@@ -124,7 +125,10 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr)", gap: 16, minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
         <div style={{ minWidth: 0 }}>
-          <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{mine ? t("rep.mineTitle") : t("report.title")}</h1>
+          <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+            <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{mine ? t("rep.mineTitle") : t("report.title")}</h1>
+            <HelpTip id="export-excel" compact />
+          </div>
           <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{mine ? t("rep.mineSub") : t("report.subtitle")}</p>
         </div>
         {canTrash && (

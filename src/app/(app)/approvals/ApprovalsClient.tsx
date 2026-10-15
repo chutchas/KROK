@@ -28,6 +28,7 @@ import {
   type QueueFilter,
   type ResultFilter,
 } from "@/lib/approval-queue";
+import HelpTip from "@/components/HelpTip";
 
 export interface PendingSub {
   id: string;
@@ -213,7 +214,10 @@ export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = t
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 data-tour="appr-title" style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("appr.title")}</h1>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <h1 data-tour="appr-title" style={{ fontSize: "1.4rem", margin: 0 }}>{t("appr.title")}</h1>
+          <HelpTip id="approval" compact />
+        </div>
         {/* ไม่มีรายการ = การ์ดด้านล่างบอกอยู่แล้ว (ไม่พูดซ้ำสองบรรทัด) */}
         {subs.length > 0 && <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{tt("appr.count", { n: subs.length })}</p>}
       </div>

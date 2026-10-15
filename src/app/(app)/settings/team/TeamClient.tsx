@@ -9,6 +9,7 @@ import { inviteMember, resendInvite, type InviteResult, cancelInvite, changeRole
 import { useT } from "@/i18n/LanguageProvider";
 import { alertDialog, confirmDialog } from "@/components/dialogs";
 import type { MessageKey } from "@/i18n/dictionaries";
+import HelpTip from "@/components/HelpTip";
 
 type Role = "owner" | "admin" | "designer" | "operator";
 export interface RoleOption { key: string; name: string; canManage: boolean }
@@ -112,7 +113,10 @@ export default function TeamClient({
       </div>
 
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("team.inviteTitle")}</h2>
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
+          <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("team.inviteTitle")}</h2>
+          <HelpTip id="invite-roles" />
+        </div>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>
           {t("team.inviteSub")}
         </p>
