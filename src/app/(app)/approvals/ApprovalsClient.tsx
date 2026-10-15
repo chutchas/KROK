@@ -213,13 +213,12 @@ export default function ApprovalsClient({ initial, isOwner, hasApprovalForms = t
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div>
-        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-          <h1 data-tour="appr-title" style={{ fontSize: "1.4rem", margin: 0 }}>{t("appr.title")}</h1>
-          <HelpTip id="approval" compact />
-        </div>
+      {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
+        <h1 data-tour="appr-title" style={{ fontSize: "1.4rem", margin: 0 }}>{t("appr.title")}</h1>
+        <HelpTip id="approval" compact panelOrder={2} />
         {/* ไม่มีรายการ = การ์ดด้านล่างบอกอยู่แล้ว (ไม่พูดซ้ำสองบรรทัด) */}
-        {subs.length > 0 && <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{tt("appr.count", { n: subs.length })}</p>}
+        {subs.length > 0 && <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{tt("appr.count", { n: subs.length })}</p>}
       </div>
 
       {subs.length === 0 && (

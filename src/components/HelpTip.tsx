@@ -10,7 +10,13 @@ import { helpArticle } from "@/lib/help-articles";
  * "วิธีใช้" ข้างฟีเจอร์ที่ซับซ้อน — กดแล้วกางขั้นตอนสั้น ๆ ในหน้าเดิม (ไม่ต้องออกจากงาน) + ลิงก์อ่านต่อใน /help
  * กางแบบ inline (ไม่ใช่ popover ลอย) — ไม่ล้นจอบนมือถือ ไม่บังช่องที่กำลังตั้ง
  */
-export default function HelpTip({ id, compact = false, alignSelf }: { id: string; compact?: boolean; /** ในแถว flex แนวตั้ง (มือถือ) ไม่ให้ปุ่มยืดเต็มแถว */ alignSelf?: "flex-start" | "flex-end" | "center" }) {
+export default function HelpTip({ id, compact = false, alignSelf, panelOrder }: {
+  id: string; compact?: boolean;
+  /** ในแถว flex แนวตั้ง (มือถือ) ไม่ให้ปุ่มยืดเต็มแถว */
+  alignSelf?: "flex-start" | "flex-end" | "center";
+  /** CSS order ของ panel ในแถว flex-wrap — ให้ panel ไปอยู่หลังปุ่ม/คำอธิบายที่อยู่ท้าย DOM (กางเต็มความกว้างใต้หัวหน้าเพจ) */
+  panelOrder?: number;
+}) {
   const a = helpArticle(id);
   const { lang } = useT();
   const [open, setOpen] = useState(false);
@@ -25,20 +31,20 @@ export default function HelpTip({ id, compact = false, alignSelf }: { id: string
           background: open ? "var(--accent-soft)" : "transparent", color: "var(--accent-text)", fontFamily: "inherit", fontSize: ".8rem", fontWeight: 600, cursor: "pointer", verticalAlign: "middle", alignSelf }}>
         <Icon icon={CircleHelp} className="h-4 w-4" />{!compact && <span>{L === "en" ? "How to" : "วิธีใช้"}</span>}
       </button>
-      {open && <HelpPanel id={id} panelId={panelId} />}
+      {open && <HelpPanel id={id} panelId={panelId} order={panelOrder} />}
     </Fragment>
   );
 }
 
 /** เนื้อหาคู่มือแบบกางในหน้า — ใช้ทั้งใน HelpTip และที่อื่น (เช่น เมนู ⋯ ของหน้ากรอกแบบเต็มจอ) */
-export function HelpPanel({ id, panelId, guideLink = true }: { id: string; panelId?: string; /** false = ไม่มีลิงก์ไปหน้าคู่มือ (หน้าที่ไม่ควรพาออก เช่น กำลังกรอก) */ guideLink?: boolean }) {
+export function HelpPanel({ id, panelId, guideLink = true, order }: { id: string; panelId?: string; /** false = ไม่มีลิงก์ไปหน้าคู่มือ (หน้าที่ไม่ควรพาออก เช่น กำลังกรอก) */ guideLink?: boolean; order?: number }) {
   const a = helpArticle(id);
   const { lang } = useT();
   if (!a) return null;
   const L = lang === "en" ? "en" : "th";
   return (
     <div id={panelId} className="no-print" role="region" aria-label={a.title[L]} data-krok-keep=""
-      style={{ display: "block", flexBasis: "100%", width: "100%", boxSizing: "border-box", margin: "6px 0 8px", padding: "10px 12px", borderRadius: 10,
+      style={{ display: "block", flexBasis: "100%", width: "100%", order, boxSizing: "border-box", margin: "6px 0 8px", padding: "10px 12px", borderRadius: 10,
         border: "1px solid color-mix(in srgb, var(--accent) 30%, transparent)", background: "var(--accent-soft)", color: "var(--ink)", fontSize: ".84rem", lineHeight: 1.55, fontWeight: 400, textAlign: "left" }}>
       <b style={{ display: "block", marginBottom: 4 }}>{a.title[L]}</b>
       <ol style={{ margin: 0, paddingLeft: 20, listStyle: "decimal" }}>

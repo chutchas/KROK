@@ -120,11 +120,12 @@ export default function FormsListClient({
     // หัวหน้าเพจอยู่นอกการ์ด (เหมือนหน้าอื่น) — เดิมทั้งหน้าอยู่ในการ์ดใหญ่ แล้วรายการ/หน้าว่างซ้อนการ์ดอีกชั้น
     <div style={{ minWidth: 0 }}>
       {/* วิธีใช้ (ออฟไลน์) — หน้าแรกของคนกรอก เห็นก่อนเริ่มกรอก · ลูกตรงของแถว wrap ให้ panel กางเต็มบรรทัด */}
-      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 2 }}>
+      {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
+      <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("forms.title")}</h1>
-        <HelpTip id="offline" />
+        <HelpTip id="offline" panelOrder={2} />
+        <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("forms.subtitle")}</p>
       </div>
-      <p style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 0 }}>{t("forms.subtitle")}</p>
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
       {/* จอแคบ: แท็บไม่ตัดบรรทัด เลื่อนซ้าย-ขวาได้แทน */}
