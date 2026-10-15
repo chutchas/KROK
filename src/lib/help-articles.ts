@@ -221,6 +221,44 @@ export const HELP_ARTICLES: HelpArticle[] = [
     },
     keywords: "ใครเห็น การมองเห็น visibility ทีม team public สาธารณะ qr แชร์ share",
   },
+  {
+    id: "dashboard",
+    tipFrom: 1,
+    title: { th: "จัดแดชบอร์ดด้วยแม่แบบและการ์ด", en: "Set up the dashboard with templates and cards" },
+    summary: { th: "เริ่มจากแม่แบบตามลักษณะงาน แล้วเพิ่ม แก้ หรือลบการ์ดทีละใบ", en: "Start from a template for your kind of work, then add, edit or remove cards one by one." },
+    steps: {
+      th: [
+        "ไปที่แดชบอร์ด → แท็บ \"ส่วนกลาง\" (ทุกคนเห็น · เฉพาะ owner/admin แก้ได้) หรือ \"ของฉัน\" (เห็นคนเดียว)",
+        "กด \"ใช้แม่แบบ\" แล้วเลือกแบบที่ใกล้งานที่สุด — งานตรวจ/ความปลอดภัย, บันทึกข้อมูลประจำวัน, งานอนุมัติ หรือตามพื้นที่ (แบบที่มีป้าย \"แนะนำ\" ระบบเลือกจากข้อมูลจริงของคุณ)",
+        "ถ้ามีการ์ดอยู่แล้ว เลือก \"แทนที่\" (เปลี่ยนทั้งชุด) หรือ \"ต่อท้าย\" (เพิ่มเฉพาะการ์ดที่ยังไม่มี) แล้วกดปุ่มด้านล่าง",
+        "อยากปรับต่อ กด \"จัดการการ์ด\" — เพิ่มการ์ด แก้ (ไอคอนดินสอ) ลบ หรือเลื่อนลำดับขึ้น/ลง (ลากวางได้บนคอม)",
+        "เพิ่มการ์ดเอง: เลือกรูปแบบ (ตัวเลข / กราฟแนวโน้ม / อันดับฟอร์ม / ค้างปิดเรื่อง / ข้อที่ไม่ผ่านบ่อย / ตามพื้นที่) → ฟอร์ม → ค่าที่แสดง → ช่วงเวลา → บันทึก",
+      ],
+      en: [
+        "Go to Dashboard → the \"Shared\" tab (everyone sees it · only owners/admins edit) or \"Mine\" (only you)",
+        "Tap \"Use a template\" and pick the closest fit — Inspection/safety, Daily records, Approvals or By area (the \"Recommended\" one is chosen from your real data)",
+        "If you already have cards, choose \"Replace all current cards\" (swap the whole set) or \"Add after current cards\" (adds only cards you don't have yet), then press the button at the bottom",
+        "To fine-tune, tap \"Manage cards\" — add, edit (pencil), remove or move up/down (drag on desktop)",
+        "Add a card yourself: pick a format (stat / trend / ranking / open failures / top failed items / by area) → form → metric → period → save",
+      ],
+    },
+    notes: {
+      th: [
+        "ใช้แม่แบบแล้วเปลี่ยนใจ กด \"เลิกทำ\" ที่แถบด้านล่างได้ภายใน 8 วินาที",
+        "ในกราฟแนวโน้ม แตะแท่ง (หรือกดลูกศรซ้าย/ขวา) เพื่อดูค่าของวันนั้น",
+        "สมาชิกที่ไม่ใช่ผู้จัดการเห็นตัวเลขเฉพาะฟอร์มที่ตัวเองมีสิทธิ์",
+        "ใบไม่ผ่าน รออนุมัติ และรอบตรวจเลยกำหนด แสดงที่แถบ \"ต้องดูตอนนี้\" ด้านบนเสมอ ไม่ต้องทำการ์ดซ้ำ",
+      ],
+      en: [
+        "Changed your mind after applying a template? Tap \"Undo\" in the bar at the bottom within 8 seconds",
+        "On a trend chart, tap a bar (or use the left/right arrows) to see that day's value",
+        "Members who aren't managers only see numbers for forms they can access",
+        "Failures, pending approvals and overdue rounds always show in the \"Needs attention\" strip at the top — no need for duplicate cards",
+      ],
+    },
+    where: { href: "/dashboard", label: { th: "ไปหน้าแดชบอร์ด", en: "Go to Dashboard" } },
+    keywords: "แดชบอร์ด dashboard แม่แบบ template การ์ด card widget กราฟ chart สรุป ส่วนกลาง ของฉัน ต่อท้าย แทนที่",
+  },
 ];
 
 export function helpArticle(id: string): HelpArticle | undefined {

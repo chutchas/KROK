@@ -30,7 +30,8 @@ import {
   type DashSectionKey, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange,
 } from "@/lib/dashboard-meta";
 import GettingStarted from "./GettingStarted";
-import { DASH_TEMPLATES, templateWidgets, templateCardLabel, type DashTemplateKey } from "@/lib/dashboard-templates";
+import { DASH_TEMPLATES, templateWidgets, newTemplateWidgets, templateCardLabel, type DashTemplateKey } from "@/lib/dashboard-templates";
+import HelpTip from "@/components/HelpTip";
 const TPL_ICON: Record<DashTemplateKey, typeof Hash> = { inspect: ShieldCheck, log: ClipboardList, approve: FileCheck2, area: MapPin };
 import { saveDashboardLayout, saveWorkspaceDashboard, computeWidgets, type WidgetResult } from "./actions";
 
@@ -172,7 +173,9 @@ export default function DashboardClient({
       message: tt(tab === "ws" ? "dash.tplReplaceConfirmWs" : "dash.tplReplaceConfirm", { n: widgets.length }),
       confirmLabel: t("dash.tplReplace"), danger: true,
     }))) return;
-    const add = templateWidgets(key);
+    // ต่อท้าย = เฉพาะการ์ดที่ยังไม่มี (ตั้งค่าเหมือนกันไม่เพิ่มซ้ำ)
+    const add = mode === "replace" ? templateWidgets(key) : newTemplateWidgets(key, widgets);
+    if (!add.length) return;
     const prev = widgets;
     const at = tab;
     setPicking(false);
@@ -265,7 +268,7 @@ export default function DashboardClient({
             <div role="tablist" aria-label={t("dash.title")} className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "22px 0 14px", overflowX: "auto" }}>
               {(["ws", "mine"] as const).map((k) => (
                 <button key={k} role="tab" aria-selected={tab === k} onClick={() => { setTab(k); setSaveErr(""); setManaging(false); setUndo(null); }}
-                  style={{ padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
+                  style={{ minHeight: 44, padding: "8px 14px", border: "none", background: "none", borderBottom: `2px solid ${tab === k ? "var(--accent)" : "transparent"}`,
                     color: tab === k ? "var(--accent-text)" : "var(--ink-2)", fontWeight: tab === k ? 600 : 500, fontFamily: "inherit", fontSize: ".92rem", cursor: "pointer", whiteSpace: "nowrap" }}>
                   {k === "ws" ? t("dash.tabWorkspace") : t("dash.tabMine")}
                 </button>
@@ -281,13 +284,13 @@ export default function DashboardClient({
                 <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: 0, flex: "1 1 260px" }}>
                   {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
                 </p>
-                {canEdit && <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>{tplBtn(true)}{addCardBtn}</span>}
+                {canEdit && <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{tplBtn(true)}{addCardBtn}<HelpTip id="dashboard" /></span>}
               </div>
             )}
             {shown.length > 0 && (
               <>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, margin: "0 0 10px", flexWrap: "wrap" }}>
-                  <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2><HelpTip id="dashboard" compact /></span>
                   {canEdit && (
                     <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap" }}>
                     {managing && tplBtn(false)}
@@ -393,7 +396,7 @@ export default function DashboardClient({
 
       {open && <DetailModal sub={open} tenantId={tenantId} onClose={() => setOpen(null)} />}
       {picking && (
-        <TemplatePicker recommended={recommended} hasCards={widgets.length > 0} en={en} scope={tab} areaCount={areas.length}
+        <TemplatePicker recommended={recommended} existing={widgets} en={en} scope={tab} areaCount={areas.length}
           onCancel={() => setPicking(false)} onApply={(k, m) => void applyTemplate(k, m)}
           onEmpty={() => { setPicking(false); setBuilder({ id: Math.random().toString(36).slice(2), format: "stat", formId: "all", metric: "usage", range: "7d" }); }} />
       )}
@@ -410,7 +413,7 @@ export default function DashboardClient({
         </div>
       )}
       {builder && (
-        <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t}
+        <WidgetBuilder initial={builder} forms={forms} areas={areas} en={en} t={t} scope={tab}
           onCancel={() => setBuilder(null)} onSave={upsertWidget} />
       )}
 
@@ -543,7 +546,7 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
   const day = (k: string) => dayLabel(k, lang);
   return (
     <div>
-      <div className="tabnum" aria-live="polite" style={{ fontFamily: "var(--font-anuphan)", fontSize: "1.5rem", fontWeight: 700, marginBottom: 8 }}>
+      <div className="tabnum" aria-live="polite" style={{ fontFamily: "var(--font-anuphan)", fontSize: "2.1rem", fontWeight: 800, lineHeight: 1.1, marginBottom: 8 }}>
         {fmtValue(metric, cur ? cur.v : res.total, en, tt)}
         {cur && <span style={{ fontSize: ".8rem", fontWeight: 500, color: "var(--ink-3)", marginLeft: 8 }}>{day(cur.key)}</span>}
       </div>
@@ -564,13 +567,30 @@ function TrendView({ res, metric, en }: { res: Extract<WidgetResult, { kind: "tr
           })}
         </div>
         {/* พื้นที่แตะเต็มแถบ: คำนวณวันจากตำแหน่งนิ้ว (แท่งแคบ ~8px แตะตรงยาก) */}
-        <div aria-hidden
+        <div role="slider" tabIndex={0} aria-label={tt("dash.trendPick")}
+          aria-valuemin={1} aria-valuemax={series.length} aria-valuenow={(pick ?? series.length - 1) + 1}
+          aria-valuetext={cur ? `${day(cur.key)}: ${fmtValue(metric, cur.v, en, tt)}` : tt("dash.trendTotal")}
+          onKeyDown={(e) => {
+            // ลูกศรเลื่อนวัน · Home/End วันแรก/สุดท้าย · Esc กลับไปผลรวม
+            // ยังไม่เลือก: ลูกศรซ้าย = วันล่าสุด (เริ่มจากขวา) · ขวา = วันแรก
+            const last = series.length - 1;
+            let next: number | null | undefined;
+            if (e.key === "ArrowLeft" || e.key === "ArrowDown") next = pick == null ? last : Math.max(0, pick - 1);
+            else if (e.key === "ArrowRight" || e.key === "ArrowUp") next = pick == null ? 0 : Math.min(last, pick + 1);
+            else if (e.key === "Home") next = 0;
+            else if (e.key === "End") next = last;
+            else if (e.key === "Escape" && pick != null) next = null;
+            if (next === undefined) return;
+            e.preventDefault();
+            e.stopPropagation();
+            setPick(next);
+          }}
           onPointerDown={(e) => {
             const r = e.currentTarget.getBoundingClientRect();
             const i = Math.min(series.length - 1, Math.max(0, Math.floor(((e.clientX - r.left) / r.width) * series.length)));
             setPick(pick === i ? null : i);
           }}
-          style={{ position: "absolute", inset: "-8px 0 0", cursor: "pointer", touchAction: "manipulation" }} />
+          style={{ position: "absolute", inset: "-8px 0 0", cursor: "pointer", touchAction: "manipulation", borderRadius: 6 }} />
       </div>
       <div style={{ display: "flex", justifyContent: "space-between", color: "var(--ink-3)", fontSize: ".76rem", marginTop: 4 }}>
         <span>{series[0] && day(series[0].key)}</span>
@@ -668,9 +688,10 @@ function TopFailsView({ res }: { res: Extract<WidgetResult, { kind: "topfails" }
 }
 
 // ---------- ตัวเลือกแม่แบบ ----------
-function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel, onApply, onEmpty }: {
+function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel, onApply, onEmpty }: {
   recommended?: { key: DashTemplateKey; why: { th: string; en: string } };
-  hasCards: boolean; en: boolean;
+  /** การ์ดที่มีอยู่ — นับการ์ดใหม่จริงตอนต่อท้าย */
+  existing: DashWidget[]; en: boolean;
   /** แท็บที่จะถูกเปลี่ยน — ส่วนกลาง = สมาชิกทุกคนเห็น */
   scope: "ws" | "mine";
   /** ไม่มีพื้นที่ = ไม่เสนอแม่แบบ "ตามพื้นที่" */
@@ -678,6 +699,7 @@ function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel,
   onCancel: () => void; onApply: (k: DashTemplateKey, mode: "append" | "replace") => void; onEmpty: () => void;
 }) {
   const { t, tt } = useT();
+  const hasCards = existing.length > 0;
   const boxRef = useRef<HTMLDivElement>(null);
   useDialogA11y(boxRef, onCancel);
   const list = DASH_TEMPLATES.filter((x) => x.key !== "area" || areaCount > 0);
@@ -708,7 +730,7 @@ function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel,
                     <Icon icon={TPL_ICON[tp.key]} className="h-[18px] w-[18px]" />
                   </span>
                   <b style={{ fontFamily: "var(--font-anuphan)", fontSize: ".98rem" }}>{en ? tp.name.en : tp.name.th}</b>
-                  {rec && <span style={{ fontSize: ".72rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "var(--accent)", color: "var(--accent-ink)" }}>{t("dash.tplRecommended")}</span>}
+                  {rec && <span style={{ fontSize: ".8rem", fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "var(--accent)", color: "var(--accent-ink)" }}>{t("dash.tplRecommended")}</span>}
                 </span>
                 <span style={{ color: "var(--ink-2)", fontSize: ".84rem" }}>{en ? tp.desc.en : tp.desc.th}</span>
                 {rec && recommended && <span style={{ color: "var(--accent-text)", fontSize: ".8rem", fontWeight: 600 }}>{en ? recommended.why.en : recommended.why.th}</span>}
@@ -732,11 +754,19 @@ function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel,
               ))}
             </div>
           )}
-          <button type="button" onClick={() => onApply(sel, hasCards ? mode : "replace")}
-            style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--accent)", background: "var(--accent)", color: "var(--accent-ink)", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
-            {!hasCards ? t("dash.tplApply")
-              : tt(mode === "replace" ? "dash.tplApplyReplace" : "dash.tplApplyAppend", { n: DASH_TEMPLATES.find((x) => x.key === sel)?.widgets.length ?? 0 })}
-          </button>
+          {(() => {
+            const total = DASH_TEMPLATES.find((x) => x.key === sel)?.widgets.length ?? 0;
+            const fresh = hasCards && mode === "append" ? newTemplateWidgets(sel, existing).length : total;
+            const none = hasCards && mode === "append" && fresh === 0;
+            return (
+              <button type="button" disabled={none} onClick={() => onApply(sel, hasCards ? mode : "replace")}
+                style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: `1px solid ${none ? "var(--line-strong)" : "var(--accent)"}`, background: none ? "var(--surface-2)" : "var(--accent)", color: none ? "var(--ink-2)" : "var(--accent-ink)", cursor: none ? "not-allowed" : "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                {!hasCards ? t("dash.tplApply")
+                  : none ? t("dash.tplAllThere")
+                  : tt(mode === "replace" ? "dash.tplApplyReplace" : "dash.tplApplyAppend", { n: fresh })}
+              </button>
+            );
+          })()}
           <button type="button" onClick={onCancel}
             style={{ minHeight: 44, padding: "10px 18px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", cursor: "pointer", fontFamily: "inherit" }}>
             {t("common.cancel")}
@@ -754,8 +784,10 @@ function TemplatePicker({ recommended, hasCards, en, scope, areaCount, onCancel,
 }
 
 // ---------- ตัวสร้าง/แก้ widget ----------
-function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
+function WidgetBuilder({ initial, forms, areas, en, t, scope, onCancel, onSave }: {
   initial: DashWidget; forms: FormOpt[]; areas: AreaOpt[]; en: boolean; t: TFn;
+  /** ส่วนกลาง = เตือนว่าทุกคนเห็น */
+  scope: "ws" | "mine";
   onCancel: () => void; onSave: (w: DashWidget) => void;
 }) {
   const [format, setFormat] = useState<WidgetFormat>(initial.format);
@@ -779,7 +811,12 @@ function WidgetBuilder({ initial, forms, areas, en, t, onCancel, onSave }: {
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="wb-h" style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 480, width: "100%", maxHeight: "88vh", overflowY: "auto", padding: "22px 22px 0" }}>
-        <h2 id="wb-h" style={{ fontSize: "1.15rem", marginBottom: 12 }}>{t("dash.widgetBuilder" as never)}</h2>
+        <h2 id="wb-h" style={{ fontSize: "1.15rem", marginBottom: scope === "ws" ? 4 : 12 }}>{t("dash.widgetBuilder" as never)}</h2>
+        {scope === "ws" && (
+          <p style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 12px", fontSize: ".84rem", fontWeight: 600, color: "var(--warn-text)" }}>
+            <Icon icon={Users} className="h-4 w-4" /> {t("dash.builderScopeWs" as never)}
+          </p>
+        )}
 
         {/* 1. รูปแบบ */}
         <Section n={1} label={t("dash.stepFormat" as never)} />

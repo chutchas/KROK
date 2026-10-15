@@ -80,6 +80,12 @@ export default function HealthClient({ report }: { report: HealthReport }) {
             <div>
               <div style={{ fontWeight: 700 }}>{worst === "ok" ? "ทุกระบบปกติ" : worst === "warn" ? `มี ${counts.warn} รายการควรตรวจ` : `มี ${counts.fail} รายการผิดปกติ`}</div>
               {worst !== "ok" && counts.fail > 0 && counts.warn > 0 && <div style={{ fontSize: ".8rem", color: "var(--ink-3)" }}>และอีก {counts.warn} รายการควรตรวจ</div>}
+              {/* บอกชื่อรายการ — ไม่ต้องไล่หาเองทั้งหน้า */}
+              {worst !== "ok" && (
+                <div style={{ fontSize: ".84rem", color: "var(--ink-2)", marginTop: 2 }}>
+                  {all.filter((c) => c.status === "fail" || c.status === "warn").map((c) => c.name).join(" · ")}
+                </div>
+              )}
             </div>
           </div>
           {stat("Workspace", fmtNum(report.stats.tenants))}
