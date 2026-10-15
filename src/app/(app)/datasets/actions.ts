@@ -83,7 +83,7 @@ export async function createDataset(input: { name: string; description?: string;
 
   const supabase = await createClient();
   const { count } = await supabase.from("datasets").select("id", { count: "exact", head: true }).eq("tenant_id", g.session.tenantId);
-  if ((count ?? 0) >= MAX_DATASETS_PER_TENANT) return { error: `สร้างได้สูงสุด ${MAX_DATASETS_PER_TENANT} ชุดต่อองค์กร` };
+  if ((count ?? 0) >= MAX_DATASETS_PER_TENANT) return { error: `สร้างได้สูงสุด ${MAX_DATASETS_PER_TENANT} ชุดต่อ workspace` };
 
   const { data, error } = await supabase
     .from("datasets")

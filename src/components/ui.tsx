@@ -146,6 +146,7 @@ export function Field(props: React.ComponentProps<"input">) {
       aria-label={fallbackLabel(props)}
       style={{
         width: "100%",
+        minHeight: 44,
         padding: "11px 12px",
         border: "1px solid var(--line-strong)",
         borderRadius: 8,

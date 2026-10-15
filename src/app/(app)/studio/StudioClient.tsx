@@ -643,7 +643,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   });
 
   async function onDelete(id: string, title: string) {
-    if (!(await confirmDialog({ title: t("dlg.delForm"), message: tt("studio.deleteConfirm", { title }), confirmLabel: t("common.delete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delForm"), message: tt("studio.deleteConfirm", { title }), confirmLabel: t("dlg.btn.delForm"), danger: true }))) return;
     const res = await deleteForm(id);
     if ("error" in res) await alertDialog(res.error);
     else router.refresh();
@@ -742,7 +742,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             )}
             <label style={{ display: "grid", gap: 4, fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>
               {t("studio.descLabel")}
-              <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} style={{ fontWeight: 400 }} />
+              <TextArea rows={2} value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} style={{ fontWeight: 400, resize: "vertical" }} />
             </label>
           </div>
 
@@ -1384,7 +1384,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
           <select aria-label={t("studio.category")} value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
-            style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
+            style={{ minHeight: 44, padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("studio.allCategories")}</option>
             {studioCats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>

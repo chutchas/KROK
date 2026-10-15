@@ -58,7 +58,7 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
 
   const fmt = (iso: string) =>
     new Date(iso).toLocaleString(lang === "en" ? "en-GB" : "th-TH", {
-      day: "2-digit", month: "short", year: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok",
+      day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", timeZone: "Asia/Bangkok",
     });
 
   return (
@@ -81,7 +81,7 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
             value={action}
             onChange={(e) => setAction(e.target.value)}
             aria-label={t("audit.action")}
-            style={{ padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", maxWidth: "100%" }}
+            style={{ minHeight: 44, padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", maxWidth: "100%" }}
           >
             <option value="all">{t("audit.allActions")}</option>
             {actions.map(([a, l]) => <option key={a} value={a}>{l}</option>)}
@@ -95,7 +95,8 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
         {filtered.length === 0 ? (
           <EmptyState icon={<Icon icon={ScrollText} className="h-7 w-7" />} title={t("audit.empty")} />
         ) : (
-          <div style={{ overflowX: "auto" }}>
+          <div tabIndex={0} role="region" aria-label={t("audit.title")} className="krok-scrollregion" style={{ overflowX: "auto" }}>
+            {/* ตารางกว้างกว่าจอมือถือ: ส่วนเลื่อนรับโฟกัสได้ (ลูกศรซ้าย/ขวาเลื่อน) + มีชื่อให้โปรแกรมอ่านหน้าจอ */}
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".86rem" }}>
               <thead>
                 <tr style={{ textAlign: "left", color: "var(--ink-3)", fontSize: ".76rem" }}>
@@ -114,7 +115,8 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
                     <td style={{ padding: "8px", fontSize: ".82rem", minWidth: 220 }}>
                       {details.length === 0 ? <span style={{ color: "var(--ink-3)" }}>—</span> : (
                         <div style={{ display: "flex", flexWrap: "wrap", gap: "2px 14px" }}>
-                          {details.map((d, i) => (
+                          {/* หัวข้อเดียวกันซ้ำ (เช่น "ฟอร์ม" จากชื่อเป้าหมาย + meta.form_id) → แสดงครั้งเดียว */}
+                          {details.filter((d, i) => details.findIndex((x) => x.k === d.k) === i).map((d, i) => (
                             <span key={i} style={{ overflowWrap: "anywhere" }}>
                               <span style={{ color: "var(--ink-3)" }}>{d.k}: </span>
                               <span style={{ color: d.warn ? "var(--fail)" : "var(--ink)", fontWeight: i === 0 ? 600 : 400 }}>{d.v}</span>

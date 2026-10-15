@@ -98,12 +98,8 @@ export default function AppShell({
   activeTenantId: string;
 }) {
   const path = usePathname();
-  // ขอบจางของแถบแท็บที่เลื่อนได้ — สแกนใหม่ทุกครั้งที่เปลี่ยนหน้า (แถบบางอันโผล่หลังโหลดข้อมูล → สแกนซ้ำสั้น ๆ)
-  useEffect(() => {
-    let detach = attachTabScrollHints();
-    const id = window.setTimeout(() => { detach(); detach = attachTabScrollHints(); }, 600);
-    return () => { window.clearTimeout(id); detach(); };
-  }, [path]);
+  // ขอบจางของแถบแท็บที่เลื่อนได้ — ผูกครั้งเดียว (MutationObserver จับแถบที่โผล่ทีหลัง)
+  useEffect(() => attachTabScrollHints(), []);
   // หน้ากรอกฟอร์ม = โหมดเต็มจอ (focus): ซ่อนแถบเมนูหลัก กันพลาดกดออกกลางการตรวจ
   // หน้ากรอกมีแถบบนของตัวเอง (ชื่อฟอร์ม · ขั้นที่ · ปุ่มปิด) — ดู fill/[formId]/FillFocusBar
   const focusMode = isFocusPath(path);

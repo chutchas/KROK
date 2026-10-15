@@ -77,7 +77,7 @@ export async function executeDeletion(
 ): Promise<{ ok: true; plan: DeletionPlan } | { error: string; blockers?: DeletionPlan["blockers"] }> {
   const { userId, email } = target;
   const plan = await planDeletion(admin, userId);
-  if (plan.blockers.length) return { error: await sm("ต้องโอน owner ของ workspace ที่ยังมีสมาชิกก่อน"), blockers: plan.blockers };
+  if (plan.blockers.length) return { error: await sm("ต้องโอนสิทธิ์เจ้าของ workspace ที่ยังมีสมาชิกก่อน"), blockers: plan.blockers };
 
   // บันทึกใน workspace ที่ยังอยู่ต่อ (ใครออกไป เมื่อไร) — ก่อนลบ user
   if (plan.leaveTenants.length)

@@ -1,7 +1,7 @@
 "use client";
 import IconPicker from "@/components/IconPicker";
 import { useState } from "react";
-import { Field } from "@/components/ui";
+import { Field, TextArea } from "@/components/ui";
 import Icon from "@/components/Icon";
 import { ArrowUp, ArrowDown, Trash2, Settings2, ChevronUp, Plus, X, GripVertical, TriangleAlert } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
@@ -128,7 +128,7 @@ export default function FormEditor({
         <IconPicker value={value.icon} onChange={(icon) => patch({ icon })} />
         <div style={{ display: "grid", gap: 8 }}>
           <Field value={value.title} onChange={(e) => patch({ title: e.target.value })} placeholder={t("editor.formTitle")} />
-          <Field value={value.description} onChange={(e) => patch({ description: e.target.value })} placeholder={t("editor.formDesc")} />
+          <TextArea rows={2} value={value.description} onChange={(e) => patch({ description: e.target.value })} placeholder={t("editor.formDesc")} style={{ resize: "vertical" }} />
         </div>
       </div>
 
@@ -147,7 +147,7 @@ export default function FormEditor({
               title={t("editor.deleteStep")}
               onClick={async () => {
                 if (value.steps.length <= 1) { await alertDialog(t("editor.needOneStep")); return; }
-                if (!(await confirmDialog({ title: t("dlg.delStep"), message: t("editor.deleteStepConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+                if (!(await confirmDialog({ title: t("dlg.delStep"), message: t("editor.deleteStepConfirm"), confirmLabel: t("dlg.btn.delStep"), danger: true }))) return;
                 setSteps(value.steps.filter((_, i) => i !== si));
               }}
             >

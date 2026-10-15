@@ -138,7 +138,7 @@ export default function DevicesClient({
         </button>
         <button
           disabled={busy === d.id}
-          onClick={async () => { if (await confirmDialog({ title: t("dlg.delDevice"), message: tt("dev.deleteConfirm", { name: d.name }), confirmLabel: t("common.delete"), danger: true })) void run(d.id, () => deleteDevice(d.id)); }}
+          onClick={async () => { if (await confirmDialog({ title: t("dlg.delDevice"), message: tt("dev.deleteConfirm", { name: d.name }), confirmLabel: t("dlg.btn.delDevice"), danger: true })) void run(d.id, () => deleteDevice(d.id)); }}
           style={{ ...btn, color: "var(--fail)" }}
         >
           <Icon icon={Trash2} className="h-3.5 w-3.5" /> {t("common.delete")}

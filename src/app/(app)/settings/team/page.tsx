@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getAdminClient } from "@/lib/supabase/admin";
 import TeamClient, { type Member, type Invite, type Team } from "./TeamClient";
 
-export const metadata = { title: "ทีม" };
+export const metadata = { title: "สมาชิกและทีม" };
 
 export const dynamic = "force-dynamic";
 

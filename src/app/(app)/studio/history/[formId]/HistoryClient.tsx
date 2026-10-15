@@ -113,13 +113,13 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
                     </div>
                   ) : (
                     <button type="button" onClick={() => { setEditing(it.version); setNoteDraft(it.note); }}
-                      style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "none", padding: "4px 0", minHeight: 30, cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", color: it.note ? "var(--ink)" : "var(--ink-3)", textAlign: "left" }}>
+                      style={{ display: "flex", alignItems: "center", gap: 5, border: "none", background: "none", padding: "4px 0", minHeight: 44, cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", color: it.note ? "var(--ink)" : "var(--ink-3)", textAlign: "left" }}>
                       {it.note ? localizeVersionNote(it.note, lang) : t("ver.addNote")} <Icon icon={Pencil} className="h-3.5 w-3.5" />
                     </button>
                   )}
                   {c && !it.first && (
                     <button type="button" onClick={() => toggle(it.version)} aria-expanded={isOpen}
-                      style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", border: "none", background: "none", padding: "2px 0", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", color: "var(--ink-3)", minHeight: 28 }}>
+                      style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", border: "none", background: "none", padding: "2px 0", cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", color: "var(--ink-3)", minHeight: 44 }}>
                       {it.diff?.same ? t("ver.noChange") : (
                         <>
                           {c.added > 0 && <span style={{ color: "var(--pass)" }}>+{c.added} {t("ver.fieldsAdded")}</span>}
@@ -134,9 +134,9 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
                   {it.first && <div style={{ fontSize: ".8rem", color: "var(--ink-3)" }}>{t("ver.firstRecorded")}</div>}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  <AsyncButton onClick={() => showPreview(it.version)} style={{ padding: "8px 12px", fontSize: ".85rem" }}><Icon icon={Eye} className="h-4 w-4" /> {t("ver.preview")}</AsyncButton>
+                  <AsyncButton onClick={() => showPreview(it.version)} style={{ minHeight: 44, padding: "0 12px", fontSize: ".85rem" }}><Icon icon={Eye} className="h-4 w-4" /> {t("ver.preview")}</AsyncButton>
                   {!it.current && !deleted && (
-                    <AsyncButton onClick={() => restore(it.version)} style={{ padding: "8px 12px", fontSize: ".85rem" }}><Icon icon={RotateCcw} className="h-4 w-4" /> {t("ver.restore")}</AsyncButton>
+                    <AsyncButton onClick={() => restore(it.version)} style={{ minHeight: 44, padding: "0 12px", fontSize: ".85rem" }}><Icon icon={RotateCcw} className="h-4 w-4" /> {t("ver.restore")}</AsyncButton>
                   )}
                 </div>
               </div>
@@ -160,9 +160,9 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
               <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "12px 14px", borderBottom: "1px solid var(--line)", position: "sticky", top: 0, background: "var(--surface)", borderRadius: "14px 14px 0 0", zIndex: 1 }}>
                 <b style={{ flex: 1, fontFamily: "var(--font-anuphan)" }}>{tt("ver.previewTitle", { v: preview.version })}</b>
                 {!deleted && !items.find((i) => i.version === preview.version)?.current && (
-                  <AsyncButton onClick={() => restore(preview.version)} style={{ padding: "7px 12px", fontSize: ".84rem" }}><Icon icon={RotateCcw} className="h-4 w-4" /> {t("ver.restore")}</AsyncButton>
+                  <AsyncButton onClick={() => restore(preview.version)} style={{ minHeight: 44, padding: "0 12px", fontSize: ".84rem" }}><Icon icon={RotateCcw} className="h-4 w-4" /> {t("ver.restore")}</AsyncButton>
                 )}
-                <button type="button" onClick={() => setPreview(null)} aria-label={t("common.close")} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--ink-2)", minWidth: 40, minHeight: 40, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={X} className="h-5 w-5" /></button>
+                <button type="button" onClick={() => setPreview(null)} aria-label={t("common.close")} style={{ border: "none", background: "none", cursor: "pointer", color: "var(--ink-2)", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center" }}><Icon icon={X} className="h-5 w-5" /></button>
               </div>
               <div style={{ padding: 14 }}><FormPreview schema={preview.schema} /></div>
             </div>

@@ -41,7 +41,7 @@ export async function removeFromWorkspace(userId: string, tenantId: string): Pro
     .eq("tenant_id", tenantId)
     .eq("role", "owner");
   const isOnlyOwner = (owners || []).length <= 1 && (owners || []).some((o) => o.user_id === userId);
-  if (isOnlyOwner) return { error: await sm("ลบ owner คนสุดท้ายของ workspace ไม่ได้") };
+  if (isOnlyOwner) return { error: await sm("ลบเจ้าของคนสุดท้ายของ workspace ไม่ได้") };
 
   const { error } = await a.admin.from("memberships").delete().eq("user_id", userId).eq("tenant_id", tenantId);
   if (error) return { error: error.message };

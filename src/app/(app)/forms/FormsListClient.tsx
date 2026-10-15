@@ -89,7 +89,7 @@ export default function FormsListClient({
   }
 
   async function removeDraft(id: string) {
-    if (!(await confirmDialog({ title: t("dlg.delDraft"), message: t("draft.deleteConfirm"), confirmLabel: t("common.delete"), danger: true }))) return;
+    if (!(await confirmDialog({ title: t("dlg.delDraft"), message: t("draft.deleteConfirm"), confirmLabel: t("dlg.btn.delDraft"), danger: true }))) return;
     setBusyId(id);
     const res = await deleteDraftAction(id);
     setBusyId(null);
@@ -124,7 +124,7 @@ export default function FormsListClient({
 
       {/* แท็บย่อย: ฟอร์มทั้งหมด | แบบร่างที่ยังบันทึกไม่เสร็จ */}
       {/* จอแคบ: แท็บไม่ตัดบรรทัด เลื่อนซ้าย-ขวาได้แทน */}
-      <div role="tablist" data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "12px 0 4px", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
+      <div role="tablist" aria-label={t("forms.title")} data-tour="forms-tabs" className="krok-tabscroll" style={{ display: "flex", gap: 4, boxShadow: "inset 0 -1px 0 var(--line)", margin: "12px 0 4px", overflowX: "auto", overflowY: "hidden", scrollbarWidth: "none" }}>
         {([
           { k: "all" as const, label: t("forms.tabAll"), short: t("forms.tabAllShort"), n: forms.length },
           ...(today && (today.length > 0 || tab === "today") ? [{ k: "today" as const, label: t("today.tab"), short: t("today.tabShort"), n: today.filter(actionable).length }] : []),
