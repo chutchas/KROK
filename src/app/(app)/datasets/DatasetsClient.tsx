@@ -1,5 +1,4 @@
 "use client";
-import HelpTip from "@/components/HelpTip";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -11,6 +10,7 @@ import type { DsAnyKey as MessageKey } from "@/i18n/ns/ds";
 import { useDsT as useT } from "@/i18n/ns/ds";
 import { createDataset } from "./actions";
 import { SOURCE_ICON, SOURCE_KEY, SyncBadge, label } from "./ui";
+import PageHeader from "@/components/PageHeader";
 
 const KIND_HELP: Record<DatasetSourceKind, MessageKey> = {
   file: "ds.kindHelp.file",
@@ -39,21 +39,12 @@ export default function DatasetsClient({ items, canEdit, missingTable }: { items
   return (
     <div style={{ display: "grid", gap: 16 }}>
       {/* ปุ่มสร้างชิดบน (ไม่ผูกกับก้นคอลัมน์ซ้าย) — เปิดวิธีใช้แล้วปุ่มไม่เด้งลง */}
-      {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
-      <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
-        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("nav.datasets")}</h1>
-        <HelpTip id="datasets" compact panelOrder={2} />
-        {canEdit && !creating && (
-          <span style={{ marginLeft: "auto" }}>
-            <Button data-tour="ds-create" variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>
-              <Icon icon={Plus} className="h-4 w-4" /> {t("ds.create")}
-            </Button>
-          </span>
-        )}
-        <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-          {t("ds.subtitle")}
-        </p>
-      </div>
+      <PageHeader title={t("nav.datasets")} help="datasets" subtitle={t("ds.subtitle")}
+        actions={canEdit && !creating ? (
+          <Button data-tour="ds-create" variant="primary" onClick={() => setCreating(true)} disabled={missingTable}>
+            <Icon icon={Plus} className="h-4 w-4" /> {t("ds.create")}
+          </Button>
+        ) : undefined} />
 
       {missingTable && (
         <Notice kind="error">{t("ds.notReady")}</Notice>

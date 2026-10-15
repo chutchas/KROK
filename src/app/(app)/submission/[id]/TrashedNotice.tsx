@@ -31,7 +31,7 @@ export default function TrashedNotice({ id, title, docNo, by, reason, deletedAt 
       <span aria-hidden style={{ width: 52, height: 52, borderRadius: 14, background: "var(--fail-soft)", color: "var(--fail-text)", display: "inline-flex", alignItems: "center", justifyContent: "center" }}>
         <Icon icon={Trash2} className="h-6 w-6" />
       </span>
-      <h1 style={{ fontSize: "1.3rem", margin: 0 }}>{tt("trash.inTrashTitle", { no: docNo })}</h1>
+      <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{tt("trash.inTrashTitle", { no: docNo })}</h1>
       <p style={{ margin: 0, color: "var(--ink-2)" }}>{title}</p>
       <p style={{ margin: 0, fontSize: ".9rem", color: "var(--ink-2)" }}>{tt("trash.deletedMeta", { by, at: when })}{reason ? <> · “{reason}”</> : null}</p>
       {err && <div role="alert"><Notice kind="error">{err}</Notice></div>}

@@ -9,8 +9,8 @@ import { deleteDevice, renameDevice, setDeviceStatus, setFormDeviceScope, toggle
 import { confirmDialog } from "@/components/dialogs";
 import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
-import HelpTip from "@/components/HelpTip";
 import Link from "next/link";
+import PageHeader from "@/components/PageHeader";
 
 export interface DeviceRow {
   id: string;
@@ -151,14 +151,7 @@ export default function DevicesClient({
     <div style={{ display: "grid", gap: 16 }}>
       {/* หัวหน้าเพจ: นอกการ์ด ขนาดเดียวกับทุกหน้า */}
       <div>
-        {/* หัวหน้าเพจ = แถวเดียว wrap: ชื่อ · วิธีใช้ · ปุ่มขวา / คำอธิบาย (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้าง */}
-        <div style={{ display: "flex", alignItems: "center", gap: "2px 6px", flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("dev.devicesTitle")}</h1>
-          <HelpTip id="devices" compact panelOrder={2} />
-          <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-            {t("dev.devicesSub1")}<b>{t("dev.stApproved")}</b>{t("dev.devicesSub2")}
-          </p>
-        </div>
+        <PageHeader title={t("dev.devicesTitle")} help="devices" subtitle={<>{t("dev.devicesSub1")}<b>{t("dev.stApproved")}</b>{t("dev.devicesSub2")}</>} />
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", marginTop: 6 }}>
           {t("dev.browserNote")}
         </p>
