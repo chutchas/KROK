@@ -279,34 +279,32 @@ export default function DashboardClient({
             {saveErr && <p role="alert" style={{ color: "var(--fail)", fontSize: ".82rem", margin: "0 0 12px" }}><StoredErr text={saveErr} /></p>}
 
             {/* โซน widget ปรับเองได้ */}
-            {shown.length === 0 && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", margin: "0 0 18px" }}>
-                <p style={{ color: "var(--ink-3)", fontSize: ".88rem", margin: 0, flex: "1 1 260px" }}>
+            {/* หัวส่วนการ์ด — แบบเดียวทั้งสองแท็บ (มี/ไม่มีการ์ด): ชื่อ · วิธีใช้ข้างชื่อ (เหมือนหัวหน้าเพจอื่น) · ปุ่มชิดขวา
+                แถว wrap: ข้อความตอนยังว่าง (order 1) / panel วิธีใช้ (order 2) กางเต็มความกว้างใต้แถว */}
+            <div style={{ display: "flex", alignItems: "center", gap: "4px 10px", margin: shown.length ? "0 0 10px" : "0 0 18px", flexWrap: "wrap" }}>
+              <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
+              <HelpTip id="dashboard" compact panelOrder={2} />
+              {canEdit && (
+                <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+                  {shown.length === 0 ? <>{tplBtn(true)}{addCardBtn}</> : <>
+                  {managing && tplBtn(false)}
+                  {managing && addCardBtn}
+                  <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
+                    className="inline-flex items-center gap-1.5"
+                    style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
+                    {managing ? <><Icon icon={Check} className="h-4 w-4" /> {t("dash.manageDone")}</> : <><Icon icon={Settings2} className="h-4 w-4" /> {t("dash.manage")}</>}
+                  </button>
+                  </>}
+                </span>
+              )}
+              {shown.length === 0 && (
+                <p style={{ flexBasis: "100%", order: 1, color: "var(--ink-3)", fontSize: ".88rem", margin: 0 }}>
                   {tab === "mine" ? t("dash.mineEmpty") : canEdit ? t("dash.wsEmptyAdmin") : t("dash.wsEmptyMember")}
                 </p>
-                {canEdit && <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{tplBtn(true)}{addCardBtn}</span>}
-                {/* ลูกตรงของแถวที่ wrap — panel วิธีใช้กางเต็มบรรทัดใหม่ ไม่ดันปุ่ม */}
-                <HelpTip id="dashboard" />
-              </div>
-            )}
+              )}
+            </div>
             {shown.length > 0 && (
               <>
-                <div style={{ display: "flex", alignItems: "center", gap: 10, margin: "0 0 10px", flexWrap: "wrap" }}>
-                  <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("dash.widgets")}</h2>
-                  {canEdit && (
-                    <span style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
-                    {managing && tplBtn(false)}
-                    {managing && addCardBtn}
-                    <button type="button" onClick={() => setManaging((v) => !v)} aria-pressed={managing}
-                      className="inline-flex items-center gap-1.5"
-                      style={{ minHeight: 44, padding: "6px 14px", borderRadius: 8, border: `1px solid ${managing ? "var(--accent)" : "var(--line-strong)"}`, background: managing ? "var(--accent)" : "var(--surface)", color: managing ? "var(--accent-ink)" : "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".86rem", fontWeight: 600 }}>
-                      {managing ? <><Icon icon={Check} className="h-4 w-4" /> {t("dash.manageDone")}</> : <><Icon icon={Settings2} className="h-4 w-4" /> {t("dash.manage")}</>}
-                    </button>
-                    </span>
-                  )}
-                  {/* ท้ายแถว + เป็นลูกตรง — panel กางใต้แถวเต็มความกว้าง ไม่บีบหัวข้อ/ไม่ดันปุ่ม */}
-                  <HelpTip id="dashboard" compact />
-                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(min(280px, 100%), 1fr))", gap: 12, marginBottom: 18 }}>
                   {shown.map((w, i) => (
                     <div key={`${tab}:${w.id}`} style={{ minWidth: 0 }} draggable={editing} onDragStart={() => editing && setDragId(w.id)} onDragOver={(e) => e.preventDefault()} onDrop={() => editing && onDrop(w.id)}>
