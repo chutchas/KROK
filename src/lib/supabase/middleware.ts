@@ -54,6 +54,9 @@ async function accessTokenExpired(r: NextRequest): Promise<boolean | null> {
   }
 }
 
+/** path สำหรับ log (ตัด query ทิ้ง กันข้อมูลหลุด) */
+const path0 = (r: NextRequest) => r.nextUrl.pathname.slice(0, 120);
+
 /** Supabase ขัดข้องชั่วคราว (ขอถี่เกิน / ล่ม) — ไม่ใช่ session ตายจริง */
 const isTransientAuthError = (e: unknown) => {
   const st = (e as { status?: number } | null)?.status;
@@ -131,7 +134,12 @@ export async function updateSession(request: NextRequest) {
   const user = claimData?.claims?.sub ? claimData.claims : null;
 
   // ต่ออายุไม่สำเร็จเพราะ Supabase ขัดข้องชั่วคราว → ไม่เขียน cookie (ไม่ลบ session) และให้ลองใหม่
-  if (!user && claimErr && isTransientAuthError(claimErr)) return retryResponse(request);
+  if (!user && claimErr && isTransientAuthError(claimErr)) {
+    // ค้นใน Vercel Logs ด้วย "[krok-auth-retry]" — ไม่ log token/cookie
+    const e = claimErr as { status?: number; name?: string; code?: string; message?: string };
+    console.warn(`[krok-auth-retry] status=${e.status ?? "-"} name=${e.name ?? "-"} code=${e.code ?? "-"} path=${path0(request)} kind=${isPrefetch(request) ? "prefetch" : isRsc(request) ? "rsc" : "doc"} msg=${(e.message || "").slice(0, 120)}`);
+    return retryResponse(request);
+  }
 
   const toSet = pending.list;
   if (toSet) {
