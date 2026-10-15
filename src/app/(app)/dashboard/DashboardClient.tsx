@@ -474,10 +474,12 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
   const [res, setRes] = useState<WidgetResult | null>(null);
   const [attempt, setAttempt] = useState(0); // กด "ลองใหม่" → คำนวณการ์ดนี้ใหม่
   const key = `${w.format}|${w.formId}|${w.metric}|${w.range}`;
+  const [loading, setLoading] = useState(true);
   useEffect(() => {
     let active = true;
-    setRes(null);
-    loadWidget(w).then((r) => { if (active) setRes(r); });
+    // ไม่ล้างค่าเดิม — สลับช่วงแล้วแสดงค่าเก่าแบบจางระหว่างโหลด การ์ดไม่ยุบ หน้าไม่กระตุก
+    setLoading(true);
+    loadWidget(w).then((r) => { if (active) { setRes(r); setLoading(false); } });
     return () => { active = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, attempt]);
@@ -501,12 +503,12 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
       </div>
       {/* สลับช่วงบนการ์ด (วันนี้ · 7 · 14 · 30 วัน) — ไม่ต้องมีการ์ดแยกต่อช่วง · แถวของตัวเอง การ์ดแคบก็ไม่เบียดชื่อ */}
       {period && (
-        <div role="group" aria-label={t("dash.period" as never)} style={{ display: "flex", marginTop: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
+        <div role="group" aria-label={`${t("dash.period" as never)} · ${isArea ? "" : noMetric ? formatLabel(w.format, en) : metricLabel(w.metric, en)}`} style={{ display: "flex", marginTop: 10, border: "1px solid var(--line)", borderRadius: 10, padding: 2, gap: 2 }}>
           {periods.map((r) => {
             const on = w.range === r;
             return (
               <button key={r} type="button" aria-pressed={on} onClick={() => pickPeriod(r)}
-                style={{ flex: "1 1 0", minWidth: 0, minHeight: 40, padding: "0 4px", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: ".8rem", fontWeight: on ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap",
+                style={{ flex: "1 1 0", minWidth: 0, minHeight: 44, padding: "0 4px", border: "none", borderRadius: 8, fontFamily: "inherit", fontSize: ".8rem", fontWeight: on ? 700 : 500, cursor: "pointer", whiteSpace: "nowrap",
                   background: on ? "var(--accent-soft)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontVariantNumeric: "tabular-nums" }}>
                 {rangeLabel(r, en)}
               </button>
@@ -525,7 +527,7 @@ function WidgetCard({ scope, w: base, formName, areaName, en, editing = false, o
         </div>
       )}
 
-      <div style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0 }}>
+      <div aria-busy={loading} style={{ marginTop: 12, flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-start", minWidth: 0, opacity: loading && res ? 0.45 : 1, transition: "opacity .15s" }}>
         {res == null && <div style={{ color: "var(--ink-3)", fontSize: ".82rem" }}>{t("common.loading" as never)}</div>}
         {res && "error" in res && (
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", color: "var(--fail-text)", fontSize: ".82rem" }}>
@@ -752,15 +754,16 @@ function TemplatePicker({ recommended, existing, en, scope, areaCount, onCancel,
   // มีการ์ดอยู่แล้ว = ส่วนใหญ่อยากเปลี่ยนทั้งชุด (ต่อท้ายทำให้การ์ดซ้ำ) · ยืนยัน + เลิกทำได้
   // ต่อท้ายไม่เพิ่มการ์ดซ้ำแล้ว = ทางที่ปลอดภัยกว่า (ไม่ลบการ์ดเดิม)
   const [mode, setMode] = useState<"append" | "replace">("append");
-  const has = ([f, m, r]: [WidgetFormat, WidgetMetric, WidgetRange]) =>
-    existing.some((e) => e.format === f && e.formId === "all" && e.metric === m && e.range === r);
+  // เงื่อนไขเดียวกับตัวนับ "เพิ่มต่อท้าย n การ์ด" (newTemplateWidgets → sameWidget) — ป้ายกับตัวเลขบนปุ่มตรงกันเสมอ
+  const has = ([format, metric, range]: [WidgetFormat, WidgetMetric, WidgetRange]) =>
+    existing.some((e) => sameWidget(e, { id: "", format, formId: "all", metric, range }));
   return (
     <div {...backdropClose(onCancel)}
       style={{ position: "fixed", inset: 0, background: "rgba(10,14,18,.55)", zIndex: 60, display: "flex", alignItems: "center", justifyContent: "center", padding: 12 }}>
       <div ref={boxRef} role="dialog" aria-modal="true" aria-labelledby="tpl-h" aria-describedby="tpl-scope"
         style={{ background: "var(--surface)", borderRadius: 16, maxWidth: 760, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: "22px 22px 0" }}>
         <h2 id="tpl-h" style={{ fontSize: "var(--fs-h2)", margin: 0 }}>{t("dash.tplTitle")}</h2>
-        <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 6px" }}>{t("dash.tplSub")}</p>
+        <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 6px" }}>{t("dash.tplSub")} {t("dash.tplPeriodNote")}</p>
         <p id="tpl-scope" style={{ display: "flex", alignItems: "center", gap: 6, margin: "0 0 14px", fontSize: ".84rem", fontWeight: 600, color: scope === "ws" ? "var(--warn)" : "var(--ink-2)" }}>
           <Icon icon={scope === "ws" ? Users : Settings2} className="h-4 w-4" /> {t(scope === "ws" ? "dash.tplScopeWs" : "dash.tplScopeMine")}
         </p>

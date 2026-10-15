@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import Icon, { type IconType } from "@/components/Icon";
 import { MoreHorizontal, Check } from "lucide-react";
 import { useT } from "@/i18n/LanguageProvider";
@@ -39,6 +39,16 @@ export default function OverflowMenu({ items, label, tour, outlined }: {
   const btnRef = useRef<HTMLButtonElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
   const menuId = useId();
+  // ที่ด้านล่างไม่พอ (แถวท้ายจอ · มือถือมีแถบเมนูล่างบัง) → เปิดขึ้นด้านบนแทน
+  const [up, setUp] = useState(false);
+  useLayoutEffect(() => {
+    if (!open || !listRef.current || !btnRef.current) { setUp(false); return; }
+    const tabbar = document.querySelector<HTMLElement>(".krok-tabbar")?.getBoundingClientRect().height ?? 0;
+    const menuH = listRef.current.offsetHeight;
+    const btn = btnRef.current.getBoundingClientRect();
+    const below = window.innerHeight - tabbar - btn.bottom - 6;
+    setUp(menuH > below && btn.top - 6 > below);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -95,7 +105,7 @@ export default function OverflowMenu({ items, label, tour, outlined }: {
           aria-label={name}
           onKeyDown={onListKey}
           style={{
-            position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 40,
+            position: "absolute", ...(up ? { bottom: "calc(100% + 6px)" } : { top: "calc(100% + 6px)" }), right: 0, zIndex: 40,
             minWidth: 220, maxWidth: "calc(100vw - 24px)",
             background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, boxShadow: "var(--shadow)", padding: 6,
           }}

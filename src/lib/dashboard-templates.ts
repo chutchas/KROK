@@ -84,7 +84,8 @@ export function templateCardLabel([format, metric, range]: W, en = false): strin
   const parts = [formatLabel(format, en)];
   if (format === "stat" || format === "trend" || format === "ranking") parts.push(metricLabel(metric, en));
   // การ์ดที่สลับช่วงบนการ์ดได้: บอกว่าเลือกได้ (ไม่โชว์ "7 วัน"/"30 วัน" ราวกับเป็นการ์ดคนละใบ)
-  if (isPeriodWidget({ format, metric, range })) parts.push(en ? "pick period on card" : "เลือกช่วงบนการ์ด");
+  // การ์ดที่สลับช่วงบนการ์ดได้: ไม่บอกช่วง (หมายเหตุครั้งเดียวที่หัวตัวเลือกแม่แบบ)
+  if (isPeriodWidget({ format, metric, range })) { /* ไม่ใส่ช่วง */ }
   else if (format !== "area" && format !== "openlist") parts.push(rangeLabel(range, en));
   return parts.join(" · ");
 }

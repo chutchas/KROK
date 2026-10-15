@@ -117,7 +117,7 @@ export default function FormEditor({
         <div style={{ border: "1px solid var(--warn, #f59e0b)", background: "color-mix(in srgb, var(--warn, #f59e0b) 10%, transparent)", borderRadius: 10, padding: "10px 12px", fontSize: ".85rem", color: "var(--ink-2)", display: "flex", gap: 8 }}>
           <Icon icon={TriangleAlert} className="h-4 w-4 shrink-0 text-amber-500" />
           <span>
-            ฟิลด์ในฟอร์มนี้มาจากการอ่านเอกสารด้วย AI มากกว่าครึ่ง — ระวังฟอร์มกลายเป็นแค่กล่องรับรูป
+            ช่องในฟอร์มนี้มาจากการอ่านเอกสารด้วย AI มากกว่าครึ่ง — ระวังฟอร์มกลายเป็นแค่กล่องรับรูป
             สิ่งที่ลูกค้าจ่ายเงินซื้อคือกระบวนการที่คนทำจริงหน้างาน ไม่ใช่ข้อมูลที่ดึงจากกระดาษ
           </span>
         </div>
