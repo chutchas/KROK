@@ -266,7 +266,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
       </div>
 
       {docSchema && (
-        <div className="no-print" role="tablist" aria-label={docNo} style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)", marginBottom: 12 }}>
+        <div className="no-print" role="tablist" aria-label={`${sub.form_title}${sub.doc_no ? ` · ${docNo}` : ""}`} style={{ display: "inline-flex", gap: 4, padding: 4, borderRadius: 10, background: "var(--surface-2)", border: "1px solid var(--line)", marginBottom: 12 }}>
           <a role="tab" aria-selected={view === "doc"} aria-controls={view === "doc" ? "sub-panel" : undefined} href={`/submission/${sub.id}?view=doc${fromQ("&")}`} style={tab(view === "doc")}><T k="sub.tabDoc" /></a>
           <a role="tab" aria-selected={view === "summary"} aria-controls={view === "summary" ? "sub-panel" : undefined} href={`/submission/${sub.id}?view=summary${fromQ("&")}`} style={tab(view === "summary")}><T k="sub.tabSummary" /></a>
         </div>

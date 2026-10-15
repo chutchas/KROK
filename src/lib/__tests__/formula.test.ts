@@ -101,8 +101,8 @@ describe("แปลงชื่อ ↔ id", () => {
     expect(fromDisplay(d, ctx)).toEqual({ stored: "SUM({tb.tot}) + {w1}" });
   });
   it("ตรวจสอบ", () => {
-    expect(fromDisplay("[ไม่มี] + 1", ctx)).toEqual({ error: "ไม่พบฟิลด์ [ไม่มี]" });
-    expect(fromDisplay("[ยอดรวม] + 1", ctx)).toEqual({ error: "สูตรอ้างถึงฟิลด์ตัวเองไม่ได้" });
+    expect(fromDisplay("[ไม่มี] + 1", ctx)).toEqual({ error: "ไม่พบช่อง [ไม่มี]" });
+    expect(fromDisplay("[ยอดรวม] + 1", ctx)).toEqual({ error: "สูตรอ้างถึงช่องตัวเองไม่ได้" });
     expect(fromDisplay("[รายการ.ชื่อ]", ctx)).toEqual({ error: "คอลัมน์ [รายการ.ชื่อ] ไม่ใช่ตัวเลข" });
     expect("error" in fromDisplay("[รายการ.รวม] + 1", ctx)).toBe(true);
   });

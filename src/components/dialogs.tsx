@@ -3,7 +3,7 @@
 // KROK · หน้าต่างยืนยัน/แจ้งเตือนของแอป — แทน window.confirm / alert ของ browser
 //
 // เรียกได้จากที่ไหนก็ได้ (ไม่ต้องใช้ hook):
-//   if (!(await confirmDialog({ message: "ลบ?", danger: true }))) return;
+//   if (!(await confirmDialog({ message: "ลบ?", confirmLabel: "ลบ", danger: true }))) return;
 //   await alertDialog("บันทึกไม่สำเร็จ");
 // <DialogHost /> วางครั้งเดียวที่ root layout (ภายใน LanguageProvider)
 //
@@ -15,14 +15,15 @@ import { useDialogA11y } from "@/lib/use-dialog-a11y";
 import { Button } from "@/components/ui";
 import { useT } from "@/i18n/LanguageProvider";
 
-export interface ConfirmOptions {
-  title?: string;
-  message: string;
-  confirmLabel?: string;
-  cancelLabel?: string;
-  /** ปุ่มยืนยันสีแดง (ลบ/ยกเลิก/ย้อนกลับไม่ได้) */
-  danger?: boolean;
-}
+type ConfirmBase = { title?: string; message: string; cancelLabel?: string };
+/**
+ * danger = ปุ่มยืนยันสีแดง (ลบ/ยกเลิก/ย้อนกลับไม่ได้) — ต้องระบุ confirmLabel เสมอ (บังคับที่ type)
+ * กันกรณีปุ่มแดงขึ้นคำว่า "ลบ" ทั้งที่การกระทำไม่ใช่การลบ (เช่น เก็บถาวร · ยกเลิกต่ออายุ)
+ */
+export type ConfirmOptions = ConfirmBase & (
+  | { danger?: false; confirmLabel?: string }
+  | { danger: true; confirmLabel: string }
+);
 
 type Req =
   | { id: number; kind: "confirm"; opts: ConfirmOptions; resolve: (v: boolean) => void }
@@ -97,7 +98,7 @@ function DialogView({ req }: { req: Req }) {
           {!isAlert && <Button ref={cancelRef} onClick={() => settle(req.id, false)}>{opts.cancelLabel || t("common.cancel")}</Button>}
           <Button ref={okRef} variant={opts.danger ? "danger" : "primary"} onClick={() => settle(req.id, true)}
             style={opts.danger ? { background: "var(--fail-solid)", borderColor: "var(--fail-solid)", color: "#fff", fontWeight: 600 } : undefined}>
-            {opts.confirmLabel || (isAlert ? t("common.ok") : opts.danger ? t("common.delete") : t("common.confirm"))}
+            {opts.confirmLabel || (isAlert ? t("common.ok") : t("common.confirm"))}
           </Button>
         </div>
       </div>

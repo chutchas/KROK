@@ -175,7 +175,7 @@ export async function deleteDataset(id: string): Promise<R> {
   const supabase = await createClient();
   const used = await formsUsingDataset(supabase, g.session.tenantId, id);
   if (used.length)
-    return { error: `ลบไม่ได้ — ยังมี ${used.length} ฟอร์มใช้อยู่ (${used.slice(0, 3).map((f) => f.title).join(", ")}) ให้เปลี่ยนฟิลด์ในฟอร์มก่อน` };
+    return { error: `ลบไม่ได้ — ยังมี ${used.length} ฟอร์มใช้อยู่ (${used.slice(0, 3).map((f) => f.title).join(", ")}) ให้เปลี่ยนช่องในฟอร์มก่อน` };
   const { error } = await supabase.from("datasets").delete().eq("id", id).eq("tenant_id", g.session.tenantId);
   if (error) return { error: await sm(dbError(error)) };
   await audit(g.session, "dataset.delete", id, { name: ds.name, rows: ds.rowCount });
@@ -295,7 +295,7 @@ export async function savePullConfig(id: string, config: unknown, columns: Datas
   }
   const cols = sanitizeColumns(columns);
   cfg.field_map = cfg.field_map.filter((m) => cols.some((c) => c.key === m.column));
-  if (!cfg.field_map.length) return { error: await sm("เลือกฟิลด์ที่จะนำเข้าอย่างน้อย 1 ช่อง") };
+  if (!cfg.field_map.length) return { error: await sm("เลือกช่องที่จะนำเข้าอย่างน้อย 1 ช่อง") };
 
   // คอลัมน์ที่ฟอร์มใช้อยู่ห้ามหายไป
   const colRes = await updateDataset(id, { columns: cols, keyColumn: keyColumn && cols.some((c) => c.key === keyColumn) ? keyColumn : null });

@@ -25,7 +25,7 @@ const ARITY: Record<Fn, [number, number]> = {
 
 /** ชนิดคอลัมน์ที่เอามาคำนวณได้ */
 export const NUMERIC_COL_TYPES = ["number", "formula", "pass_fail", "checkbox"] as const;
-/** ชนิดฟิลด์ที่เอามาคำนวณได้ (ตาราง = อ้างรายคอลัมน์) */
+/** ชนิดช่องที่เอามาคำนวณได้ (ตาราง = อ้างรายคอลัมน์) */
 export const NUMERIC_FIELD_TYPES = ["number", "formula"] as const;
 
 // ---------- AST ----------
@@ -73,7 +73,7 @@ function tokenize(src: string): Tok[] {
     if ("+-*/^(),<>=%".includes(c)) { out.push({ k: "op", v: c === "×" ? "*" : c }); i++; continue; }
     if (c === "×") { out.push({ k: "op", v: "*" }); i++; continue; }
     if (c === "÷") { out.push({ k: "op", v: "/" }); i++; continue; }
-    if (c === "[") throw new FormulaError("ไม่พบชื่อฟิลด์ที่อยู่ใน [ ]");
+    if (c === "[") throw new FormulaError("ไม่พบชื่อช่องที่อยู่ใน [ ]");
     throw new FormulaError(`ใช้อักขระ "${c}" ในสูตรไม่ได้`);
   }
   return out;
@@ -317,13 +317,13 @@ export function computeRow(columns: TableColumn[], row: Record<string, string>):
 }
 
 export interface FormulaInputs {
-  /** ค่าดิบของฟิลด์ (ตัวเลข = string/number) */
+  /** ค่าดิบของช่อง (ตัวเลข = string/number) */
   value: (fieldId: string) => unknown;
-  /** แถวของฟิลด์ตาราง */
+  /** แถวของช่องตาราง */
   rows: (fieldId: string) => Record<string, string>[];
 }
 
-/** คำนวณฟิลด์สูตรทั้งฟอร์ม → { fieldId: ผล } (ปัดทศนิยมตามที่ตั้งแล้ว) */
+/** คำนวณช่องสูตรทั้งฟอร์ม → { fieldId: ผล } (ปัดทศนิยมตามที่ตั้งแล้ว) */
 export function computeFormulas(schema: FormSchema, inp: FormulaInputs): Record<string, number | null> {
   const fields = schema.steps.flatMap((s) => s.fields);
   const byId = new Map(fields.map((f) => [f.id, f]));
@@ -364,7 +364,7 @@ export function outOfRange(v: number | null, f: { min?: number; max?: number }):
 
 // ---------- แปลง id ↔ ชื่อ สำหรับหน้า editor ----------
 export interface FormulaCtx {
-  /** ฟิลด์ทั้งฟอร์ม (สำหรับฟิลด์สูตร) */
+  /** ช่องทั้งฟอร์ม (สำหรับช่องสูตร) */
   fields: Pick<FormField, "id" | "label" | "type" | "columns">[];
   /** คอลัมน์ของตารางเดียวกัน (สำหรับคอลัมน์สูตร) — มีค่า = โหมดสูตรรายแถว */
   rowColumns?: Pick<TableColumn, "id" | "label" | "type">[];
@@ -423,8 +423,8 @@ export function fromDisplay(display: string, ctx: FormulaCtx): { stored: string 
     }
     const f = ctx.fields.find((x) => clean(x.label) === n);
     if (f) {
-      if (f.id === ctx.selfId) { err ??= "สูตรอ้างถึงฟิลด์ตัวเองไม่ได้"; return "0"; }
-      if (!(NUMERIC_FIELD_TYPES as readonly string[]).includes(f.type)) { err ??= `ฟิลด์ [${n}] ไม่ใช่ตัวเลข`; return "0"; }
+      if (f.id === ctx.selfId) { err ??= "สูตรอ้างถึงช่องตัวเองไม่ได้"; return "0"; }
+      if (!(NUMERIC_FIELD_TYPES as readonly string[]).includes(f.type)) { err ??= `ช่อง [${n}] ไม่ใช่ตัวเลข`; return "0"; }
       return `{${f.id}}`;
     }
     // [ตาราง.คอลัมน์] — ชื่ออาจมีจุด จึงลองทุกตำแหน่งที่แบ่งได้
@@ -436,7 +436,7 @@ export function fromDisplay(display: string, ctx: FormulaCtx): { stored: string 
         return `{${t.id}.${c.id}}`;
       }
     }
-    err ??= `ไม่พบฟิลด์ [${n}]`;
+    err ??= `ไม่พบช่อง [${n}]`;
     return "0";
   });
   if (err) return { error: err };
@@ -451,7 +451,7 @@ export function fromDisplay(display: string, ctx: FormulaCtx): { stored: string 
   return { stored };
 }
 
-/** ตรวจสูตรวนอ้างกัน (ฟิลด์สูตร A ใช้ B และ B ใช้ A) → ชื่อฟิลด์ที่วน */
+/** ตรวจสูตรวนอ้างกัน (ช่องสูตร A ใช้ B และ B ใช้ A) → ชื่อช่องที่วน */
 export function findCycles(schema: FormSchema): string[] {
   const fs = schema.steps.flatMap((s) => s.fields).filter((f) => f.type === "formula");
   const ok = new Set(topo(fs, (x) => depsOf(x.formula)).map((f) => f.id));

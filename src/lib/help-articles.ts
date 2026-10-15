@@ -473,14 +473,14 @@ export const HELP_ARTICLES: HelpArticle[] = [
     },
     notes: {
       th: [
-        "การ์ดตัวเลข อันดับฟอร์ม กราฟแนวโน้ม และข้อที่ไม่ผ่านบ่อย มีปุ่มสลับช่วงบนการ์ด (วันนี้ / 7 / 14 / 30 วัน) — ช่วงที่เลือกจำไว้ในเครื่องของคุณ ไม่เปลี่ยนแดชบอร์ดของคนอื่น",
+        "การ์ดตัวเลขและอันดับฟอร์ม สลับช่วงบนการ์ดได้ (วันนี้ / 7 / 14 / 30 วัน) · กราฟแนวโน้มและข้อที่ไม่ผ่านบ่อยสลับได้ 7 / 14 / 30 วัน (วันเดียวไม่มีแนวโน้ม) · การ์ด \"เดือนนี้\"/\"ทั้งหมด\" ไม่มีปุ่มสลับ — ช่วงที่เลือกจำไว้ในเครื่องของคุณ ไม่เปลี่ยนแดชบอร์ดของคนอื่น",
         "ใช้แม่แบบแล้วเปลี่ยนใจ กด \"เลิกทำ\" ที่แถบด้านล่างได้ภายใน 8 วินาที",
         "ในกราฟแนวโน้ม แตะแท่ง (หรือกดลูกศรซ้าย/ขวา) เพื่อดูค่าของวันนั้น กด \"แสดงผลรวม\" เพื่อกลับ",
         "สมาชิกที่ไม่ใช่ผู้จัดการเห็นตัวเลขเฉพาะฟอร์มที่ตัวเองมีสิทธิ์",
         "ใบไม่ผ่าน รออนุมัติ และรอบตรวจเลยกำหนด แสดงที่แถบ \"ต้องดูตอนนี้\" ด้านบนเสมอ ไม่ต้องทำการ์ดซ้ำ",
       ],
       en: [
-        "Stat, ranking, trend and top-failure cards have a period switch on the card (today / 7 / 14 / 30 days) — your choice is remembered on this device and doesn't change anyone else's dashboard",
+        "Stat and ranking cards switch period on the card (today / 7 / 14 / 30 days) · trend and top-failure cards switch 7 / 14 / 30 days (one day has no trend) · \"This month\"/\"All time\" cards have no switch — your choice is remembered on this device and doesn't change anyone else's dashboard",
         "Changed your mind after applying a template? Tap \"Undo\" in the bar at the bottom within 8 seconds",
         "On a trend chart, tap a bar (or use the left/right arrows) to see that day's value",
         "Members who aren't managers only see numbers for forms they can access",
