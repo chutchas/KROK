@@ -166,6 +166,14 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     router.refresh();
   }
 
+  async function archiveForm(id: string, title: string) {
+    if (!(await confirmDialog({ message: tt("studio.archiveConfirm", { title }), danger: true }))) return;
+    const res = await setFormStatus(id, "archived");
+    if ("error" in res) { await alertDialog(res.error); return; }
+    setFlash(tt("studio.archivedOk", { title }));
+    router.refresh();
+  }
+
   async function changeStatus(id: string, s: "published" | "archived" | "draft") {
     const res = await setFormStatus(id, s);
     if ("error" in res) await alertDialog(res.error);
@@ -1435,7 +1443,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 <OverflowMenu outlined label={tt("studio.moreFor", { title: f.title })} items={[
                   ...(f.status === "published" ? [{ key: "qr", label: t("qr.title"), icon: QrCode, onSelect: () => setQrForm(f) }] : []),
                   { key: "hist", label: t("ver.history"), icon: History, onSelect: () => router.push(`/studio/history/${f.id}`) },
-                  ...(f.status === "published" ? [{ key: "arch", label: t("studio.cancelForm"), icon: Archive, onSelect: () => void changeStatus(f.id, "archived") }] : []),
+                  ...(f.status === "published" ? [{ key: "arch", label: t("studio.cancelForm"), icon: Archive, onSelect: () => void archiveForm(f.id, f.title) }] : []),
                   { key: "del", label: t("common.delete"), icon: Trash2, danger: true, separator: true, onSelect: () => void onDelete(f.id, f.title) },
                 ]} />
               </div>
