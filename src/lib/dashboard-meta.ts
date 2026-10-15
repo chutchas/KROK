@@ -30,11 +30,11 @@ export const CLOSEOUT_METRICS: WidgetMetric[] = ["openfail", "closetime"];
 // trend เป็นอนุกรมเวลา จึงรองรับเฉพาะช่วงที่เป็นเวลา
 export const RANGES_BY_FORMAT: Record<WidgetFormat, WidgetRange[]> = {
   stat: ["today", "7d", "14d", "30d", "month", "all"],
-  ranking: ["today", "7d", "30d", "month", "all"],
-  trend: ["7d", "30d", "month"],
+  ranking: ["today", "7d", "14d", "30d", "month", "all"],
+  trend: ["7d", "14d", "30d", "month"],
   area: ["all"],
   openlist: ["all"],
-  topfails: ["7d", "30d", "month", "all"],
+  topfails: ["7d", "14d", "30d", "month", "all"],
 };
 
 type L = { th: string; en: string };
@@ -140,13 +140,24 @@ export function calcMetricAgg(a: MetricAgg, metric: WidgetMetric): number {
   return a.submitters;
 }
 
-/** ช่วงที่สลับได้บนการ์ดตัวเลข (ปุ่ม 7 · 14 · 30 วัน บนการ์ด) — การ์ดที่ต่างกันแค่ช่วงนี้ถือเป็นการ์ดเดียวกัน */
-export const PERIOD_RANGES: WidgetRange[] = ["7d", "14d", "30d"];
-export const isPeriodStat = (w: { format: WidgetFormat; range: WidgetRange }) => w.format === "stat" && PERIOD_RANGES.includes(w.range);
+/** ช่วงที่สลับได้บนการ์ด (ปุ่ม วันนี้ · 7 · 14 · 30 วัน) — การ์ดที่ต่างกันแค่ช่วงในชุดนี้ถือเป็นการ์ดเดียวกัน
+ *  กราฟแนวโน้ม/ข้อไม่ผ่านบ่อย ไม่มี "วันนี้" (วันเดียวไม่มีแนวโน้ม) · เดือนนี้/ทั้งหมด เป็นการ์ดคงที่ ไม่สลับ */
+export const PERIODS_BY_FORMAT: Record<WidgetFormat, WidgetRange[]> = {
+  stat: ["today", "7d", "14d", "30d"],
+  ranking: ["today", "7d", "14d", "30d"],
+  trend: ["7d", "14d", "30d"],
+  topfails: ["7d", "14d", "30d"],
+  area: [], openlist: [],
+};
+export const periodsOf = (w: { format: WidgetFormat; range: WidgetRange }): WidgetRange[] =>
+  PERIODS_BY_FORMAT[w.format].includes(w.range) ? PERIODS_BY_FORMAT[w.format] : [];
+/** การ์ดที่สลับช่วงบนการ์ดได้ */
+export const isPeriodWidget = (w: { format: WidgetFormat; range: WidgetRange; metric?: WidgetMetric }) =>
+  periodsOf(w).length > 0 && w.metric !== "pending";
 
 // จำนวนวันของ trend ตามช่วง (month = ถึงวันปัจจุบันของเดือน)
 export function trendDays(range: WidgetRange, now = new Date()): number {
-  return range === "7d" ? 7 : range === "30d" ? 30 : now.getDate();
+  return range === "7d" ? 7 : range === "14d" ? 14 : range === "30d" ? 30 : now.getDate();
 }
 
 // หน่วยต่อท้ายค่า (สำหรับ stat)

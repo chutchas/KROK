@@ -1738,7 +1738,6 @@ export const th = {
   "roles.savedManageOff": "บันทึกแล้ว: {role} จัดการ workspace ไม่ได้แล้ว",
   "studio.moreFor": "เมนูเพิ่มเติมของ {title}",
   "dash.period": "ช่วงเวลา",
-  "dash.dayShort": " วัน",
   "dash.durSec": "{s}วิ",
   "dash.deletedForm": "(ฟอร์มถูกลบ)",
   "dash.passFail": "ผ่าน {pass} · ไม่ผ่าน {fail}",
