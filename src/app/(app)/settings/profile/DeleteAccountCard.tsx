@@ -70,8 +70,8 @@ export default function DeleteAccountCard({ email }: { email: string }) {
           {plan.leaveTenants.length > 0 && <div>{tt("acct.willLeave", { list: plan.leaveTenants.map((x) => x.name).join(", ") })}</div>}
           {plan.planDrops.length > 0 && <div style={{ color: "var(--fail)" }}>{tt("acct.planDrops", { list: plan.planDrops.map((x) => x.name).join(", ") })}</div>}
           <div>{t("acct.irreversible")}</div>
-          <label style={{ marginTop: 6, fontWeight: 600, color: "var(--ink)" }}>{tt("acct.typeEmail", { email })}</label>
-          <Field type="text" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={email} />
+          <label htmlFor="acct-del-email" style={{ marginTop: 6, fontWeight: 600, color: "var(--ink)" }}>{tt("acct.typeEmail", { email })}</label>
+          <Field id="acct-del-email" type="text" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder={email} />
         </div>
       )}
       {err && <Notice kind="error">{err}</Notice>}

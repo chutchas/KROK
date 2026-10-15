@@ -574,6 +574,7 @@ export default function AppShell({
                           key={n.href}
                           href={n.href}
                           onClick={() => setMenuOpen(false)}
+                          aria-current={on ? "page" : undefined}
                           className="inline-flex items-center gap-3"
                           style={{
                             width: "100%",

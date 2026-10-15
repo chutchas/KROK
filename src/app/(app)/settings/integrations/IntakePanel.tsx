@@ -182,7 +182,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
 
         {form && (<>
           <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: ".92rem", cursor: "pointer" }}>
-            <input type="checkbox" checked={cfg.enabled} onChange={(e) => setCfg({ enabled: e.target.checked })} style={{ width: 18, height: 18, accentColor: "var(--accent)" }} />
+            <input type="checkbox" checked={cfg.enabled} onChange={(e) => setCfg({ enabled: e.target.checked })} style={{ width: 18, height: 18, flex: "0 0 auto", accentColor: "var(--accent)" }} />
             {t("intake.enable")}
           </label>
 

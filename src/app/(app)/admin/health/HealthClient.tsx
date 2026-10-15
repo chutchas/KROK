@@ -15,7 +15,7 @@ function Badge({ s }: { s: HealthStatus }) {
   const c = STATUS[s];
   return (
     <span style={{ fontSize: ".8rem", fontWeight: 700, borderRadius: 20, padding: "2px 10px", whiteSpace: "nowrap", color: c.color, background: c.bg }}>
-      {c.dot} {c.label}
+      <span aria-hidden>{c.dot}</span> {c.label}
     </span>
   );
 }
@@ -76,7 +76,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
       <Card>
         <div style={{ display: "flex", gap: 18, alignItems: "center", flexWrap: "wrap" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 200 }}>
-            <span style={{ fontSize: "1.8rem", color: STATUS[worst].color }}>{STATUS[worst].dot}</span>
+            <span aria-hidden style={{ fontSize: "1.8rem", color: STATUS[worst].color }}>{STATUS[worst].dot}</span>
             <div>
               <div style={{ fontWeight: 700 }}>{worst === "ok" ? "ทุกระบบปกติ" : worst === "warn" ? `มี ${counts.warn} รายการควรตรวจ` : `มี ${counts.fail} รายการผิดปกติ`}</div>
               {worst !== "ok" && counts.fail > 0 && counts.warn > 0 && <div style={{ fontSize: ".8rem", color: "var(--ink-3)" }}>และอีก {counts.warn} รายการควรตรวจ</div>}
@@ -84,7 +84,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
               {worst !== "ok" && (
                 <div style={{ fontSize: ".84rem", color: "var(--ink-2)", marginTop: 2 }}>
                   {all.map((c, i) => ({ c, i })).filter(({ c }) => c.status === "fail" || c.status === "warn").map(({ c, i }, k) => (
-                    <span key={i}>{k > 0 && " · "}<a href={`#chk-${i}`} style={{ display: "inline-block", padding: "10px 2px", margin: "-10px 0" }}>{c.name}</a></span>
+                    <span key={i}>{k > 0 && " · "}<a href={`#chk-${i}`} style={{ display: "inline-block", minHeight: 44, lineHeight: "24px", padding: "10px 2px", margin: "-10px 0", boxSizing: "border-box" }}>{c.name}</a></span>
                   ))}
                 </div>
               )}
