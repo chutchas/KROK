@@ -94,3 +94,17 @@ export const sameWidget = (a: DashWidget, b: DashWidget) =>
 export function newTemplateWidgets(key: DashTemplateKey, existing: DashWidget[]): DashWidget[] {
   return templateWidgets(key).filter((w) => !existing.some((e) => sameWidget(e, w)));
 }
+
+/** ค่าเริ่มต้นของ "เพิ่มการ์ด" — ตัวเลือกแรกที่ยังไม่มีในชุด (ไม่ให้ขึ้นเตือนการ์ดซ้ำตั้งแต่เปิด) */
+const STARTERS: W[] = [
+  ["stat", "usage", "7d"], ["stat", "usage", "today"], ["stat", "usage", "30d"], ["stat", "submitters", "7d"],
+  ["stat", "fail", "7d"], ["stat", "pending", "all"], ["stat", "passrate", "30d"], ["trend", "usage", "30d"], ["ranking", "usage", "7d"],
+];
+export function freshWidget(existing: DashWidget[]): DashWidget {
+  const id = rid();
+  for (const [format, metric, range] of STARTERS) {
+    const w: DashWidget = { id, format, formId: "all", metric, range };
+    if (!existing.some((e) => sameWidget(e, w))) return w;
+  }
+  return { id, format: "stat", formId: "all", metric: "usage", range: "7d" };
+}

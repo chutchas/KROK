@@ -341,7 +341,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.duration" /> </span><T k="sub.seconds" vars={{ s: sub.duration_s ?? "—" }} /></div>
           <div><span style={{ color: "var(--ink-3)" }}><T k="sub.formVersion" /> </span>v{sub.form_version ?? 1}
             {canManage(session.role) && sub.form_id && (
-              <a className="no-print" href={`/studio/history/${sub.form_id}?v=${sub.form_version ?? 1}`} style={{ marginLeft: 8, fontSize: ".8rem" }}><T k="sub.viewVersion" /></a>
+              <a className="no-print" href={`/studio/history/${sub.form_id}?v=${sub.form_version ?? 1}`} style={{ marginLeft: 8, fontSize: ".8rem", whiteSpace: "nowrap", display: "inline-block" }}><T k="sub.viewVersion" /></a>
             )}
           </div>
         </div>

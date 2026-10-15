@@ -151,8 +151,9 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
 
           <div>
             <label htmlFor="pf-email" style={label}>{t("profile.email")}</label>
-            <Field id="pf-email" value={form.email} readOnly disabled style={{ opacity: 0.7 }} />
-            <p style={{ color: "var(--ink-3)", fontSize: ".76rem", margin: "4px 0 0" }}>{t("profile.emailReadonly")}</p>
+            {/* readOnly (ไม่ disabled) = เลือก/คัดลอกได้ · พื้นเทาไม่มีกรอบเข้ม = ดูออกว่าแก้ไม่ได้ */}
+            <Field id="pf-email" value={form.email} readOnly aria-describedby="pf-email-note" style={{ background: "var(--surface-2)", borderColor: "transparent", color: "var(--ink-2)", cursor: "text" }} />
+            <p id="pf-email-note" style={{ color: "var(--ink-3)", fontSize: ".76rem", margin: "4px 0 0" }}>{t("profile.emailReadonly")}</p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>

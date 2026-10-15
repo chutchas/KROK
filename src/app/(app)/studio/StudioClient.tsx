@@ -707,9 +707,11 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <h3 style={{ fontSize: ".9rem", margin: 0 }}>{t("studio.formInfo")}</h3>
             <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
               <IconPicker value={draft.icon} onChange={(icon) => setDraft({ ...draft, icon })} />
-              <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
+              <Field value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} placeholder={t("editor.formTitle")} aria-label={t("editor.formTitle")} style={{ flex: 1, minWidth: 160 }} />
+            </div>
+            <label style={{ display: "grid", gap: 4, fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>
+              {t("studio.category")}
               <select
-                title={t("studio.category")}
                 className="krok-typefilter"
                 value={draft.category ? (isPresetCategory(draft.category) ? draft.category : "__custom") : ""}
                 onChange={(e) => {
@@ -717,17 +719,20 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   if (v === "__custom") { setCustomCat(true); setDraft({ ...draft, category: isPresetCategory(draft.category) || !draft.category ? "" : draft.category }); }
                   else { setCustomCat(false); setDraft({ ...draft, category: v || undefined }); }
                 }}
-                style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", minWidth: 200, flex: "0 0 auto" }}
+                style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 400, width: "100%" }}
               >
                 <option value="">{t("studio.categoryNone")}</option>
                 {FORM_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{lang === "en" ? c.en : c.th}</option>)}
                 <option value="__custom">{t("studio.categoryCustom")}</option>
               </select>
-            </div>
+            </label>
             {(customCat || (!!draft.category && !isPresetCategory(draft.category))) && (
               <Field value={!isPresetCategory(draft.category) ? (draft.category || "") : ""} onChange={(e) => setDraft({ ...draft, category: e.target.value || undefined })} placeholder={t("studio.categoryCustomPh")} maxLength={60} />
             )}
-            <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} />
+            <label style={{ display: "grid", gap: 4, fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)" }}>
+              {t("studio.descLabel")}
+              <Field value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} placeholder={t("editor.formDesc")} style={{ fontWeight: 400 }} />
+            </label>
           </div>
 
       <div role="tablist" aria-label={t("fs.title")} style={{ display: "grid", gridTemplateColumns: "repeat(4, minmax(0,1fr))", gap: 2, border: "1px solid var(--line)", borderRadius: 10, padding: 3, background: "var(--surface-2)" }}>
@@ -1212,7 +1217,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 })}
               </div>
               <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <AsyncButton variant="primary" onClick={publish} disabled={!!busy}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
+            <AsyncButton variant="primary" onClick={publish} disabled={!!busy || (!!editingId && !dirty)} title={editingId && !dirty ? t("studio.noChanges") : undefined}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
             {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
           </div>
