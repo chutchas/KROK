@@ -85,3 +85,12 @@ export function templateCardLabel([format, metric, range]: W, en = false): strin
   if (format !== "area" && format !== "openlist") parts.push(rangeLabel(range, en));
   return parts.join(" · ");
 }
+
+/** การ์ดตั้งค่าเหมือนกัน (รูปแบบ · ฟอร์ม/พื้นที่ · ค่า · ช่วงเวลา) — ไม่สนใจ id */
+export const sameWidget = (a: DashWidget, b: DashWidget) =>
+  a.format === b.format && a.formId === b.formId && a.metric === b.metric && a.range === b.range;
+
+/** การ์ดของแม่แบบที่ยังไม่มีในชุดเดิม — ใช้ตอน "ต่อท้าย" กันการ์ดซ้ำ */
+export function newTemplateWidgets(key: DashTemplateKey, existing: DashWidget[]): DashWidget[] {
+  return templateWidgets(key).filter((w) => !existing.some((e) => sameWidget(e, w)));
+}

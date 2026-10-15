@@ -106,7 +106,8 @@ function Tile({ icon, tone, label, hint, count, capped, none, footer, children }
 
 function Row({ href, icon, title, sub }: { href: string; icon: string; title: string; sub: string }) {
   return (
-    <Link href={href} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: "1px solid var(--line)", color: "inherit", textDecoration: "none", minHeight: 40 }}>
+    // prefetch={false}: แถวเข้าจอพร้อมกันหลายใบ = ยิงหน้าเอกสาร (dynamic) เป็นชุด → Vercel ตอบ 503 บางคำขอ
+    <Link href={href} prefetch={false} style={{ display: "flex", alignItems: "center", gap: 10, padding: "7px 0", borderTop: "1px solid var(--line)", color: "inherit", textDecoration: "none", minHeight: 40 }}>
       <FormIcon value={icon} size={26} />
       <span style={{ flex: 1, minWidth: 0 }}>
         <b style={{ display: "block", fontSize: ".86rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{title}</b>
