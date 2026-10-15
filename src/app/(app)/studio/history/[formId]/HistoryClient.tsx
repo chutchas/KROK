@@ -78,7 +78,7 @@ export default function HistoryClient({ formId, formTitle, formIcon, deleted, it
         <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 6 }}>
           <FormIcon value={formIcon} size={40} />
           <div style={{ minWidth: 0 }}>
-            <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{t("ver.title")}</h1>
+            <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>{t("ver.title")}</h1>
             <div style={{ color: "var(--ink-2)", fontSize: ".9rem", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{formTitle}</div>
           </div>
         </div>

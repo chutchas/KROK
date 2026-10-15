@@ -38,7 +38,7 @@ export default function HelpClient() {
     // ชิดซ้ายเต็มความกว้างเหมือนหน้าอื่น — จำกัดความกว้างเฉพาะช่องค้นหา/เนื้อหา (อ่านง่ายบนจอกว้าง)
     <div style={{ display: "grid", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{L === "en" ? "Help" : "คู่มือการใช้งาน"}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{L === "en" ? "Help" : "คู่มือการใช้งาน"}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {L === "en" ? "Short how-tos for the trickier parts of KROK. Can't find it? Contact the team below." : "วิธีทำงานที่ซับซ้อนใน KROK แบบสั้น ๆ — หาไม่เจอ ติดต่อทีมงานได้ท้ายหน้า"}
         </p>
@@ -60,7 +60,7 @@ export default function HelpClient() {
           const open = openId === a.id;
           return (
               <section key={a.id} id={`help-${a.id}`} style={{ scrollMarginTop: 80, padding: "12px 0", borderTop: i ? "1px solid var(--line)" : "none" }}>
-                <h2 style={{ margin: 0, fontSize: "1rem" }}>
+                <h2 style={{ margin: 0, fontSize: "var(--fs-h2)" }}>
                   <button type="button" aria-expanded={open} onClick={() => toggle(a.id, open)}
                     style={{ display: "flex", width: "100%", alignItems: "center", justifyContent: "space-between", gap: 10, minHeight: 44, padding: 0, border: "none", background: "none", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem", fontWeight: 700, textAlign: "left", cursor: "pointer" }}>
                     <span>{a.title[L]}</span>

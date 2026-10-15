@@ -1,4 +1,5 @@
 "use client";
+import OverflowMenu from "@/components/OverflowMenu";
 import IconPicker from "@/components/IconPicker";
 import FormIcon from "@/components/FormIcon";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -697,7 +698,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     <div className="krok-fs">
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
         <Icon icon={Settings2} className="h-4 w-4" />
-        <h2 style={{ fontFamily: "var(--font-anuphan)", flex: 1, fontSize: "1rem", margin: 0 }}>{t("fs.title")}</h2>
+        <h2 style={{ fontFamily: "var(--font-anuphan)", flex: 1, fontSize: "var(--fs-h2)", margin: 0 }}>{t("fs.title")}</h2>
         {formPanel && (
           <button type="button" className="krok-fs-close" onClick={() => setFormPanel(false)} aria-label={t("common.close")}
             style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex", padding: 4 }}><Icon icon={X} className="h-5 w-5" /></button>
@@ -987,7 +988,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
       {(tab === "new" || tab === "all") && (
       <div>
         <div style={{ display: "flex", alignItems: "center", gap: "2px 8px", flexWrap: "wrap" }}>
-          <h1 style={{ fontSize: "1.4rem", margin: 0, minWidth: 0 }}>
+          <h1 style={{ fontSize: "var(--fs-h1)", margin: 0, minWidth: 0 }}>
             {tab === "all" ? t("studio.allFormsTitle") : t(createMode === "file" ? "studio.titleFile" : createMode === "template" ? "studio.titleTemplate" : "studio.title")}
           </h1>
           {/* วิธีใช้ข้างชื่อหน้า (กติกาเดียวกับทุกหน้า) — panel กางเต็มบรรทัดใต้หัว */}
@@ -1190,7 +1191,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 <button type="button" onClick={() => setTab("all")} style={{ border: "none", background: "none", padding: "0 2px", minHeight: 44, color: "var(--accent-text)", fontFamily: "inherit", fontSize: "inherit", cursor: "pointer" }}>{t("studio.crumbAll")}</button>
                 <span aria-hidden> / </span><span className="krok-eh-cur" aria-current="page">{editingId ? t("studio.crumbEdit") : t("studio.crumbNew")}</span>
               </nav>
-              <h1 style={{ fontSize: "1.4rem", margin: 0 }}>{draft.title || t("editor.formTitle")}</h1>
+              <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>{draft.title || t("editor.formTitle")}</h1>
               <p className="krok-eh-sub" style={{ color: "var(--ink-2)", fontSize: ".9rem", marginTop: 2 }}>
                 {editingId ? t("studio.editingForm") + " · " : ""}{tt("forms.stepsFields", { steps: draft.steps.length, fields: countFields(draft) })}
               </p>
@@ -1249,7 +1250,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
           <div className="krok-ol-full">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 4, margin: "0 0 6px" }}>
-            <h2 style={{ fontSize: "1rem", margin: "0 0 0 6px" }}>{t("studio.outline")}</h2>
+            <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 0 6px" }}>{t("studio.outline")}</h2>
             <button type="button" data-krok-keep="" onClick={() => setOutlinePref("closed")} aria-label={t("studio.outlineClose")} title={t("studio.outlineClose")}
               aria-expanded={true} className="krok-ol-railbtn" style={{ border: "none" }}><Icon icon={PanelLeftClose} className="h-5 w-5" /></button>
           </div>
@@ -1354,7 +1355,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         <Card>
           <div style={{ textAlign: "center", padding: "40px 20px", color: "var(--ink-2)" }}>
             <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)", marginBottom: 10 }}><Icon icon={Pencil} className="h-10 w-10" strokeWidth={1.4} /></div>
-            <h1 style={{ fontSize: "1.4rem", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h1>
+            <h1 style={{ fontSize: "var(--fs-h1)", margin: "0 0 6px" }}>{t("studio.editEmptyTitle")}</h1>
             <p style={{ fontSize: ".9rem", color: "var(--ink-3)", margin: "0 0 16px" }}>{t("studio.editEmptySub")}</p>
             <div style={{ display: "flex", gap: 10, justifyContent: "center", flexWrap: "wrap" }}>
               <Button variant="primary" onClick={() => setTab("new")}><Icon icon={Sparkles} className="h-4 w-4" /> {t("studio.tabNew")}</Button>
@@ -1421,26 +1422,22 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 </small>
               </div>
               <div className="krok-row-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-                {/* เรียงตามการใช้งาน: แก้ไข → แชร์ → QR → ประวัติเวอร์ชัน → เผยแพร่/ยกเลิก → ลบ */}
+                {/* ปุ่มหลักโชว์ไว้: แก้ไข · แชร์ · เผยแพร่ (เฉพาะร่าง/ยกเลิกแล้ว) — ที่เหลือ (QR · ประวัติ · ยกเลิกเผยแพร่ · ลบ) อยู่ในเมนู ⋯
+                    มือถือเห็นได้หลายฟอร์มต่อจอ · ลบอยู่ท้ายเมนูแยกเส้นคั่น ตัวแดง */}
                 <AsyncButton onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></AsyncButton>
                 <Button onClick={() => setShareForm(f)} title={t("share.title")}>
                   <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
                   <span className="krok-btn-label"> {t("share.short")}</span>
                 </Button>
-                {f.status === "published" && (
-                  <Button onClick={() => setQrForm(f)} title={t("qr.title")}>
-                    <Icon icon={QrCode} className="h-4 w-4" /><span className="krok-btn-label"> QR</span>
-                  </Button>
-                )}
-                <Button onClick={() => router.push(`/studio/history/${f.id}`)} title={t("ver.history")}>
-                  <Icon icon={History} className="h-4 w-4" /><span className="krok-btn-label"> {t("ver.short")}</span>
-                </Button>
-                {f.status === "published" ? (
-                  <AsyncButton onClick={() => changeStatus(f.id, "archived")} title={t("studio.cancelForm")}><Icon icon={Archive} className="h-4 w-4" /><span className="krok-btn-label"> {t("studio.cancelForm")}</span></AsyncButton>
-                ) : (
+                {f.status !== "published" && (
                   <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
                 )}
-                <AsyncButton variant="danger" className="krok-row-del" onClick={() => onDelete(f.id, f.title)} title={t("common.delete")}><Icon icon={Trash2} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.delete")}</span></AsyncButton>
+                <OverflowMenu outlined label={tt("studio.moreFor", { title: f.title })} items={[
+                  ...(f.status === "published" ? [{ key: "qr", label: t("qr.title"), icon: QrCode, onSelect: () => setQrForm(f) }] : []),
+                  { key: "hist", label: t("ver.history"), icon: History, onSelect: () => router.push(`/studio/history/${f.id}`) },
+                  ...(f.status === "published" ? [{ key: "arch", label: t("studio.cancelForm"), icon: Archive, onSelect: () => void changeStatus(f.id, "archived") }] : []),
+                  { key: "del", label: t("common.delete"), icon: Trash2, danger: true, separator: true, onSelect: () => void onDelete(f.id, f.title) },
+                ]} />
               </div>
             </div>
           ))}
@@ -1519,7 +1516,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-edithead{ align-items:center !important; flex-wrap:nowrap !important; padding:4px 0 6px; }
           .krok-eh-title{ display:flex; align-items:center; gap:6px; min-width:0; flex:1 1 auto; }
           .krok-eh-title nav{ margin:0 !important; white-space:nowrap; flex:0 0 auto; }
-          .krok-eh-title h1{ font-size:1.15rem !important; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+          .krok-eh-title h1{ font-size:var(--fs-h1-compact) !important; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
           .krok-eh-cur, .krok-eh-sub{ display:none; }
           .krok-edithead-actions{ flex:0 0 auto; flex-wrap:nowrap !important; }
           .krok-outline{ display:block; position:sticky; top:calc(74px + var(--krok-eh, 0px)); max-height:calc(100vh - 90px - var(--krok-eh, 0px)); overflow:auto;
@@ -1552,16 +1549,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         @media(min-width:900px){ .krok-fa-dup{ display:none !important; } }
         @media(max-width:640px){
           .krok-btn-label{display:none}
-          .krok-row-actions{flex-basis:100%;justify-content:flex-start;margin-top:4px}
-          /* ปุ่ม action 5 ปุ่มในการ์ดฟอร์ม: กว้างเท่ากันเต็มแถว */
-          /* ปุ่มจัดการฟอร์ม 5–6 ปุ่ม: ไอคอนเต็มขนาด (เดิมหดจนเหลือจุด) + ชื่อสั้นใต้ไอคอน — รู้ว่าปุ่มไหนคืออะไร */
-          /* 6 ปุ่มในแถวเดียวเหลือปุ่มละ ~39px ป้าย 11.5px → ตาราง 3 คอลัมน์ 2 แถว ปุ่มละ ~110px ไอคอน+ป้ายแนวนอน */
-          .krok-row-actions{display:grid !important;grid-template-columns:repeat(3,minmax(0,1fr))}
-          .krok-row-actions>button{min-width:0;flex-direction:column;gap:3px !important;min-height:56px !important;padding:6px 4px !important;font-size:.8rem !important;line-height:1.2}
-          .krok-row-actions>button svg{flex:0 0 auto;width:18px;height:18px}
-          /* ลบ: ไม่มีกรอบ — เบากว่าปุ่มอื่น ไม่เท่ากับเก็บถาวร */
-          .krok-row-actions>.krok-row-del{border-color:transparent !important;background:none !important}
-          .krok-row-actions .krok-btn-label{display:block !important;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+          /* แถวฟอร์มบนมือถือ: ปุ่มหลัก 2–3 ปุ่มกว้างเท่ากันแถวเดียว (ไอคอน+ชื่อ) + ⋯ ท้ายแถว — ฟอร์มหนึ่งสูงราวครึ่งหนึ่งของเดิม */
+          .krok-row-actions{flex-basis:100%;flex-wrap:nowrap !important;margin-top:4px}
+          .krok-row-actions>button{flex:1 1 0;min-width:0;justify-content:center;min-height:44px}
+          .krok-row-actions .krok-btn-label{display:inline !important;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
           /* toggle แบบแบ่งครึ่ง: เต็มแถว */
           .krok-seg{display:flex !important;width:100%;flex-basis:100%}
           .krok-seg-btn{flex:1;justify-content:center}

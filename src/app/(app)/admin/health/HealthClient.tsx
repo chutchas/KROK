@@ -65,7 +65,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
     <div style={{ display: "grid", gap: 14, gridTemplateColumns: "minmax(0, 1fr)" }}>
       <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
         <div style={{ flex: 1, minWidth: 220 }}>
-          <h1 style={{ fontSize: "1.4rem", margin: 0 }}>สุขภาพระบบ</h1>
+          <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>สุขภาพระบบ</h1>
           <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 0" }}>
             ตรวจการเชื่อมต่อทุกส่วนอัตโนมัติเมื่อเปิดหน้านี้ · ตรวจล่าสุด {new Date(report.checkedAt).toLocaleString("th-TH", { timeZone: "Asia/Bangkok" })}
           </p>
@@ -99,7 +99,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
 
       {report.groups.map((g) => (
         <Card key={g.title}>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 8px" }}>{g.title}</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 8px" }}>{g.title}</h2>
           <div style={{ display: "grid" }}>
             {g.checks.map((c, i) => (
               <div key={c.name + i} id={`chk-${all.indexOf(c)}`} style={{ scrollMarginTop: 80, display: "flex", gap: 10, alignItems: "baseline", padding: "8px 0", borderTop: i ? "1px solid var(--line)" : "none", flexWrap: "wrap" }}>
@@ -108,7 +108,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
                 <div style={{ flex: "2 1 240px", fontSize: ".85rem", color: "var(--ink-2)", overflowWrap: "anywhere" }}>
                   {c.detail}
                   {c.ms != null && <span style={{ color: "var(--ink-3)" }}> · {c.ms} ms</span>}
-                  {c.href && <> · <a href={c.href} style={{ display: "inline-block", padding: "12px 8px", margin: "-12px -8px" }}>เปิด</a></>}
+                  {c.href && <> · <a href={c.href} style={{ display: "inline-block", minWidth: 44, textAlign: "center", padding: "12px 8px", margin: "-12px -8px" }}>เปิด</a></>}
                 </div>
               </div>
             ))}
@@ -118,7 +118,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
 
       <Card>
         <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 6 }}>
-          <h2 style={{ fontSize: "1rem", margin: 0, flex: 1 }}>ทดสอบเรียก AI จริง</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: 0, flex: 1 }}>ทดสอบเรียก AI จริง</h2>
           <Button onClick={testAll} disabled={Object.values(ping).some((p) => p.busy)}>ทดสอบทั้งหมด</Button>
         </div>
         <p style={{ fontSize: ".8rem", color: "var(--ink-3)", margin: "0 0 8px" }}>

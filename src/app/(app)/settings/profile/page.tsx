@@ -29,7 +29,7 @@ export default async function ProfilePage() {
   if (error) {
     return (
       <Card>
-        <h2 style={{ fontSize: "1.1rem", margin: "0 0 6px" }}><T k="profile.loadFailed" /></h2>
+        <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 6px" }}><T k="profile.loadFailed" /></h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: "0 0 14px" }}><T k="profile.loadFailedHint" /></p>
         <a href="/settings/profile" style={{ display: "inline-flex", alignItems: "center", minHeight: 44, padding: "0 16px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--accent-text)", fontWeight: 600, textDecoration: "none" }}><T k="common.retry" /></a>
       </Card>
@@ -60,7 +60,7 @@ export default async function ProfilePage() {
       <div style={{ marginTop: 16, minWidth: 0 }}><PushCard /></div>
       <div style={{ marginTop: 16, minWidth: 0 }}>
         <Card>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 4px" }}><T k="legal.myData" /></h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 4px" }}><T k="legal.myData" /></h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}><T k="legal.myDataHint" /></p>
           {copyHref ? (
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 12 }}>

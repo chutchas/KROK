@@ -169,7 +169,7 @@ export default function IntakePanel({ forms, intake, teams, members }: {
 
   return (
     <Card>
-      <h2 style={{ fontSize: "1.1rem", marginBottom: 4 }}>{t("intake.title")}</h2>
+      <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 4 }}>{t("intake.title")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0, lineHeight: 1.55 }}>{t("intake.sub")}</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 12 }}>

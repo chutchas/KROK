@@ -77,7 +77,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
 
 
   const box: React.CSSProperties = { display: "grid", gap: 8, padding: "12px 14px", borderRadius: 10, marginBottom: 12, fontSize: ".88rem" };
-  const h: React.CSSProperties = { fontSize: ".95rem", margin: 0, outline: "none", display: "inline-flex", alignItems: "center", gap: 8 };
+  const h: React.CSSProperties = { fontSize: "var(--fs-h3)", margin: 0, outline: "none", display: "inline-flex", alignItems: "center", gap: 8 };
   const textarea: React.CSSProperties = { width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" };
   // ประวัติแสดงเมื่อมีการเปิดกลับอย่างน้อยครั้งเดียว (ปิดครั้งเดียว = ข้อมูลซ้ำกับหัวแผง)
   const history = state.history.some((e) => e.action === "reopen") && (
@@ -96,7 +96,7 @@ export default function FailureClose({ id, state, canClose, canReopen, supported
   );
   const live = <div role="status" aria-live="polite" className="sr-only">{done || ""}</div>;
   const list = state.items.length > 0 && (
-    <ul style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 2 }}>
+    <ul style={{ margin: 0, paddingLeft: 0, listStylePosition: "inside", display: "grid", gap: 2 }}>
       {state.items.map((it, i) => (
         <li key={i}><span>{it.label}</span>{it.note && <span style={{ color: "var(--ink-2)" }}> — {it.note}</span>}</li>
       ))}
@@ -213,7 +213,7 @@ export function FailureCloseRecord({ closedAt, closedBy, note, items, formTitle,
   return (
     <section className="krok-close-record" aria-labelledby="fc-record-h" style={{ width: "210mm", boxSizing: "border-box", padding: "10mm 14mm", background: "#fff", color: "#111", fontSize: 12, lineHeight: 1.55, breakInside: "avoid" }}>
       <div style={{ border: `1.5px solid ${tone}`, borderRadius: 4, padding: "10px 14px", display: "grid", gap: 4 }}>
-        <h2 id="fc-record-h" style={{ fontSize: 14, margin: "0 0 2px", color: tone }}>{closedAt ? t("fc.recordTitle") : t("fc.recordOpenTitle")}</h2>
+        <h2 id="fc-record-h" style={{ fontSize: "var(--fs-h3)", margin: "0 0 2px", color: tone }}>{closedAt ? t("fc.recordTitle") : t("fc.recordOpenTitle")}</h2>
         {/* เอกสารต้นทาง — แยกแผ่นแล้วยังรู้ว่าเป็นของใบไหน */}
         <div style={{ paddingBottom: 6, marginBottom: 2, borderBottom: "1px solid #ddd" }}>
           <div><span style={muted}>{t("fc.recordDoc")} </span><b>{formTitle}</b> · {docNo}</div>

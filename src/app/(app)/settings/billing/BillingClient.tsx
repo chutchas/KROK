@@ -146,7 +146,7 @@ export default function BillingClient({
     <div style={{ display: "flex", alignItems: "flex-end", gap: 12, flexWrap: "wrap" }}>
       {/* ชื่อ workspace ยาวไม่มีช่องว่าง (เช่นชื่อบริษัทภาษาอังกฤษ) ต้องตัดบรรทัดได้ ไม่งั้นดันปุ่ม/ทั้งหน้าล้นจอมือถือ */}
       <div style={{ flex: "1 1 220px", minWidth: 0, overflowWrap: "anywhere" }}>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{title}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{title}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent-text)" }}>{en ? plan.nameEn : plan.name}</b>
         </p>
@@ -207,7 +207,7 @@ export default function BillingClient({
       )}
       <Card>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-          <h2 style={{ fontSize: "1.1rem", margin: 0 }}>{t("plan.usage")}</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: 0 }}>{t("plan.usage")}</h2>
           <span style={{ color: "var(--ink-3)", fontSize: ".8rem" }}>{t("plan.period")}: {fmtPeriod(usage.period, lang)}</span>
         </div>
         <div className="krok-usage-grid">
@@ -310,7 +310,7 @@ export default function BillingClient({
       {/* ช่องทางชำระเงิน: เปิดแล้ว = การ์ดรายการ · ยังไม่เปิด = บรรทัดเดียว */}
       {payMethods.length > 0 ? (
         <Card>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
           </h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.available")}</p>

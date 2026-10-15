@@ -23,7 +23,7 @@ export default function PageHeader({ title, help, actions, subtitle, as = "h1", 
   const h1 = as === "h1";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: "2px 8px", flexWrap: "wrap", minWidth: 0, ...style }}>
-      <H data-tour={tour} style={{ fontSize: h1 ? "1.4rem" : "1.1rem", lineHeight: 1.3, margin: 0, minWidth: 0 }}>{title}</H>
+      <H data-tour={tour} style={{ fontSize: h1 ? "var(--fs-h1)" : "var(--fs-h2)", lineHeight: 1.3, margin: 0, minWidth: 0 }}>{title}</H>
       {help && <HelpTip id={help} compact panelOrder={2} />}
       {actions && <div style={{ marginLeft: "auto", display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>{actions}</div>}
       {subtitle && <div style={{ flexBasis: "100%", order: 1, color: "var(--ink-2)", fontSize: h1 ? ".9rem" : ".86rem", lineHeight: 1.55 }}>{subtitle}</div>}

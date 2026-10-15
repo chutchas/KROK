@@ -1,5 +1,5 @@
 // แม่แบบแดชบอร์ด — ชุดการ์ดตั้งต้นตามลักษณะงาน (ผู้ใช้แก้/เพิ่ม/ลบต่อได้เหมือนการ์ดปกติ)
-import { formatLabel, metricLabel, rangeLabel, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange } from "./dashboard-meta";
+import { formatLabel, metricLabel, rangeLabel, isPeriodStat, type DashWidget, type WidgetFormat, type WidgetMetric, type WidgetRange } from "./dashboard-meta";
 
 export type DashTemplateKey = "inspect" | "log" | "approve" | "area";
 
@@ -87,8 +87,10 @@ export function templateCardLabel([format, metric, range]: W, en = false): strin
 }
 
 /** การ์ดตั้งค่าเหมือนกัน (รูปแบบ · ฟอร์ม/พื้นที่ · ค่า · ช่วงเวลา) — ไม่สนใจ id */
+/** การ์ดซ้ำ = รูปแบบ/ฟอร์ม/ค่าเดียวกัน และช่วงเดียวกัน — การ์ดตัวเลข 7/14/30 วันนับเป็นใบเดียว (สลับช่วงบนการ์ดได้) */
 export const sameWidget = (a: DashWidget, b: DashWidget) =>
-  a.format === b.format && a.formId === b.formId && a.metric === b.metric && a.range === b.range;
+  a.format === b.format && a.formId === b.formId && a.metric === b.metric
+  && (a.range === b.range || (isPeriodStat(a) && isPeriodStat(b)));
 
 /** การ์ดของแม่แบบที่ยังไม่มีในชุดเดิม — ใช้ตอน "ต่อท้าย" กันการ์ดซ้ำ */
 export function newTemplateWidgets(key: DashTemplateKey, existing: DashWidget[]): DashWidget[] {
@@ -97,7 +99,7 @@ export function newTemplateWidgets(key: DashTemplateKey, existing: DashWidget[])
 
 /** ค่าเริ่มต้นของ "เพิ่มการ์ด" — ตัวเลือกแรกที่ยังไม่มีในชุด (ไม่ให้ขึ้นเตือนการ์ดซ้ำตั้งแต่เปิด) */
 const STARTERS: W[] = [
-  ["stat", "usage", "7d"], ["stat", "usage", "today"], ["stat", "usage", "30d"], ["stat", "submitters", "7d"],
+  ["stat", "usage", "7d"], ["stat", "usage", "today"], ["stat", "submitters", "7d"],
   ["stat", "fail", "7d"], ["stat", "pending", "all"], ["stat", "passrate", "30d"], ["trend", "usage", "30d"], ["ranking", "usage", "7d"],
 ];
 export function freshWidget(existing: DashWidget[]): DashWidget {

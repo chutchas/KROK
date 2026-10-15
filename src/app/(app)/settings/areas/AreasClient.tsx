@@ -59,7 +59,7 @@ export default function AreasClient({ initial, missing }: { initial: AreaRow[]; 
     <div style={{ display: "grid", gap: 16 }}>
       {/* หัวหน้าเพจ: นอกการ์ด ขนาดเดียวกับทุกหน้า */}
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("area.title")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("area.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("area.sub")}</p>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "6px 0 0" }}>{t("area.codeNote")}</p>
         {missing && <Notice kind="error">{t("area.missing")}</Notice>}
@@ -68,7 +68,7 @@ export default function AreasClient({ initial, missing }: { initial: AreaRow[]; 
 
       {!missing && (
         <Card>
-          <h2 style={{ fontSize: "1rem", margin: "0 0 10px" }}>{t("area.addTitle")}</h2>
+          <h2 style={{ fontSize: "var(--fs-h2)", margin: "0 0 10px" }}>{t("area.addTitle")}</h2>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "flex-start" }}>
             <div style={{ flex: "0 0 140px" }}>
               <label htmlFor="area-code" style={lbl}>{t("area.code")}</label>

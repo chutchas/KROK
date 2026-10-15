@@ -50,7 +50,7 @@ export default function AuditAdminClient({ rows, facets, filters }: { rows: Audi
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, maxWidth: "100%", minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>Audit ทั้งระบบ</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>Audit ทั้งระบบ</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           บันทึกเหตุการณ์สำคัญทุก workspace — กรองตาม workspace / ผู้ใช้ / ฟอร์ม / ประเภทการกระทำ (แสดง 300 รายการล่าสุด)
         </p>

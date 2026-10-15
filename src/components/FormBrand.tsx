@@ -26,7 +26,7 @@ export function FormBrandHeader({ theme, icon, title, description, flushX = 20, 
         </span>
       )}
       <div style={{ minWidth: 0 }}>
-        <h1 style={{ fontSize: "1.05rem", color: "inherit", overflowWrap: "anywhere" }}><InlineFormIcon value={icon} size={18} />{title}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1-compact)", color: "inherit", overflowWrap: "anywhere" }}><InlineFormIcon value={icon} size={18} />{title}</h1>
         {description?.trim() && <p style={{ margin: "3px 0 0", fontSize: ".84rem", opacity: 0.85, lineHeight: 1.5, overflowWrap: "anywhere" }}>{description.trim()}</p>}
       </div>
     </div>

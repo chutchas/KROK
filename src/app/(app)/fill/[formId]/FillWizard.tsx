@@ -1134,7 +1134,7 @@ export default function FillWizard(props: Props) {
       return focusShell(
         <div style={box}>
           <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={TabletSmartphone} className="h-10 w-10" strokeWidth={1.5} /></div>
-          <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("fw.device.checking")}</h2>
+          <h2 style={{ margin: "10px 0 4px", fontSize: "var(--fs-h2)" }}>{t("fw.device.checking")}</h2>
         </div>,
       );
 
@@ -1152,7 +1152,7 @@ export default function FillWizard(props: Props) {
         <div style={{ display: "flex", justifyContent: "center", color: device.status === "pending" || device.status === "notlinked" ? "var(--warn)" : "var(--fail)" }}>
           <Icon icon={ShieldAlert} className="h-11 w-11" strokeWidth={1.5} />
         </div>
-        <h2 style={{ margin: "10px 0 4px", fontSize: "1.08rem" }}>{title}</h2>
+        <h2 style={{ margin: "10px 0 4px", fontSize: "var(--fs-h2)" }}>{title}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem" }}>{sub}</p>
 
         <div style={{ margin: "16px 0", padding: "12px 14px", borderRadius: 10, background: "var(--code-bg)", border: "1px solid var(--line)" }}>
@@ -1188,7 +1188,7 @@ export default function FillWizard(props: Props) {
     return focusShell(
       <div style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, padding: "36px 20px", textAlign: "center", boxShadow: "var(--shadow)", maxWidth: 480, margin: "0 auto" }}>
         <div style={{ display: "flex", justifyContent: "center", color: "var(--ink-3)" }}><Icon icon={Users} className="h-11 w-11" strokeWidth={1.5} /></div>
-        <h2 style={{ margin: "10px 0 4px", fontSize: "1.05rem" }}>{t("wf.startTeamOnly")}</h2>
+        <h2 style={{ margin: "10px 0 4px", fontSize: "var(--fs-h2)" }}>{t("wf.startTeamOnly")}</h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem" }}>{t("wf.startTeamOnlySub").replace("{team}", tn || "-")}</p>
         <Button onClick={() => go("/forms")} style={{ marginTop: 12 }}>{t("fill.backToList")}</Button>
       </div>,
@@ -1280,7 +1280,7 @@ export default function FillWizard(props: Props) {
     };
     return focusShell(
       <div className={reviewScope}>
-        <h2 id="krok-review-h" tabIndex={-1} style={{ fontSize: "1.15rem", margin: "4px 0 10px", outline: "none" }}>{t("fw.review.title")}</h2>
+        <h2 id="krok-review-h" tabIndex={-1} style={{ fontSize: "var(--fs-h2)", margin: "4px 0 10px", outline: "none" }}>{t("fw.review.title")}</h2>
         {(nFail + nTableFail > 0 || nMissPhoto > 0) ? (
           <Notice kind="error">
             <b>{[nFail + nTableFail > 0 ? tt("fw.stampFail", { n: nFail + nTableFail }) : "", nMissPhoto > 0 ? tt("fw.review.missPhotos", { n: nMissPhoto }) : ""].filter(Boolean).join(" · ")}</b>
@@ -1293,7 +1293,7 @@ export default function FillWizard(props: Props) {
           {body.map(({ st, si, items }) => (
             <section key={st.id} style={{ background: "var(--surface)", border: "1px solid var(--line)", borderRadius: 12, overflow: "hidden" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, padding: "6px 6px 6px 14px", background: "var(--surface-2)", borderBottom: "1px solid var(--line)" }}>
-                <h3 style={{ fontSize: "1rem", margin: 0 }}>{si + 1}. {st.title}</h3>
+                <h3 style={{ fontSize: "var(--fs-h3)", margin: 0 }}>{si + 1}. {st.title}</h3>
                 {!lockedStep(si) && (
                   <button type="button" onClick={() => backTo(si)} style={{ minHeight: 44, padding: "0 12px", border: "none", background: "transparent", color: "var(--accent-text)", fontWeight: 600, fontFamily: "inherit", fontSize: ".9rem", cursor: "pointer" }}>{t("common.edit" as never)}</button>
                 )}
@@ -1651,7 +1651,7 @@ export default function FillWizard(props: Props) {
           <div style={{ minWidth: 0, flex: "1 1 220px" }}>
             {/* วิธีใช้ (ออฟไลน์/ลายเซ็น) ข้างชื่อฟอร์ม — panel กางเต็มบรรทัดใต้ชื่อ · โหมดเต็มจอไม่แสดง */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem", margin: 0 }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "var(--fs-h1-compact)", margin: 0 }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
               {!focus && <HelpTip id="offline" compact />}
             </div>
             {formDesc}
@@ -1724,7 +1724,7 @@ export default function FillWizard(props: Props) {
             <div style={{ minWidth: 0, flex: "1 1 220px" }}>
               {/* วิธีใช้ (ออฟไลน์/ลายเซ็น) ข้างชื่อฟอร์ม — panel กางเต็มบรรทัดใต้ชื่อ · โหมดเต็มจอไม่แสดง */}
             <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap" }}>
-              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "1.05rem", margin: 0 }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
+              <h1 className={focus ? "sr-only" : undefined} style={{ fontSize: "var(--fs-h1-compact)", margin: 0 }}><InlineFormIcon value={props.icon} size={18} />{props.title}</h1>
               {!focus && <HelpTip id="offline" compact />}
             </div>
               {formDesc}
@@ -1754,7 +1754,7 @@ export default function FillWizard(props: Props) {
             {tt("fw.stepOf", { n: idx + 1, total: schema.steps.length })}
           </span>
         )}
-        <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: "1.05rem", scrollMarginTop: 72 }}>{step.title}</h2>
+        <h2 ref={stepHeadingRef} tabIndex={-1} style={{ fontSize: "var(--fs-h2)", scrollMarginTop: 72 }}>{step.title}</h2>
       </div>
 
       {wf && lockedStep(idx) && !viewOnly && (

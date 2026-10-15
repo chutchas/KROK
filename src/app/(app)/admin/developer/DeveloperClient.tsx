@@ -48,13 +48,13 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("dev.title")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("dev.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("dev.sub")}</p>
       </div>
 
       {stats && (
         <Card>
-          <h2 style={{ fontSize: "1rem", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Icon icon={Database} className="h-5 w-5" /> {t("dev.stats")}
           </h2>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(110px,1fr))", gap: 10 }}>
@@ -76,7 +76,7 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
       )}
 
       <Card>
-        <h2 style={{ fontSize: "1rem", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 10, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={Code2} className="h-5 w-5" /> {t("dev.apiRef")}
         </h2>
         <div style={{ overflowX: "auto" }}>
@@ -100,7 +100,7 @@ X-KROK-Signature: sha256=<hmac ของ body ด้วย secret>
       </Card>
 
       <Card>
-        <h2 style={{ fontSize: "1rem", marginBottom: 4, display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 4, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={Webhook} className="h-5 w-5" /> {t("dev.webhookRef")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("dev.webhookEvents")}: {WEBHOOK_EVENTS.map((e) => <code key={e} style={{ background: "var(--code-bg)", border: "1px solid var(--line)", borderRadius: 4, padding: "1px 6px", fontSize: ".76rem", marginRight: 6 }}>{e}</code>)}</p>

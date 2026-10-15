@@ -95,7 +95,7 @@ export default function AiSettingsClient({ current }: { current: AiSettings }) {
   return (
     <div style={{ maxWidth: 640, margin: "0 auto", display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("ai.title")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("ai.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
           {t("ai.sub")}
         </p>

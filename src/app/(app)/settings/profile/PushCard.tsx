@@ -110,7 +110,7 @@ export default function PushCard() {
 
   return (
     <Card>
-      <h2 id="push" style={{ fontSize: "1rem", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 6 }}><Icon icon={BellRing} className="h-4 w-4" /> {t("push.title")}</h2>
+      <h2 id="push" style={{ fontSize: "var(--fs-h2)", margin: "0 0 4px", display: "flex", alignItems: "center", gap: 6 }}><Icon icon={BellRing} className="h-4 w-4" /> {t("push.title")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".86rem", margin: "0 0 10px" }}>{t("push.sub")}</p>
 
       {!state && loadErr ? (

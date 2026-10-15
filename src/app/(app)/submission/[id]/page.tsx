@@ -309,7 +309,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
             ) : (
               <span style={{ fontFamily: "var(--font-anuphan)", fontWeight: 700, fontSize: "1.05rem", color: theme.custom ? theme.header : "var(--ink)" }}>{session.tenantName}</span>
             )}
-            <h1 style={{ fontSize: "1.4rem", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={22} />{sub.form_title}</h1>
+            <h1 style={{ fontSize: "var(--fs-h1)", margin: "10px 0 2px" }}><InlineFormIcon value={sub.form_icon} size={22} />{sub.form_title}</h1>
             <div style={{ color: "var(--ink-3)", fontSize: ".8rem", fontFamily: "monospace" }}>{theme.logo ? <>{session.tenantName} · </> : null}<T k="sub.docNo" vars={{ id: docNoOf({ id: String(sub.id), doc_no: sub.doc_no as string | null | undefined }) }} /></div>
           </div>
           <div style={{ textAlign: "right" }}>
@@ -319,12 +319,16 @@ export default async function SubmissionPage({ params, searchParams }: { params:
                 <T k={status.k} />
               </div>
             )}
-            {/* ไม่ผ่านแต่ปิดเรื่องแล้ว = สีกลาง + บอกสถานะ (ไม่ใช่แดงอย่างเดียว) */}
-            <div style={{ fontSize: ".8rem", color: sub.result === "fail" ? (sub.fail_closed_at ? "var(--ink-2)" : "var(--fail)") : "var(--pass)", fontWeight: 600 }}>
-              {sub.result === "fail"
-                ? <T k={sub.fail_closed_at ? "dash.failNClosed" : "sub.issues"} vars={{ n: (sub.fails as string[])?.length || 0 }} />
-                : <T k="sub.complete" />}
-            </div>
+            {/* ไม่ผ่านแต่ปิดเรื่องแล้ว = สีกลาง + บอกสถานะ (ไม่ใช่แดงอย่างเดียว)
+                มีการ์ดปิดเรื่องอยู่ใต้หัวแล้ว (บอก "ไม่ผ่าน n ข้อ · ปิด/ยังไม่ปิด") → ไม่ซ้ำบนจอ */}
+            {/* (ยังพิมพ์ออกมา — การ์ดปิดเรื่องเป็น no-print) */}
+            {(
+              <div className={sub.result === "fail" && failPanel ? "krok-print-only" : undefined} style={{ fontSize: ".8rem", color: sub.result === "fail" ? (sub.fail_closed_at ? "var(--ink-2)" : "var(--fail)") : "var(--pass)", fontWeight: 600 }}>
+                {sub.result === "fail"
+                  ? <T k={sub.fail_closed_at ? "dash.failNClosed" : "sub.issues"} vars={{ n: (sub.fails as string[])?.length || 0 }} />
+                  : <T k="sub.complete" />}
+              </div>
+            )}
           </div>
         </div>
 

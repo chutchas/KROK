@@ -43,7 +43,7 @@ export default async function ErrorLogPage({ searchParams }: { searchParams: Pro
   return (
     <div style={{ display: "grid", gap: 14 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", margin: 0 }}>บันทึก error</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", margin: 0 }}>บันทึก error</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: "4px 0 0" }}>
           error จาก server และ browser ของผู้ใช้ {days} วันล่าสุด ({rows.length} ครั้ง · {list.length} แบบ) — เก็บในฐานข้อมูลของเราเอง 30 วัน
           {" · "}{[1, 7, 30].map((d) => <a key={d} href={`/admin/errors?days=${d}`} style={{ marginRight: 8, fontWeight: d === days ? 700 : 400 }}>{d} วัน</a>)}

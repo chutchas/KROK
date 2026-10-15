@@ -35,13 +35,13 @@ export default function HistoryClient({ events, invoices, plans }: { events: Pla
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("bill.histTitle")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("bill.histTitle")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("bill.histSub")}</p>
       </div>
 
       {/* ใบแจ้งหนี้ */}
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={ReceiptText} className="h-[18px] w-[18px]" /> {t("bill.invoices")}
         </h2>
         {invoices.length === 0 ? (
@@ -72,7 +72,7 @@ export default function HistoryClient({ events, invoices, plans }: { events: Pla
 
       {/* บันทึกการเปลี่ยนแผน */}
       <Card>
-        <h2 style={{ fontSize: "1.1rem", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 8 }}>
+        <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 8, display: "inline-flex", alignItems: "center", gap: 8 }}>
           <Icon icon={ArrowRightLeft} className="h-[18px] w-[18px]" /> {t("bill.planLog")}
         </h2>
         {events.length === 0 ? (

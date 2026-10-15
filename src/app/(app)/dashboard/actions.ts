@@ -22,7 +22,7 @@ import {
 import { loadCompliance, complianceByTeam, type ComplianceRow } from "@/lib/schedule-server";
 import type { OpenItem } from "@/lib/areas";
 
-const RANGES: WidgetRange[] = ["today", "7d", "30d", "month", "all"];
+const RANGES: WidgetRange[] = ["today", "7d", "14d", "30d", "month", "all"];
 
 // ตรวจ/ล้าง widget config ก่อนเก็บ (กันข้อมูลเพี้ยน)
 function clean(raw: unknown): DashWidget[] {
@@ -106,7 +106,7 @@ function rangeStartIso(range: WidgetRange, days?: number): string | null {
   let d: Date;
   if (range === "today") { d = new Date(now); d.setHours(0, 0, 0, 0); }
   else if (range === "month") { d = new Date(now.getFullYear(), now.getMonth(), 1); }
-  else { const n = days ?? (range === "7d" ? 7 : 30); d = new Date(now); d.setDate(now.getDate() - (n - 1)); d.setHours(0, 0, 0, 0); }
+  else { const n = days ?? (range === "7d" ? 7 : range === "14d" ? 14 : 30); d = new Date(now); d.setDate(now.getDate() - (n - 1)); d.setHours(0, 0, 0, 0); }
   return d.toISOString();
 }
 const dayKey = (ts: string) => new Date(ts).toLocaleDateString("sv");
@@ -124,6 +124,8 @@ const num = (r: Record<string, unknown>): AggRow => ({
  * fast path: ให้ฐานข้อมูลนับ (RPC dashboard_metrics, migration 0037) — คืน null ถ้ายังไม่มี RPC → ใช้วิธีเดิม
  */
 async function computeWidgetSql(supabase: Awaited<ReturnType<typeof createClient>>, tenantId: string, w: DashWidget, scoped: string | null): Promise<WidgetResult | null> {
+  // RPC (0037) รู้จักแค่ today/7d/30d/month/all — ช่วงอื่น (14d) ใช้วิธีนับในแอป
+  if (!["today", "7d", "30d", "month", "all"].includes(w.range)) return null;
   const call = async (group: "none" | "form" | "day") => {
     const { data, error } = await supabase.rpc("dashboard_metrics", {
       p_tenant: tenantId, p_form: scoped, p_range: w.range, p_group: group, p_tz: "Asia/Bangkok",

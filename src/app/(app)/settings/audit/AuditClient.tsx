@@ -64,7 +64,7 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
   return (
     <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1fr)", gap: 16, minWidth: 0 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("audit.title")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("audit.title")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("audit.sub")}</p>
         {days != null && <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "2px 0 0" }}>{tt("audit.retention", { n: days })}</p>}
       </div>

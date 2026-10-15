@@ -105,7 +105,7 @@ export default function AdminUsersClient({ users, meId, plans = [] }: { users: S
   return (
     <div style={{ display: "grid", gap: 16 }}>
       <div>
-        <h1 style={{ fontSize: "1.4rem", marginBottom: 2 }}>{t("admin.usersTitle")}</h1>
+        <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{t("admin.usersTitle")}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>{t("admin.usersSub")}</p>
       </div>
 

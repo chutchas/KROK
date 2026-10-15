@@ -6,7 +6,7 @@
 export type WidgetFormat = "stat" | "trend" | "ranking" | "area" | "openlist" | "topfails";
 /** fail = จำนวนใบไม่ผ่าน · openfail = ยังไม่ปิดเรื่อง · closetime = เวลาปิดเรื่อง (มัธยฐาน วัน) */
 export type WidgetMetric = "usage" | "pending" | "passrate" | "avgtime" | "submitters" | "fail" | "openfail" | "closetime";
-export type WidgetRange = "today" | "7d" | "30d" | "month" | "all";
+export type WidgetRange = "today" | "7d" | "14d" | "30d" | "month" | "all";
 
 export interface DashWidget {
   id: string;
@@ -29,7 +29,7 @@ export const METRICS_BY_FORMAT: Record<WidgetFormat, WidgetMetric[]> = {
 export const CLOSEOUT_METRICS: WidgetMetric[] = ["openfail", "closetime"];
 // trend เป็นอนุกรมเวลา จึงรองรับเฉพาะช่วงที่เป็นเวลา
 export const RANGES_BY_FORMAT: Record<WidgetFormat, WidgetRange[]> = {
-  stat: ["today", "7d", "30d", "month", "all"],
+  stat: ["today", "7d", "14d", "30d", "month", "all"],
   ranking: ["today", "7d", "30d", "month", "all"],
   trend: ["7d", "30d", "month"],
   area: ["all"],
@@ -69,6 +69,7 @@ const METRIC_L: Record<WidgetMetric, L> = {
 const RANGE_L: Record<WidgetRange, L> = {
   today: { th: "วันนี้", en: "Today" },
   "7d": { th: "7 วัน", en: "7 days" },
+  "14d": { th: "14 วัน", en: "14 days" },
   "30d": { th: "30 วัน", en: "30 days" },
   month: { th: "เดือนนี้", en: "This month" },
   all: { th: "ทั้งหมด", en: "All time" },
@@ -138,6 +139,10 @@ export function calcMetricAgg(a: MetricAgg, metric: WidgetMetric): number {
   if (metric === "openfail" || metric === "closetime") return 0;
   return a.submitters;
 }
+
+/** ช่วงที่สลับได้บนการ์ดตัวเลข (ปุ่ม 7 · 14 · 30 วัน บนการ์ด) — การ์ดที่ต่างกันแค่ช่วงนี้ถือเป็นการ์ดเดียวกัน */
+export const PERIOD_RANGES: WidgetRange[] = ["7d", "14d", "30d"];
+export const isPeriodStat = (w: { format: WidgetFormat; range: WidgetRange }) => w.format === "stat" && PERIOD_RANGES.includes(w.range);
 
 // จำนวนวันของ trend ตามช่วง (month = ถึงวันปัจจุบันของเดือน)
 export function trendDays(range: WidgetRange, now = new Date()): number {
