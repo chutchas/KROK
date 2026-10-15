@@ -38,7 +38,7 @@ export interface AttentionOpts {
   tenantId: string;
   userId: string;
   role: "owner" | "admin" | "designer" | "operator";
-  /** ผู้จัดการ workspace (owner/admin/designer) */
+  /** ผู้จัดการ workspace (เจ้าของ/แอดมิน/ออกแบบฟอร์ม) */
   manager: boolean;
   /** มีเมนูอนุมัติ */
   canApprove: boolean;

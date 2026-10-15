@@ -12,7 +12,7 @@ export default async function WorkspaceSettingsPage() {
   const session = await getSession();
   if (!session) return redirectNoSession();
   if (session.role !== "owner" && session.role !== "admin")
-    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ owner/admin เท่านั้น</div>;
+    return <div style={{ color: "var(--ink-2)" }}>หน้านี้สำหรับ เจ้าของ/แอดมิน เท่านั้น</div>;
 
   const supabase = await createClient();
   const [{ count: memberCount }, { count: formCount }, branding] = await Promise.all([

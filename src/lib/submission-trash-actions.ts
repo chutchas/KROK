@@ -5,7 +5,7 @@ import { dbError } from "@/lib/db-error";
 import { getSession } from "@/lib/session";
 import { createClient } from "@/lib/supabase/server";
 
-// ลบเอกสารแบบซ่อน / กู้คืน — owner/admin เท่านั้น (ตรวจซ้ำในฐานข้อมูล: delete_submission / restore_submission · 0079)
+// ลบเอกสารแบบซ่อน / กู้คืน — เจ้าของ/แอดมิน เท่านั้น (ตรวจซ้ำในฐานข้อมูล: delete_submission / restore_submission · 0079)
 // เหตุผลการลบบันทึกไว้ในเอกสาร + audit_log · กู้คืนได้ภายใน 30 วัน แล้ว cron cleanup ลบจริงพร้อมรูป
 
 type R = { ok: true } | { error: string };

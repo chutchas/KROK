@@ -16,7 +16,7 @@ export default async function ApprovalsPage() {
     return (
       <div style={{ maxWidth: 520, margin: "32px auto", display: "grid", gap: 8 }}>
         <h1 style={{ fontSize: "1.4rem", margin: 0 }}>อนุมัติ</h1>
-        <p style={{ color: "var(--ink-2)", margin: 0 }}>หน้านี้สำหรับผู้อนุมัติ (owner/admin/designer) เท่านั้น — ถ้าต้องอนุมัติเอกสาร ติดต่อเจ้าของ workspace</p>
+        <p style={{ color: "var(--ink-2)", margin: 0 }}>หน้านี้สำหรับผู้อนุมัติ (เจ้าของ/แอดมิน/ออกแบบฟอร์ม) เท่านั้น — ถ้าต้องอนุมัติเอกสาร ติดต่อเจ้าของ workspace</p>
         <a href="/dashboard" style={{ display: "inline-flex", alignItems: "center", minHeight: 44 }}>← กลับแดชบอร์ด</a>
       </div>
     );

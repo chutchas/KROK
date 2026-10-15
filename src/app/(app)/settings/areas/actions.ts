@@ -20,7 +20,7 @@ const missingTable = (m: string) => /workspace_areas|area_open_items/.test(m) &&
 async function requireAdmin(): Promise<{ ok: true; session: KrokSession } | { ok: false; error: string }> {
   const session = await getSession();
   if (!session) return { ok: false, error: "unauthorized" };
-  if (session.role !== "owner" && session.role !== "admin") return { ok: false, error: await sm("เฉพาะ owner/admin เท่านั้น") };
+  if (session.role !== "owner" && session.role !== "admin") return { ok: false, error: await sm("เฉพาะ เจ้าของ/แอดมิน เท่านั้น") };
   return { ok: true, session };
 }
 

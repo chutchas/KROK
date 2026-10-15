@@ -222,7 +222,7 @@ function MatrixCard({
           <Icon icon={Grid3x3} className="h-4 w-4" /> {t("dev.matrixTitle")}
         </h2>
         <p style={{ color: "var(--ink-2)", fontSize: ".88rem", margin: 0 }}>
-          {t("dev.matrixNoForms")}<Link href="/studio?view=all" style={{ fontWeight: 600 }}>{t("nav.studio")}</Link>
+          {t("dev.matrixNoForms")}<Link href="/studio?view=all" style={{ fontWeight: 600 }}>{t("studio.allFormsTitle")}</Link>
         </p>
       </Card>
     );

@@ -310,7 +310,7 @@ export default function BillingClient({
       {/* ช่องทางชำระเงิน: เปิดแล้ว = การ์ดรายการ · ยังไม่เปิด = บรรทัดเดียว */}
       {payMethods.length > 0 ? (
         <Card>
-          <h2 style={{ fontSize: "1.05rem", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <h2 style={{ fontSize: "1rem", margin: "0 0 2px", display: "inline-flex", alignItems: "center", gap: 8 }}>
             <Icon icon={CreditCard} className="h-[18px] w-[18px]" /> {t("pay.title")}
           </h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("pay.available")}</p>

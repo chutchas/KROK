@@ -137,7 +137,7 @@ export default async function SubmissionPage({ params, searchParams }: { params:
     .eq("id", id)
     .maybeSingle();
   if (!sub) {
-    // owner/admin เปิดลิงก์ของเอกสารที่อยู่ในถังขยะ → บอกสถานะ + กู้คืนได้ (คนอื่น = หน้า "ไม่พบ")
+    // เจ้าของ/แอดมิน เปิดลิงก์ของเอกสารที่อยู่ในถังขยะ → บอกสถานะ + กู้คืนได้ (คนอื่น = หน้า "ไม่พบ")
     const adm = session.role === "owner" || session.role === "admin" ? getAdminClient() : null;
     const { data: gone } = adm
       ? await adm.from("submissions").select("id, form_title, doc_no, deleted_at, deleted_by_name, delete_reason").eq("id", id).eq("tenant_id", session.tenantId).not("deleted_at", "is", null).maybeSingle()
@@ -252,14 +252,17 @@ export default async function SubmissionPage({ params, searchParams }: { params:
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
       <OnboardingSeen />
       <div className="no-print krok-subbar" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14, gap: 10, flexWrap: "wrap" }}>
-        <BackLink from={sp.from} mine={!canManage(session.role)} />
+        {/* ลิงก์กลับ + วิธีใช้ อยู่ด้วยกัน (มือถือไม่ให้ ? อยู่บรรทัดเดียวลำพัง) · panel กางเต็มกลุ่มนี้ */}
+        <div style={{ display: "flex", alignItems: "center", gap: 4, flexWrap: "wrap", flex: "1 1 320px", minWidth: 0 }}>
+          <BackLink from={sp.from} mine={!canManage(session.role)} />
+          <HelpTip id="print-pdf" compact panelOrder={2} />
+        </div>
         {/* มือถือ (CSS .krok-subactions): ดาวน์โหลด PDF เต็มแถว · พิมพ์/รูปทั้งหมด/ลบ แถวถัดไป · แจ้งปัญหาอยู่ใต้ปุ่ม */}
         <div className="krok-subactions" style={{ display: "inline-flex", gap: 8, flexWrap: "wrap", alignItems: "center", justifyContent: "flex-end" }}>
           <PrintButton submissionId={String(sub.id)} docNo={docNo} hasPhotos={hasPhotos} printHref={docSchema ? `/print/submission/${sub.id}` : undefined} view={view} showDetail={session.role === "owner" || session.role === "admin"} />
           {/* ลบไว้ท้ายสุด — ไม่ให้ปุ่มทำลายอยู่ตำแหน่งแรก (มือถือ = ใกล้นิ้วโป้ง) */}
           {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}
         </div>
-        <HelpTip id="print-pdf" compact alignSelf="flex-end" />
       </div>
 
       {docSchema && (
