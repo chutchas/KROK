@@ -56,7 +56,7 @@ export default function OverflowMenu({ items, label, tour, outlined }: {
       if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setOpen(false); btnRef.current?.focus(); }
+      if (e.key === "Escape") { e.preventDefault(); setOpen(false); btnRef.current?.focus(); }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("touchstart", onDown, { passive: true });

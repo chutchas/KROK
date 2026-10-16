@@ -31,16 +31,18 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
     }
   }
 
-  if (!open) {
-    return (
+  // ปุ่มลบคงอยู่ตำแหน่งเดิมตลอด (ปุ่มอื่นในแถบไม่กระโดด) · กล่องยืนยันเปิดเป็นแถวใหม่ใต้ปุ่ม
+  const trigger = (
       // จอแคบ: เหลือไอคอนอย่างเดียว (ไม่ตกบรรทัดใต้ปุ่ม PDF)
-      <Button ref={triggerRef} variant="ghost" onClick={() => setOpen(true)} aria-label={t("trash.delete")} title={t("trash.delete")} className="krok-sb-del krok-touch-min" style={{ color: "var(--fail)", minWidth: 44 }}>
+      <Button ref={triggerRef} variant="ghost" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={t("trash.delete")} title={t("trash.delete")} className="krok-sb-del krok-touch-min" style={{ color: "var(--fail)", minWidth: 44 }}>
         <Icon icon={Trash2} className="h-4 w-4" /> <span className="krok-narrow-hide">{t("trash.delete")}</span>
       </Button>
-    );
-  }
+  );
+  if (!open) return trigger;
   return (
-    <div ref={panelRef} tabIndex={-1} role="group" aria-label={t("trash.delete")} style={{ flexBasis: "100%", display: "grid", gap: 8, padding: 12, border: "1px solid var(--fail)", borderRadius: 10, background: "var(--fail-soft)" }}>
+    <>
+    {trigger}
+    <div ref={panelRef} tabIndex={-1} role="group" aria-label={t("trash.delete")} style={{ order: 10, flexBasis: "100%", display: "grid", gap: 8, padding: 12, border: "1px solid var(--fail)", borderRadius: 10, background: "var(--fail-soft)" }}>
       <b style={{ color: "var(--fail-text)" }}>{tt("trash.confirmTitle", { no: docNo })}</b>
       <span style={{ fontSize: ".84rem", color: "var(--ink-2)" }}>{t("trash.confirmBody")}</span>
       <label style={{ display: "grid", gap: 4, fontSize: ".84rem" }}>
@@ -59,5 +61,6 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
         </Button>
       </div>
     </div>
+    </>
   );
 }

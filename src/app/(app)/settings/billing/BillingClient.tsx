@@ -155,7 +155,7 @@ export default function BillingClient({
         </p>
       </div>
       {view === "quota" && (
-        <Link href="/settings/billing/plans" style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "9px 16px", fontSize: ".88rem", fontWeight: 600, textDecoration: "none" }}>
+        <Link href="/settings/billing/plans" style={{ display: "inline-flex", alignItems: "center", gap: 6, minHeight: 44, boxSizing: "border-box", background: "var(--accent)", color: "var(--accent-ink)", borderRadius: 8, padding: "9px 16px", fontSize: ".88rem", fontWeight: 600, textDecoration: "none" }}>
           <Icon icon={Sparkles} className="h-4 w-4" /> {t("plan.seePlans")}
         </Link>
       )}

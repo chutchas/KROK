@@ -24,14 +24,16 @@ export function useInlineConfirmFocus<P extends HTMLElement = HTMLDivElement, T 
   useEffect(() => { escRef.current = onEscape; });
   useEffect(() => {
     if (!open) return;
-    // ดักที่ document: คลิกออกนอกกล่อง (โฟกัสไป body) แล้วกด Esc ก็ยังยกเลิกได้ · ถ้ามี dialog ซ้อนอยู่ (aria-modal) ปล่อยให้ dialog จัดการ
+    // ดักทั้งหน้า: คลิกออกนอกกล่อง (โฟกัสไป body) แล้วกด Esc ก็ยังยกเลิกได้ · ถ้ามี dialog ซ้อนอยู่ (aria-modal) ปล่อยให้ dialog จัดการ
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape" || !escRef.current || e.defaultPrevented) return;
       if (document.querySelector('[aria-modal="true"]')) return;
       escRef.current();
     };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    // ฟังที่ window (ทำงานหลัง listener ทุกตัวบน document) → เมนู/แผงที่เปิดซ้อนอยู่ได้ปิดตัวเองและ preventDefault ก่อนเสมอ
+    // ไม่ขึ้นกับว่าใครลงทะเบียนก่อน — กด Esc หนึ่งครั้งปิดแค่ชั้นบนสุด
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
   }, [open]);
   return { panelRef, triggerRef };
 }
