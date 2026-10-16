@@ -194,8 +194,10 @@ export function PaperChoices({
 }
 
 /** ผ่าน / ไม่ผ่าน — ปุ่มเล็กบรรทัดเดียว */
-export function PaperPassFail({ value, onChange, disabled = false, passLabel, failLabel, allowNa = false }: {
+export function PaperPassFail({ value, onChange, disabled = false, passLabel, failLabel, allowNa = false, emptyLabel }: {
   value?: string; onChange?: (v: "pass" | "fail" | "na") => void; disabled?: boolean;
+  /** อ่านอย่างเดียว + ยังไม่ได้ตอบ: คำที่โปรแกรมอ่านหน้าจออ่านแทนตัวเลือกทั้งหมด (หน้าเอกสาร) */
+  emptyLabel?: string;
   /** คำบนปุ่มที่ตั้งไว้ในฟอร์ม */
   passLabel?: string; failLabel?: string; allowNa?: boolean;
 }) {
@@ -209,7 +211,7 @@ export function PaperPassFail({ value, onChange, disabled = false, passLabel, fa
       <Tag
         {...(disabled
           // อ่านอย่างเดียว (หน้าเอกสาร/ตัวอย่าง): หน้าตาเดิมแต่ไม่ใช่ปุ่ม — โปรแกรมอ่านหน้าจออ่านเฉพาะคำตอบที่เลือก
-          ? { "aria-hidden": value && !on ? true : undefined }
+          ? { "aria-hidden": (value && !on) || (!value && emptyLabel) ? true : undefined }
           : { type: "button" as const, "aria-pressed": on, onClick: () => onChange?.(kind) })}
         data-print-keep={on || !value ? "" : undefined}
         style={{
@@ -223,7 +225,7 @@ export function PaperPassFail({ value, onChange, disabled = false, passLabel, fa
       </Tag>
     );
   };
-  return <div style={{ display: "flex", gap: 6 }}>{btn("pass")}{btn("fail")}{allowNa && btn("na")}</div>;
+  return <div style={{ display: "flex", gap: 6 }}>{disabled && !value && emptyLabel && <span className="sr-only">{emptyLabel}</span>}{btn("pass")}{btn("fail")}{allowNa && btn("na")}</div>;
 }
 
 /** รูปถ่าย — ปุ่มถ่าย + รูปย่อ ในบรรทัดเดียว */

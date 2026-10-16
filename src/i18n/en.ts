@@ -1788,6 +1788,8 @@ export const en: Record<MessageKey, string> = {
   "hub.tab.auditShort": "Log",
   "hub.tab.teamShort": "Members",
   "hub.tab.rolesShort": "Roles",
+  "fw.unanswered": "Not answered",
+  "nav.drawer": "All menus",
   "dash.durSec": "{s}s",
   "dash.deletedForm": "(deleted form)",
   "dash.passFail": "pass {pass} · fail {fail}",

@@ -59,6 +59,7 @@ function TableValue({ col, row, photoUrl }: { col: TableColumn; row: Record<stri
 }
 
 export default function DocPaperField({ f, a, photoUrl }: { f: FormField; a?: StoredAnswer; photoUrl: (key: string) => string | undefined }) {
+  const { t } = useT();
   const display = a?.display && a.display !== "—" ? a.display : "";
   const label = f.type === "table" ? null : (
     <PaperLabel label={f.label} required={f.required}
@@ -73,7 +74,7 @@ export default function DocPaperField({ f, a, photoUrl }: { f: FormField; a?: St
       return (
         <div>
           {label}
-          <PaperPassFail value={code || undefined} disabled passLabel={f.pass_label} failLabel={f.fail_label} allowNa={!!f.allow_na} />
+          <PaperPassFail value={code || undefined} disabled emptyLabel={t("fw.unanswered")} passLabel={f.pass_label} failLabel={f.fail_label} allowNa={!!f.allow_na} />
           {code === "fail" && <FailNote text={a?.note} />}
         </div>
       );

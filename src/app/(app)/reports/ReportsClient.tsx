@@ -61,7 +61,13 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   async function search() {
     setSavedSnap(null);
     try { sessionStorage.setItem(KEY, JSON.stringify({ formId, preset, from, to, result, approval })); } catch { /* ไม่มี storage = ไม่จำ */ }
+    // ปุ่มถูกปิดระหว่างโหลด → โฟกัสหลุดไป <body> · ค้นเสร็จคืนโฟกัสให้ปุ่มเดิม (ถ้าผู้ใช้ยังไม่ได้ย้ายไปที่อื่น)
+    const back = document.activeElement as HTMLElement | null;
     await runSearch(filters());
+    requestAnimationFrame(() => {
+      const cur = document.activeElement;
+      if (back && back.isConnected && (!cur || cur === document.body)) back.focus();
+    });
   }
 
   // ตัวกรองของผลที่แสดงอยู่ — ผล "ไม่พบ" ใช้ปิดปุ่มส่งออกได้เฉพาะเมื่อตัวกรองยังเหมือนเดิม

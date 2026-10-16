@@ -484,3 +484,6 @@ html { scrollbar-gutter: stable; }
 /* รายงาน: ช่องวันที่ (ช่วงกำหนดเอง) — เดสก์ท็อปเต็มแถวท้ายตัวกรอง · จอแคบขึ้นมาอยู่ใต้ "ช่วงเวลา" */
 .krok-rep-dates{grid-column:1/-1;order:1}
 @media (max-width:560px){.krok-rep-after{order:2}}
+
+/* ช่องที่ถูกมาร์กว่าผิด (aria-invalid) — กรอบแดงให้ตาเห็น ไม่ใช่แค่โปรแกรมอ่านหน้าจอ */
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--fail) !important; box-shadow: 0 0 0 1px var(--fail); }

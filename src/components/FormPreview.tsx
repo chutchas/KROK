@@ -360,7 +360,8 @@ export default function FormPreview({
             ))}
             {drag && drag.step === i && drag.index >= s.fields.length && dropLine}
             {editable && onAddField && (
-              <button data-krok-keep="" data-drop-step={`${i}:end`} onClick={(e) => { e.stopPropagation(); onAddField(i); }} style={addBtn}>
+              <button data-krok-keep="" data-drop-step={`${i}:end`} onClick={(e) => { e.stopPropagation(); onAddField(i); }} style={addBtn}
+                aria-label={tt("editor.addFieldIn", { step: s.title?.trim() || `${t("editor.step")} ${i + 1}` })}>
                 <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
               </button>
             )}
