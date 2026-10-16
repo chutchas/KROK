@@ -139,6 +139,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   const needDates = preset === "custom" && (!from || !to);
   // วันที่กลับด้าน (เริ่ม > สิ้นสุด) — ค้นแล้วได้ "ไม่มีรายการ" โดยไม่รู้สาเหตุ → กันไว้และบอกเหตุผล
   const badRange = preset === "custom" && !!from && !!to && from > to;
+  const dateMsgId = badRange ? "rep-dates-bad" : needDates ? "rep-dates-need" : undefined;
   const emptyNow = preview?.total === 0 && previewKey === JSON.stringify(filters());
   // ตัวกรองเปลี่ยนหลังค้นครั้งล่าสุด → ผลที่แสดงเป็นของตัวกรองเดิม (จางลง + บอกให้กดค้นหา)
   const stale = !!preview && previewKey !== "" && previewKey !== JSON.stringify(filters());
@@ -202,7 +203,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
             </select>
           </Selectable>
 
-          <Selectable label={t("report.result")}>
+          <Selectable label={t("report.result")} className="krok-rep-after">
             <select value={result} onChange={(e) => setResult(e.target.value)} style={selStyle}>
               <option value="all">{t("studio.stAll")}</option>
               <option value="pass">{t("rep.pass")}</option>
@@ -212,7 +213,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
             </select>
           </Selectable>
 
-          <Selectable label={t("report.approval")}>
+          <Selectable label={t("report.approval")} className="krok-rep-after">
             <select value={approval} onChange={(e) => setApproval(e.target.value)} style={selStyle}>
               <option value="all">{t("studio.stAll")}</option>
               <option value="pending">{t("dash.pending")}</option>
@@ -221,29 +222,29 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               <option value="none">{t("rep.noApproval")}</option>
             </select>
           </Selectable>
-        </div>
-
         {preset === "custom" && (
-          <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
+          // ช่องวันที่อยู่ในกริดเดียวกับตัวกรอง — บนจอแคบเลื่อนมาอยู่ใต้ "ช่วงเวลา" ทันที (globals.css .krok-rep-dates)
+          <div className="krok-rep-dates" style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
               <label htmlFor="rep-from" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.from")}</label>
-              <Field id="rep-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
+              <Field id="rep-from" type="date" aria-invalid={badRange || undefined} aria-describedby={dateMsgId} value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div style={{ flex: 1, minWidth: 150 }}>
               <label htmlFor="rep-to" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.to")}</label>
-              <Field id="rep-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
+              <Field id="rep-to" type="date" aria-invalid={badRange || undefined} aria-describedby={dateMsgId} value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
             </div>
-            {badRange && <p id="rep-dates-need" style={{ flexBasis: "100%", margin: 0, fontSize: ".82rem", color: "var(--warn-text)", fontWeight: 600 }}>{t("rep.badRange")}</p>}
+            {badRange && <p id="rep-dates-bad" role="alert" style={{ flexBasis: "100%", margin: 0, fontSize: ".82rem", color: "var(--warn-text)", fontWeight: 600 }}>{t("rep.badRange")}</p>}
             {needDates && <p id="rep-dates-need" style={{ flexBasis: "100%", margin: 0, fontSize: ".82rem", color: "var(--warn-text)", fontWeight: 600 }}>{t("rep.needDates")}</p>}
           </div>
         )}
+        </div>
 
         <div style={{ display: "flex", gap: 10, marginTop: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <Button onClick={search} disabled={busy || needDates || badRange} aria-describedby={needDates || badRange ? "rep-dates-need" : undefined}>
+          <Button onClick={search} disabled={busy || needDates || badRange} aria-describedby={dateMsgId}>
             <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
           {/* ส่งออกได้เลยตามตัวกรอง (ไม่ต้องกดค้นหาก่อน) · ปิดเฉพาะเมื่อค้นแล้วไม่พบรายการ — บอกเหตุผลข้างปุ่ม */}
-          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow || needDates || badRange} aria-describedby={needDates || badRange ? "rep-dates-need" : emptyNow ? "rep-nodata" : undefined}>
+          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow || needDates || badRange} aria-describedby={dateMsgId ?? (emptyNow ? "rep-nodata" : undefined)}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
@@ -350,10 +351,10 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
   );
 }
 
-function Selectable({ label, children }: { label: string; children: React.ReactNode }) {
+function Selectable({ label, children, className }: { label: string; children: React.ReactNode; className?: string }) {
   return (
     // ป้ายครอบช่องเลือก → โปรแกรมอ่านหน้าจออ่านชื่อช่องได้
-    <label style={{ display: "block" }}>
+    <label className={className} style={{ display: "block" }}>
       <span style={{ fontWeight: 600, fontSize: ".82rem", display: "block", marginBottom: 5, color: "var(--ink-2)" }}>{label}</span>
       {children}
     </label>

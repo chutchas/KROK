@@ -200,17 +200,18 @@ export function PaperPassFail({ value, onChange, disabled = false, passLabel, fa
   passLabel?: string; failLabel?: string; allowNa?: boolean;
 }) {
   const { t } = useT();
+  const Tag = disabled ? "span" : "button";
   const btn = (kind: "pass" | "fail" | "na") => {
     const on = value === kind;
     // ตัวอักษรตอนเลือกบนพื้นอ่อน (#e7f6ec / #fdeaea) ต้อง ≥ 4.5:1
     const color = kind === "pass" ? "#166534" : kind === "fail" ? "#b91c1c" : "#444";
     return (
-      <button
-        type="button"
+      <Tag
+        {...(disabled
+          // อ่านอย่างเดียว (หน้าเอกสาร/ตัวอย่าง): หน้าตาเดิมแต่ไม่ใช่ปุ่ม — โปรแกรมอ่านหน้าจออ่านเฉพาะคำตอบที่เลือก
+          ? { "aria-hidden": value && !on ? true : undefined }
+          : { type: "button" as const, "aria-pressed": on, onClick: () => onChange?.(kind) })}
         data-print-keep={on || !value ? "" : undefined}
-        disabled={disabled}
-        aria-pressed={on}
-        onClick={() => onChange?.(kind)}
         style={{
           height: CONTROL_H, boxSizing: "border-box", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 4,
           flex: kind === "na" ? "0 0 auto" : 1, padding: kind === "na" ? "0 8px" : undefined,
@@ -219,7 +220,7 @@ export function PaperPassFail({ value, onChange, disabled = false, passLabel, fa
         }}
       >
         {kind !== "na" && <Icon icon={kind === "pass" ? Check : X} className="h-3.5 w-3.5" />} {kind === "pass" ? passLabel || t("fw.pass") : kind === "fail" ? failLabel || t("fw.fail") : t("fw.na")}
-      </button>
+      </Tag>
     );
   };
   return <div style={{ display: "flex", gap: 6 }}>{btn("pass")}{btn("fail")}{allowNa && btn("na")}</div>;

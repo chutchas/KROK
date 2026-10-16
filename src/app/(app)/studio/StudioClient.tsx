@@ -661,6 +661,16 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     { k: "fill", label: t("fs.tab.fill"), on: !!draft?.geo || !!draft?.watermark || !!draft?.doc_no || !!draft?.review },
     { k: "schedule", label: t("fs.tab.schedule"), on: false },
   ];
+  // แท็บตั้งค่าฟอร์ม: ลูกศรซ้าย/ขวา/Home/End เลื่อนแท็บ (รูปแบบ tablist มาตรฐาน)
+  const onFormTabKey = (e: React.KeyboardEvent, cur: FormTab) => {
+    const keys = formTabs.map((x) => x.k);
+    const i = keys.indexOf(cur);
+    const next = e.key === "ArrowRight" ? keys[(i + 1) % keys.length] : e.key === "ArrowLeft" ? keys[(i - 1 + keys.length) % keys.length] : e.key === "Home" ? keys[0] : e.key === "End" ? keys[keys.length - 1] : null;
+    if (!next) return;
+    e.preventDefault();
+    setFormTab(next);
+    document.getElementById(`fs-tab-${next}`)?.focus();
+  };
   // ชื่อแท็บเบราว์เซอร์ตอนแก้ฟอร์ม = ชื่อฟอร์ม (เดิมเป็น "สร้างฟอร์ม" ทุกฟอร์ม)
   useEffect(() => {
     if (tab !== "edit" || !draft?.title) return;
@@ -750,7 +760,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         {formTabs.map((x) => {
           const on = formTab === x.k;
           return (
-            <button key={x.k} type="button" role="tab" aria-selected={on} onClick={() => setFormTab(x.k)}
+            <button key={x.k} type="button" role="tab" id={`fs-tab-${x.k}`} aria-selected={on} aria-controls={`fs-panel-${x.k}`} tabIndex={on ? 0 : -1}
+              onClick={() => setFormTab(x.k)} onKeyDown={(e) => onFormTabKey(e, x.k)}
               style={{ position: "relative", padding: "7px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500, boxShadow: on ? "0 1px 3px rgba(10,14,18,.12)" : "none" }}>
               {x.label}
@@ -760,7 +771,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         })}
       </div>
 
-      <div role="tabpanel" style={{ display: formTab === "access" ? "block" : "none" }}>
+      <div role="tabpanel" id="fs-panel-access" aria-labelledby="fs-tab-access" style={{ display: formTab === "access" ? "block" : "none" }}>
           <div className="krok-fs-sec">
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6, flexWrap: "wrap" }}>
               <b style={{ fontFamily: "var(--font-anuphan)" }}>{t("studio.visTitle")}</b>
@@ -866,7 +877,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
       </div>
 
-      <div role="tabpanel" style={{ display: formTab === "approval" ? "block" : "none" }}>
+      <div role="tabpanel" id="fs-panel-approval" aria-labelledby="fs-tab-approval" style={{ display: formTab === "approval" ? "block" : "none" }}>
           <div className="krok-fs-sec">
             <label style={{ display: "flex", gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
               <input type="checkbox" checked={requiresApproval} onChange={(e) => setRequiresApproval(e.target.checked)} style={{ width: 20, height: 20, marginTop: 2, accentColor: "var(--accent)" }} />
@@ -914,7 +925,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           </div>
       </div>
 
-      <div role="tabpanel" style={{ display: formTab === "fill" ? "block" : "none" }}>
+      <div role="tabpanel" id="fs-panel-fill" aria-labelledby="fs-tab-fill" style={{ display: formTab === "fill" ? "block" : "none" }}>
             <div className="krok-fs-sec">
               <b style={{ fontFamily: "var(--font-anuphan)", display: "inline-flex", alignItems: "center", gap: 6 }}><Icon icon={MapPin} className="h-4 w-4" /> {t("geo.title")}</b>
               <p style={{ color: "var(--ink-2)", fontSize: ".85rem", margin: "2px 0 10px" }}>{t("geo.sub")}</p>
@@ -959,7 +970,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           <div className="krok-fs-sec krok-fs-nest"><AttachmentsPanel formId={editingId} tenantId={tenantId} /></div>
       </div>
 
-      <div role="tabpanel" style={{ display: formTab === "schedule" ? "block" : "none" }}>
+      <div role="tabpanel" id="fs-panel-schedule" aria-labelledby="fs-tab-schedule" style={{ display: formTab === "schedule" ? "block" : "none" }}>
           <div className="krok-fs-sec krok-fs-nest"><FormSchedulePanel key={editingId || "new"} formId={editingId} teams={teams} members={members} /></div>
       </div>
     </div>
@@ -1205,7 +1216,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </p>
             </div>
             <div className="krok-edithead-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <button type="button" data-krok-keep onClick={() => { setSelKey(null); setFormPanel(true); }}
+              <button type="button" data-krok-keep aria-pressed={!selKey} aria-controls="krok-studio-aside" onClick={() => { setSelKey(null); setFormPanel(true); }}
                 className="inline-flex items-center gap-1.5"
                 style={{ minHeight: 44, padding: "0 14px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent-text)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
                 <Icon icon={Settings2} className="h-4 w-4" /> {t("fs.title")}
@@ -1232,9 +1243,10 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                 })}
               </div>
               <div className="krok-editbtns" data-tour="studio-publish" style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <AsyncButton variant="primary" onClick={publish} disabled={!!busy || (!!editingId && !dirty)} title={editingId && !dirty ? t("studio.noChanges") : undefined}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
+            <AsyncButton variant="primary" onClick={publish} disabled={!!busy || (!!editingId && !dirty)} aria-describedby={editingId && !dirty ? "studio-nochg" : undefined}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
             {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
+            {editingId && !dirty && <span id="studio-nochg" style={{ alignSelf: "center", fontSize: ".78rem", color: "var(--ink-3)" }}>{t("studio.noChanges")}</span>}
           </div>
             </div>
           </div>
@@ -1339,7 +1351,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
         </Card>
         {(selKey || formPanel) && <div className="krok-settings-backdrop" onClick={() => { setSelKey(null); setFormPanel(false); }} />}
-        <aside ref={asideRef} data-tour="studio-aside" className={selKey || formPanel ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={selKey ? t("editor.fieldSettings") : t("fs.title")}
+        <aside ref={asideRef} id="krok-studio-aside" data-tour="studio-aside" className={selKey || formPanel ? "krok-aside krok-aside-sel" : "krok-aside"} aria-label={selKey ? t("editor.fieldSettings") : t("fs.title")}
           {...(sheetOpen ? { role: "dialog", "aria-modal": true, tabIndex: -1 } : {})}>
           {selKey ? (
             <>
