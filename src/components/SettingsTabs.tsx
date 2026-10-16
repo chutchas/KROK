@@ -7,7 +7,7 @@ import { useT } from "@/i18n/LanguageProvider";
 import type { MessageKey } from "@/i18n/dictionaries";
 import { hubOf } from "@/lib/settings-nav";
 
-export default function SettingsTabs({ hubs }: { hubs: { key: string; items: { href: string; tabKey: MessageKey }[] }[] }) {
+export default function SettingsTabs({ hubs }: { hubs: { key: string; items: { href: string; tabKey: MessageKey; shortKey?: MessageKey }[] }[] }) {
   const path = usePathname();
   const { t } = useT();
   const cur = hubOf(path);
@@ -33,7 +33,7 @@ export default function SettingsTabs({ hubs }: { hubs: { key: string; items: { h
           <Link key={it.href} href={it.href} aria-current={on ? "page" : undefined}
             style={{ padding: "9px 14px", borderBottom: `2px solid ${on ? "var(--accent)" : "transparent"}`, color: on ? "var(--accent-text)" : "var(--ink-2)",
               fontWeight: on ? 600 : 500, fontSize: ".92rem", textDecoration: "none", whiteSpace: "nowrap", flex: "0 0 auto" }}>
-            {t(it.tabKey)}
+            {it.shortKey ? <><span className="krok-lbl-long">{t(it.tabKey)}</span><span className="krok-lbl-short">{t(it.shortKey)}</span></> : t(it.tabKey)}
           </Link>
         );
       })}

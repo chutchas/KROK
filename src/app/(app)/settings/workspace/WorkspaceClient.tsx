@@ -125,11 +125,11 @@ export default function WorkspaceClient({
             <Icon icon={AlertTriangle} className="h-5 w-5" /> {t("ws.dangerZone")}
           </h2>
           <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 2 }}>{t("ws.deleteWarn")}</p>
-          <label style={{ display: "block", fontSize: ".82rem", color: "var(--ink-2)", margin: "8px 0 6px" }}>
+          <label htmlFor="ws-del-confirm" style={{ display: "block", fontSize: ".82rem", color: "var(--ink-2)", margin: "8px 0 6px" }}>
             {tt("ws.deleteConfirmLabel", { name: tenantName })}
           </label>
           <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <Field value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={tenantName} style={{ flex: 1, minWidth: 200 }} />
+            <Field id="ws-del-confirm" value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={t("ws.deleteConfirmPh")} autoComplete="off" style={{ flex: 1, minWidth: 200 }} />
             <Button variant="danger" onClick={doDelete} loading={delBusy} disabled={confirm.trim() !== tenantName}>
               <Icon icon={Trash2} className="h-4 w-4" /> {t("ws.deleteBtn")}
             </Button>

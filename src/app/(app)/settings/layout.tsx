@@ -8,7 +8,7 @@ export default async function SettingsLayout({ children }: { children: React.Rea
   if (!session) return <>{children}</>;
   const allowed = new Set<string>(await getAllowedMenus(session.tenantId, session.roleKey));
   const ctx = { allowed, isWsAdmin: session.role === "owner" || session.role === "admin", isPlatformAdmin: session.isPlatformAdmin, platformRole: session.platformRole };
-  const hubs = SETTINGS_HUBS.map((h) => ({ key: h.key, items: h.items.filter((it) => canSee(it, ctx)).map((it) => ({ href: it.href, tabKey: it.tabKey })) }));
+  const hubs = SETTINGS_HUBS.map((h) => ({ key: h.key, items: h.items.filter((it) => canSee(it, ctx)).map((it) => ({ href: it.href, tabKey: it.tabKey, shortKey: it.shortKey })) }));
   return (
     <>
       <SettingsTabs hubs={hubs} />

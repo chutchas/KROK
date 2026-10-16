@@ -112,7 +112,7 @@ export default function TeamClient({
       <Card>
         <PageHeader as="h2" title={t("team.inviteTitle")} help="invite-roles" subtitle={t("team.inviteSub")} style={{ marginBottom: 12 }} />
         <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <Field type="email" placeholder={t("team.emailPlaceholder")} value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
+          <Field type="email" aria-label={t("team.emailPlaceholder")} placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
           <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} aria-label={t("team.inviteRoleSel")} style={selstyle}>
             {inviteOptions.map((r) => (
               <option key={r.key} value={r.key}>{roleLabel(r.key, r.name, t)}</option>
@@ -215,7 +215,7 @@ export default function TeamClient({
                     ))}
                   </select>
                 ) : (
-                  <span style={{ fontSize: ".82rem", color: "var(--ink-2)", padding: "6px 12px", border: "1px solid var(--line)", borderRadius: 20 }}>{roleName}</span>
+                  <span style={{ fontSize: ".82rem", color: "var(--ink-2)", padding: "6px 2px", fontWeight: 600 }}>{roleName}</span>
                 )}
                 {!isMe && canEditThis && (
                   <AsyncButton variant="danger" aria-label={`${t("team.remove")} ${m.name || m.email || ""}`.trim()} onClick={async () => {

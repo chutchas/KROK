@@ -50,8 +50,9 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
           placeholder={t("trash.reasonPh")}
           aria-describedby="del-reason-hint"
           style={{ width: "100%", boxSizing: "border-box", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }} />
-        <span id="del-reason-hint" style={{ fontSize: ".76rem", color: reason.trim().length >= 3 ? "var(--ink-3)" : "var(--ink-2)" }}>{t("trash.reasonMin")}</span>
       </label>
+      {/* คำแนะนำอยู่นอก label — อ่านครั้งเดียว (ผ่าน aria-describedby) ไม่ซ้ำกับชื่อช่อง */}
+      <span id="del-reason-hint" style={{ fontSize: ".76rem", color: reason.trim().length >= 3 ? "var(--ink-3)" : "var(--ink-2)" }}>{t("trash.reasonMin")}</span>
       {err && <Notice kind="error">{err}</Notice>}
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "flex-end" }}>
         <Button onClick={() => { setOpen(false); setErr(null); }} disabled={busy}>{t("common.cancel")}</Button>
