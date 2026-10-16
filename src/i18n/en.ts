@@ -1772,6 +1772,7 @@ export const en: Record<MessageKey, string> = {
   "rep.restored": "Using your last filters",
   "rep.resetFilters": "Reset filters",
   "rep.stale": "Filters changed — search to update the results",
+  "rep.needDates": "Custom range — fill in both dates before searching",
   "dash.durSec": "{s}s",
   "dash.deletedForm": "(deleted form)",
   "dash.passFail": "pass {pass} · fail {fail}",

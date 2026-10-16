@@ -498,7 +498,7 @@ export default function AppShell({
             ref={menuRef}
             role="dialog"
             aria-modal="true"
-            aria-label={tenantName}
+            aria-label={`${t("nav.menu")} · ${tenantName}`}
             onClick={(e) => e.stopPropagation()}
             style={{
               position: "absolute",

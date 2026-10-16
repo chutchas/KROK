@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useRouter } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { Button, Notice } from "@/components/ui";
@@ -39,10 +40,8 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
       </Button>
   );
   if (!open) return trigger;
-  return (
-    <>
-    {trigger}
-    <div ref={panelRef} tabIndex={-1} role="group" aria-label={t("trash.delete")} style={{ order: 10, flexBasis: "100%", display: "grid", gap: 8, padding: 12, border: "1px solid var(--fail)", borderRadius: 10, background: "var(--fail-soft)" }}>
+  const panel = (
+    <div ref={panelRef} tabIndex={-1} role="group" aria-label={t("trash.delete")} style={{ order: 10, flex: "none", width: "100%", boxSizing: "border-box", display: "grid", gap: 8, padding: 12, border: "1px solid var(--fail)", borderRadius: 10, background: "var(--fail-soft)" }}>
       <b style={{ color: "var(--fail-text)" }}>{tt("trash.confirmTitle", { no: docNo })}</b>
       <span style={{ fontSize: ".84rem", color: "var(--ink-2)" }}>{t("trash.confirmBody")}</span>
       <label style={{ display: "grid", gap: 4, fontSize: ".84rem" }}>
@@ -61,6 +60,8 @@ export default function DeleteSubmission({ id, docNo }: { id: string; docNo: str
         </Button>
       </div>
     </div>
-    </>
   );
+  // กล่องไปอยู่นอกแถวปุ่ม (ช่อง krok-del-slot ในหน้า) — ไม่มีช่อง = วางต่อท้ายปุ่มแบบเดิม
+  const slot = typeof document !== "undefined" ? document.getElementById("krok-del-slot") : null;
+  return <>{trigger}{slot ? createPortal(panel, slot) : panel}</>;
 }

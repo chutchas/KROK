@@ -1432,13 +1432,13 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               <div className="krok-row-actions" style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                 {/* ปุ่มหลักโชว์ไว้: แก้ไข · แชร์ · เผยแพร่ (เฉพาะร่าง/ยกเลิกแล้ว) — ที่เหลือ (QR · ประวัติ · ยกเลิกเผยแพร่ · ลบ) อยู่ในเมนู ⋯
                     มือถือเห็นได้หลายฟอร์มต่อจอ · ลบอยู่ท้ายเมนูแยกเส้นคั่น ตัวแดง */}
-                <AsyncButton onClick={() => editExisting(f)} title={t("common.edit")}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></AsyncButton>
-                <Button onClick={() => setShareForm(f)} title={t("share.title")}>
+                <AsyncButton onClick={() => editExisting(f)} title={t("common.edit")} aria-label={`${t("common.edit")} ${f.title}`}><Icon icon={Pencil} className="h-4 w-4" /><span className="krok-btn-label"> {t("common.edit")}</span></AsyncButton>
+                <Button onClick={() => setShareForm(f)} title={t("share.title")} aria-label={`${t("share.short")} ${f.title}`}>
                   <Icon icon={f.visibility === "public" ? Globe : Share2} className="h-4 w-4" />
                   <span className="krok-btn-label"> {t("share.short")}</span>
                 </Button>
                 {f.status !== "published" && (
-                  <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
+                  <AsyncButton variant="primary" onClick={() => changeStatus(f.id, "published")} title={f.status === "draft" ? t("studio.publishNow") : t("studio.restore")} aria-label={`${f.status === "draft" ? t("studio.publishNow") : t("studio.restore")} ${f.title}`}><Icon icon={CheckCircle2} className="h-4 w-4" /><span className="krok-btn-label"> {f.status === "draft" ? t("studio.publishNow") : t("studio.restore")}</span></AsyncButton>
                 )}
                 <OverflowMenu outlined label={tt("studio.moreFor", { title: f.title })} items={[
                   ...(f.status === "published" ? [{ key: "qr", label: t("qr.title"), icon: QrCode, onSelect: () => setQrForm(f) }] : []),
