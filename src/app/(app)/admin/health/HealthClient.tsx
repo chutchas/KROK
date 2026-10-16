@@ -108,7 +108,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
                 <div style={{ flex: "2 1 240px", fontSize: ".85rem", color: "var(--ink-2)", overflowWrap: "anywhere" }}>
                   {c.detail}
                   {c.ms != null && <span style={{ color: "var(--ink-3)" }}> · {c.ms} ms</span>}
-                  {c.href && <> · <a href={c.href} style={{ display: "inline-block", minWidth: 44, textAlign: "center", padding: "12px 8px", margin: "-12px -8px" }}>เปิด</a></>}
+                  {c.href && <> · <a href={c.href} aria-label={`เปิด ${c.name}`} style={{ display: "inline-block", minWidth: 44, textAlign: "center", padding: "12px 8px", margin: "-12px -8px" }}>เปิด</a></>}
                 </div>
               </div>
             ))}
@@ -135,7 +135,7 @@ export default function HealthClient({ report }: { report: HealthReport }) {
               <div style={{ flex: "2 1 240px", fontSize: ".85rem", color: st?.busy ? "var(--ink-3)" : st?.ok ? "var(--pass)" : "var(--fail)", overflowWrap: "anywhere" }}>
                 {st?.text}
               </div>
-              <Button onClick={() => test(p)} loading={st?.busy} disabled={!p.hasKey} style={{ minHeight: 44, padding: "0 14px", fontSize: ".85rem" }}>ทดสอบ</Button>
+              <Button onClick={() => test(p)} loading={st?.busy} disabled={!p.hasKey} aria-label={`ทดสอบ ${p.label}`} style={{ minHeight: 44, padding: "0 14px", fontSize: ".85rem" }}>ทดสอบ</Button>
             </div>
           );
         })}

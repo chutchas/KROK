@@ -41,7 +41,7 @@ const chipStyle: React.CSSProperties = {
 
 /** ป้าย workspace แบบกดไม่ได้ (มี workspace เดียวและไม่ใช่ผู้ดูแล) */
 export function WorkspaceChip({ name }: { name: string }) {
-  return <span className="krok-ws-chip" title={name} style={chipStyle}><WsChipBody name={name} chevron={false} /></span>;
+  return <span className="krok-ws-chip" title={name} role="img" aria-label={`Workspace: ${name}`} style={chipStyle}><WsChipBody name={name} chevron={false} /></span>;
 }
 
 export default function WorkspaceSwitcher({
@@ -124,6 +124,8 @@ export default function WorkspaceSwitcher({
         onClick={() => setOpen((v) => !v)}
         className="krok-ws-chip"
         aria-expanded={open}
+        // ชื่อปุ่มชัด ๆ (ไม่ให้อ่านตัวย่อ+ชื่อติดกันเป็น "SSCG")
+        aria-label={`Workspace: ${active?.tenantName ?? ""} · ${t("ws.switch")}`}
         title={`${t("ws.switch")} · ${active?.tenantName ?? ""}`}
         style={{ ...chipStyle, cursor: "pointer" }}
       >

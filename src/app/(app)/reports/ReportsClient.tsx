@@ -135,6 +135,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
     a.remove();
   }
 
+  // ช่วง "กำหนดเอง" ต้องมีวันที่ครบทั้งสองช่อง — ไม่งั้นค้น/ส่งออกไม่ได้ (กันจำตัวกรองว่าง "… – …")
+  const needDates = preset === "custom" && (!from || !to);
   const emptyNow = preview?.total === 0 && previewKey === JSON.stringify(filters());
   // ตัวกรองเปลี่ยนหลังค้นครั้งล่าสุด → ผลที่แสดงเป็นของตัวกรองเดิม (จางลง + บอกให้กดค้นหา)
   const stale = !!preview && previewKey !== "" && previewKey !== JSON.stringify(filters());
@@ -229,15 +231,16 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               <label htmlFor="rep-to" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.to")}</label>
               <Field id="rep-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
+            {needDates && <p id="rep-dates-need" style={{ flexBasis: "100%", margin: 0, fontSize: ".82rem", color: "var(--warn-text)", fontWeight: 600 }}>{t("rep.needDates")}</p>}
           </div>
         )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <Button onClick={search} disabled={busy}>
+          <Button onClick={search} disabled={busy || needDates} aria-describedby={needDates ? "rep-dates-need" : undefined}>
             <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
           {/* ส่งออกได้เลยตามตัวกรอง (ไม่ต้องกดค้นหาก่อน) · ปิดเฉพาะเมื่อค้นแล้วไม่พบรายการ — บอกเหตุผลข้างปุ่ม */}
-          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow} aria-describedby={emptyNow ? "rep-nodata" : undefined}>
+          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow || needDates} aria-describedby={needDates ? "rep-dates-need" : emptyNow ? "rep-nodata" : undefined}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
@@ -248,8 +251,10 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
           {/* ไม่พบ = บอกที่เดียว (การ์ดผลด้านล่าง) ไม่ซ้ำสามจุด */}
           {/* พื้นที่ประกาศอยู่ตลอด (ไม่สร้างใหม่) — โปรแกรมอ่านหน้าจออ่านทุกครั้งที่ข้อความเปลี่ยน */}
           <span role="status" aria-live="polite" style={{ color: "var(--warn-text)", fontSize: ".85rem", fontWeight: 600 }}>{stale ? t("rep.stale") : ""}</span>
+          {/* ประกาศจำนวนผลผ่านพื้นที่ที่มีอยู่ตลอด (ข้อความที่เห็นด้านข้างไม่ต้องอ่านซ้ำ) */}
+          <span className="sr-only" aria-live="polite">{preview && !stale && !busy ? tt("rep.found", { n: preview.total.toLocaleString() }) : ""}</span>
           {preview && preview.total > 0 && !stale && (
-            <span role="status" aria-live="polite" style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
+            <span style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
               {tt("rep.found", { n: preview.total.toLocaleString() })}
               {preview.total > preview.rows.length && tt("rep.showingFirst", { n: preview.rows.length })}
             </span>

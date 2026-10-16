@@ -263,6 +263,8 @@ export default async function SubmissionPage({ params, searchParams }: { params:
           {/* ลบไว้ท้ายสุด — ไม่ให้ปุ่มทำลายอยู่ตำแหน่งแรก (มือถือ = ใกล้นิ้วโป้ง) */}
           {(session.role === "owner" || session.role === "admin") && <DeleteSubmission id={String(sub.id)} docNo={docNo} />}
         </div>
+        {/* ที่วางกล่องยืนยันลบ (portal) — นอกแถวปุ่ม: เปิดกล่องแล้วแถวปุ่มไม่ขยาย ปุ่มไม่กระโดด ทั้งจอคอมและมือถือ · contents = ไม่มีกล่องเมื่อว่าง */}
+        <div id="krok-del-slot" style={{ display: "contents" }} />
       </div>
 
       {docSchema && (

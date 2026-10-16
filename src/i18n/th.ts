@@ -1787,6 +1787,7 @@ export const th = {
   "rep.restored": "ใช้ตัวกรองล่าสุด",
   "rep.resetFilters": "ล้างตัวกรอง",
   "rep.stale": "ตัวกรองเปลี่ยนแล้ว — กดค้นหาเพื่ออัปเดตผล",
+  "rep.needDates": "เลือก \"กำหนดเอง\" แล้ว — กรอกวันที่ตั้งแต่และถึงให้ครบก่อนค้นหา",
   "dash.durSec": "{s}วิ",
   "dash.deletedForm": "(ฟอร์มถูกลบ)",
   "dash.passFail": "ผ่าน {pass} · ไม่ผ่าน {fail}",
