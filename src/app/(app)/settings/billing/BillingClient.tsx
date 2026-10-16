@@ -148,7 +148,7 @@ export default function BillingClient({
       <div style={{ flex: "1 1 220px", minWidth: 0, overflowWrap: "anywhere" }}>
         <h1 style={{ fontSize: "var(--fs-h1)", marginBottom: 2 }}>{title}</h1>
         <p style={{ color: "var(--ink-2)", fontSize: ".9rem", margin: 0 }}>
-          {tenantName} · {t("plan.current")}: <b style={{ color: "var(--accent-text)" }}>{en ? plan.nameEn : plan.name}</b>
+          {tenantName} · {t("plan.using")} <b style={{ color: "var(--accent-text)" }}>{en ? plan.nameEn : plan.name}</b>
         </p>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "2px 0 0" }}>
           {isOwner ? tt("plan.accountOwn", { n: workspaces }) : tt("plan.accountOther", { name: ownerName || t("plan.ownerFallback"), n: workspaces })}

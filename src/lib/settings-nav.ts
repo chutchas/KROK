@@ -11,6 +11,8 @@ export interface SettingsItem {
   href: string;
   /** ชื่อแท็บในหน้า */
   tabKey: MessageKey;
+  /** ชื่อสั้นบนจอแคบ (แท็บเลื่อนได้แต่ชื่อยาวโดนตัด) */
+  shortKey?: MessageKey;
   menu?: MenuKey;
   gate?: NavGate;
 }
@@ -52,7 +54,7 @@ export const SETTINGS_HUBS: SettingsHub[] = [
     items: [
       { href: "/settings/billing", tabKey: "hub.tab.plan", menu: "billing" },
       { href: "/settings/billing/plans", tabKey: "hub.tab.plans", menu: "billing" },
-      { href: "/settings/billing/history", tabKey: "nav.billingHistory", gate: "wsadmin" },
+      { href: "/settings/billing/history", tabKey: "nav.billingHistory", shortKey: "hub.tab.historyShort", gate: "wsadmin" },
     ],
   },
 ];

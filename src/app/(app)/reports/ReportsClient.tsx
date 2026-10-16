@@ -137,6 +137,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
 
   // ช่วง "กำหนดเอง" ต้องมีวันที่ครบทั้งสองช่อง — ไม่งั้นค้น/ส่งออกไม่ได้ (กันจำตัวกรองว่าง "… – …")
   const needDates = preset === "custom" && (!from || !to);
+  // วันที่กลับด้าน (เริ่ม > สิ้นสุด) — ค้นแล้วได้ "ไม่มีรายการ" โดยไม่รู้สาเหตุ → กันไว้และบอกเหตุผล
+  const badRange = preset === "custom" && !!from && !!to && from > to;
   const emptyNow = preview?.total === 0 && previewKey === JSON.stringify(filters());
   // ตัวกรองเปลี่ยนหลังค้นครั้งล่าสุด → ผลที่แสดงเป็นของตัวกรองเดิม (จางลง + บอกให้กดค้นหา)
   const stale = !!preview && previewKey !== "" && previewKey !== JSON.stringify(filters());
@@ -225,22 +227,23 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
           <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
               <label htmlFor="rep-from" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.from")}</label>
-              <Field id="rep-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <Field id="rep-from" type="date" value={from} max={to || undefined} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div style={{ flex: 1, minWidth: 150 }}>
               <label htmlFor="rep-to" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.to")}</label>
-              <Field id="rep-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <Field id="rep-to" type="date" value={to} min={from || undefined} onChange={(e) => setTo(e.target.value)} />
             </div>
+            {badRange && <p id="rep-dates-need" style={{ flexBasis: "100%", margin: 0, fontSize: ".82rem", color: "var(--warn-text)", fontWeight: 600 }}>{t("rep.badRange")}</p>}
             {needDates && <p id="rep-dates-need" style={{ flexBasis: "100%", margin: 0, fontSize: ".82rem", color: "var(--warn-text)", fontWeight: 600 }}>{t("rep.needDates")}</p>}
           </div>
         )}
 
         <div style={{ display: "flex", gap: 10, marginTop: 16, alignItems: "center", flexWrap: "wrap" }}>
-          <Button onClick={search} disabled={busy || needDates} aria-describedby={needDates ? "rep-dates-need" : undefined}>
+          <Button onClick={search} disabled={busy || needDates || badRange} aria-describedby={needDates || badRange ? "rep-dates-need" : undefined}>
             <Icon icon={Search} className="h-4 w-4" /> {busy ? t("rep.searching") : t("report.search")}
           </Button>
           {/* ส่งออกได้เลยตามตัวกรอง (ไม่ต้องกดค้นหาก่อน) · ปิดเฉพาะเมื่อค้นแล้วไม่พบรายการ — บอกเหตุผลข้างปุ่ม */}
-          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow || needDates} aria-describedby={needDates ? "rep-dates-need" : emptyNow ? "rep-nodata" : undefined}>
+          <Button data-tour="report-export" variant="primary" onClick={exportXlsx} disabled={busy || emptyNow || needDates || badRange} aria-describedby={needDates || badRange ? "rep-dates-need" : emptyNow ? "rep-nodata" : undefined}>
             <Icon icon={Download} className="h-4 w-4" /> {t("report.exportXlsx")}
           </Button>
           <span style={{ color: "var(--ink-3)", fontSize: ".78rem", flexBasis: "100%" }}>
@@ -267,7 +270,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
       {preview && (
         <div style={{ opacity: stale ? 0.5 : 1, transition: "opacity .15s" }} inert={stale || undefined}>{
         preview.rows.length === 0 ? (
-          <Card><p id="rep-nodata" role="status" style={{ color: "var(--ink-2)", margin: 0 }}>{t("rep.exportNone")}</p></Card>
+          <Card><p id="rep-nodata" style={{ color: "var(--ink-2)", margin: 0 }}>{t("rep.exportNone")}</p></Card>
         ) : (
           <Card>
             {/* มือถือ: การ์ดแถวละใบ (ตารางกว้างเกินจอ คอลัมน์ผลลัพธ์อยู่นอกจอ) · จอกว้าง: ตาราง */}
@@ -296,6 +299,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
             </ul>
             <div className="krok-rep-table" role="region" aria-label={t("rep.tableLabel")} tabIndex={0} style={{ overflowX: "auto" }}>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: ".85rem", minWidth: 620 }}>
+                <caption className="sr-only">{t("rep.tableLabel")}</caption>
                 <thead>
                   <tr style={{ textAlign: "left", color: "var(--ink-3)", borderBottom: "1px solid var(--line)" }}>
                     <th style={th}>{t("rep.colSubmitted")}</th>
@@ -304,7 +308,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
                     <th style={th}>{t("report.result")}</th>
                     <th style={th}>{t("rep.colApproval")}</th>
                     <th style={{ ...th, textAlign: "right" }}>{t("rep.colIssues")}</th>
-                    <th style={{ ...th, width: 28 }} aria-hidden />
+                    <th style={{ ...th, width: 28 }}><span className="sr-only">{t("rep.colOpen")}</span></th>
                   </tr>
                 </thead>
                 <tbody>

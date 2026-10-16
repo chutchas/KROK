@@ -398,7 +398,8 @@ export default function AppShell({
               <button
                 onClick={() => setProfileOpen((v) => !v)}
                 title={t("nav.profile")}
-                aria-label={t("nav.profile")}
+                // ชื่อที่อ่าน = ที่ตาเห็น (ชื่อผู้ใช้) + บอกว่าเป็นเมนูโปรไฟล์
+                aria-label={fullName ? `${t("nav.profile")} · ${fullName}` : t("nav.profile")}
                 // แผงเปิด/ปิดธรรมดา (disclosure) — ข้างในเป็นลิงก์/ปุ่มทั่วไป ไม่ใช่เมนูแบบ role=menu
                 aria-expanded={profileOpen}
                 aria-controls={profileOpen ? "krok-profile-panel" : undefined}
