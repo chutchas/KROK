@@ -1803,6 +1803,8 @@ export const th = {
   "hub.tab.auditShort": "บันทึก",
   "hub.tab.teamShort": "สมาชิก",
   "hub.tab.rolesShort": "บทบาท",
+  "fw.unanswered": "ยังไม่ได้ตอบ",
+  "nav.drawer": "เมนูทั้งหมด",
   "dash.durSec": "{s}วิ",
   "dash.deletedForm": "(ฟอร์มถูกลบ)",
   "dash.passFail": "ผ่าน {pass} · ไม่ผ่าน {fail}",

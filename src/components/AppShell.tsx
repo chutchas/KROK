@@ -529,7 +529,7 @@ export default function AppShell({
               </button>
             </div>
 
-            <nav style={{ padding: "8px 8px 24px" }}>
+            <nav aria-label={t("nav.drawer")} style={{ padding: "8px 8px 24px" }}>
               {/* มือถือ: workspace + เมนูหลักทั้งหมด (แถบบนไม่มีที่แล้ว) */}
               <div className="krok-mobile-only">
                 <div className="krok-drawer-ws" style={{ padding: "8px 4px 4px" }}>

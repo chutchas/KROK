@@ -478,6 +478,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
     return () => mq.removeEventListener("change", on);
   }, []);
   const sheetOpen = narrow && tab === "edit" && !!draft && (!!selKey || formPanel);
+  // ปุ่ม "ตั้งค่าฟอร์ม" ติดสถานะตามที่ตาเห็นจริง — จอแคบ = แผ่นตั้งค่าฟอร์มเปิดอยู่ · จอกว้าง = แผงขวากำลังแสดงตั้งค่าฟอร์ม
+  const formShown = !selKey && (!narrow || formPanel);
   useEffect(() => {
     if (!sheetOpen) return;
     const el = asideRef.current;
@@ -760,7 +762,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         {formTabs.map((x) => {
           const on = formTab === x.k;
           return (
-            <button key={x.k} type="button" role="tab" id={`fs-tab-${x.k}`} aria-selected={on} aria-controls={`fs-panel-${x.k}`} tabIndex={on ? 0 : -1}
+            <button key={x.k} type="button" role="tab" className="krok-fs-tab" id={`fs-tab-${x.k}`} aria-selected={on} aria-controls={`fs-panel-${x.k}`} tabIndex={on ? 0 : -1}
               onClick={() => setFormTab(x.k)} onKeyDown={(e) => onFormTabKey(e, x.k)}
               style={{ position: "relative", padding: "7px 4px", border: "none", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".8rem", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis",
                 background: on ? "var(--surface)" : "transparent", color: on ? "var(--accent-text)" : "var(--ink-2)", fontWeight: on ? 600 : 500, boxShadow: on ? "0 1px 3px rgba(10,14,18,.12)" : "none" }}>
@@ -1216,9 +1218,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
               </p>
             </div>
             <div className="krok-edithead-actions" style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <button type="button" data-krok-keep aria-pressed={!selKey} aria-controls="krok-studio-aside" onClick={() => { setSelKey(null); setFormPanel(true); }}
+              <button type="button" data-krok-keep {...(narrow ? { "aria-expanded": formShown } : { "aria-pressed": formShown })} aria-controls="krok-studio-aside" onClick={() => { setSelKey(null); setFormPanel(true); }}
                 className="inline-flex items-center gap-1.5"
-                style={{ minHeight: 44, padding: "0 14px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: !selKey ? "var(--accent-soft)" : "var(--surface)", color: !selKey ? "var(--accent-text)" : "var(--ink-2)", fontWeight: !selKey ? 600 : 400 }}>
+                style={{ minHeight: 44, padding: "0 14px", border: "1px solid var(--line)", borderRadius: 8, cursor: "pointer", fontFamily: "inherit", fontSize: ".85rem", background: formShown ? "var(--accent-soft)" : "var(--surface)", color: formShown ? "var(--accent-text)" : "var(--ink-2)", fontWeight: formShown ? 600 : 400 }}>
                 <Icon icon={Settings2} className="h-4 w-4" /> {t("fs.title")}
               </button>
               <div className="krok-viewtoggle" style={{ display: "inline-flex", border: "1px solid var(--line)", borderRadius: 8, overflow: "hidden", flex: "0 0 auto" }}>
@@ -1246,7 +1248,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <AsyncButton variant="primary" onClick={publish} disabled={!!busy || (!!editingId && !dirty)} aria-describedby={editingId && !dirty ? "studio-nochg" : undefined}><Icon icon={editingId ? Save : CheckCircle2} className="h-4 w-4" /> {editingId ? t("studio.saveChanges") : t("studio.publish")}</AsyncButton>
             {!editingId && <AsyncButton onClick={saveAsDraft} disabled={!!busy}><Icon icon={FileText} className="h-4 w-4" /> {t("studio.saveDraft")}</AsyncButton>}
             <Button onClick={cancelDraft} disabled={!!busy}>{editingId ? t("common.cancel") : t("studio.discard")}</Button>
-            {editingId && !dirty && <span id="studio-nochg" style={{ alignSelf: "center", fontSize: ".78rem", color: "var(--ink-3)" }}>{t("studio.noChanges")}</span>}
+            {editingId && !dirty && <span id="studio-nochg" className="krok-nochg" style={{ alignSelf: "center", fontSize: ".78rem", color: "var(--ink-3)" }}>{t("studio.noChanges")}</span>}
           </div>
             </div>
           </div>
@@ -1556,6 +1558,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
            แผ่นกว้างไม่เกิน 640 ตรงกลางจอ · มีพื้นหลังมืด กดแล้วปิด */
         @media(max-width:899px){
           .krok-aside{ display:none; }
+          .krok-fs-tab{ min-height:44px; }
           .krok-fs-close{ display:flex !important; }
           .krok-aside.krok-aside-sel{ display:block; position:fixed; left:0; right:0; bottom:0; top:auto; width:100%; max-width:640px; margin:0 auto;
             max-height:72vh; max-height:72dvh; overflow:auto; overscroll-behavior:contain; z-index:70; outline:none; box-sizing:border-box; background:var(--surface);
@@ -1585,6 +1588,8 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           .krok-typefilter{width:100%;flex:1 1 100% !important;min-width:0 !important}
           /* ปุ่มบันทึก/ยกเลิก: เต็มแถว แบ่งเท่ากัน */
           .krok-editbtns>button{flex:1 1 0}
+          /* เหตุผลที่บันทึกไม่ได้: ลงบรรทัดของตัวเอง ปุ่มไม่ถูกบีบ */
+          .krok-editbtns>.krok-nochg{flex:1 1 100%;text-align:center}
           /* หัวหน้าแก้ไข: แถวปุ่มเต็มความกว้าง — [ตั้งค่าฟอร์ม][มือถือ|กระดาษ] / [บันทึก][ยกเลิก] แบ่งเท่ากัน */
           .krok-edithead>div{width:100%}
           .krok-edithead-actions .krok-viewtoggle{flex:1 1 auto !important}

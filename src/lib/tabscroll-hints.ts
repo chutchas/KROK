@@ -2,7 +2,9 @@
 // CSS ใช้ทำขอบจาง — เห็นว่ายังมีแท็บต่อ และไม่จางเมื่อเลื่อนสุดแล้ว/ไม่ล้นจอ
 // ผูกครั้งเดียวทั้งแอป: MutationObserver จับแถบที่โผล่ทีหลัง (โหลดข้อมูลช้า/เปลี่ยนแท็บ) ได้ทุกเมื่อ
 function update(el: HTMLElement) {
-  const max = el.scrollWidth - el.clientWidth;
+  // padding-right (ที่เว้นไว้ให้ขอบจาง) ไม่นับเป็นส่วนที่ล้น — แท็บพอดีจอแล้วต้องไม่จาง
+  const padR = parseFloat(getComputedStyle(el).paddingRight) || 0;
+  const max = el.scrollWidth - el.clientWidth - padR;
   const parts: string[] = [];
   if (max > 2 && el.scrollLeft > 2) parts.push("left");
   if (max > 2 && el.scrollLeft < max - 2) parts.push("right");
