@@ -90,7 +90,7 @@ export default function CasesList({ cases }: { cases: CaseListItem[] }) {
           <Field type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("wf.searchPh")} aria-label={t("wf.searchPh")} style={{ width: "100%", paddingLeft: 32 }} />
         </div>
         <select value={sort} onChange={(e) => setSort(e.target.value as "oldest" | "newest")} aria-label={t("list.sortBy")} className="krok-listsort"
-          style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", flex: "0 0 auto" }}>
+          style={{ padding: "9px 14px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", flex: "0 0 auto" }}>
           <option value="oldest">{t("wf.sortOldest")}</option>
           <option value="newest">{t("wf.sortNewest")}</option>
         </select>

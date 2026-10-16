@@ -341,7 +341,7 @@ export function FieldControl({
                 {waitParent ? tt("fw.pickParentFirst", { label: parentLabel || t("fw.prevField") }) : t("fw.noOptions")}
               </div>
             ) : dsOptions.length <= 6 ? (
-              <PaperChoices name={"r_" + f.id} options={dsOptions} labels={optLabels.size ? optLabels : undefined} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
+              <PaperChoices name={"r_" + f.id} required={!!f.required} labelledBy={`lbl-${f.id}`} options={dsOptions} labels={optLabels.size ? optLabels : undefined} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
                 onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } else { setSelVal(v); onPatch({ value: v || undefined }); } }} />
             ) : f.type === "select" ? (
               // รายการยาว + เลือกข้อเดียว: dropdown บรรทัดเดียวพอดีกล่อง
@@ -354,7 +354,7 @@ export function FieldControl({
                 onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } }} />
             )
           ) : (
-            <PaperChoices name={"r_" + f.id} options={staticOpts} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
+            <PaperChoices name={"r_" + f.id} required={!!f.required} labelledBy={`lbl-${f.id}`} options={staticOpts} multiple={f.type === "checkbox"} value={f.type === "checkbox" ? cbVals : selVal}
               onChange={(v) => { if (Array.isArray(v)) { setCbVals(v); onPatch({ value: v }); } else { setSelVal(v); onPatch({ value: v }); } }} />
           )
         )}

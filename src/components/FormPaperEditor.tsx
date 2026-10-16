@@ -54,6 +54,7 @@ export default function FormPaperEditor({
   onSelect,
   onPrint,
   onAddField,
+  addFieldLabel,
   onAddStep,
   onDeleteKey,
   onUndo,
@@ -70,6 +71,8 @@ export default function FormPaperEditor({
   onSelect?: (key: string | null) => void;
   onPrint?: () => void;
   onAddField?: () => void;
+  /** ชื่อปุ่ม "เพิ่มช่อง" ที่บอกขั้นปลายทาง (โปรแกรมอ่านหน้าจอ) */
+  addFieldLabel?: string;
   onAddStep?: () => void;
   /** ลบบล็อก (ผู้เรียกจัดการแถบ "เลิกทำ") */
   onDeleteKey?: (key: string) => void;
@@ -494,7 +497,7 @@ export default function FormPaperEditor({
         {/* เพิ่มฟิลด์/ขั้นตอน/รูปภาพ — จอเล็กเต็มแถว แบ่งเท่ากัน (CSS .krok-paper-add ใน globals) */}
         <div className="krok-paper-add" style={{ display: "contents" }}>
         {onAddField && (
-          <button data-krok-keep="" onClick={onAddField} className="inline-flex items-center gap-1.5"
+          <button data-krok-keep="" onClick={onAddField} aria-label={addFieldLabel} className="inline-flex items-center gap-1.5"
             style={{ minHeight: 44, padding: "7px 12px", border: "1px dashed var(--accent)", borderRadius: 8, background: "var(--accent-soft)", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".82rem", fontWeight: 600 }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
           </button>

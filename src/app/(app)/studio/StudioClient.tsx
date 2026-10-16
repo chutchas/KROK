@@ -364,10 +364,9 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
   const newKey = (p: string) => `${p}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
   // เพิ่มฟิลด์ใหม่ (เข้าขั้นตอนที่กำลังโฟกัส หรือขั้นตอนสุดท้าย) — ไม่ต้องเลือกฟิลด์เดิมก่อน
-  function addField(stepIndex?: number) {
-    if (!draft) return;
-    if (draft.steps.length === 0) { addStep(); return; }
-    // ปลายทาง: ขั้นตอนที่ระบุ → ขั้นตอนที่กำลังโฟกัสจาก selKey → ขั้นตอนสุดท้าย
+  // ปลายทางของ "เพิ่มช่อง": ขั้นตอนที่ระบุ → ขั้นตอนที่กำลังโฟกัสจาก selKey → ขั้นตอนสุดท้าย
+  function addFieldTarget(stepIndex?: number): number {
+    if (!draft) return -1;
     let si = draft.steps.length - 1;
     if (stepIndex != null && stepIndex >= 0 && stepIndex < draft.steps.length) {
       si = stepIndex;
@@ -380,6 +379,12 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         if (idx >= 0) si = idx;
       }
     }
+    return si;
+  }
+  function addField(stepIndex?: number) {
+    if (!draft) return;
+    if (draft.steps.length === 0) { addStep(); return; }
+    const si = addFieldTarget(stepIndex);
     const fid = newKey("f");
     setDraft({ ...draft, steps: draft.steps.map((s, i) => (i === si ? { ...s, fields: [...s.fields, { id: fid, type: "text", label: "", required: true }] } : s)) });
     setSelKey(fid);
@@ -720,7 +725,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
         <Icon icon={Settings2} className="h-4 w-4" />
         <h2 style={{ fontFamily: "var(--font-anuphan)", flex: 1, fontSize: "var(--fs-h2)", margin: 0 }}>{t("fs.title")}</h2>
         {formPanel && (
-          <button type="button" className="krok-fs-close" onClick={() => setFormPanel(false)} aria-label={t("common.close")}
+          <button type="button" className="krok-fs-close" onClick={() => setFormPanel(false)} aria-label={`${t("common.close")} ${t("fs.title")}`}
             style={{ border: "none", background: "none", color: "var(--ink-2)", cursor: "pointer", display: "flex", padding: 4 }}><Icon icon={X} className="h-5 w-5" /></button>
         )}
       </div>
@@ -742,7 +747,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                   if (v === "__custom") { setCustomCat(true); setDraft({ ...draft, category: isPresetCategory(draft.category) || !draft.category ? "" : draft.category }); }
                   else { setCustomCat(false); setDraft({ ...draft, category: v || undefined }); }
                 }}
-                style={{ padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 400, width: "100%" }}
+                style={{ padding: "10px 12px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", fontWeight: 400, width: "100%" }}
               >
                 <option value="">{t("studio.categoryNone")}</option>
                 {FORM_CATEGORIES.map((c) => <option key={c.key} value={c.key}>{lang === "en" ? c.en : c.th}</option>)}
@@ -908,7 +913,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
                         const m = members.find((x) => x.user_id === e.target.value);
                         setChain((c) => c.map((x, xi) => (xi === i ? { ...x, user_id: e.target.value, name: m?.name || "" } : x)));
                       }}
-                      style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", flex: 1, minWidth: 140 }}
+                      style={{ padding: "8px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", flex: 1, minWidth: 140 }}
                     >
                       <option value="">{t("studio.pickApprover")}</option>
                       {members.map((m) => <option key={m.user_id} value={m.user_id}>{m.name}</option>)}
@@ -1315,7 +1320,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
 
           <div className="krok-canvaswrap" data-tour="studio-canvas" style={{ position: "relative", marginTop: 8, overflow: "hidden" }}>
             {view === "paper" ? (
-              <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} onAddStep={() => addStep()}
+              <FormPaperEditor schema={draft} onChange={(s) => setDraft((prev) => (prev ? keepClearOnGrow(prev, s) : s))} selectedKey={selKey} onSelect={setSelKey} onPrint={doPrint} onAddField={() => addField()} addFieldLabel={(() => { const si = addFieldTarget(); const st = draft.steps[si]; return st ? tt("editor.addFieldIn", { step: st.title?.trim() || `${t("editor.step")} ${si + 1}` }) : undefined; })()} onAddStep={() => addStep()}
                 onDeleteKey={deleteKey} onUndo={doUndo} onRedo={doRedo} canUndo={history.canUndo} canRedo={history.canRedo} onCheckpoint={history.checkpoint} theme={resolveTheme(branding, draft.theme)} tenantId={tenantId} />
             ) : (
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, marginTop: 8 }}>
@@ -1357,7 +1362,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
           {...(sheetOpen ? { role: "dialog", "aria-modal": true, tabIndex: -1 } : {})}>
           {selKey ? (
             <>
-              <button type="button" onClick={() => { setSelKey(null); setFormPanel(true); }}
+              <button type="button" onClick={() => { setSelKey(null); setFormPanel(true); }} aria-label={t("editor.backToForm")}
                 style={{ display: "inline-flex", alignItems: "center", gap: 4, minHeight: 44, border: "none", background: "none", color: "var(--accent-text)", cursor: "pointer", fontFamily: "inherit", fontSize: ".88rem", padding: "0 4px 0 0", marginBottom: 4 }}>
                 <Icon icon={ChevronLeft} className="h-4 w-4" /> {t("fs.title")}
               </button>
@@ -1398,7 +1403,7 @@ export default function StudioClient({ initialForms, members, teams, tenantId, t
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("studio.searchForm")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
           <select aria-label={t("studio.category")} value={catFilter} onChange={(e) => setCatFilter(e.target.value)} className="krok-typefilter"
-            style={{ minHeight: 44, padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
+            style={{ minHeight: 44, padding: "9px 14px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("studio.allCategories")}</option>
             {studioCats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>

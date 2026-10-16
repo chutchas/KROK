@@ -960,7 +960,7 @@ function Section({ n, label }: { n: number; label: string }) {
 }
 const selStyle: React.CSSProperties = {
   width: "100%", padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".9rem",
-  border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)",
+  border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--ink)",
 };
 function pickBtn(on: boolean): React.CSSProperties {
   return {

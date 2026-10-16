@@ -313,7 +313,7 @@ export function ReturnModal({ schema, kase, maxStep, busy, error, onCancel, onCo
     <Modal title={t("wf.returnTitle")} onClose={onCancel} busy={busy} keepOnBackdrop={!!note.trim()}>
       <label htmlFor="wf-return-to" style={{ fontSize: ".82rem", color: "var(--ink-2)" }}>{t("wf.returnTo")}</label>
       <select id="wf-return-to" value={to} onChange={(e) => setTo(Number(e.target.value))}
-        style={{ width: "100%", marginTop: 4, padding: "9px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }}>
+        style={{ width: "100%", marginTop: 4, padding: "9px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem" }}>
         {opts.map((i) => {
           const who = kase.stepMeta[String(i)]?.name;
           return <option key={i} value={i}>{i + 1}. {schema.steps[i]?.title}{who ? ` — ${who}` : ""}</option>;

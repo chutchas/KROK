@@ -142,7 +142,7 @@ export default function FieldSettingsPanel({
         <div style={{ display: "flex", gap: 6, marginTop: 10, flexWrap: "wrap" }}>
           <button style={iconBtn} aria-label={t("editor.moveUp")} title={t("editor.moveUp")} disabled={si === 0} onClick={() => setSteps(move(schema.steps, si, -1))}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
           <button style={iconBtn} aria-label={t("editor.moveDown")} title={t("editor.moveDown")} disabled={si === schema.steps.length - 1} onClick={() => setSteps(move(schema.steps, si, 1))}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
-          <button style={iconBtn} onClick={() => { const fid = newId("f"); patchStep({ fields: [...step.fields, { id: fid, type: "text", label: "", required: true }] }); onSelect(fid); }}>
+          <button style={iconBtn} aria-label={tt("editor.addFieldIn", { step: step.title?.trim() || `${t("editor.step")} ${si + 1}` })} onClick={() => { const fid = newId("f"); patchStep({ fields: [...step.fields, { id: fid, type: "text", label: "", required: true }] }); onSelect(fid); }}>
             <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
           </button>
           <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} onClick={async () => {
@@ -292,7 +292,7 @@ export default function FieldSettingsPanel({
           const fields = [...step.fields]; fields.splice(fi + 1, 0, clone);
           patchStepFields(fields); onSelect(clone.id);
         }}><Icon icon={Copy} className="h-4 w-4" /> {t("editor.duplicate")}</button>
-        <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} title={t("editor.deleteField")} onClick={() => {
+        <button style={{ ...iconBtn, color: "var(--fail)", borderColor: "var(--fail)" }} title={t("editor.deleteField")} aria-label={tt("editor.deleteFieldNamed", { name: field.label?.trim() || t("editor.untitledField") })} onClick={() => {
           patchStepFields(step.fields.filter((_, j) => j !== fi)); onSelect(null);
         }}><Icon icon={Trash2} className="h-4 w-4" /> {t("common.delete")}</button>
       </div>
@@ -610,7 +610,7 @@ export default function FieldSettingsPanel({
 
       <AttachmentsPanel formId={formId} tenantId={tenantId} fieldId={field.id} compact />
 
-      <button onClick={() => { const fid = newId("f"); patchStepFields([...step.fields, { id: fid, type: "text", label: "", required: true }]); onSelect(fid); }}
+      <button aria-label={tt("editor.addFieldIn", { step: step.title?.trim() || `${t("editor.step")} ${si + 1}` })} onClick={() => { const fid = newId("f"); patchStepFields([...step.fields, { id: fid, type: "text", label: "", required: true }]); onSelect(fid); }}
         style={{ ...iconBtn, width: "100%", marginTop: 8, color: "var(--accent-text)", borderColor: "var(--accent)", justifyContent: "center" }}>
         <Icon icon={Plus} className="h-4 w-4" /> {t("editor.addField")}
       </button>
@@ -627,7 +627,7 @@ function Shell({ title, onClose, children }: { title: string; onClose: () => voi
     <div style={{ border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface)", padding: 14 }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
         <h2 style={{ fontFamily: "var(--font-anuphan)", fontSize: "var(--fs-h2)", margin: 0 }}>{title}</h2>
-        <button onClick={onClose} aria-label={t("common.close")} style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "-8px -8px -8px 0" }}><Icon icon={X} className="h-5 w-5" /></button>
+        <button onClick={onClose} aria-label={`${t("common.close")} ${title}`} style={{ border: "none", background: "transparent", color: "var(--ink-2)", cursor: "pointer", minWidth: 44, minHeight: 44, display: "inline-flex", alignItems: "center", justifyContent: "center", margin: "-8px -8px -8px 0" }}><Icon icon={X} className="h-5 w-5" /></button>
       </div>
       {children}
     </div>

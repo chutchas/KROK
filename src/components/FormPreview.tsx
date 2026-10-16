@@ -327,6 +327,7 @@ export default function FormPreview({
               onClick={editable ? (e) => { e.stopPropagation(); onSelect!(stepKey); } : undefined}
               tabIndex={editable ? 0 : undefined}
               role={editable ? "button" : undefined}
+              aria-label={editable ? `${tt("fw.stepOf", { n: i + 1, total: schema.steps.length })} ${s.title || ""}`.trim() : undefined}
               aria-pressed={editable ? stepSel : undefined}
               onKeyDown={editable ? (e) => { if (e.target === e.currentTarget && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); onSelect!(stepKey); } } : undefined}
               style={{ display: "flex", alignItems: "center", gap: 10, margin: "18px 0 8px", minHeight: editable ? 44 : undefined, scrollMarginTop: "calc(74px + var(--krok-eh, 0px) + 12px)", padding: editable ? "4px 6px" : 0, borderRadius: 8, cursor: editable ? "pointer" : "default", background: stepSel ? "var(--accent-soft)" : "transparent" }}
@@ -353,7 +354,7 @@ export default function FormPreview({
                     <button type="button" data-krok-keep="" style={actBtn} aria-label={t("editor.moveUp")} title={t("editor.moveUp")} onClick={() => fieldActions.move(f.id, -1)}><Icon icon={ArrowUp} className="h-4 w-4" /></button>
                     <button type="button" data-krok-keep="" style={actBtn} aria-label={t("editor.moveDown")} title={t("editor.moveDown")} onClick={() => fieldActions.move(f.id, 1)}><Icon icon={ArrowDown} className="h-4 w-4" /></button>
                     <button type="button" data-krok-keep="" style={actBtn} onClick={() => fieldActions.duplicate(f.id)}><Icon icon={Copy} className="h-4 w-4" /> {t("editor.duplicate")}</button>
-                    <button type="button" data-krok-keep="" style={{ ...actBtn, marginLeft: "auto", color: "var(--fail-text)", borderColor: "var(--fail)" }} onClick={() => fieldActions.remove(f.id)}><Icon icon={Trash2} className="h-4 w-4" /> {t("editor.deleteField")}</button>
+                    <button type="button" data-krok-keep="" style={{ ...actBtn, marginLeft: "auto", color: "var(--fail-text)", borderColor: "var(--fail)" }} aria-label={tt("editor.deleteFieldNamed", { name: f.label?.trim() || t("editor.untitledField") })} onClick={() => fieldActions.remove(f.id)}><Icon icon={Trash2} className="h-4 w-4" /> {t("editor.deleteField")}</button>
                   </div>
                 )}
               </div>

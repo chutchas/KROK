@@ -179,7 +179,7 @@ export default function ProfileClient({ initial }: { initial: ProfileData }) {
               <select id="pf-lang"
                 value={form.language}
                 onChange={(e) => set("language", e.target.value)}
-                style={{ width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" }}
+                style={{ width: "100%", padding: "11px 12px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" }}
               >
                 <option value="th">ไทย</option>
                 <option value="en">English</option>

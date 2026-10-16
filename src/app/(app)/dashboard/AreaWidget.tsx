@@ -24,7 +24,7 @@ export function AreaPicker({ areas, value, onChange }: { areas: AreaOpt[]; value
     <div style={{ marginTop: 14 }}>
       <label htmlFor="dash-area" style={{ display: "block", fontSize: ".84rem", fontWeight: 600, marginBottom: 6 }}>{t("area.pick")}</label>
       <select id="dash-area" value={cur} onChange={(e) => onChange(e.target.value)}
-        style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit" }}>
+        style={{ width: "100%", padding: "9px 10px", borderRadius: 8, border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit" }}>
         <option value="all">{t("area.allAreas")}</option>
         {areas.map((a) => <option key={a.id} value={a.id}>{a.name} · {a.code}</option>)}
       </select>
