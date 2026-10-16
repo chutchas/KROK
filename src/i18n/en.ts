@@ -1026,7 +1026,7 @@ export const en: Record<MessageKey, string> = {
   "plan.titlePlans": "Choose a plan",
   "plan.seePlans": "See plans / upgrade",
   "plan.unlimited": "Unlimited",
-  "hub.tab.plans": "Plans",
+  "hub.tab.plans": "All plans",
   "hub.tab.media": "Image library",
   "hub.tab.areas": "Areas",
   "brand.lib.search": "Search file name",

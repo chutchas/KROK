@@ -145,11 +145,13 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
       : a === "approved" ? t("dash.approved")
       : a === "rejected" ? t("dash.rejected")
       : "-";
+  // "ชื่อช่อง: ค่า" — บอกให้รู้ว่าค่าไหนเป็นของตัวกรองอะไร · กำหนดเอง = แสดงวันที่
+  const fmtDay = (d: string) => (d ? new Date(`${d}T00:00:00`).toLocaleDateString(lang === "en" ? "en-GB" : "th-TH", { dateStyle: "medium" }) : "…");
   const savedSummary = [
-    formId !== "all" ? forms.find((f) => f.id === formId)?.title : null,
-    preset !== "30d" ? presetLabel[preset] : null,
-    result !== "all" ? resultLabel[result] : null,
-    approval !== "all" ? (approval === "none" ? t("rep.noApproval") : approvalLabel(approval)) : null,
+    formId !== "all" ? `${t("report.form")}: ${forms.find((f) => f.id === formId)?.title ?? ""}` : null,
+    preset !== "30d" ? `${t("report.range")}: ${preset === "custom" ? `${fmtDay(from)} – ${fmtDay(to)}` : presetLabel[preset]}` : null,
+    result !== "all" ? `${t("report.result")}: ${resultLabel[result]}` : null,
+    approval !== "all" ? `${t("report.approval")}: ${approval === "none" ? t("rep.noApproval") : approvalLabel(approval)}` : null,
   ].filter(Boolean).join(" · ");
 
   return (
@@ -220,12 +222,12 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
         {preset === "custom" && (
           <div style={{ display: "flex", gap: 10, marginTop: 12, flexWrap: "wrap" }}>
             <div style={{ flex: 1, minWidth: 150 }}>
-              <span style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.from")}</span>
-              <Field type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+              <label htmlFor="rep-from" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.from")}</label>
+              <Field id="rep-from" type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
             </div>
             <div style={{ flex: 1, minWidth: 150 }}>
-              <span style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.to")}</span>
-              <Field type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+              <label htmlFor="rep-to" style={dateLabel}><Icon icon={CalendarDays} className="h-3.5 w-3.5" /> {t("report.to")}</label>
+              <Field id="rep-to" type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
           </div>
         )}
@@ -244,7 +246,8 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
               : t("rep.hintOneForm")}
           </span>
           {/* ไม่พบ = บอกที่เดียว (การ์ดผลด้านล่าง) ไม่ซ้ำสามจุด */}
-          {stale && <span role="status" style={{ color: "var(--warn-text)", fontSize: ".85rem", fontWeight: 600 }}>{t("rep.stale")}</span>}
+          {/* พื้นที่ประกาศอยู่ตลอด (ไม่สร้างใหม่) — โปรแกรมอ่านหน้าจออ่านทุกครั้งที่ข้อความเปลี่ยน */}
+          <span role="status" aria-live="polite" style={{ color: "var(--warn-text)", fontSize: ".85rem", fontWeight: 600 }}>{stale ? t("rep.stale") : ""}</span>
           {preview && preview.total > 0 && !stale && (
             <span role="status" aria-live="polite" style={{ color: "var(--ink-2)", fontSize: ".85rem" }}>
               {tt("rep.found", { n: preview.total.toLocaleString() })}
@@ -257,7 +260,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
 
       {/* ตาราง preview */}
       {preview && (
-        <div style={{ opacity: stale ? 0.5 : 1, transition: "opacity .15s" }} aria-hidden={stale || undefined}>{
+        <div style={{ opacity: stale ? 0.5 : 1, transition: "opacity .15s" }} inert={stale || undefined}>{
         preview.rows.length === 0 ? (
           <Card><p id="rep-nodata" role="status" style={{ color: "var(--ink-2)", margin: 0 }}>{t("rep.exportNone")}</p></Card>
         ) : (

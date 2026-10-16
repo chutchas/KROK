@@ -19,7 +19,7 @@ export interface BrandingValue {
 }
 
 const label: React.CSSProperties = { display: "block", fontSize: ".8rem", fontWeight: 600, color: "var(--ink-2)", margin: "12px 0 6px" };
-const smallBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 9px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".76rem" };
+const smallBtn: React.CSSProperties = { display: "inline-flex", alignItems: "center", gap: 5, minHeight: 44, padding: "5px 12px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink-2)", cursor: "pointer", fontFamily: "inherit", fontSize: ".76rem" };
 
 export function useUploadErrorText() {
   const { t } = useT();
@@ -55,11 +55,11 @@ function ColorRow({ title, value, inherited, onChange }: { title: string; value?
       <label htmlFor={id} style={label}>{title}</label>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
         <input id={id} type="color" value={shown} onChange={(e) => { setText(null); onChange(e.target.value); }}
-          style={{ width: 40, height: 32, padding: 0, border: "1px solid var(--line)", borderRadius: 7, background: "none", cursor: "pointer" }} />
+          style={{ width: 44, height: 44, padding: 0, border: "1px solid var(--line)", borderRadius: 7, background: "none", cursor: "pointer" }} />
         <input aria-label={title} value={text ?? shown} maxLength={7} spellCheck={false}
           onChange={(e) => { setText(e.target.value); const h = cleanHex(e.target.value); if (h) onChange(h); }}
           onBlur={() => setText(null)}
-          style={{ width: 92, padding: "6px 8px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink)", fontFamily: "monospace", fontSize: ".8rem" }} />
+          style={{ width: 92, minHeight: 44, padding: "6px 8px", border: "1px solid var(--line)", borderRadius: 7, background: "var(--surface)", color: "var(--ink)", fontFamily: "monospace", fontSize: ".8rem" }} />
         {value ? (
           <button type="button" style={smallBtn} onClick={() => { setText(null); onChange(undefined); }} title={t("brand.reset")}>
             <Icon icon={RotateCcw} className="h-3.5 w-3.5" /> {t("brand.reset")}

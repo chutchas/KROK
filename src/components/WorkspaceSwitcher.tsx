@@ -65,6 +65,7 @@ export default function WorkspaceSwitcher({
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== "Escape") return;
+      e.preventDefault(); // บอกชั้นล่างว่า Esc นี้ใช้ปิดรายการแล้ว
       setOpen(false);
       setCreating(false);
       btnRef.current?.focus();

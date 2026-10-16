@@ -128,14 +128,19 @@ export default function AppShell({
   useDialogA11y(menuRef, () => setMenuOpen(false), { active: menuOpen });
   const profileRef = useRef<HTMLDivElement>(null);
 
+  const openRef = useRef({ menu: false, profile: false });
+  useEffect(() => { openRef.current = { menu: menuOpen, profile: profileOpen }; });
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
       if (profileRef.current && !profileRef.current.contains(e.target as Node)) setProfileOpen(false);
     }
     // Esc ปิดเมนู/เมนูโปรไฟล์ (คีย์บอร์ด + โปรแกรมอ่านหน้าจอ)
+    // preventDefault เฉพาะตอนปิดอะไรไปจริง → ชั้นล่าง (กล่องยืนยันฝังหน้า) รู้ว่า Esc นี้ถูกใช้แล้ว ไม่ปิดตาม
     function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") { setMenuOpen(false); setProfileOpen(false); }
+      if (e.key !== "Escape") return;
+      if (openRef.current.menu || openRef.current.profile) e.preventDefault();
+      setMenuOpen(false); setProfileOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
