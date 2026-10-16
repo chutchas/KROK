@@ -160,7 +160,7 @@ export default function FormsListClient({
             <Field value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("forms.search")} style={{ width: "100%", paddingLeft: 32 }} />
           </div>
           <select value={catFilter} onChange={(e) => setCatFilter(e.target.value)} aria-label={t("forms.categoryFilter")} className="krok-typefilter"
-            style={{ padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
+            style={{ padding: "9px 14px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" }}>
             <option value="all">{t("forms.allCategories")}</option>
             {cats.map((c) => <option key={c} value={c}>{categoryLabel(c, lang)}</option>)}
           </select>
@@ -251,7 +251,7 @@ function DraftsList({ drafts, busyId, onDelete }: { drafts: DraftListItem[]; bus
   }, [drafts, q, cat, sort, lang]);
   if (drafts.length === 0)
     return <Card><EmptyState icon={<Icon icon={FilePen} className="h-7 w-7" />} title={t("draft.empty")} hint={t("draft.emptyHint")} /></Card>;
-  const selStyle: React.CSSProperties = { padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", flex: "0 0 auto" };
+  const selStyle: React.CSSProperties = { padding: "9px 14px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", flex: "0 0 auto" };
   return (
     <div style={{ display: "grid", gap: 10, marginTop: 10 }}>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "stretch" }}>

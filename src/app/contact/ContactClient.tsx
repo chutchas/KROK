@@ -16,7 +16,7 @@ const EMPTY: ContactInput = { name: "", company: "", email: "", phone: "", seats
 const lbl: React.CSSProperties = { display: "block", fontSize: ".84rem", fontWeight: 600, color: "var(--ink-2)", marginBottom: 4 };
 const errSt: React.CSSProperties = { color: "var(--fail)", fontSize: ".8rem", marginTop: 4 };
 const bad: React.CSSProperties = { borderColor: "var(--fail)", boxShadow: "0 0 0 1px var(--fail)" };
-const selSt: React.CSSProperties = { width: "100%", padding: "11px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
+const selSt: React.CSSProperties = { width: "100%", padding: "11px 12px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: "1rem" };
 
 type Me = { name: string; email: string; company: string } | null;
 

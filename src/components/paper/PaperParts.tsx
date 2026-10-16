@@ -152,7 +152,12 @@ export function PaperChoices({
   value,
   onChange,
   disabled = false,
+  required = false,
+  labelledBy,
 }: {
+  /** เลือกข้อเดียว + ต้องตอบ (หน้ากรอก) — บอกโปรแกรมอ่านหน้าจอผ่าน radiogroup + aria-required */
+  required?: boolean;
+  labelledBy?: string;
   name: string;
   options: string[];
   labels?: Map<string, string>;
@@ -164,7 +169,8 @@ export function PaperChoices({
   const sel = multiple ? (Array.isArray(value) ? value : []) : typeof value === "string" && value ? [value] : [];
   if (options.length === 0) return <div style={{ height: CONTROL_H, borderBottom: `1px dotted #999` }} />;
   return (
-    <div style={{ minHeight: CONTROL_H, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px 14px", fontSize: FONT, color: INK }}>
+    <div {...(!multiple && onChange ? { role: "radiogroup", "aria-required": required || undefined, "aria-labelledby": labelledBy } : {})}
+      style={{ minHeight: CONTROL_H, display: "flex", flexWrap: "wrap", alignItems: "center", gap: "2px 14px", fontSize: FONT, color: INK }}>
       {options.map((o) => {
         const on = sel.includes(o);
         const l = labels?.get(o);

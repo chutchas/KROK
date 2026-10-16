@@ -37,7 +37,7 @@ export default function TemplateGallery({ onUse }: { onUse: (id: string) => void
   });
   const usedInd = TEMPLATE_INDUSTRIES.filter((i) => FORM_TEMPLATES.some((tpl) => tpl.industries.includes(i.key)));
   const filtered = catFilter !== "all" || indFilter !== "all" || !!needle;
-  const selStyle: React.CSSProperties = { padding: "9px 14px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" };
+  const selStyle: React.CSSProperties = { padding: "9px 14px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".88rem", minWidth: 180, flex: "0 0 auto" };
 
   return (
     <div>

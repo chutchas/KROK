@@ -81,7 +81,7 @@ export default function AuditClient({ rows, roleNames, days }: { rows: AuditRow[
             value={action}
             onChange={(e) => setAction(e.target.value)}
             aria-label={t("audit.action")}
-            style={{ minHeight: 44, padding: "9px 12px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", maxWidth: "100%" }}
+            style={{ minHeight: 44, padding: "9px 12px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", maxWidth: "100%" }}
           >
             <option value="all">{t("audit.allActions")}</option>
             {actions.map(([a, l]) => <option key={a} value={a}>{l}</option>)}

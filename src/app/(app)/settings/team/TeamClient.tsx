@@ -101,7 +101,7 @@ export default function TeamClient({
   }
 
   const selstyle: React.CSSProperties = {
-    minHeight: 44, padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8,
+    minHeight: 44, padding: "10px 12px", border: "1px solid var(--line-strong)", borderRadius: 8,
     background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".95rem",
   };
 

@@ -260,7 +260,7 @@ export default function ReportsClient({ forms, mine = false, canTrash = false, i
           </span>
           {/* ไม่พบ = บอกที่เดียว (การ์ดผลด้านล่าง) ไม่ซ้ำสามจุด */}
           {/* พื้นที่ประกาศอยู่ตลอด (ไม่สร้างใหม่) — โปรแกรมอ่านหน้าจออ่านทุกครั้งที่ข้อความเปลี่ยน */}
-          <span role="status" aria-live="polite" style={{ color: "var(--warn-text)", fontSize: ".85rem", fontWeight: 600 }}>{stale ? t("rep.stale") : ""}</span>
+          <span role="status" aria-live="polite" style={{ color: "var(--warn-text)", fontSize: ".85rem", fontWeight: 600 }}>{stale && !needDates && !badRange ? t("rep.stale") : ""}</span>
           {/* ประกาศจำนวนผลผ่านพื้นที่ที่มีอยู่ตลอด (ข้อความที่เห็นด้านข้างไม่ต้องอ่านซ้ำ) */}
           <span className="sr-only" aria-live="polite">{preview && !stale && !busy ? tt("rep.found", { n: preview.total.toLocaleString() }) : ""}</span>
           {preview && preview.total > 0 && !stale && (
@@ -369,7 +369,7 @@ function Selectable({ label, children, className }: { label: string; children: R
 
 const selStyle: React.CSSProperties = {
   width: "100%", minHeight: 44, padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".88rem",
-  border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)",
+  border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--ink)",
 };
 const dateLabel: React.CSSProperties = { fontSize: ".78rem", color: "var(--ink-3)", display: "inline-flex", alignItems: "center", gap: 4, marginBottom: 3 };
 const th: React.CSSProperties = { padding: "8px 10px", fontWeight: 600, whiteSpace: "nowrap" };

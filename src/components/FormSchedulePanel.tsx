@@ -153,7 +153,7 @@ export default function FormSchedulePanel({ formId, teams, members }: {
 
           <span style={label}>{t("sch.window")}</span>
           <select value={cfg.windowMin} onChange={(e) => set({ windowMin: Number(e.target.value) })}
-            style={{ padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", minHeight: 40 }}>
+            style={{ padding: "8px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".9rem", minHeight: 40 }}>
             {(WINDOWS.includes(cfg.windowMin) ? WINDOWS : [...WINDOWS, cfg.windowMin].sort((a, b) => a - b)).map((m) => <option key={m} value={m}>{winLabel(m)}</option>)}
           </select>
           <small style={{ display: "block", color: "var(--ink-3)", fontSize: ".76rem", marginTop: 4 }}>{t("sch.windowHint")}</small>

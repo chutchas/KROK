@@ -63,7 +63,7 @@ export default function ComplianceCard() {
         </h2>
         <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
           <select value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label={t("comp.range")}
-            style={{ padding: "7px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".85rem", minHeight: 36 }}>
+            style={{ padding: "7px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".85rem", minHeight: 36 }}>
             <option value={7}>{t("comp.d7")}</option>
             <option value={30}>{t("comp.d30")}</option>
             <option value={90}>{t("comp.d90")}</option>

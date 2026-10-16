@@ -92,7 +92,7 @@ export default function WebhookForm({ forms, initial, editing = false, hasSecret
       <div>
         <div style={{ fontSize: ".85rem", color: "var(--ink-2)", marginBottom: 6 }}>{t("intg.targetForm")}</div>
         <select value={formId} onChange={(e) => pickForm(e.target.value)} aria-label={t("intg.targetForm")}
-          style={{ width: "100%", padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".9rem", border: "1px solid var(--line)", background: "var(--surface)", color: "var(--ink)" }}>
+          style={{ width: "100%", padding: "9px 11px", borderRadius: 10, fontFamily: "inherit", fontSize: ".9rem", border: "1px solid var(--line-strong)", background: "var(--surface)", color: "var(--ink)" }}>
           <option value="">{t("intg.allForms")}</option>
           {forms.map((f) => <option key={f.id} value={f.id}>{f.title}</option>)}
         </select>

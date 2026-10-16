@@ -29,7 +29,7 @@ export default function AreaFieldSettings({ field, onPatch }: { field: FormField
       <label htmlFor={`ad_${field.id}`} style={{ display: "block", fontSize: ".8rem", color: "var(--ink-2)", margin: "10px 0 4px" }}>{t("area.default")}</label>
       <select id={`ad_${field.id}`} value={field.area_default ?? ""} disabled={areas === null}
         onChange={(e) => onPatch({ area_default: e.target.value || undefined })}
-        style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--line)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit" }}>
+        style={{ width: "100%", padding: "8px 10px", border: "1px solid var(--line-strong)", borderRadius: 8, background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit" }}>
         <option value="">{t("area.noDefault")}</option>
         {(areas || []).map((a) => <option key={a.id} value={a.code}>{a.name} · {a.code}</option>)}
         {field.area_default && areas && !areas.some((a) => a.code === field.area_default) && (
