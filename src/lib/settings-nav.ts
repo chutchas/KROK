@@ -28,8 +28,8 @@ export const SETTINGS_HUBS: SettingsHub[] = [
     key: "people",
     labelKey: "hub.people",
     items: [
-      { href: "/settings/team", tabKey: "hub.tab.team", menu: "team" },
-      { href: "/settings/roles", tabKey: "nav.roles", gate: "wsadmin" },
+      { href: "/settings/team", tabKey: "hub.tab.team", shortKey: "hub.tab.teamShort", menu: "team" },
+      { href: "/settings/roles", tabKey: "nav.roles", shortKey: "hub.tab.rolesShort", gate: "wsadmin" },
     ],
   },
   {
@@ -37,10 +37,10 @@ export const SETTINGS_HUBS: SettingsHub[] = [
     labelKey: "hub.workspace",
     items: [
       { href: "/settings/workspace", tabKey: "hub.tab.general", gate: "wsadmin" },
-      { href: "/settings/workspace/media", tabKey: "hub.tab.media", gate: "wsadmin" },
+      { href: "/settings/workspace/media", tabKey: "hub.tab.media", shortKey: "hub.tab.mediaShort", gate: "wsadmin" },
       { href: "/settings/areas", tabKey: "hub.tab.areas", gate: "wsadmin" },
       { href: "/settings/devices", tabKey: "nav.devices", gate: "wsadmin" },
-      { href: "/settings/audit", tabKey: "nav.audit", gate: "wsadmin" },
+      { href: "/settings/audit", tabKey: "nav.audit", shortKey: "hub.tab.auditShort", gate: "wsadmin" },
     ],
   },
   {

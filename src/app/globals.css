@@ -480,3 +480,7 @@ select.krok-typefilter, select.krok-listsort { min-height: 44px; }
 
 /* จองที่ scrollbar เสมอ — สลับหน้าที่มี/ไม่มีแถบเลื่อนแล้วเนื้อหาไม่กระตุกซ้าย-ขวา */
 html { scrollbar-gutter: stable; }
+
+/* รายงาน: ช่องวันที่ (ช่วงกำหนดเอง) — เดสก์ท็อปเต็มแถวท้ายตัวกรอง · จอแคบขึ้นมาอยู่ใต้ "ช่วงเวลา" */
+.krok-rep-dates{grid-column:1/-1;order:1}
+@media (max-width:560px){.krok-rep-after{order:2}}

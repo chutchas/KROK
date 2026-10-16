@@ -352,7 +352,7 @@ export default function AppShell({
             </Link>
           </div>
 
-          <nav ref={navRef} data-tour="nav" className="krok-nav" aria-label={t("nav.menu")} style={{ display: "flex", gap: 0, minWidth: 0, flex: "0 1 auto", maskImage: fade, WebkitMaskImage: fade }}>
+          <nav ref={navRef} data-tour="nav" className="krok-nav" aria-label={t("nav.main")} style={{ display: "flex", gap: 0, minWidth: 0, flex: "0 1 auto", maskImage: fade, WebkitMaskImage: fade }}>
             {navItems.map((n) => {
               const on = isActive(n.href);
               return (
@@ -541,9 +541,9 @@ export default function AppShell({
                 </div>
                 {primary.length > 0 && (
                   <div style={{ marginTop: 12 }}>
-                    <div style={{ fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
-                      {t("nav.menu")}
-                    </div>
+                    <h2 style={{ margin: 0, lineHeight: 1.4, fontSize: ".68rem", color: "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase" }}>
+                      {t("nav.main")}
+                    </h2>
                     {primary.map((n) => {
                       const on = isActive(n.href);
                       return (
@@ -569,10 +569,10 @@ export default function AppShell({
                   <div key={g.labelKey} style={sys
                     ? { marginTop: 16, padding: "6px 4px 4px", border: "1px solid var(--line)", borderRadius: 12, background: "var(--surface-2)" }
                     : { marginTop: 12 }}>
-                    <div style={{ fontSize: ".68rem", color: sys ? "var(--ink-2)" : "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                    <h2 style={{ margin: 0, lineHeight: 1.4, fontSize: ".68rem", color: sys ? "var(--ink-2)" : "var(--ink-3)", fontWeight: 700, letterSpacing: ".06em", padding: "4px 12px 6px", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
                       {sys && <Icon icon={ShieldCheck} className="h-3.5 w-3.5" />}
                       {t(sys ? "grp.platformAdmin" : g.labelKey)}
-                    </div>
+                    </h2>
                     {items.map((n) => {
                       const on = isActive(n.href);
                       return (
@@ -629,7 +629,7 @@ export default function AppShell({
 
       {/* มือถือ: แถบเมนูล่างจอ (นิ้วโป้งถึง) — ซ่อนในหน้ากรอก (โหมดเต็มจอมีแถบปุ่มของตัวเอง) */}
       {!focusMode && (
-        <nav className="krok-tabbar no-print" aria-label={t("nav.menu")}
+        <nav className="krok-tabbar no-print" aria-label={t("nav.tabbar")}
           style={{ position: "fixed", left: 0, right: 0, bottom: 0, zIndex: 30, background: "var(--surface)", borderTop: "1px solid var(--line)", paddingBottom: "env(safe-area-inset-bottom, 0px)", display: "flex" }}>
           {tabItems.map((n) => {
             const on = isActive(n.href);

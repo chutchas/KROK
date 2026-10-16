@@ -101,7 +101,7 @@ export default function TeamClient({
   }
 
   const selstyle: React.CSSProperties = {
-    padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8,
+    minHeight: 44, padding: "10px 12px", border: "1px solid var(--line)", borderRadius: 8,
     background: "var(--surface)", color: "var(--ink)", fontFamily: "inherit", fontSize: ".95rem",
   };
 
@@ -111,13 +111,19 @@ export default function TeamClient({
 
       <Card>
         <PageHeader as="h2" title={t("team.inviteTitle")} help="invite-roles" subtitle={t("team.inviteSub")} style={{ marginBottom: 12 }} />
-        <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
-          <Field type="email" aria-label={t("team.emailPlaceholder")} placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ flex: 1, minWidth: 200 }} />
-          <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} aria-label={t("team.inviteRoleSel")} style={selstyle}>
-            {inviteOptions.map((r) => (
-              <option key={r.key} value={r.key}>{roleLabel(r.key, r.name, t)}</option>
-            ))}
-          </select>
+        <form onSubmit={doInvite} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+          <label style={{ display: "grid", gap: 4, fontSize: ".82rem", color: "var(--ink-2)", fontWeight: 600, flex: 1, minWidth: 200 }}>
+            {t("team.emailLabel")}
+            <Field type="email" placeholder="name@company.com" value={email} onChange={(e) => setEmail(e.target.value)} required style={{ fontWeight: 400 }} />
+          </label>
+          <label style={{ display: "grid", gap: 4, fontSize: ".82rem", color: "var(--ink-2)", fontWeight: 600 }}>
+            {t("team.inviteRoleSel")}
+            <select value={roleKey} onChange={(e) => setRoleKey(e.target.value)} style={{ ...selstyle, fontWeight: 400 }}>
+              {inviteOptions.map((r) => (
+                <option key={r.key} value={r.key}>{roleLabel(r.key, r.name, t)}</option>
+              ))}
+            </select>
+          </label>
           <Button variant="primary" type="submit" loading={busy}>{t("team.invite")}</Button>
         </form>
         <p style={{ color: "var(--ink-3)", fontSize: ".8rem", margin: "8px 0 0" }}>{t("team.roleToGet")} <b>{selectedRoleName}</b></p>
@@ -296,9 +302,12 @@ function TeamsSection({
       <h2 style={{ fontSize: "var(--fs-h2)", marginBottom: 4 }}>{t("team.teamsTitle")}</h2>
       <p style={{ color: "var(--ink-2)", fontSize: ".85rem", marginTop: 0 }}>{t("team.teamsSub")}</p>
 
-      <form onSubmit={add} style={{ display: "flex", gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-        <Field ref={nameRef} value={newName} onChange={(e) => { setNewName(e.target.value); setNameErr(false); }} placeholder={t("team.teamNamePlaceholder")} aria-label={t("team.teamNamePlaceholder")}
-          aria-invalid={nameErr || undefined} aria-describedby={nameErr ? "team-name-err" : undefined} style={{ flex: 1, minWidth: 200 }} />
+      <form onSubmit={add} style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "flex-end", marginBottom: 12 }}>
+        <label style={{ display: "grid", gap: 4, fontSize: ".82rem", color: "var(--ink-2)", fontWeight: 600, flex: 1, minWidth: 200 }}>
+          {t("team.teamNameLabel")}
+          <Field ref={nameRef} value={newName} onChange={(e) => { setNewName(e.target.value); setNameErr(false); }} placeholder={t("team.teamNamePlaceholder")}
+            aria-invalid={nameErr || undefined} aria-describedby={nameErr ? "team-name-err" : undefined} style={{ fontWeight: 400 }} />
+        </label>
         <Button variant="primary" type="submit" disabled={busy}>{t("team.addTeam")}</Button>
         {nameErr && <span id="team-name-err" role="alert" style={{ flexBasis: "100%", fontSize: ".8rem", color: "var(--fail)" }}>{t("team.nameRequired")}</span>}
       </form>

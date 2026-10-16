@@ -260,6 +260,7 @@ export default function FormEditor({
                   fields: [...step.fields, { id: newId("f"), type: "text", label: "", required: true }],
                 })
               }
+              aria-label={tt("editor.addFieldIn", { step: step.title?.trim() || `${t("editor.step")} ${si + 1}` })}
               className="inline-flex items-center gap-1.5"
               style={{ ...iconBtn, width: "auto", padding: "8px 14px", color: "var(--accent-text)", borderColor: "var(--accent)", fontSize: ".85rem", fontWeight: 600 }}
             >
